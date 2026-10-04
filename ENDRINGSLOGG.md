@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.8 – ryddigare verktøylinje og versjonsnummer
+- **Endra:** Knappen for kartperspektiv viser no perspektivet som er i bruk (t.d. «Kart», «Horisont»). Trykk opnar ein meny med alle fem: Kart, Førar, Horisont, 3D-terreng og Frontrute.
+- **Nytt:** Eigen knapp **Bakgrunn** rett ved sida av perspektivknappen – slår bakgrunnskartet (og høgdekurvene i 3D) av og på.
+- **Fjerna:** Historikk-knappen i verktøylinja. Historikk ligg under Innst. › Historikk.
+- **Endra:** Zoom ut har no eit reint minusteikn utan sirkel, likt plussteiknet på Zoom inn.
+- **Nytt:** Versjonsnummeret som er i bruk står rett under «SNOWMAN by Alpindata», i vindaugstittelen, under Innst. › Maskin, i terminalen og i `snowman`-menyen. Éin stad i koden: `APP_VERSION` i driver.html og `VERSION` i snowman_pc.py.
+- **Retta:** Tenesta ber nettlesaren alltid hente sida på nytt (`Cache-Control: no-cache`), så ein ny versjon synest med éin gong etter oppdatering.
+- **Kvifor:** Ønske frå eigaren etter testing.
+
 ### PC-prototype v1.6.7 – kontroll av snødjupne og terrengmodell
 - **Nytt:** Fana **Kontroll** (Innst.) med to typar kontroll:
   - **Kontrollmåling her:** maskina står med RTK FIX, føraren skriv inn kjend snødjupne (snøsonde rett under antenna, eller 0 på barmark). SNOWMAN lagrar si eiga utrekning ved sida av og viser avviket (grøn ≤ 5 cm, gul ≤ 15 cm, raud over).

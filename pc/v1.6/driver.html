@@ -228,6 +228,57 @@
       .toggle.on {
         background: #0878df;
       }
+      /* Val av kartperspektiv (opnar seg over knappen) */
+      .viewMenu {
+        position: absolute;
+        z-index: 1200;
+        bottom: 86px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #02121bf5;
+        border: 1px solid #3d5c6e;
+        border-radius: 12px;
+        padding: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+        max-width: 96vw;
+      }
+      .viewMenu > b {
+        width: 100%;
+        text-align: center;
+        font-size: 12px;
+        color: #9ab3c1;
+      }
+      .viewMenu button {
+        width: 112px;
+        height: 84px;
+        border: 1px solid #3d5c6e;
+        border-radius: 10px;
+        background: #0d2531;
+        color: #fff;
+        font-weight: 800;
+        font-size: 14px;
+      }
+      .viewMenu button i {
+        display: block;
+        font-style: normal;
+        font-size: 24px;
+      }
+      .viewMenu button small {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        color: #9ab3c1;
+      }
+      .viewMenu button.on {
+        background: #0878df;
+        border-color: #6cb6ff;
+      }
+      .viewMenu button.on small {
+        color: #dbeeff;
+      }
       .groomIcon {
         display: block;
         width: 36px;
@@ -724,7 +775,7 @@
       <canvas id="t3d"></canvas>
       <div id="t3dInfo"></div>
       <div class="top">
-        <div class="brand">SNOWMAN<small>by Alpindata</small><small>PC v1.6</small></div>
+        <div class="brand">SNOWMAN<small>by Alpindata</small><small id="brandVer">PC v1.6</small></div>
         <div class="depth"><label id="depthLabel">SNØDJUPNE (MIDT)</label><b id="depth">--</b><small id="depthNote">IKKJE MÅLT</small></div>
         <div id="aheadBox" class="ahead hide"><label id="aheadLabel">FRAMFOR · ESTIMERT</label><b id="aheadD">--</b><small id="aheadNote"></small></div>
         <div class="rtk" onclick="toggleSatStatus()">
@@ -960,7 +1011,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.7</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b class="appVer">PC v1.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon <span class="appVer">1.6</span> – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">
@@ -975,15 +1026,23 @@
             <rect x="7" y="32" width="56" height="5" rx="2" fill="#e23b32" /></svg
           >Maskin</button
         ><button class="tool" onclick="centerMap()"><i>⌖</i>Sentrer</button
-        ><button class="tool" onclick="zoomBtn(-1)"><i>⊖</i>Zoom ut</button
+        ><button class="tool" onclick="zoomBtn(-1)"><i>−</i>Zoom ut</button
         ><button class="tool" onclick="zoomBtn(1)"><i>＋</i>Zoom inn</button
-        ><button id="viewBtn" class="tool" onclick="toggle3D()"><i>◭</i>Førarvising</button
+        ><button id="viewBtn" class="tool" onclick="openViewMenu(event)"><i>◭</i>Kart</button
+        ><button id="bgBtn" class="tool on" onclick="toggleBg()"><i>▦</i>Bakgrunn</button
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
         ><button class="tool" onclick="resetWork()"><i>↺</i>Reset spor</button
-        ><button id="demoBtn" class="tool" onclick="toggleDemo()"><i>▶</i>Demo</button
-        ><button class="tool" onclick="openHistory()"><i>⏱</i>Historikk</button>
+        ><button id="demoBtn" class="tool" onclick="toggleDemo()"><i>▶</i>Demo</button>
+      </div>
+      <div id="viewMenu" class="viewMenu hide">
+        <b>VEL KARTPERSPEKTIV</b>
+        <button data-v="kart" onclick="pickView('kart')"><i>▭</i>Kart<small>ovanfrå</small></button
+        ><button data-v="forar" onclick="pickView('forar')"><i>◭</i>Førar<small>vippa 50°</small></button
+        ><button data-v="horisont" onclick="pickView('horisont')"><i>⌓</i>Horisont<small>lågt, langt fram</small></button
+        ><button data-v="3d" onclick="pickView('3d')"><i>◬</i>3D-terreng<small>bak maskina</small></button
+        ><button data-v="frontrute" onclick="pickView('frontrute')"><i>⧈</i>Frontrute<small>frå førarhuset</small></button>
       </div>
       <div id="hudDlg" class="hudDlg hide">
         <h3>HUD – FRONTRUTE</h3>
@@ -1012,6 +1071,11 @@
     <script src="vendor/three.snowman.min.js"></script>
     <script src="vendor/qrcode.js"></script>
     <script>
+      // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
+      const APP_VERSION = "1.6.8";
+      document.title = "SNOWMAN PC v" + APP_VERSION;
+      document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
+      document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
       /* SNOWMAN PC v1.6 – førargrensesnitt frå Driver v24, kopla til lokal GNSS-teneste og Terrain Engine.
          Kjelder for posisjon: "gnss" (Leica/RTK via snowman_pc.py), "mobile" (nettlesar-GPS, test), "demo" (simulert). */
       const $ = (x) => document.getElementById(x),
@@ -1742,11 +1806,11 @@
       })();
       // Visingar: kart ovanfrå, førar (vippa), horisont (sterkt vippa mot horisonten) og 3D-terreng (ekte relieff frå terrengmodellen).
       const VIEWS = {
-        kart: { name: "Kart", desc: "Kartvising ovanfrå", tilt: 0 },
-        forar: { name: "Førar", desc: "Førarperspektiv – sett frå maskina", tilt: 50, persp: 1600, shift: 18, inset: "-60%", zoom: 19 },
-        horisont: { name: "Horisont", desc: "Horisont – lågt og langt framover", tilt: 68, persp: 950, shift: 30, inset: "-140%", zoom: 20 },
-        "3d": { name: "3D-terreng", desc: "3D-terreng – ekte relieff frå terrengmodellen", tilt: 0, gl: true },
-        frontrute: { name: "Frontrute", desc: "Frontrute – som å sjå ut frå førarhuset", tilt: 0, gl: true },
+        kart: { icon: "▭", name: "Kart", desc: "Kartvising ovanfrå", tilt: 0 },
+        forar: { icon: "◭", name: "Førar", desc: "Førarperspektiv – sett frå maskina", tilt: 50, persp: 1600, shift: 18, inset: "-60%", zoom: 19 },
+        horisont: { icon: "⌓", name: "Horisont", desc: "Horisont – lågt og langt framover", tilt: 68, persp: 950, shift: 30, inset: "-140%", zoom: 20 },
+        "3d": { icon: "◬", name: "3D-terreng", desc: "3D-terreng – ekte relieff frå terrengmodellen", tilt: 0, gl: true },
+        frontrute: { icon: "⧈", name: "Frontrute", desc: "Frontrute – som å sjå ut frå førarhuset", tilt: 0, gl: true },
       };
       const VIEW_ORDER = ["kart", "forar", "horisont", "3d", "frontrute"];
       let TILT = 50,
@@ -1795,8 +1859,8 @@
         $("app").classList.toggle("horizon", css === "horisont");
         $("app").classList.toggle("terrain3d", use3d);
         $("viewBtn").classList.toggle("on", mode !== "kart");
-        $("viewBtn").innerHTML = "<i>◭</i>" + VIEWS[mode].name;
-        document.querySelectorAll("#viewSet button").forEach((b) => b.classList.toggle("on", b.dataset.v === mode));
+        $("viewBtn").innerHTML = "<i>" + VIEWS[mode].icon + "</i>" + VIEWS[mode].name;
+        document.querySelectorAll("#viewSet button, #viewMenu button").forEach((b) => b.classList.toggle("on", b.dataset.v === mode));
         $("map").style.inset = cfg.view3d ? v.inset : cfg.northUp ? "0" : "";
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP (LÅST)" : "KØYRERETNING OPP");
         rotateMap(heading || 0);
@@ -1820,6 +1884,24 @@
       function toggle3D() {
         setView(VIEW_ORDER[(VIEW_ORDER.indexOf(viewMode()) + 1) % VIEW_ORDER.length]);
       }
+      // Knappen med namnet på gjeldande perspektiv opnar ein meny med alle perspektiva
+      function openViewMenu(ev) {
+        ev.stopPropagation();
+        let m = $("viewMenu");
+        m.classList.toggle("hide");
+        if (!m.classList.contains("hide")) {
+          let b = $("viewBtn").getBoundingClientRect(),
+            w = m.offsetWidth;
+          m.style.left = Math.max(8 + w / 2, Math.min(innerWidth - 8 - w / 2, b.left + b.width / 2)) + "px";
+        }
+      }
+      function pickView(v) {
+        $("viewMenu").classList.add("hide");
+        setView(v);
+      }
+      document.addEventListener("click", (e) => {
+        if (!$("viewMenu").contains(e.target)) $("viewMenu").classList.add("hide");
+      });
       function zoomBtn(d) {
         if (VIEWS[viewMode()].gl && T3D.ready()) T3D.zoom(d);
         else d > 0 ? map.zoomIn() : map.zoomOut();
@@ -1830,6 +1912,7 @@
         if (baseLayer) on ? baseLayer.addTo(map).bringToBack() : map.removeLayer(baseLayer);
         $("map").classList.toggle("nobg", !on);
         $("bgSet").classList.toggle("on", on);
+        $("bgBtn").classList.toggle("on", on);
         $("bgSet").textContent = "BAKGRUNN (KART/TERRENG): " + (on ? "PÅ" : "AV");
         T3D.repaint();
       }

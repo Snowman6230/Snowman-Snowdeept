@@ -18,7 +18,8 @@ REPO=$(dirname "$PCDIR")
 # nyaste versjonsmappe (pc/v1.6, pc/v1.7 …)
 APP=$(ls -d "$PCDIR"/v*/ 2>/dev/null | sort -V | while read d; do [ -x "$d/start-snowman.sh" ] && echo "$d"; done | tail -n 1)
 APP=${APP%/}
-VER=$(basename "$APP")
+VER=$(sed -n 's/^VERSION="\([^"]*\)".*/v\1/p' "$APP/snowman_pc.py" 2>/dev/null)
+[ -n "$VER" ] || VER=$(basename "$APP")
 
 stopp() {
   PIDS=$(ps -eo pid,args | awk '/snowman_pc\.py|simuler-leica\.py/ && !/awk/ {print $1}')

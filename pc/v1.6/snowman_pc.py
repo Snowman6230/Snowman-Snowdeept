@@ -12,6 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
+VERSION="1.6.8"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -33,7 +34,7 @@ def sim_truth():
     except Exception: return None
 
 STATE = {
-    "version":"1.6","running":True,"serial_connected":False,"ntrip_connected":False,
+    "version":VERSION,"running":True,"serial_connected":False,"ntrip_connected":False,
     "port":"","baud":115200,"caster":"","mountpoint":"","bytes_rtcm":0,
     "last_gga":"","fix":"NO DATA","satellites":0,"hdop":None,"altitude":None,
     "lat":None,"lon":None,"last_error":"","last_update":0
@@ -199,6 +200,8 @@ class API(http.server.BaseHTTPRequestHandler):
     def log_message(self,*a): pass
     def headers_ok(self, code=200, typ="application/json"):
         self.send_response(code); self.send_header("Content-Type",typ)
+        if typ.startswith("text/html") or typ=="application/json":
+            self.send_header("Cache-Control","no-cache")   # ny versjon blir alltid vist etter oppdatering
         self.send_header("Access-Control-Allow-Origin","*")
         self.send_header("Access-Control-Allow-Headers","Content-Type")
         self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS"); self.end_headers()
@@ -413,7 +416,7 @@ def main():
     if a.serial: CFG["serial_port"]=a.serial; save_cfg()
     threading.Thread(target=serial_loop,daemon=True).start()
     threading.Thread(target=ntrip_loop,daemon=True).start()
-    print(f"SNOWMAN PC Prototype v1.6 køyrer: http://127.0.0.1:{a.http_port}")
+    print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}")
     if a.lan or CFG.get("hudLan"): set_hud_lan(True)
     # Hovudtenesta (styring, innstillingar) er berre tilgjengeleg på denne PC-en.
     try: http.server.ThreadingHTTPServer(("127.0.0.1",a.http_port),API).serve_forever()
