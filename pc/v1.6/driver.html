@@ -560,13 +560,47 @@
       }
       .viewSet {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 6px;
         margin-bottom: 8px;
+      }
+      .viewSet .btn {
+        padding-left: 2px;
+        padding-right: 2px;
+        font-size: 11px;
       }
       .viewSet .btn.on {
         background: #1979d8;
         border-color: #6cb6ff;
+      }
+      #map.nobg {
+        background-image: none;
+        background-color: #0b1820;
+      }
+      /* Estimert snødjupne framfor maskina – stipla ramme, aldri lik målinga */
+      .ahead {
+        height: 60px;
+        min-width: 150px;
+        margin-left: 10px;
+        border: 2px dashed #ffcf5b;
+        border-radius: 14px;
+        padding: 4px 12px;
+        text-align: center;
+      }
+      .ahead label {
+        display: block;
+        font-size: 10px;
+        font-weight: 800;
+        color: #ffcf5b;
+      }
+      .ahead b {
+        font-size: 26px;
+        color: #ffe7a6;
+      }
+      .ahead small {
+        display: block;
+        font-size: 10px;
+        color: #c9d6de;
       }
       #app.view3d .groomer .tag {
         display: none;
@@ -692,6 +726,7 @@
       <div class="top">
         <div class="brand">SNOWMAN<small>by Alpindata</small><small>PC v1.6</small></div>
         <div class="depth"><label id="depthLabel">SNØDJUPNE (MIDT)</label><b id="depth">--</b><small id="depthNote">IKKJE MÅLT</small></div>
+        <div id="aheadBox" class="ahead hide"><label id="aheadLabel">FRAMFOR · ESTIMERT</label><b id="aheadD">--</b><small id="aheadNote"></small></div>
         <div class="rtk" onclick="toggleSatStatus()">
           <b id="fix">GNSS AV</b><span id="acc">VENTAR PÅ DATA</span><small id="fixSub">Leica / mobil / demo</small>
         </div>
@@ -779,8 +814,11 @@
             <button class="btn" data-v="kart" onclick="setView('kart')">KART</button
             ><button class="btn" data-v="forar" onclick="setView('forar')">FØRAR</button
             ><button class="btn" data-v="horisont" onclick="setView('horisont')">HORISONT</button
-            ><button class="btn" data-v="3d" onclick="setView('3d')">3D-TERRENG</button>
+            ><button class="btn" data-v="3d" onclick="setView('3d')">3D-TERRENG</button
+            ><button class="btn" data-v="frontrute" onclick="setView('frontrute')">FRONTRUTE</button>
           </div>
+          <button id="bgSet" class="btn toggle on" onclick="toggleBg()">BAKGRUNN (KART/TERRENG): PÅ</button
+          ><button id="estSet" class="btn toggle on" onclick="toggleEst()">SNØDJUPNE FRAMFOR (ESTIMAT): PÅ</button>
           <button id="northSet" class="btn" onclick="toggleNorth()">KARTRETNING: KØYRERETNING OPP</button>
           <button id="snowSet" class="btn toggle on" onclick="toggleSnow()">SNØDJUPNE: PÅ</button
           ><button id="machineMapSet" class="btn toggle on" onclick="toggleMachine()">VIS MASKIN: PÅ</button
@@ -886,7 +924,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.5</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">
@@ -1026,7 +1064,7 @@
         if (m.id === "wms" && url && m.layers)
           baseLayer = L.tileLayer.wms(url, { layers: m.layers, format: "image/png", transparent: false, maxZoom: 22, maxNativeZoom: max });
         else if (url) baseLayer = L.tileLayer(url, { maxZoom: 22, maxNativeZoom: max });
-        if (baseLayer) baseLayer.addTo(map).bringToBack();
+        if (baseLayer && cfg.bgOn !== false) baseLayer.addTo(map).bringToBack();
         $("attrib").textContent = attr;
         $("attrib").classList.toggle("hide", !attr);
       }
@@ -1039,6 +1077,12 @@
         coverGroup = L.layerGroup().addTo(map);
       coverPane.style.zIndex = 390;
       coverPane.style.opacity = 0.5;
+      // Estimat framfor maskina: eige, blekare lag
+      const estPane = (map.createPane("estPane"), map.getPane("estPane")),
+        estRenderer = L.canvas({ pane: "estPane", padding: 0.5 }),
+        estGroup = L.layerGroup().addTo(map);
+      estPane.style.zIndex = 395;
+      estPane.style.opacity = 0.3;
       arrowGroup = L.layerGroup().addTo(map);
       replayGroup = L.layerGroup().addTo(map);
 
@@ -1149,6 +1193,96 @@
       }
 
       /* ---------- Kart, kompass og rotasjon ---------- */
+      /* ---------- Estimert snødjupne framfor maskina ----------
+         Rekna berre frå målingar SNOWMAN alt har gjort i nærleiken (t.d. nabolanar og sporet bak): vekta snitt (IDW)
+         av målepunkt innanfor 10 m. Utan målingar i nærleiken blir det ikkje laga noko estimat.
+         Alltid merka ESTIMERT (stipla ramme, skravert i 3D) – aldri vist som måling. */
+      const EST = (function () {
+        const R = 10,
+          CELL = 2,
+          B = 5;
+        let grid = new Map(),
+          o = null,
+          lastAdd = null,
+          cells = [];
+        const mLon = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
+        const xy = (p) => [(p[1] - o[1]) * mLon(o[0]), (p[0] - o[0]) * 111320];
+        const ll = (x, y) => [o[0] + y / 111320, o[1] + x / mLon(o[0])];
+        function at(x, y) {
+          let bx = Math.floor(x / B),
+            by = Math.floor(y / B),
+            sw = 0,
+            sd = 0,
+            n = 0,
+            near = 1e9;
+          for (let i = -2; i <= 2; i++)
+            for (let j = -2; j <= 2; j++) {
+              let arr = grid.get(bx + i + "," + (by + j));
+              if (!arr) continue;
+              for (let q of arr) {
+                let d = Math.hypot(q[0] - x, q[1] - y);
+                if (d >= R) continue;
+                let w = 1 / Math.max(d, 0.5) ** 2;
+                sw += w;
+                sd += w * q[2];
+                n++;
+                if (d < near) near = d;
+              }
+            }
+          return n >= 3 && near < 6 ? sd / sw : null; // minst 3 målingar, og den næraste innanfor 6 m
+        }
+        return {
+          add(p, d) {
+            if (!p || d == null || isNaN(d)) return;
+            if (!o) o = p.slice();
+            let [x, y] = xy(p);
+            if (lastAdd && Math.hypot(x - lastAdd[0], y - lastAdd[1]) < 1) return;
+            lastAdd = [x, y];
+            let k = Math.floor(x / B) + "," + Math.floor(y / B);
+            if (!grid.has(k)) grid.set(k, []);
+            grid.get(k).push([x, y, d]);
+          },
+          // Ruter på 2 × 2 m frå 4 til 40 m framfor maskina, 1,5 × fresbreidda til kvar side (minst 6 m)
+          run(p, hdg, width) {
+            cells = [];
+            if (!o || !p || hdg == null) return null;
+            let [x0, y0] = xy(p),
+              h = (hdg * Math.PI) / 180,
+              fx = Math.sin(h),
+              fy = Math.cos(h),
+              W = Math.max(6, width * 1.5),
+              sum = 0,
+              cnt = 0,
+              min = null;
+            for (let s = 4; s <= 40; s += CELL)
+              for (let t = -W; t <= W + 1e-6; t += CELL) {
+                let cx = x0 + fx * s + fy * t,
+                  cy = y0 + fy * s - fx * t,
+                  d = at(cx, cy);
+                if (d == null) continue;
+                let c = [
+                  [-1, -1],
+                  [1, -1],
+                  [1, 1],
+                  [-1, 1],
+                ].map(([a, b]) => ll(cx + (fx * a * CELL) / 2 + (fy * b * CELL) / 2, cy + (fy * a * CELL) / 2 - (fx * b * CELL) / 2));
+                cells.push({ c, d });
+                if (Math.abs(t) <= width / 2 + 1e-6 && s >= 6 && s <= 30) {
+                  sum += d;
+                  cnt++;
+                  min = min == null ? d : Math.min(min, d);
+                }
+              }
+            return cnt ? { mean: sum / cnt, min } : null;
+          },
+          cells: () => cells,
+          clear() {
+            grid = new Map();
+            o = lastAdd = null;
+            cells = [];
+          },
+        };
+      })();
       /* ---------- 3D-terreng (WebGL, three.js) ----------
          Hentar eit terrengutsnitt (300 × 300 m, 1 m rute) rundt maskina frå tenesta og teiknar det med lys og skugge.
          Sporet blir måla på terrenget i snødjupnefargar, med høgdekurver kvar meter (tjukkare kvar 5. m).
@@ -1167,6 +1301,13 @@
           tex = null,
           texCv = null,
           texCx = null,
+          estMesh = null, // estimert snødjupne framfor maskina: eigen gjennomsiktig tekstur over terrenget
+          estTex = null,
+          estCv = null,
+          estCx = null,
+          estCells = [],
+          hatch = null,
+          fov = 70,
           patch = null,
           H = null,
           hRef = 0,
@@ -1226,6 +1367,22 @@
           tex = new THREE.CanvasTexture(texCv);
           tex.colorSpace = THREE.SRGBColorSpace;
           tex.anisotropy = 4;
+          estCv = document.createElement("canvas");
+          estCv.width = estCv.height = HALF * PX; // halv oppløysing held for estimatet
+          estCx = estCv.getContext("2d");
+          estTex = new THREE.CanvasTexture(estCv);
+          estTex.colorSpace = THREE.SRGBColorSpace;
+          // skravering: estimat skal aldri sjå ut som måling
+          let hc = document.createElement("canvas");
+          hc.width = hc.height = 12;
+          let hx = hc.getContext("2d");
+          hx.strokeStyle = "rgba(255,255,255,0.75)";
+          hx.lineWidth = 2;
+          hx.beginPath();
+          hx.moveTo(0, 12);
+          hx.lineTo(12, 0);
+          hx.stroke();
+          hatch = estCx.createPattern(hc, "repeat");
           return true;
         }
         // Enkel trakkemaskin i målestokk: belte, hus, førarhus, skjær framme og fres bak.
@@ -1236,9 +1393,10 @@
           machineKey = key;
           let g = new THREE.Group(),
             mat = (c) => new THREE.MeshLambertMaterial({ color: c }),
-            box = (w, h, l, c, x, y, z) => {
+            box = (w, h, l, c, x, y, z, keep) => {
               let m = new THREE.Mesh(new THREE.BoxGeometry(w, h, l), mat(c));
               m.position.set(x, y, z);
+              m.userData.keep = !!keep; // synleg også i frontrutevisinga (berre skjæret)
               g.add(m);
             },
             W = cfg.machine,
@@ -1249,7 +1407,7 @@
           box(W - 2.4, 1.1, 4.6, 0xe23b32, 0, 1.25, 0.2); // hus
           box(2.3, 1.7, 2.1, 0xd8e4ea, 0, 2.6, -0.7); // førarhus
           box(2.0, 1.2, 1.9, 0x263943, 0, 2.7, -0.75); // vindauge (mørkt, litt inne)
-          box(blade, 1.3, 0.35, 0xf2c230, 0, 0.7, -3.4); // skjær
+          box(blade, 0.9, 0.35, 0xc9a227, 0, 0.45, -3.4, true); // skjær
           box(tiller, 0.6, 1.4, 0x3a4a55, 0, 0.35, 3.6); // fres
           box(tiller, 0.08, 1.0, 0xe9f3f8, 0, 0.05, 4.8); // finisher
           machine = g;
@@ -1296,9 +1454,16 @@
           if (terrain) {
             terrain.geometry.dispose();
             terrain.geometry = geo;
+            estMesh.geometry = geo;
           } else {
             terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex }));
             scene.add(terrain);
+            estMesh = new THREE.Mesh(
+              geo,
+              new THREE.MeshBasicMaterial({ map: estTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+            );
+            estMesh.renderOrder = 1;
+            scene.add(estMesh);
           }
         }
         // Grunnfarge snøkvit (lyset gir skuggane). Høgdekurver kvar meter, tjukkare kvar 5. meter (marching squares).
@@ -1308,8 +1473,10 @@
             minor = new Path2D(),
             major = new Path2D();
           texCx.clearRect(0, 0, texCv.width, texCv.height);
-          texCx.fillStyle = "#eef4f9";
+          let bg = cfg.bgOn !== false;
+          texCx.fillStyle = bg ? "#eef4f9" : "#2a3b46"; // bakgrunn av: mørkt terreng utan kurver, berre spor og snødjupne
           texCx.fillRect(0, 0, texCv.width, texCv.height);
+          if (!bg) return;
           for (let i = 0; i < n - 1; i++)
             for (let j = 0; j < n - 1; j++) {
               let a = H[i * n + j],
@@ -1366,6 +1533,28 @@
           paintBase();
           segs.forEach(paintSeg);
           tex.needsUpdate = true;
+          paintEst();
+        }
+        function paintEst() {
+          if (!estCx || !patch) return;
+          let k = PX / 2;
+          estCx.clearRect(0, 0, estCv.width, estCv.height);
+          estCells.forEach((c) => {
+            estCx.beginPath();
+            c.c.forEach((q, i) => {
+              let [x, y] = local(q);
+              estCx[i ? "lineTo" : "moveTo"]((x + HALF) * k, (HALF - y) * k);
+            });
+            estCx.closePath();
+            estCx.globalAlpha = 0.55;
+            estCx.fillStyle = depthColor(c.d);
+            estCx.fill();
+            estCx.globalAlpha = 0.5;
+            estCx.fillStyle = hatch;
+            estCx.fill();
+          });
+          estCx.globalAlpha = 1;
+          estTex.needsUpdate = true;
         }
         async function fetchPatch(p) {
           loading = true;
@@ -1401,7 +1590,7 @@
           let r = ready();
           if (r !== wasReady) {
             wasReady = r;
-            if (viewMode() === "3d") applyView();
+            if (VIEWS[viewMode()].gl) applyView();
           }
         }
         function frame(t) {
@@ -1432,20 +1621,45 @@
             hB = hAt(sm.x - fx * 2.5, sm.y - fy * 2.5),
             hR = hAt(sm.x + fy * 1.5, sm.y - fx * 1.5),
             hL = hAt(sm.x - fy * 1.5, sm.y + fx * 1.5);
+          let pitch = isNaN(hF - hB) ? 0 : Math.atan((hF - hB) / 5),
+            fr = viewMode() === "frontrute";
           machine.visible = machineOn;
+          machine.children.forEach((m) => (m.visible = !fr || m.userData.keep)); // frontrute: berre skjæret synest
           machine.position.set(sm.x, sm.h - hRef, -sm.y);
-          machine.rotation.set(isNaN(hF - hB) ? 0 : Math.atan((hF - hB) / 5), -hd, isNaN(hR - hL) ? 0 : Math.atan((hR - hL) / 3));
-          let yaw = cfg.northUp ? 0 : hd;
-          camYaw = camYaw == null ? yaw : camYaw + (yaw - camYaw) * 0.08;
-          let cx = sm.x - Math.sin(camYaw) * camDist,
-            cy = sm.y - Math.cos(camYaw) * camDist,
-            ch = sm.h - hRef + 3 + camDist * 0.32,
-            hg = hAt(cx, cy);
-          if (!isNaN(hg) && ch < hg - hRef + 4) ch = hg - hRef + 4; // aldri under bakken
-          camera.position.set(cx, ch, -cy);
-          camera.lookAt(sm.x + Math.sin(camYaw) * camDist * 0.5, sm.h - hRef + 1, -(sm.y + Math.cos(camYaw) * camDist * 0.5));
-          scene.fog.near = 60 + camDist * 2;
-          scene.fog.far = 200 + camDist * 2.5;
+          machine.rotation.set(pitch, -hd, isNaN(hR - hL) ? 0 : Math.atan((hR - hL) / 3));
+          if (fr) {
+            // Frontrute: augehøgd i førarhuset, ser framover og litt ned, følgjer hellinga til maskina
+            if (camera.fov !== fov) {
+              camera.fov = fov;
+              camera.updateProjectionMatrix();
+            }
+            camYaw = hd; // fast i maskina, som ei ekte frontrute
+            let ex = sm.x + Math.sin(camYaw) * 0.9,
+              ey = sm.y + Math.cos(camYaw) * 0.9,
+              eh = sm.h - hRef + 2.9;
+            camera.position.set(ex, eh, -ey);
+            camera.up.set(0, 1, 0).applyQuaternion(machine.quaternion); // førarhuset hallar med maskina i sidehelling
+            camera.lookAt(ex + Math.sin(camYaw) * 30, eh + 30 * Math.tan(pitch - 0.1), -(ey + Math.cos(camYaw) * 30));
+            scene.fog.near = 90;
+            scene.fog.far = 260;
+          } else {
+            if (camera.fov !== 55) {
+              camera.fov = 55;
+              camera.updateProjectionMatrix();
+            }
+            camera.up.set(0, 1, 0);
+            let yaw = cfg.northUp ? 0 : hd;
+            camYaw = camYaw == null ? yaw : camYaw + (yaw - camYaw) * 0.08;
+            let cx = sm.x - Math.sin(camYaw) * camDist,
+              cy = sm.y - Math.cos(camYaw) * camDist,
+              ch = sm.h - hRef + 3 + camDist * 0.32,
+              hg = hAt(cx, cy);
+            if (!isNaN(hg) && ch < hg - hRef + 4) ch = hg - hRef + 4; // aldri under bakken
+            camera.position.set(cx, ch, -cy);
+            camera.lookAt(sm.x + Math.sin(camYaw) * camDist * 0.5, sm.h - hRef + 1, -(sm.y + Math.cos(camYaw) * camDist * 0.5));
+            scene.fog.near = 60 + camDist * 2;
+            scene.fog.far = 200 + camDist * 2.5;
+          }
           $("t3dInfo").textContent = "3D-TERRENG · " + patch.layers.join(", ") + " · " + Math.round(sm.h) + " moh.";
           renderer.render(scene, camera);
         }
@@ -1461,7 +1675,7 @@
             }
           },
           update(p) {
-            if (viewMode() !== "3d") return;
+            if (!VIEWS[viewMode()].gl) return;
             request(p);
             check();
           },
@@ -1478,7 +1692,15 @@
             if (renderer) repaint();
           },
           zoom(d) {
-            camDist = Math.max(8, Math.min(140, camDist * (d > 0 ? 0.75 : 1.33)));
+            if (viewMode() === "frontrute") fov = Math.max(40, Math.min(95, fov + (d > 0 ? -10 : 10)));
+            else camDist = Math.max(8, Math.min(140, camDist * (d > 0 ? 0.75 : 1.33)));
+          },
+          setEstimate(cells) {
+            estCells = cells;
+            paintEst();
+          },
+          repaint() {
+            if (renderer) repaint();
           },
         };
       })();
@@ -1487,9 +1709,10 @@
         kart: { name: "Kart", desc: "Kartvising ovanfrå", tilt: 0 },
         forar: { name: "Førar", desc: "Førarperspektiv – sett frå maskina", tilt: 50, persp: 1600, shift: 18, inset: "-60%", zoom: 19 },
         horisont: { name: "Horisont", desc: "Horisont – lågt og langt framover", tilt: 68, persp: 950, shift: 30, inset: "-140%", zoom: 20 },
-        "3d": { name: "3D-terreng", desc: "3D-terreng – ekte relieff frå terrengmodellen", tilt: 0 },
+        "3d": { name: "3D-terreng", desc: "3D-terreng – ekte relieff frå terrengmodellen", tilt: 0, gl: true },
+        frontrute: { name: "Frontrute", desc: "Frontrute – som å sjå ut frå førarhuset", tilt: 0, gl: true },
       };
-      const VIEW_ORDER = ["kart", "forar", "horisont", "3d"];
+      const VIEW_ORDER = ["kart", "forar", "horisont", "3d", "frontrute"];
       let TILT = 50,
         SHIFT = 18; // gjeldande vipping (grader) og forskyving nedover (vh) for maskina
       function viewMode() {
@@ -1521,8 +1744,9 @@
       function applyView() {
         let mode = viewMode();
         // 3D-terreng utan terrengmodell under maskina: vis horisont i staden (T3D.ready seier om det finst terreng under maskina)
-        let use3d = mode === "3d" && T3D.ready(),
-          css = mode === "3d" && !use3d ? "horisont" : mode,
+        let gl = !!VIEWS[mode].gl,
+          use3d = gl && T3D.ready(),
+          css = gl && !use3d ? "horisont" : mode,
           v = VIEWS[css];
         cfg.view3d = css === "forar" || css === "horisont";
         if (cfg.view3d) {
@@ -1550,19 +1774,41 @@
       function setView(mode, quiet) {
         cfg.viewMode = mode;
         persistCfg();
-        let z = VIEWS[mode === "3d" ? "horisont" : mode].zoom; // 3D utan terreng fell tilbake til horisont
+        let z = VIEWS[VIEWS[mode].gl ? "horisont" : mode].zoom; // 3D utan terreng fell tilbake til horisont
         if (z && map.getZoom() < z) map.setZoom(z, { animate: false }); // nært maskina, som frå førarsetet
-        if (mode === "3d") T3D.request(pos);
+        if (VIEWS[mode].gl) T3D.request(pos);
         applyView();
-        if (!quiet) toast(VIEWS[mode].desc + (mode === "3d" && !T3D.ready() ? " – ingen terrengmodell her, viser horisont" : ""));
+        if (!quiet) toast(VIEWS[mode].desc + (VIEWS[mode].gl && !T3D.ready() ? " – ingen terrengmodell her, viser horisont" : ""));
       }
       // Knappen «Førarvising» blar gjennom visingane
       function toggle3D() {
         setView(VIEW_ORDER[(VIEW_ORDER.indexOf(viewMode()) + 1) % VIEW_ORDER.length]);
       }
       function zoomBtn(d) {
-        if (viewMode() === "3d" && T3D.ready()) T3D.zoom(d);
+        if (VIEWS[viewMode()].gl && T3D.ready()) T3D.zoom(d);
         else d > 0 ? map.zoomIn() : map.zoomOut();
+      }
+      // Bakgrunn av: kartet (og kurvene i 3D) blir skjult, berre spor og snødjupne synest
+      function applyBg() {
+        let on = cfg.bgOn !== false;
+        if (baseLayer) on ? baseLayer.addTo(map).bringToBack() : map.removeLayer(baseLayer);
+        $("map").classList.toggle("nobg", !on);
+        $("bgSet").classList.toggle("on", on);
+        $("bgSet").textContent = "BAKGRUNN (KART/TERRENG): " + (on ? "PÅ" : "AV");
+        T3D.repaint();
+      }
+      function toggleBg() {
+        cfg.bgOn = cfg.bgOn === false;
+        persistCfg();
+        applyBg();
+        toast(cfg.bgOn ? "Bakgrunn på" : "Bakgrunn av – berre spor og snødjupne");
+      }
+      function toggleEst() {
+        cfg.estOn = cfg.estOn === false;
+        persistCfg();
+        $("estSet").classList.toggle("on", cfg.estOn);
+        $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn ? "PÅ" : "AV");
+        updateAhead(true);
       }
       function toggleNorth() {
         cfg.northUp = !cfg.northUp;
@@ -1604,6 +1850,8 @@
         track.setLatLngs([]);
         coverGroup.clearLayers();
         T3D.clear();
+        EST.clear();
+        estGroup.clearLayers();
         arrowGroup.clearLayers();
         total = 0;
         last = null;
@@ -1704,6 +1952,9 @@
         cfg.bounds.forEach((v, i) => ($("b" + i).onchange = save));
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
         applyView();
+        applyBg();
+        $("estSet").classList.toggle("on", cfg.estOn !== false);
+        $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn !== false ? "PÅ" : "AV");
         loadTerrain();
         renderLegend();
         updateMachine();
@@ -1928,6 +2179,7 @@
           if (trackOn) track.setLatLngs(pts);
           if (!lastCoverage && previous) lastCoverage = previous;
           addCoverage(newPos);
+          EST.add(newPos, kind === "demo" ? cfg.demoD : kind === "gnss" ? realDepth : null);
           if (pts.length > 1 && pts.length % 5 === 0) addArrow(pts[pts.length - 2], newPos, heading, arrowGroup, "arrow-icon", "➤");
           if (currentSession) {
             currentSession.points.push({
@@ -1947,6 +2199,25 @@
         }
         map.panTo(newPos, { animate: false });
         T3D.update(newPos);
+        updateAhead();
+      }
+      let estLast = 0;
+      function updateAhead(force) {
+        if (!force && Date.now() - estLast < 1000) return;
+        estLast = Date.now();
+        let on = cfg.estOn !== false && snowOn,
+          w = toolsFull ? cfg.tiller : cfg.tillerN,
+          r = on ? EST.run(pos, heading, w) : null;
+        estGroup.clearLayers();
+        if (on)
+          EST.cells().forEach((c) =>
+            L.polygon(c.c, { renderer: estRenderer, stroke: false, fill: true, fillColor: depthColor(c.d), fillOpacity: 1, interactive: false }).addTo(estGroup),
+          );
+        T3D.setEstimate(on ? EST.cells() : []);
+        $("aheadBox").classList.toggle("hide", !on || !(preparing || src === "demo"));
+        $("aheadLabel").textContent = src === "demo" ? "FRAMFOR · ESTIMERT (DEMO)" : "FRAMFOR · ESTIMERT";
+        $("aheadD").textContent = r ? "≈" + r.mean.toFixed(2).replace(".", ",") + " m" : "--";
+        $("aheadNote").textContent = r ? "minst " + r.min.toFixed(2).replace(".", ",") + " m · 6–30 m" : "ingen målingar i nærleiken";
       }
       function addCoverage(p) {
         if (!snowOn || !lastCoverage) {
@@ -2056,6 +2327,8 @@
         pts = [];
         coverGroup.clearLayers();
         T3D.clear();
+        EST.clear();
+        estGroup.clearLayers();
         arrowGroup.clearLayers();
         track.setLatLngs([]);
         total = 0;

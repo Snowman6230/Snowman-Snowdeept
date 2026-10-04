@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.6 – frontrute, bakgrunn av og snødjupne framfor maskina
+- **Nytt:** Visinga **Frontrute** – 3D frå augehøgd i førarhuset (ca. 2,9 m), fast i køyreretninga, hallar med maskina i sidehelling og bakke. Zoom inn/ut endrar synsfeltet. Utan terrengmodell blir horisont vist.
+- **Nytt:** **Bakgrunn av/på** (Innst. › Kart): skjuler bakgrunnskartet, og i 3D blir terrenget mørkt utan høgdekurver. Då synest berre spor og snødjupne.
+- **Nytt:** **Snødjupne framfor maskina (estimat)**: vekta snitt (IDW) av målingar SNOWMAN alt har gjort innanfor 10 m (nabolanar og sporet bak). Krev minst 3 målingar og ei innanfor 6 m – elles blir det ikkje vist noko. Vist i 2 × 2 m ruter 4–40 m framfor maskina, blekare enn målt spor på kartet og skravert i 3D. Eigen boks øvst med stipla ramme: «FRAMFOR · ESTIMERT ≈0,62 m, minst 0,25 m · 6–30 m». Kan slåast av under Innst. › Kart.
+- **Avgjerd:** Estimatet byggjer berre på eigne målingar i nærleiken – SNOWMAN kan ikkje måle snø der maskina ikkje har vore. Det er alltid merka ESTIMERT og blir aldri lagra som måling.
+- **Kvifor:** Eigaren ville kunne skru av bakgrunnen, sjå snødjupna framfor maskina og ha ein førarmodus som er som å sjå ut gjennom frontruta.
+
 ### PC-prototype v1.6.5 – fleire visingar og 3D-terreng
 - **Nytt:** Fire visingar. Knappen «Førarvising» blar gjennom dei, og under Innst. › Kart kan du velje direkte:
   - **Kart** – ovanfrå (som før).

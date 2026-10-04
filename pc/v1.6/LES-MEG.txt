@@ -27,7 +27,10 @@ KVA ER NYTT I v1.6
 - Alt frå v1.5 er med: førarperspektiv, HUD, kartkjelder, anleggsprofil, historikk.
 
 VISINGAR (v1.6.5)
-- Knappen «Førarvising» blar gjennom: Kart → Førar → Horisont → 3D-terreng.
+- Knappen «Førarvising» blar gjennom: Kart → Førar → Horisont → 3D-terreng → Frontrute.
+  Frontrute (v1.6.6) er som å sjå ut frå førarhuset. Zoom inn/ut endrar synsfeltet.
+- Innst. › Kart: «Bakgrunn» av gir berre spor og snødjupne. «Snødjupne framfor» viser
+  eit estimat frå målingar i nærleiken (stipla boks øvst, blekt/skravert framfor maskina).
   Du kan også velje under Innst. › Kart.
 - 3D-terreng viser ekte relieff frå terrengmodellen, med sporet måla på bakken.
   Zoom inn/ut flyttar kameraet. Utan terrengmodell under maskina blir horisont vist.
