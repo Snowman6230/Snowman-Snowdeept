@@ -21,6 +21,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PIDS = HERE / "data" / "run.pids"
+PROFILE = HERE / "data" / "nettlesar"        # eigen nettlesarprofil: eigne innstillingar, og vindauget kan lukkast av SNOWMAN
+KREQ = HERE / "data" / "kiosk-request.txt"   # skriven av tenesta når føraren trykkjer «Avslutt fullskjerm»
+LAUNCHER = HERE / "data" / "launcher.json"
 URL = "http://127.0.0.1:8765"
 WIN = os.name == "nt"
 
@@ -70,10 +73,25 @@ def find_browser():
 
 def open_window(browser, url, kiosk=False):
     if browser:
-        args = [browser, "--kiosk", url, "--edge-kiosk-type=fullscreen", "--noerrdialogs", "--disable-infobars"] if kiosk else [browser, "--app=" + url, "--new-window"]
+        base = [browser, f"--user-data-dir={PROFILE}", "--no-first-run", "--no-default-browser-check", "--noerrdialogs"]
+        args = base + (["--kiosk", url + "/?kiosk=1", "--edge-kiosk-type=fullscreen", "--disable-infobars"] if kiosk else ["--app=" + url])
         return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     webbrowser.open(url)
     return None
+
+
+def close_window(p):
+    """Lukk eit nettlesarvindauge som SNOWMAN opna (heile prosesstreet på Windows)."""
+    if p is None or p.poll() is not None:
+        return
+    if WIN:
+        subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True)
+    else:
+        p.terminate()
+        try:
+            p.wait(5)
+        except subprocess.TimeoutExpired:
+            p.kill()
 
 
 def version():
@@ -176,17 +194,33 @@ def main():
         if port_busy(8765):
             break
         time.sleep(0.1)
+    b, win = None, None
     if not a.no_browser:
         b = find_browser()
         if a.hud:
             open_window(b, URL + "/hud")
-        open_window(b, URL, kiosk=a.kiosk)
+        win = open_window(b, URL, kiosk=a.kiosk)
+    KREQ.unlink(missing_ok=True)
+    LAUNCHER.write_text(json.dumps({"pid": os.getpid(), "kiosk": bool(a.kiosk), "browser": bool(b)}))
     print(f"SNOWMAN køyrer på {URL} – trykk Ctrl + C her for å stoppe.")
+    if a.kiosk:
+        print("Fullskjerm: avslutt med knappen «Avslutt fullskjerm» i SNOWMAN, eller Alt + F4.")
     try:
-        procs[-1].wait()
+        while procs[-1].poll() is None:
+            time.sleep(0.5)
+            if KREQ.exists():  # «Avslutt fullskjerm»: lukk fullskjermvindauget og opne SNOWMAN i vanleg vindauge
+                req = KREQ.read_text().strip()
+                KREQ.unlink(missing_ok=True)
+                if req == "window" and b:
+                    close_window(win)
+                    time.sleep(0.5)
+                    win = open_window(b, URL)
+                    print("Fullskjerm avslutta – SNOWMAN er opna i vanleg vindauge.")
     except KeyboardInterrupt:
         pass
     finally:
+        LAUNCHER.unlink(missing_ok=True)
+        close_window(win)  # SNOWMAN-vindauget blir lukka saman med tenesta
         for p in procs:
             try:
                 p.terminate()

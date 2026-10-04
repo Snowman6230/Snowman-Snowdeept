@@ -871,6 +871,7 @@
           </div>
           <button id="bgSet" class="btn toggle on" onclick="toggleBg()">BAKGRUNN (KART/TERRENG): PÅ</button
           ><button id="estSet" class="btn toggle on" onclick="toggleEst()">SNØDJUPNE FRAMFOR (ESTIMAT): PÅ</button>
+          <button id="exitFsSet" class="btn hide" onclick="leaveFullscreen()">AVSLUTT FULLSKJERM</button>
           <button id="northSet" class="btn" onclick="toggleNorth()">KARTRETNING: KØYRERETNING OPP</button>
           <button id="snowSet" class="btn toggle on" onclick="toggleSnow()">SNØDJUPNE: PÅ</button
           ><button id="machineMapSet" class="btn toggle on" onclick="toggleMachine()">VIS MASKIN: PÅ</button
@@ -1034,7 +1035,8 @@
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
         ><button class="tool" onclick="resetWork()"><i>↺</i>Reset spor</button
-        ><button id="demoBtn" class="tool" onclick="toggleDemo()"><i>▶</i>Demo</button>
+        ><button id="demoBtn" class="tool" onclick="toggleDemo()"><i>▶</i>Demo</button
+        ><button id="exitFsBtn" class="tool hide" onclick="leaveFullscreen()"><i>⤡</i>Avslutt fullskjerm</button>
       </div>
       <div id="viewMenu" class="viewMenu hide">
         <b>VEL KARTPERSPEKTIV</b>
@@ -1072,7 +1074,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.9";
+      const APP_VERSION = "1.6.10";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1902,6 +1904,29 @@
       document.addEventListener("click", (e) => {
         if (!$("viewMenu").contains(e.target)) $("viewMenu").classList.add("hide");
       });
+      // Fullskjerm (kiosk i trakkemaskina): knappen «Avslutt fullskjerm» – også for skjerm utan tastatur
+      const KIOSK = new URLSearchParams(location.search).has("kiosk");
+      function updateFsButtons() {
+        let fs = KIOSK || !!document.fullscreenElement;
+        $("exitFsBtn").classList.toggle("hide", !fs);
+        $("exitFsSet").classList.toggle("hide", !fs);
+      }
+      document.addEventListener("fullscreenchange", updateFsButtons);
+      async function leaveFullscreen() {
+        // (ikkje kalla exitFullscreen: onclick ville då treffe document.exitFullscreen)
+        if (document.fullscreenElement) return document.exitFullscreen();
+        if (!confirm("Avslutte fullskjerm?\n\nSNOWMAN held fram i eit vanleg vindauge.")) return;
+        let r = null;
+        try {
+          r = await api("api/kiosk", { action: "window" });
+        } catch (e) {}
+        toast("Avsluttar fullskjerm …");
+        // Starta utan oppstartsprogrammet, eller det lukka ikkje vindauget: prøv å lukke det sjølv
+        setTimeout(() => {
+          window.close();
+          toast("Klarte ikkje lukke fullskjerm automatisk – trykk Alt + F4");
+        }, r && r.launcher ? 5000 : 300);
+      }
       function zoomBtn(d) {
         if (VIEWS[viewMode()].gl && T3D.ready()) T3D.zoom(d);
         else d > 0 ? map.zoomIn() : map.zoomOut();
@@ -2073,6 +2098,7 @@
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
         applyView();
         applyBg();
+        updateFsButtons();
         $("estSet").classList.toggle("on", cfg.estOn !== false);
         $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn !== false ? "PÅ" : "AV");
         loadTerrain();

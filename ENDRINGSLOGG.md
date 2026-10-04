@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.10 – knapp for å avslutte fullskjerm
+- **Nytt:** Knappen **Avslutt fullskjerm** i verktøylinja (og under Innst. › Kart) – berre synleg i fullskjerm. Etter stadfesting blir fullskjermvindauget lukka og SNOWMAN opna i eit vanleg vindauge. Tenesta køyrer vidare utan avbrot. Fungerer utan tastatur (Surface i trakkemaskina).
+- **Nytt:** `POST /api/kiosk` – oppstartsprogrammet (`start_snowman.py`) får beskjed, lukkar fullskjermvindauget og opnar vanleg vindauge. Startar ein SNOWMAN utan oppstartsprogrammet, prøver knappen å lukke vindauget sjølv, og elles står det «trykk Alt + F4».
+- **Endra:** SNOWMAN opnar nettlesaren med eigen profil (`data/nettlesar`), så vindauga kan lukkast av SNOWMAN og innstillingane i førarskjermen er dei same i fullskjerm og vanleg vindauge. **Merk:** innstillingar som berre låg i nettlesaren (t.d. vald perspektiv, maskinmål) må setjast éin gong til. Kalibrering, terreng og kontroll ligg i tenesta og er uendra.
+- **Endra:** `start-snowman.sh` (Linux) brukar no same oppstartsprogram som Windows (`start_snowman.py`). Simulatoren går over TCP på begge.
+- **Retta:** Knappen kalla først ein funksjon med same namn som nettlesaren sin `document.exitFullscreen`, og gjorde ingenting. Fanga i testen.
+- **Testa:** Ekte Chromium i fullskjerm (virtuell skjerm): knappen er synleg berre i fullskjerm, stadfesting → vanleg vindauge, tenesta køyrer vidare.
+
 ### PC-prototype v1.6.9 – Windows-versjon
 - **Nytt:** `pc/INSTALLER-WINDOWS.bat` – sjekkar Python (tilbyr installasjon med winget om det manglar), lagar eige Python-miljø (`v1.6\.venv`), installerer bibliotek og lagar snarvegen «SNOWMAN» på skrivebordet.
 - **Nytt:** `pc/SNOWMAN.bat` – same meny som `snowman` på Linux: start, demo, test over terrengmodellane, fullskjerm, oppdater og stopp. Førarskjermen opnar i Edge eller Chrome som eige vindauge (fullskjerm med `--kiosk`).

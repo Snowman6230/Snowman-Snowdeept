@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.9"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.10"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -349,6 +349,16 @@ class API(http.server.BaseHTTPRequestHandler):
                 else:
                     TERR.delete(d["id"]); r={"ok":True}
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path=="/api/kiosk":   # «Avslutt fullskjerm»: oppstartsprogrammet byter til vanleg vindauge
+            try:
+                act=json.loads(body or b"{}").get("action","window")
+                if act not in ("window",): raise ValueError("Ukjend handling")
+                launcher=(DATA/"launcher.json").exists()
+                if launcher: (DATA/"kiosk-request.txt").write_text(act)
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"launcher":launcher}).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return

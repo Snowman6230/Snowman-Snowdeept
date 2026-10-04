@@ -23,44 +23,9 @@ if ! $PY -c "import serial, numpy, tifffile" 2>/dev/null; then
   PY=.venv/bin/python
 fi
 
-PORT="$1"
-SIMFLAG=""
-if [ "$1" = "sim" ] || [ "$1" = "simterreng" ] || [ "$1" = "simanlegg" ]; then
-  SIMFLAG="--simulert"
-  rm -f /tmp/snowman-sim-port
-  if [ "$1" = "simterreng" ]; then
-    [ -f testterreng.tif ] || $PY testterreng.py testterreng.tif
-    echo "Testterreng: last opp testterreng.tif under Innst. › Terreng, og lagre kalibrering (antenne 2,8 m) under Innst. › Kalibrering."
-    $PY simuler-leica.py /tmp/snowman-sim-port --terreng &
-  elif [ "$1" = "simanlegg" ]; then
-    echo "Anleggstest: legg inn terrengmodell under Innst. › Terreng og lagre kalibrering (antenne 2,8 m) under Innst. › Kalibrering."
-    echo "Maskina køyrer over det øvste aktive terrenglaget. Snøen er simulert."
-    $PY simuler-leica.py /tmp/snowman-sim-port --anlegg &
-  else
-    $PY simuler-leica.py /tmp/snowman-sim-port &
-  fi
-  SIM=$!
-  i=0; while [ ! -s /tmp/snowman-sim-port ] && [ $i -lt 20 ]; do sleep 0.2; i=$((i+1)); done
-  PORT=$(cat /tmp/snowman-sim-port)
-fi
-
-EXTRA="$SIMFLAG"; [ "$LAN" = "1" ] && EXTRA="$EXTRA --lan"
-if [ -n "$PORT" ]; then $PY snowman_pc.py $EXTRA --serial "$PORT" & else $PY snowman_pc.py $EXTRA & fi
-SRV=$!
-trap 'kill $SRV ${SIM:-} 2>/dev/null' EXIT INT TERM
-sleep 2
-
-URL=http://127.0.0.1:8765
-B=$(command -v chromium || command -v chromium-browser || command -v google-chrome || command -v google-chrome-stable)
-if [ "$HUD" = "1" ]; then
-  if [ -n "$B" ]; then "$B" --new-window "$URL/hud" & else xdg-open "$URL/hud" 2>/dev/null & fi
-fi
-if [ -n "$B" ] && [ "$KIOSK" = "1" ]; then
-  "$B" --kiosk --noerrdialogs --disable-infobars "$URL"
-elif [ -n "$B" ]; then
-  "$B" --new-window "$URL"
-else
-  xdg-open "$URL" 2>/dev/null || echo "Opne $URL i nettlesaren."
-fi
-echo "SNOWMAN køyrer på $URL – trykk Ctrl+C her for å stoppe."
-wait $SRV
+# Resten (simulator, teneste, nettlesar, «Avslutt fullskjerm») gjer start_snowman.py – same på Linux og Windows.
+FLAGS=""
+[ "$KIOSK" = "1" ] && FLAGS="$FLAGS --kiosk"
+[ "$HUD" = "1" ] && FLAGS="$FLAGS --hud"
+[ "$LAN" = "1" ] && FLAGS="$FLAGS --lan"
+exec $PY start_snowman.py "$@" $FLAGS
