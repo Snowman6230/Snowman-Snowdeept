@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### Spesifikasjon: Terrain Engine
+- **Nytt:** `docs/TERRAIN-ENGINE.md` – terrengbibliotek (legg til, erstatt, av/på, prioritet), typar flater (barmark, målflate, snøflate), opplastingsveivisar med formatkrav, fallgruver (UTM 32/33, NN2000 vs. ellipsoidisk høgd), trasear og anleggsobjekt, og rekkjefølgje v1.6–v1.8.
+- **Avgjerd:** Terreng blir lagt inn som eit bibliotek med fleire lag og prioritet, ikkje som éi fil.
+- **Avgjerd:** GeoTIFF er tilrådd format. LAS/LAZ og XYZ blir gjort om til rutenett ved import.
+- **Avgjerd:** Snødjupne blir berre vist når RTK FIX, terrengdekning og kalibrering er på plass.
+- **Avgjerd:** Trasear (ytterpunkt/omriss) og anleggsobjekt skal kunne registrerast – køyre og registrere, teikne på kart, eller importere fil.
+
 ### PC-prototype v1.5.2 – førarperspektiv og HUD
 - **Nytt:** Førarperspektiv (knappen «Førarvising»): kartet blir vippa 50° og vist frå bak og over maskina, med horisont. Alltid køyreretning opp, zoomar nært maskina. Sporflate, piler og snødjupnefargar følgjer med i 3D.
 - **Nytt:** HUD-versjon for frontruta (`hud.html`, opnast på `/hud`). Eiga side som kan køyre på eigen skjerm eller mobil på dashbordet: store tal for snødjupne og avvik frå måldjupne (✓ på mål / ▼ under / ▲ over), fart, kurs, RTK-status, prepareringstid. Spegling for HUD-film, nattmodus i dempa raudt, lysstyrke, fullskjerm, skjermen held seg vaken.
@@ -93,7 +100,8 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## Planlagt
 
-- **v1.6 Terrain Engine:** XYZ/CSV → terrenghøgd ved maskinposisjon → snødjupne. Testast med simulert RTK før LiDAR-fil frå Fjellsætra er klar.
+- **v1.6 Terrain Engine:** sjå `docs/TERRAIN-ENGINE.md`. Testast med syntetisk terreng, deretter Kartverket DTM 1 m for Fjellsætra.
+- **v1.8 Trasear og anleggsobjekt.**
 - Ekte 3D-terreng i førarperspektivet (frå LiDAR).
 - HUD-test i maskina: lesbarheit natt/dag, dobbeltbilete i buet frontrute.
 - Fleire maskinprofilar per anlegg.
