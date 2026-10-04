@@ -12,13 +12,13 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-import argparse, base64, json, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
+import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
 DATA=HERE/"data"; SESS=DATA/"sessions"
 CFG_FILE=HERE/"snowman-config.local.json"   # lokal, aldri i git (sjå .gitignore)
-VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css"}
+VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.js":"application/javascript"}
 import terrain as T
 TERR=T.TerrainLibrary(DATA/"terrain")
 
@@ -30,7 +30,7 @@ STATE = {
 }
 CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint":"",
        "username":"","password":"","gga_interval":5,
-       "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False}
+       "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,"hudLan":False}
 def load_cfg():
     try: CFG.update({k:v for k,v in json.loads(CFG_FILE.read_text("utf-8")).items() if k in CFG})
     except FileNotFoundError: pass
@@ -38,7 +38,31 @@ def load_cfg():
 def save_cfg():
     try: CFG_FILE.write_text(json.dumps(CFG,indent=1),"utf-8")
     except Exception as e: print("Kunne ikkje lagre config:",e)
-HUD={"t":0}   # siste tilstand frå førarskjermen, til HUD-visinga
+HUD={"t":0}   # siste tilstand frå førarskjermen (prep, tid, demo, mål), til HUD-visinga
+DEPTH_TXT={"OUTSIDE":"UTANFOR TERRENGMODELL","NO_CAL":"KALIBRERING MANGLAR","NO_FIX":"IKKJE MÅLT – KREV RTK FIX",
+    "NEGATIVE":"FEIL – SJEKK HØGDESYSTEM/KALIBRERING","NO_ENGINE":"TERRENGMOTOR MANGLAR","NO_HEIGHT":"INGA GNSS-HØGD","NO_GEOID":"GEOIDEHØGD MANGLAR"}
+
+def hud_state():
+    """HUD-data sett saman i tenesta: GNSS og snødjupne direkte frå mottakaren (alltid ferske),
+    prepareringsstatus frå førarskjermen. Då stoppar ikkje HUD sjølv om førarskjermen ligg i bakgrunnen."""
+    now=time.time(); drv=dict(HUD); drv_age=now-drv.get("t",0); fresh_drv=drv_age<15
+    gnss_age=now-STATE.get("last_update",0); gnss_ok=STATE.get("serial_connected") and STATE.get("lat") is not None and gnss_age<5
+    if fresh_drv and drv.get("demo"):
+        out=drv; age=drv_age
+    elif gnss_ok:
+        out={k:drv.get(k) for k in ("preparing","elapsed","distance","area","target","tol","bounds")} if fresh_drv else {"target":0.8,"tol":0.1}
+        d=STATE.get("depth"); ter=STATE.get("terrain") or {}
+        out.update(src="gnss",demo=False,fix=STATE.get("fix"),sats=STATE.get("satellites"),
+                   speed=round((STATE.get("speed") or 0)*3.6,1),heading=STATE.get("course"),
+                   depth=d,depthNote=ter.get("name","") if d is not None else DEPTH_TXT.get(STATE.get("depth_status"),"IKKJE MÅLT"))
+        age=gnss_age
+    elif fresh_drv:
+        out=drv; age=drv_age
+    else:
+        out={"fix":"AV"}; age=min(drv_age,gnss_age)
+    out["age"]=age; out["t"]=now-age
+    out["reason"]="" if age<5 else ("Ingen GNSS-data og førarskjermen er ikkje open" if not gnss_ok else "")
+    return out
 LOCK=threading.Lock()
 STOP=threading.Event()
 serial_obj=None
@@ -54,6 +78,17 @@ def nmea_coord(v, hemi, is_lat):
     deg=float(v[:n]); mins=float(v[n:])
     x=deg+mins/60.0
     return -x if hemi in ("S","W") else x
+
+_prev={"p":None,"t":0,"v":0.0,"h":None}
+def _motion(lat,lon):
+    """Fart (m/s) og kurs (grader) frå to GGA-posisjonar – så tenesta kan forsyne HUD utan førarskjermen."""
+    now=time.time(); pr=_prev
+    if pr["p"] is None or lat is None: pr.update(p=(lat,lon),t=now); return pr["v"],pr["h"]
+    la0,lo0=pr["p"]; dy=(lat-la0)*111320; dx=(lon-lo0)*111320*math.cos(math.radians(lat)); d=math.hypot(dx,dy); dt=now-pr["t"]
+    if d>=0.3 and dt>0:
+        pr["v"]=0.6*(d/dt)+0.4*pr["v"]; pr["h"]=(math.degrees(math.atan2(dx,dy))+360)%360; pr.update(p=(lat,lon),t=now)
+    elif dt>3: pr["v"]=0.0; pr.update(t=now)
+    return pr["v"],pr["h"]
 
 def parse_gga(line):
     try:
@@ -72,6 +107,7 @@ def parse_gga(line):
                satellites=int(p[7] or 0), hdop=float(p[8]) if p[8] else None,
                altitude=alt, geoid_sep=sep, lat=lat, lon=lon,
                terrain=ter, depth=None if depth is None else round(depth,3), depth_status=dstat, depth_detail=det)
+        v,h=_motion(lat,lon); update(speed=round(v,2), course=None if h is None else round(h))
     except Exception as e: update(last_error=f"GGA parse: {e}")
 
 def serial_loop():
@@ -174,7 +210,10 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e: r={"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/hud":
-            self.headers_ok(); self.wfile.write(json.dumps(HUD|{"age":time.time()-HUD.get("t",0)}).encode()); return
+            self.headers_ok(); self.wfile.write(json.dumps(hud_state()).encode()); return
+        if u.path=="/api/info":
+            self.headers_ok(); self.wfile.write(json.dumps({"lan_ip":lan_ip(),"hud_lan":HUDLAN["srv"] is not None,
+                "hud_port":HUD_PORT,"hud_url":f"http://{lan_ip()}:{HUD_PORT}/hud"}).encode()); return
         if u.path=="/hud":
             p=Path(__file__).with_name("hud.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
@@ -269,6 +308,14 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/hudlan":
+            try:
+                on=bool(json.loads(body or b"{}").get("enable")); err=set_hud_lan(on); CFG["hudLan"]=on and not err; save_cfg()
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":not err,"error":err,"hud_lan":HUDLAN["srv"] is not None,
+                    "hud_url":f"http://{lan_ip()}:{HUD_PORT}/hud"}).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if self.path=="/api/hud":
             try:
                 d=json.loads(body or b"{}"); d["t"]=time.time(); HUD.clear(); HUD.update(d)
@@ -286,10 +333,41 @@ def uuid4hex():
 
 def safe_id(x): return re.sub(r"[^A-Za-z0-9_-]","",str(x))[:64]
 
+# --- HUD på mobil/eiga eining: eigen, avgrensa port på lokalnettet. Berre HUD-sida og HUD-data – ingen styring. ---
+HUD_PORT=8766
+HUDLAN={"srv":None}
+def lan_ip():
+    try:
+        s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(("10.255.255.255",1)); ip=s.getsockname()[0]; s.close(); return ip
+    except Exception: return "127.0.0.1"
+
+class HUDOnly(API):
+    def do_GET(self):
+        u=urllib.parse.urlparse(self.path)
+        if u.path in ("/","/hud","/api/hud"):
+            if u.path=="/": self.path="/hud"
+            return API.do_GET(self)
+        self.send_response(403); self.end_headers()
+    def do_POST(self):
+        self.send_response(403); self.end_headers()
+
+def set_hud_lan(on):
+    """Start/stopp HUD-porten. Returnerer feiltekst eller ''."""
+    if on and HUDLAN["srv"] is None:
+        try:
+            srv=http.server.ThreadingHTTPServer(("0.0.0.0",HUD_PORT),HUDOnly)
+        except OSError as e:
+            return f"Kunne ikkje opne port {HUD_PORT}: {e}"
+        HUDLAN["srv"]=srv; threading.Thread(target=srv.serve_forever,daemon=True).start()
+        print(f"HUD på mobil (same nett): http://{lan_ip()}:{HUD_PORT}/hud")
+    elif not on and HUDLAN["srv"] is not None:
+        srv=HUDLAN["srv"]; HUDLAN["srv"]=None; threading.Thread(target=srv.shutdown,daemon=True).start()
+    return ""
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--http-port",type=int,default=8765)
-    ap.add_argument("--lan",action="store_true",help="Gjer tenesta tilgjengeleg på lokalnettet (t.d. HUD på eigen eining)")
+    ap.add_argument("--lan",action="store_true",help="Slå på HUD for mobil/eiga eining i same nett (port 8766, berre HUD)")
     ap.add_argument("--serial",help="Seriellport for GNSS, t.d. COM3 eller /dev/ttyUSB0")
     a=ap.parse_args()
     load_cfg()
@@ -297,13 +375,9 @@ def main():
     threading.Thread(target=serial_loop,daemon=True).start()
     threading.Thread(target=ntrip_loop,daemon=True).start()
     print(f"SNOWMAN PC Prototype v1.6 køyrer: http://127.0.0.1:{a.http_port}")
-    host="0.0.0.0" if a.lan else "127.0.0.1"
-    if a.lan:
-        try:
-            s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(("10.255.255.255",1)); ip=s.getsockname()[0]; s.close()
-        except Exception: ip="<IP-adressa til PC-en>"
-        print(f"HUD på anna eining i same nett: http://{ip}:{a.http_port}/hud")
-    try: http.server.ThreadingHTTPServer((host,a.http_port),API).serve_forever()
+    if a.lan or CFG.get("hudLan"): set_hud_lan(True)
+    # Hovudtenesta (styring, innstillingar) er berre tilgjengeleg på denne PC-en.
+    try: http.server.ThreadingHTTPServer(("127.0.0.1",a.http_port),API).serve_forever()
     except KeyboardInterrupt: pass
     finally: STOP.set()
 

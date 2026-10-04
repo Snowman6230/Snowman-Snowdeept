@@ -182,7 +182,7 @@
         <span id="course" class="dim">--°</span>
       </div>
     </div>
-    <div id="stale">VENTAR PÅ SNOWMAN …</div>
+    <div id="stale"><div>VENTAR PÅ SNOWMAN …<div id="staleWhy" style="font-size: 3vh; margin-top: 2vh"></div></div></div>
 
     <div id="menu" class="hide">
       <h2>SNOWMAN HUD</h2>
@@ -300,11 +300,13 @@
       async function poll() {
         try {
           let h = await (await fetch("api/hud", { cache: "no-store" })).json();
-          let stale = !h.t || h.age > 3;
+          let stale = h.age == null || h.age > 5;
           $("stale").classList.toggle("hide", !stale);
+          $("staleWhy").textContent = h.reason || "Ingen ferske data frå GNSS eller førarskjermen";
           if (!stale) render(h);
         } catch (e) {
           $("stale").classList.remove("hide");
+          $("staleWhy").textContent = "Ingen kontakt med SNOWMAN-PC-en – sjekk nettverket";
         }
         setTimeout(poll, 300);
       }

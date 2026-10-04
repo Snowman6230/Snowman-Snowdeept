@@ -13,6 +13,9 @@ KVA ER NYTT I v1.6
 - Snødjupne blir berre vist når RTK FIX + terreng dekkjer posisjonen + kalibrering er lagra.
   Elles står det kvifor: UTANFOR TERRENGMODELL, KALIBRERING MANGLAR, KREV RTK FIX osv.
 - Testterreng og simulator med fasit: testa med snittavvik under 1 cm.
+- HUD-knapp i verktøylinja (v1.6.2): HUD på eigen skjerm, eller på mobil via QR-kode
+  (mobilen må vere på same nett, t.d. PC-en kopla til mobilen sitt delte nett).
+  Mobilen får berre sjå HUD-en (port 8766), ikkje styre SNOWMAN.
 - Kompassknapp på kartet (v1.6.1): lås kartet med nord opp, eller la det rotere.
 - Alt frå v1.5 er med: førarperspektiv, HUD, kartkjelder, anleggsprofil, historikk.
 
@@ -38,7 +41,7 @@ START – LINUX (t.d. Surface / Omarchy)
   Med Leica:        ./start-snowman.sh /dev/ttyUSB0
   I trakkemaskina:  KIOSK=1 ./start-snowman.sh /dev/ttyUSB0
   Med HUD-vindauge: HUD=1 ./start-snowman.sh simterreng
-  HUD på mobil:     LAN=1 ./start-snowman.sh simterreng
+  HUD på mobil:     trykk HUD › HUD PÅ MOBIL: PÅ (eller LAN=1 ./start-snowman.sh simterreng)
 
 VIKTIG
 - Antenneplassering framover/sidevegs blir lagra, men ikkje brukt enno (posisjonen er

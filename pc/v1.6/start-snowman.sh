@@ -9,7 +9,7 @@
 #
 # KIOSK=1 ./start-snowman.sh ...    opnar førarskjermen i fullskjerm (for trakkemaskina). Avslutt med Alt+F4.
 # HUD=1   ./start-snowman.sh ...    opnar òg HUD-visinga (frontruta) i eit eige vindauge.
-# LAN=1   ./start-snowman.sh ...    HUD kan opnast frå mobil/nettbrett i same nett (adressa blir skriven ut).
+# LAN=1   ./start-snowman.sh ...    slår på HUD for mobil/nettbrett i same nett (port 8766, berre HUD). Kan også slåast på med HUD-knappen.
 cd "$(dirname "$0")" || exit 1
 
 # Bibliotek: brukar eige python-miljø (.venv) i denne mappa, slik at systemet ikkje blir endra.

@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.2 – HUD utan avbrot, HUD-knapp og HUD på mobil
+- **Retta:** HUD viste av og til «VENTAR PÅ SNOWMAN». Årsak: nettlesaren bremsar førarskjermen når han ligg i bakgrunnen, og HUD fekk data derifrå. No set tenesta saman HUD-dataa sjølv – GNSS, fart, kurs og snødjupne kjem direkte frå mottakaren. Førarskjermen leverer berre prepareringsstatus. Ventemeldinga viser no årsaka.
+- **Nytt:** Knappen «HUD» i verktøylinja: opne HUD på same PC (eigen skjerm), eller slå på «HUD på mobil» med QR-kode og adresse.
+- **Nytt:** HUD på mobil/nettbrett går via ein eigen port (8766) på lokalnettet som **berre** viser HUD-sida og HUD-data. Styring og innstillingar er framleis berre tilgjengelege på PC-en (testa: 403 på alt anna). Valet blir hugsa.
+- **Endra:** Hovudtenesta lyttar no alltid berre på PC-en sjølv (127.0.0.1). `--lan` / `LAN=1` slår på mobil-HUD-porten.
+- **Nytt:** QR-kodebibliotek `vendor/qrcode.js` (MIT-lisens, Kazuhiko Arase).
+- **Avgjerd:** Mobil under HUD-film er tilrådd første HUD-løysing. Mobilen er berre skjerm – han kan ikkje styre SNOWMAN.
+
 ### PC-prototype v1.6.1 – lås kartrotasjonen
 - **Nytt:** Kompassknapp øvst til høgre på kartet: trykk for å låse kartet med nord opp, eller la det rotere etter køyreretninga. Nålen viser alltid kvar nord er. Valet blir hugsa.
 - **Endra:** Når kartet er låst, snur maskinteikninga seg etter køyreretninga i staden. Fungerer òg i førarperspektivet.

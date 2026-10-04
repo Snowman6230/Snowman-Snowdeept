@@ -578,6 +578,44 @@
       .chk.ok {
         color: #6bff8f;
       }
+      .hudDlg {
+        position: absolute;
+        z-index: 1400;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: min(460px, 94vw);
+        max-height: 86vh;
+        overflow: auto;
+        background: #03151ef8;
+        border: 1px solid #496575;
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 10px 40px #000a;
+      }
+      .hudDlg h3 {
+        margin: 0 0 6px;
+      }
+      .qrwrap {
+        background: #fff;
+        border-radius: 10px;
+        padding: 10px;
+        width: fit-content;
+        margin: 10px auto;
+      }
+      .qrwrap svg {
+        display: block;
+        width: 210px;
+        height: 210px;
+      }
+      .hudUrl {
+        text-align: center;
+        font-size: 20px;
+        font-weight: 900;
+        color: #4db8ff;
+        margin-bottom: 8px;
+        word-break: break-all;
+      }
       .groomer.tiny .tag {
         display: none;
       }
@@ -787,7 +825,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.1</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.2</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">
@@ -805,17 +843,36 @@
         ><button class="tool" onclick="map.zoomOut()"><i>⊖</i>Zoom ut</button
         ><button class="tool" onclick="map.zoomIn()"><i>＋</i>Zoom inn</button
         ><button id="viewBtn" class="tool" onclick="toggle3D()"><i>◭</i>Førarvising</button
+        ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
         ><button class="tool" onclick="resetWork()"><i>↺</i>Reset spor</button
         ><button id="demoBtn" class="tool" onclick="toggleDemo()"><i>▶</i>Demo</button
         ><button class="tool" onclick="openHistory()"><i>⏱</i>Historikk</button>
       </div>
+      <div id="hudDlg" class="hudDlg hide">
+        <h3>HUD – FRONTRUTE</h3>
+        <button class="btn" onclick="window.open('hud', 'snowmanHUD'); closeHud()">OPNE HUD PÅ DENNE PC-EN (EIGEN SKJERM)</button>
+        <h3 style="margin-top: 16px">HUD PÅ MOBIL ELLER NETTBRETT</h3>
+        <button id="hudLanBtn" class="btn toggle" onclick="toggleHudLan()">HUD PÅ MOBIL: AV</button>
+        <div id="hudLanBox" class="hide">
+          <div class="qrwrap"><div id="hudQR"></div></div>
+          <div id="hudUrl" class="hudUrl"></div>
+          <div class="history" style="font-size: 12px">
+            1. Mobilen må vere på same nett som PC-en – t.d. PC-en kopla til mobilen sitt delte nett.<br />
+            2. Skann koden eller skriv adressa i nettlesaren på mobilen.<br />
+            3. Trykk på HUD-skjermen › FULLSKJERM og SPEGLING, og legg mobilen under HUD-filmen.<br />
+            Mobilen får berre sjå HUD-en – ikkje styre SNOWMAN.
+          </div>
+        </div>
+        <button class="btn" onclick="closeHud()">LUKK</button>
+      </div>
       <div id="demoTag" class="demoTag hide">DEMO – SIMULERTE DATA</div>
       <div id="attrib" class="attrib">© Kartverket</div>
       <div id="toast" class="toast"></div>
     </div>
     <script src="vendor/leaflet.js"></script>
+    <script src="vendor/qrcode.js"></script>
     <script>
       /* SNOWMAN PC v1.6 – førargrensesnitt frå Driver v24, kopla til lokal GNSS-teneste og Terrain Engine.
          Kjelder for posisjon: "gnss" (Leica/RTK via snowman_pc.py), "mobile" (nettlesar-GPS, test), "demo" (simulert). */
@@ -1986,6 +2043,47 @@
           loadTerrain();
         } catch (e) {
           toast("Kunne ikkje lagre: " + e.message);
+        }
+      }
+
+      /* ---------- HUD-dialog: eigen skjerm eller mobil (QR-kode) ---------- */
+      async function openHud() {
+        $("hudDlg").classList.remove("hide");
+        try {
+          showHudLan(await api("api/info"));
+        } catch (e) {
+          $("hudLanBtn").textContent = "HUD PÅ MOBIL krev SNOWMAN-PC-tenesta";
+          $("hudLanBtn").disabled = true;
+        }
+      }
+      function closeHud() {
+        $("hudDlg").classList.add("hide");
+      }
+      function showHudLan(i) {
+        $("hudLanBtn").textContent = "HUD PÅ MOBIL: " + (i.hud_lan ? "PÅ" : "AV");
+        $("hudLanBtn").classList.toggle("on", !!i.hud_lan);
+        $("hudLanBox").classList.toggle("hide", !i.hud_lan);
+        if (i.hud_lan) {
+          $("hudUrl").textContent = i.hud_url;
+          try {
+            let q = qrcode(0, "M");
+            q.addData(i.hud_url);
+            q.make();
+            $("hudQR").innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+          } catch (e) {
+            $("hudQR").textContent = "";
+          }
+          if (/^127\./.test(i.lan_ip)) $("hudUrl").textContent += " – PC-en er ikkje på eit nettverk";
+        }
+      }
+      async function toggleHudLan() {
+        let on = $("hudLanBtn").textContent.endsWith("AV");
+        try {
+          let r = await (await fetch("api/hudlan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enable: on }) })).json();
+          if (r.error) toast(r.error);
+          showHudLan(r);
+        } catch (e) {
+          toast("Ingen kontakt med SNOWMAN-tenesta");
         }
       }
 
