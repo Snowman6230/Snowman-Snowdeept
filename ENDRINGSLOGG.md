@@ -15,6 +15,7 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 - **Nytt:** HUD på mobil/nettbrett går via ein eigen port (8766) på lokalnettet som **berre** viser HUD-sida og HUD-data. Styring og innstillingar er framleis berre tilgjengelege på PC-en (testa: 403 på alt anna). Valet blir hugsa.
 - **Endra:** Hovudtenesta lyttar no alltid berre på PC-en sjølv (127.0.0.1). `--lan` / `LAN=1` slår på mobil-HUD-porten.
 - **Nytt:** QR-kodebibliotek `vendor/qrcode.js` (MIT-lisens, Kazuhiko Arase).
+- **Endra:** Rettleiing om brannmur i HUD-vindauget og LES-MEG (Omarchy har brannmur på som standard: `sudo ufw allow 8766/tcp`).
 - **Avgjerd:** Mobil under HUD-film er tilrådd første HUD-løysing. Mobilen er berre skjerm – han kan ikkje styre SNOWMAN.
 
 ### PC-prototype v1.6.1 – lås kartrotasjonen

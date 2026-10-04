@@ -16,6 +16,10 @@ KVA ER NYTT I v1.6
 - HUD-knapp i verktøylinja (v1.6.2): HUD på eigen skjerm, eller på mobil via QR-kode
   (mobilen må vere på same nett, t.d. PC-en kopla til mobilen sitt delte nett).
   Mobilen får berre sjå HUD-en (port 8766), ikkje styre SNOWMAN.
+  Kjem ikkje HUD-en opp på mobilen? Opne porten i brannmuren:
+    Linux/Omarchy: sudo ufw allow 8766/tcp
+    Windows: tillat Python i Windows-brannmuren når han spør (privat nettverk).
+  Sjekk også at mobilen er på Wi-Fi, ikkje mobildata, og ikkje på eit gjestenett.
 - Kompassknapp på kartet (v1.6.1): lås kartet med nord opp, eller la det rotere.
 - Alt frå v1.5 er med: førarperspektiv, HUD, kartkjelder, anleggsprofil, historikk.
 
