@@ -7,6 +7,8 @@
 #   ./start-snowman.sh sim          test utan mottakar: startar ein simulert Leica
 #
 # KIOSK=1 ./start-snowman.sh ...    opnar førarskjermen i fullskjerm (for trakkemaskina). Avslutt med Alt+F4.
+# HUD=1   ./start-snowman.sh ...    opnar òg HUD-visinga (frontruta) i eit eige vindauge.
+# LAN=1   ./start-snowman.sh ...    HUD kan opnast frå mobil/nettbrett i same nett (adressa blir skriven ut).
 cd "$(dirname "$0")" || exit 1
 
 if ! python3 -c "import serial" 2>/dev/null; then
@@ -23,13 +25,17 @@ if [ "$1" = "sim" ]; then
   PORT=$(cat /tmp/snowman-sim-port)
 fi
 
-if [ -n "$PORT" ]; then python3 snowman_pc.py --serial "$PORT" & else python3 snowman_pc.py & fi
+EXTRA=""; [ "$LAN" = "1" ] && EXTRA="--lan"
+if [ -n "$PORT" ]; then python3 snowman_pc.py $EXTRA --serial "$PORT" & else python3 snowman_pc.py $EXTRA & fi
 SRV=$!
 trap 'kill $SRV ${SIM:-} 2>/dev/null' EXIT INT TERM
 sleep 2
 
 URL=http://127.0.0.1:8765
 B=$(command -v chromium || command -v chromium-browser || command -v google-chrome || command -v google-chrome-stable)
+if [ "$HUD" = "1" ]; then
+  if [ -n "$B" ]; then "$B" --new-window "$URL/hud" & else xdg-open "$URL/hud" 2>/dev/null & fi
+fi
 if [ -n "$B" ] && [ "$KIOSK" = "1" ]; then
   "$B" --kiosk --noerrdialogs --disable-infobars "$URL"
 elif [ -n "$B" ]; then

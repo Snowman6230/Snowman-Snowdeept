@@ -17,6 +17,13 @@ KVA ER NYTT I v1.5
 - Val av kartkjelde per anlegg (Innstillingar › Kart): Kartverket topo/gråtone,
   lokale kartfliser (offline, data/tiles/{z}/{x}/{y}.png), eiga XYZ/WMTS- eller
   WMS-kjelde, eller berre rutenett.
+- Førarperspektiv (knappen «Førarvising»): kartet blir vippa og vist frå bak og over
+  maskina, med horisont – som å sitje i maskina og sjå framover.
+- HUD for frontruta: http://127.0.0.1:8765/hud (eller Innst. › Kart › OPNE HUD-VISING).
+  Store tal for snødjupne/avvik frå mål, fart, kurs, RTK-status. Trykk på skjermen for
+  meny: spegling (for HUD-film), natt (dempa raud) / dag, lysstyrke, fullskjerm.
+  HUD-en les frå førarskjermen, så førarskjermen må vere open.
+  HUD på mobil/nettbrett i same nett: start med LAN=1 (Linux) eller --lan.
 - Anleggsprofil: eksporter alle innstillingar til ei fil og importer på dei
   andre maskinene på same anlegg.
 
@@ -37,3 +44,5 @@ START – LINUX (t.d. Surface med Xubuntu/Mint/Debian)
   Test utan Leica:  ./start-snowman.sh sim
   Med Leica:        ./start-snowman.sh /dev/ttyUSB0
   I trakkemaskina:  KIOSK=1 ./start-snowman.sh /dev/ttyUSB0   (fullskjerm, avslutt med Alt+F4)
+  Med HUD-vindauge: HUD=1 ./start-snowman.sh sim
+  HUD på mobil:     LAN=1 ./start-snowman.sh sim   (adressa blir skriven ut i terminalen)

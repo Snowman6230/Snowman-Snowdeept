@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.5.2 – førarperspektiv og HUD
+- **Nytt:** Førarperspektiv (knappen «Førarvising»): kartet blir vippa 50° og vist frå bak og over maskina, med horisont. Alltid køyreretning opp, zoomar nært maskina. Sporflate, piler og snødjupnefargar følgjer med i 3D.
+- **Nytt:** HUD-versjon for frontruta (`hud.html`, opnast på `/hud`). Eiga side som kan køyre på eigen skjerm eller mobil på dashbordet: store tal for snødjupne og avvik frå måldjupne (✓ på mål / ▼ under / ▲ over), fart, kurs, RTK-status, prepareringstid. Spegling for HUD-film, nattmodus i dempa raudt, lysstyrke, fullskjerm, skjermen held seg vaken.
+- **Nytt:** Førarskjermen sender tilstanden til den lokale tenesta (`/api/hud`), og HUD-en les derifrå. `--lan` / `LAN=1` gjer HUD tilgjengeleg for andre einingar i same nett.
+- **Avgjerd:** HUD er skild ut som eigen versjon/side, så førarskjermen og HUD kan utviklast og testast kvar for seg.
+- **Avgjerd:** HUD viser same reglar som førarskjermen: snødjupne berre som tal i demo (merka DEMO) til Terrain Engine finst. Nattmodus er dempa raud for å skåne nattsynet.
+- **Avgjerd:** Ekte 3D-terreng (bakkar og kantar) kjem saman med Terrain Engine når LiDAR-modellen finst.
+
 ### PC-prototype v1.5.1 – spor som følgjer zoom
 - **Retta:** Sporet etter maskina hadde fast breidd i pikslar og vart altfor breitt når ein zooma ut. No blir sporet teikna som ei flate i meter (fresbreidd), så det har rett storleik på alle zoomnivå og er like breitt som maskinteikninga.
 - **Retta:** Overlappande spor vart mørkare. No blir all preparert flate vist med jamn farge, så opne felt synest tydeleg.
@@ -86,6 +94,8 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 ## Planlagt
 
 - **v1.6 Terrain Engine:** XYZ/CSV → terrenghøgd ved maskinposisjon → snødjupne. Testast med simulert RTK før LiDAR-fil frå Fjellsætra er klar.
+- Ekte 3D-terreng i førarperspektivet (frå LiDAR).
+- HUD-test i maskina: lesbarheit natt/dag, dobbeltbilete i buet frontrute.
 - Fleire maskinprofilar per anlegg.
 - Lisensnøkkel per maskin.
 - Felttest: RTK + LiDAR mot manuelt målt snødjupne.

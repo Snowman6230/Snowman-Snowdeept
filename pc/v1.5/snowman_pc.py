@@ -35,6 +35,7 @@ def load_cfg():
 def save_cfg():
     try: CFG_FILE.write_text(json.dumps(CFG,indent=1),"utf-8")
     except Exception as e: print("Kunne ikkje lagre config:",e)
+HUD={"t":0}   # siste tilstand frå førarskjermen, til HUD-visinga
 LOCK=threading.Lock()
 STOP=threading.Event()
 serial_obj=None
@@ -153,6 +154,11 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/":
             p=Path(__file__).with_name("driver.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
+        if u.path=="/api/hud":
+            self.headers_ok(); self.wfile.write(json.dumps(HUD|{"age":time.time()-HUD.get("t",0)}).encode()); return
+        if u.path=="/hud":
+            p=Path(__file__).with_name("hud.html")
+            self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
         if u.path=="/ntrip":
             p=Path(__file__).with_name("ntrip.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
@@ -203,6 +209,13 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/hud":
+            try:
+                d=json.loads(body or b"{}"); d["t"]=time.time(); HUD.clear(); HUD.update(d)
+                self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if self.path=="/api/sessions/clear":
             for f in SESS.glob("*.json"): f.unlink()
             self.headers_ok(); self.wfile.write(b'{"ok":true}'); return
@@ -213,6 +226,7 @@ def safe_id(x): return re.sub(r"[^A-Za-z0-9_-]","",str(x))[:64]
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--http-port",type=int,default=8765)
+    ap.add_argument("--lan",action="store_true",help="Gjer tenesta tilgjengeleg på lokalnettet (t.d. HUD på eigen eining)")
     ap.add_argument("--serial",help="Seriellport for GNSS, t.d. COM3 eller /dev/ttyUSB0")
     a=ap.parse_args()
     load_cfg()
@@ -220,7 +234,13 @@ def main():
     threading.Thread(target=serial_loop,daemon=True).start()
     threading.Thread(target=ntrip_loop,daemon=True).start()
     print(f"SNOWMAN PC Prototype v1.5 køyrer: http://127.0.0.1:{a.http_port}")
-    try: http.server.ThreadingHTTPServer(("127.0.0.1",a.http_port),API).serve_forever()
+    host="0.0.0.0" if a.lan else "127.0.0.1"
+    if a.lan:
+        try:
+            s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(("10.255.255.255",1)); ip=s.getsockname()[0]; s.close()
+        except Exception: ip="<IP-adressa til PC-en>"
+        print(f"HUD på anna eining i same nett: http://{ip}:{a.http_port}/hud")
+    try: http.server.ThreadingHTTPServer((host,a.http_port),API).serve_forever()
     except KeyboardInterrupt: pass
     finally: STOP.set()
 

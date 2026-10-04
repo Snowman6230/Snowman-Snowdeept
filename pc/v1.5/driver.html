@@ -465,6 +465,21 @@
         border-radius: 8px;
         letter-spacing: 1px;
       }
+      /* Førarperspektiv: kartet vippa bakover, sett frå bak og over maskina */
+      #app.view3d {
+        perspective: 1600px;
+        perspective-origin: 50% calc(50% + 18vh);
+        background: linear-gradient(#0a1a26 0%, #16324a 22%, #22465f 40%, #1b2c35 60%);
+      }
+      #app.view3d .groomer {
+        transform: translate(-50%, -50%) rotateX(50deg);
+      }
+      #app.view3d .groomer .tag {
+        display: none;
+      }
+      #app.view3d .legend {
+        opacity: 0.85;
+      }
       .groomer.tiny .tag {
         display: none;
       }
@@ -571,6 +586,7 @@
           ><button id="machineMapSet" class="btn toggle on" onclick="toggleMachine()">VIS MASKIN: PÅ</button
           ><button class="btn" onclick="centerMap()">SENTRER</button
           ><button class="btn" onclick="location.href = 'ntrip'">LEICA / CPOS / NTRIP-OPPSETT</button
+          ><button class="btn" onclick="window.open('hud', 'snowmanHUD')">OPNE HUD-VISING (FRONTRUTE)</button
           ><button class="btn" onclick="startGPS()">START MOBIL-GPS (TEST)</button>
           <div id="gnssInfo" class="history">Ingen kontakt med lokal SNOWMAN-teneste.</div>
           <h3>ANLEGG OG KARTKJELDE</h3>
@@ -639,7 +655,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.5.1</b> (førargrensesnitt frå Driver v24)<br />Versjon 1.5 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.5.2</b> (førargrensesnitt frå Driver v24)<br />Versjon 1.5 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">
@@ -656,6 +672,7 @@
         ><button class="tool" onclick="centerMap()"><i>⌖</i>Sentrer</button
         ><button class="tool" onclick="map.zoomOut()"><i>⊖</i>Zoom ut</button
         ><button class="tool" onclick="map.zoomIn()"><i>＋</i>Zoom inn</button
+        ><button id="viewBtn" class="tool" onclick="toggle3D()"><i>◭</i>Førarvising</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
         ><button class="tool" onclick="resetWork()"><i>↺</i>Reset spor</button
@@ -867,19 +884,41 @@
       }
 
       /* ---------- Kart, kompass og rotasjon ---------- */
+      const TILT = 50; // grader kartet blir vippa i førarperspektiv
       function rotateMap(deg) {
         if (deg == null || isNaN(deg)) return;
+        if (cfg.view3d) {
+          // Førarperspektiv: alltid køyreretning opp, maskina litt under midten, horisont øvst
+          mapBearing = deg;
+          $("map").style.transform = "translateY(18vh) rotateX(" + TILT + "deg) rotate(" + -deg + "deg)";
+          return;
+        }
         mapBearing = cfg.northUp ? 0 : deg;
         $("map").style.transform = cfg.northUp ? "none" : "rotate(" + -mapBearing + "deg) scale(1.42)";
+      }
+      function applyView() {
+        $("app").classList.toggle("view3d", !!cfg.view3d);
+        $("viewBtn").classList.toggle("on", !!cfg.view3d);
+        $("map").style.inset = cfg.view3d ? "-60%" : cfg.northUp ? "0" : "";
+        rotateMap(heading || 0);
+        scaleGroomer();
+        setTimeout(() => {
+          map.invalidateSize({ animate: false });
+          if (pos) map.panTo(pos, { animate: false });
+        }, 60);
+      }
+      function toggle3D() {
+        cfg.view3d = !cfg.view3d;
+        persistCfg();
+        if (cfg.view3d && map.getZoom() < 19) map.setZoom(19, { animate: false }); // nært maskina, som frå førarsetet
+        applyView();
+        toast(cfg.view3d ? "Førarperspektiv – sett frå maskina" : "Kartvising ovanfrå");
       }
       function toggleNorth() {
         cfg.northUp = !cfg.northUp;
         persistCfg();
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
-        $("map").style.inset = cfg.northUp ? "0" : "";
-        rotateMap(heading);
-        scaleGroomer();
-        setTimeout(() => map.invalidateSize(), 50);
+        applyView();
       }
       function screenAngle() {
         return (screen.orientation && screen.orientation.angle) || window.orientation || 0;
@@ -1012,7 +1051,7 @@
           .join("");
         cfg.bounds.forEach((v, i) => ($("b" + i).onchange = save));
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
-        if (cfg.northUp) $("map").style.inset = "0";
+        applyView();
         showTerrain();
         renderLegend();
         updateMachine();
@@ -1091,13 +1130,13 @@
       function scaleGroomer() {
         let lat = (pos || [map.getCenter().lat])[0],
           mPerPx = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, map.getZoom()),
-          pxPerM = (1 / mPerPx) * (cfg.northUp ? 1 : 1.42),
+          pxPerM = (1 / mPerPx) * (cfg.northUp || cfg.view3d ? 1 : 1.42),
           t = toolsFull ? cfg.tiller : cfg.tillerN,
           w = Math.max(44, Math.min(420, (t * pxPerM * 190) / 154)),
           g = $("groomer");
         g.style.width = w + "px";
         g.style.height = (w * 330) / 190 + "px";
-        g.style.top = "50%";
+        g.style.top = cfg.view3d ? "calc(50% + 18vh)" : "50%";
         $("trackTag").style.top = w * 0.66 + "px";
         g.classList.toggle("tiny", w < 90);
       }
@@ -1373,7 +1412,7 @@
         currentSession = { id: "demo-" + Date.now(), date: new Date().toISOString().slice(0, 10), start: Date.now(), demo: true, machine: cfg.mname, points: [] };
         startClock(currentSession.start);
         keepAwake(true);
-        map.fitBounds(L.latLngBounds(route).pad(0.12));
+        if (!cfg.view3d) map.fitBounds(L.latLngBounds(route).pad(0.12));
         demoTimer = setInterval(() => {
           if (i >= route.length) {
             stopDemo();
@@ -1631,9 +1670,33 @@
         }
         $("profileFile").value = "";
       }
+      /* ---------- HUD: send tilstanden til den lokale tenesta, som HUD-visinga les ---------- */
+      function publishHUD() {
+        if (backendOK) {
+          let st = {
+            src,
+            fix: src === "demo" ? "DEMO" : src === "gnss" && gnss ? gnss.fix : src === "mobile" ? "MOBIL GPS" : "AV",
+            sats: src === "gnss" && gnss ? gnss.satellites : null,
+            speed: +(lastSpeed * 3.6).toFixed(1),
+            heading: Math.round(heading),
+            depth: src === "demo" ? +cfg.demoD.toFixed(2) : null, // berre demo har (simulert) djupne til Terrain Engine finst
+            target: cfg.target,
+            tol: cfg.tol,
+            bounds: cfg.bounds,
+            preparing: preparing || demo,
+            demo,
+            distance: Math.round(total),
+            area: Math.round(total * (toolsFull ? cfg.tiller : cfg.tillerN)),
+            elapsed: $("elapsed").textContent,
+          };
+          fetch("api/hud", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(st) }).catch(() => {});
+        }
+        setTimeout(publishHUD, 400);
+      }
       load();
       fillMapForm();
       pollGNSS();
+      publishHUD();
     </script>
   </body>
 </html>
