@@ -925,6 +925,7 @@
         preparing = false,
         mapBearing = 0,
         src = "none", // gnss | mobile | demo | none
+        simGnss = false, // true når mottakaren er simulatoren (start-snowman.sh sim…)
         backendOK = false,
         gnss = null, // siste status frå tenesta
         lastGGA = "",
@@ -1061,6 +1062,9 @@
         }
         src = "gnss";
         lastGnssAt = Date.now();
+        simGnss = !!x.simulated; // simulatoren: alt blir merka som TEST
+        $("demoTag").textContent = simGnss ? "TEST – SIMULERT MOTTAKAR OG SNØ" : "DEMO – SIMULERTE DATA";
+        $("demoTag").classList.toggle("hide", !simGnss);
         let p = [x.lat, x.lon],
           now = Date.now(),
           speed = 0,
@@ -1212,7 +1216,7 @@
           id: "drive-" + Date.now(),
           date: new Date().toISOString().slice(0, 10),
           start: Date.now(),
-          demo: false,
+          demo: simGnss,
           source: src,
           machine: cfg.mname,
           width: toolsFull ? cfg.tiller : cfg.tillerN,
@@ -1385,9 +1389,10 @@
           return;
         }
         $("depth").textContent = d.toFixed(2).replace(".", ",") + " m";
-        $("depthLabel").textContent = src === "demo" ? "SNØDJUPNE (DEMO)" : "SNØDJUPNE (MIDT)";
-        $("depthNote").textContent = src === "demo" ? "SIMULERT" : note || "";
-        box.classList.toggle("measured", src !== "demo");
+        let simd = src === "demo" || (src === "gnss" && simGnss);
+        $("depthLabel").textContent = src === "demo" ? "SNØDJUPNE (DEMO)" : simd ? "SNØDJUPNE (TEST)" : "SNØDJUPNE (MIDT)";
+        $("depthNote").textContent = src === "demo" ? "SIMULERT" : simd ? "SIMULERT SNØ · " + (note || "") : note || "";
+        box.classList.toggle("measured", !simd);
       }
       function depthColor(d) {
         return colors[d < cfg.bounds[0] ? 0 : d < cfg.bounds[1] ? 1 : d < cfg.bounds[2] ? 2 : d < cfg.bounds[3] ? 3 : d < cfg.bounds[4] ? 4 : 5];
@@ -1608,6 +1613,7 @@
         demo = true;
         src = "demo";
         $("demoBtn").classList.add("on");
+        $("demoTag").textContent = "DEMO – SIMULERTE DATA";
         $("demoTag").classList.remove("hide");
         renderLegend();
         pts = [];

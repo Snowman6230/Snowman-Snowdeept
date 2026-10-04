@@ -6,6 +6,7 @@
 #   ./start-snowman.sh /dev/ttyUSB0 brukar denne seriellporten (Leica via USB-RS232)
 #   ./start-snowman.sh sim          test utan mottakar: startar ein simulert Leica
 #   ./start-snowman.sh simterreng   simulert Leica over testterreng med kjend snødjupne (test av Terrain Engine)
+#   ./start-snowman.sh simanlegg    simulert Leica over terrengmodellane du har lagt inn (t.d. Topocad frå Fjellsætra), med simulert snø
 #
 # KIOSK=1 ./start-snowman.sh ...    opnar førarskjermen i fullskjerm (for trakkemaskina). Avslutt med Alt+F4.
 # HUD=1   ./start-snowman.sh ...    opnar òg HUD-visinga (frontruta) i eit eige vindauge.
@@ -23,12 +24,18 @@ if ! $PY -c "import serial, numpy, tifffile" 2>/dev/null; then
 fi
 
 PORT="$1"
-if [ "$1" = "sim" ] || [ "$1" = "simterreng" ]; then
+SIMFLAG=""
+if [ "$1" = "sim" ] || [ "$1" = "simterreng" ] || [ "$1" = "simanlegg" ]; then
+  SIMFLAG="--simulert"
   rm -f /tmp/snowman-sim-port
   if [ "$1" = "simterreng" ]; then
     [ -f testterreng.tif ] || $PY testterreng.py testterreng.tif
     echo "Testterreng: last opp testterreng.tif under Innst. › Terreng, og lagre kalibrering (antenne 2,8 m) under Innst. › Kalibrering."
     $PY simuler-leica.py /tmp/snowman-sim-port --terreng &
+  elif [ "$1" = "simanlegg" ]; then
+    echo "Anleggstest: legg inn terrengmodell under Innst. › Terreng og lagre kalibrering (antenne 2,8 m) under Innst. › Kalibrering."
+    echo "Maskina køyrer over det øvste aktive terrenglaget. Snøen er simulert."
+    $PY simuler-leica.py /tmp/snowman-sim-port --anlegg &
   else
     $PY simuler-leica.py /tmp/snowman-sim-port &
   fi
@@ -37,7 +44,7 @@ if [ "$1" = "sim" ] || [ "$1" = "simterreng" ]; then
   PORT=$(cat /tmp/snowman-sim-port)
 fi
 
-EXTRA=""; [ "$LAN" = "1" ] && EXTRA="--lan"
+EXTRA="$SIMFLAG"; [ "$LAN" = "1" ] && EXTRA="$EXTRA --lan"
 if [ -n "$PORT" ]; then $PY snowman_pc.py $EXTRA --serial "$PORT" & else $PY snowman_pc.py $EXTRA & fi
 SRV=$!
 trap 'kill $SRV ${SIM:-} 2>/dev/null' EXIT INT TERM

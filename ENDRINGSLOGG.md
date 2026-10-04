@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.4 – test over ekte terrengmodell (simanlegg)
+- **Nytt:** `./start-snowman.sh simanlegg` – den simulerte Leica-mottakaren køyrer over det øvste aktive terrenglaget i biblioteket (t.d. Topocad-modellane frå Fjellsætra). Høgda er ekte terreng + simulert snø (ca. 0,4–1,2 m og eit tynt felt) + antennehøgd. Lanane følgjer lengderetninga til modellen og held seg innanfor han. Når du legg inn eller endrar prioritet på eit lag, flyttar maskina seg dit innan nokre sekund.
+- **Nytt:** Tenesta veit når mottakaren er simulatoren (`--simulert`, set automatisk av `sim`, `simterreng` og `simanlegg`). Førarskjermen viser då «TEST – SIMULERT MOTTAKAR OG SNØ», snødjupna heiter «SNØDJUPNE (TEST)» med «SIMULERT SNØ», HUD viser «DEMO – SIMULERT», og øktene blir lagra som demo.
+- **Kvifor:** Eigaren ville teste terrengmodellane i demomodus. Før køyrde simulatoren berre over testterrenget, og simulert mottakar vart vist som ekte måling – det bryt regelen om at simulert snødjupne aldri skal sjå ut som ekte.
+- **Testa:** Familietrekk, parkeringsplass og lysmaster: 100 % av ruta innanfor modellen. Snødjupne i tenesta lik simulert snø (0,78–0,84 m), FLOAT-perioden gir «IKKJE MÅLT – KREV RTK FIX».
+
 ### PC-prototype v1.6.3 – stadfesta høgdesystem blir lagra
 - **Endra:** Når føraren hakar av «Eg har sjekka at høgdene er NN2000» ved import, blir laget lagra som «NN2000 (stadfesta)» i staden for «ukjent». Det synest i terrenglista og i oppslaga.
 - **Avgjerd (eigar):** Topocad-filene frå Fjellsætra er i NN2000. Parkeringsmodellen er EUREF89 UTM 32N. Lysmaster-modellen er verkeleg WGS84 UTM 32N. Med 37 % median helling gir ei forskyving på ca. 0,9 m om lag 30 cm høgdefeil der, så modellen blir berre brukt til oversikt. Ingen automatisk WGS84→EUREF89-omrekning no: ho krev kva år punkta vart målte. Kontrollpunkt (v1.7) skal avdekkje slike skilnader.

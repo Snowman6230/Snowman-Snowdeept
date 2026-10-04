@@ -25,6 +25,13 @@ KVA ER NYTT I v1.6
 - Kompassknapp på kartet (v1.6.1): lås kartet med nord opp, eller la det rotere.
 - Alt frå v1.5 er med: førarperspektiv, HUD, kartkjelder, anleggsprofil, historikk.
 
+TEST MED EIGEN TERRENGMODELL (v1.6.4)
+  ./start-snowman.sh simanlegg
+  1. Innst. › Terreng: legg inn terrengmodellen (t.d. .dtm frå Topocad), hak av NN2000.
+  2. Innst. › Kalibrering: antennehøgd 2,8 og LAGRE KALIBRERING.
+  3. Maskina køyrer over modellen innan nokre sekund. Trykk Start prep.
+  Snøen er simulert, og skjermen er merka «TEST – SIMULERT MOTTAKAR OG SNØ».
+
 TERRENGDATA
 - Tilrådd: GeoTIFF med barmark, 0,25–1 m rute, EUREF89 UTM 32/33, NN2000.
 - Utan eiga skanning: DTM 1 m frå hoydedata.no (stengt fre 16 – må 07).

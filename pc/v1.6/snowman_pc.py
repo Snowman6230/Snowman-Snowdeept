@@ -52,7 +52,7 @@ def hud_state():
     elif gnss_ok:
         out={k:drv.get(k) for k in ("preparing","elapsed","distance","area","target","tol","bounds")} if fresh_drv else {"target":0.8,"tol":0.1}
         d=STATE.get("depth"); ter=STATE.get("terrain") or {}
-        out.update(src="gnss",demo=False,fix=STATE.get("fix"),sats=STATE.get("satellites"),
+        out.update(src="gnss",demo=bool(STATE.get("simulated")),fix=STATE.get("fix"),sats=STATE.get("satellites"),
                    speed=round((STATE.get("speed") or 0)*3.6,1),heading=STATE.get("course"),
                    depth=d,depthNote=ter.get("name","") if d is not None else DEPTH_TXT.get(STATE.get("depth_status"),"IKKJE MÅLT"))
         age=gnss_age
@@ -369,8 +369,10 @@ def main():
     ap.add_argument("--http-port",type=int,default=8765)
     ap.add_argument("--lan",action="store_true",help="Slå på HUD for mobil/eiga eining i same nett (port 8766, berre HUD)")
     ap.add_argument("--serial",help="Seriellport for GNSS, t.d. COM3 eller /dev/ttyUSB0")
+    ap.add_argument("--simulert",action="store_true",help="Mottakaren er simulatoren: alt blir merka som TEST/simulert")
     a=ap.parse_args()
     load_cfg()
+    STATE["simulated"]=a.simulert
     if a.serial: CFG["serial_port"]=a.serial; save_cfg()
     threading.Thread(target=serial_loop,daemon=True).start()
     threading.Thread(target=ntrip_loop,daemon=True).start()
