@@ -1,4 +1,5 @@
 #!/bin/sh
+# SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 # SNOWMAN PC v1.5 – oppstart på Linux (t.d. Surface Pro med Xubuntu/Mint/Debian XFCE).
 # Startar den lokale tenesta og opnar førarskjermen i Chromium kioskmodus.
 # Bruk: ./start-snowman.sh [seriellport]   t.d. ./start-snowman.sh /dev/ttyUSB0

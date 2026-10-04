@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 """
 SNOWMAN NTRIP Service v1.1
 Local bridge for SNOWMAN PC prototype.

@@ -22,3 +22,7 @@ Førar- og snødjupnesystem for trakkemaskiner (RTK-GNSS + LiDAR-terrengmodell).
 - NTRIP/CPOS-brukarnamn og passord skal aldri leggjast inn i dette repoet.
 - PC v1.5 viser snødjupne som IKKJE MÅLT under ekte køyring. Fargar/tal finst berre i demo, merka SIMULERT.
 - Neste planlagde steg: PC-prototype v1.6 – Terrain Engine (XYZ/CSV → terrenghøgd → snødjupne).
+
+## Lisens
+
+Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå [LICENSE](LICENSE).

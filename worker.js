@@ -1,3 +1,4 @@
+// SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 // Snowman by Alpindata - terrain proxy for Cloudflare Workers
 // Deploy this file as a Cloudflare Worker, then paste the workers.dev URL into Snowman.
 const ALLOWED_ORIGIN = 'https://snowman6230.github.io';

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 """
 SNOWMAN PC Prototype v1.5 – lokal teneste
 GNSS/NTRIP-bru, førargrensesnitt og lagring av arbeidsøkter.
