@@ -786,6 +786,7 @@
           ><button id="tabTarget" onclick="showTab('target')">Målprofil</button><button id="tabMap" onclick="showTab('map')">Kart</button
           ><button id="tabCal" onclick="showTab('cal')">Kalibrering</button
           ><button id="tabTerrain" onclick="showTab('terrain')">Terreng</button
+          ><button id="tabCtl" onclick="showTab('ctl')">Kontroll</button
           ><button id="tabHistory" onclick="showTab('history')">Historikk</button>
         </div>
         <section id="panelMachine" class="panel on">
@@ -879,6 +880,41 @@
             Snødjupne = GNSS-høgd − antennehøgd − høgdeoffset − terrenghøgd. Snødjupne blir berre vist når kalibreringa er lagra.
           </div>
         </section>
+        <section id="panelCtl" class="panel">
+          <h3>KONTROLLMÅLING HER</h3>
+          <div id="ctlNow" class="history">Ventar på SNOWMAN-tenesta …</div>
+          <div class="row"><span>Kjend snødjupne her (m) – 0 på barmark</span><input id="ctlKnown" type="number" step=".01" min="0" /></div>
+          <div class="row"><span>Merknad</span><input id="ctlNote" type="text" style="width: 170px" placeholder="t.d. snøsonde ved hydrant 4" /></div>
+          <button class="btn" onclick="saveCheck()">LAGRE KONTROLLMÅLING</button>
+          <div id="ctlStats" class="history"></div>
+          <button id="ctlApply" class="btn hide" onclick="applyOffset()">JUSTER HØGDEOFFSET</button>
+          <div id="ctlChecks"></div>
+          <h3>KONTROLLPUNKT (KJEND KOORDINAT)</h3>
+          <div class="history">
+            Punkt med kjend terrenghøgd frå landmålar (t.d. bolt, kum, hjørne av fundament). SNOWMAN samanliknar terrengmodellen med punktet
+            – utan GNSS. Avslører forskyving, feil høgdesystem og gammal modell.
+          </div>
+          <div class="row"><span>Namn</span><input id="cpName" type="text" style="width: 170px" placeholder="t.d. Bolt ved heishus" /></div>
+          <div class="row"><span>Austing (E)</span><input id="cpE" type="number" step=".001" /></div>
+          <div class="row"><span>Nording (N)</span><input id="cpN" type="number" step=".001" /></div>
+          <div class="row">
+            <span>Koordinatsystem</span
+            ><select id="cpZone" style="width: 170px">
+              <option value="32">EUREF89 UTM 32</option>
+              <option value="33">EUREF89 UTM 33</option>
+              <option value="35">EUREF89 UTM 35</option>
+            </select>
+          </div>
+          <div class="row"><span>Terrenghøgd NN2000 (m)</span><input id="cpH" type="number" step=".001" /></div>
+          <button class="btn" onclick="addPoint()">LEGG TIL KONTROLLPUNKT</button>
+          <div id="ctlPoints"></div>
+          <div class="history">
+            <b>Slik gjer du ei kontrollmåling:</b> Stopp maskina der du veit snødjupna – stikk snøsonda ned rett under antenna, eller stå på
+            barmark (brøyta veg, parkeringsplass) og skriv 0. Vent på RTK FIX og trykk LAGRE. Ta minst 3 målingar på ulike stader. Er
+            avviket likt overalt, er det ein feil i kalibreringa, og SNOWMAN kan justere høgdeoffset. Sprikar avvika, er det terrengmodellen
+            eller snøsonderinga som er usikker.
+          </div>
+        </section>
         <section id="panelTerrain" class="panel">
           <h3>TERRENGBIBLIOTEK</h3>
           <div id="terrEngine" class="history">Ventar på SNOWMAN-tenesta …</div>
@@ -924,7 +960,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.7</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">
@@ -1920,13 +1956,14 @@
         toast.t = setTimeout(() => ($("toast").style.display = "none"), 2200);
       }
       function showTab(n) {
-        let a = { machine: "Machine", snow: "Snow", target: "Target", map: "Map", cal: "Cal", terrain: "Terrain", history: "History" };
+        let a = { machine: "Machine", snow: "Snow", target: "Target", map: "Map", cal: "Cal", terrain: "Terrain", ctl: "Ctl", history: "History" };
         Object.values(a).forEach((x) => {
           $("panel" + x).classList.remove("on");
           $("tab" + x).classList.remove("on");
         });
         $("panel" + a[n]).classList.add("on");
         $("tab" + a[n]).classList.add("on");
+        if (n === "ctl") loadControl();
       }
       function toggleSettings() {
         $("settings").classList.toggle("hide");
@@ -2752,6 +2789,120 @@
         await api("api/terrain/delete", { id }).catch((e) => toast(e.message));
         loadTerrain();
       }
+      /* ---------- Kontroll: kontrollmålingar (kjend snødjupne) og kontrollpunkt (kjend terrenghøgd) ---------- */
+      let CTL = null,
+        ctlTimer = null;
+      const ctlGroup = L.layerGroup().addTo(map);
+      const cm = (v, sign) => (v == null ? "–" : (sign && v > 0 ? "+" : "") + Math.round(v * 100) + " cm");
+      const m2 = (v) => (v == null ? "–" : v.toFixed(2).replace(".", ",") + " m");
+      async function loadControl() {
+        try {
+          CTL = await api("api/control");
+        } catch (e) {
+          $("ctlNow").textContent = "Ingen kontakt med SNOWMAN-tenesta – kontroll krev PC-versjonen.";
+          return;
+        }
+        renderControl();
+        clearTimeout(ctlTimer);
+        if ($("panelCtl").classList.contains("on") && !$("settings").classList.contains("hide")) ctlTimer = setTimeout(loadControl, 2000);
+      }
+      function renderControl() {
+        let c = CTL,
+          now = c.fix !== "RTK FIX" ? "⛔ Krev RTK FIX (no: " + esc(c.fix) + ")" : c.raw == null ? "⛔ " + esc(DEPTH_STATUS[c.depth_status] || "Ikkje målt") : "✅ RTK FIX · SNOWMAN reknar <b>" + m2(c.raw) + "</b> her";
+        if (c.simTruth != null)
+          now +=
+            '<br><span style="color:#ffcf5b">TEST: simulert snø her er ' + m2(c.simTruth) + '</span> <button class="mini" onclick="$(\'ctlKnown\').value=' + c.simTruth + '">BRUK</button>';
+        $("ctlNow").innerHTML = now;
+        let s = c.stats;
+        $("ctlStats").innerHTML = !s.n
+          ? "Ingen kontrollmålingar enno."
+          : "<b>" + s.n + " kontrollmåling" + (s.n > 1 ? "ar" : "") + "</b> · snittavvik <b>" + cm(s.mean, 1) + "</b> (" + (s.mean > 0 ? "SNOWMAN viser for mykje snø" : s.mean < 0 ? "SNOWMAN viser for lite snø" : "ingen skilnad") + ")" +
+            (s.sd != null ? " · spreiing ±" + cm(s.sd) : "") + " · størst " + cm(s.maxAbs) +
+            (s.n < 3 ? "<br>Ta minst 3 målingar før du vurderer kalibreringa." : !s.suggest ? "<br>Avviket er lite eller sprikande – inga justering tilrådd." : "");
+        $("ctlApply").classList.toggle("hide", !s.suggest);
+        if (s.suggest)
+          $("ctlApply").textContent =
+            "JUSTER HØGDEOFFSET: " + c.zOff.toFixed(3).replace(".", ",") + " → " + (c.zOff + s.mean).toFixed(3).replace(".", ",") + " m";
+        $("ctlChecks").innerHTML = c.checks
+          .map(
+            (k) =>
+              '<div class="tlayer"><b>' + esc(k.t) + "</b> · kjend " + m2(k.known) + " · SNOWMAN " + m2(k.known + k.diff) +
+              ' · avvik <b style="color:' + (Math.abs(k.diff) <= 0.05 ? "#31ef55" : Math.abs(k.diff) <= 0.15 ? "#ffcf5b" : "#ff6b5a") + '">' + cm(k.diff, 1) + "</b>" +
+              (k.simulated ? ' <span style="color:#ffcf5b">(TEST)</span>' : "") +
+              "<br><small>" + esc(k.layerName || "") + (k.note ? " · " + esc(k.note) : "") + "</small>" +
+              '<div class="acts"><button onclick="delCheck(\'' + k.id + "')\">Slett</button></div></div>",
+          )
+          .join("");
+        $("ctlPoints").innerHTML = c.points
+          .map(
+            (p) =>
+              '<div class="tlayer"><b>' + esc(p.name) + "</b> · UTM " + p.zone + " " + p.E.toFixed(2) + " / " + p.N.toFixed(2) +
+              "<br>Kjend " + p.h.toFixed(2).replace(".", ",") + " m · modell " + (p.model == null ? "<i>utanfor terrengmodell</i>" : p.model.toFixed(2).replace(".", ",") + " m") +
+              (p.diff == null ? "" : ' · avvik <b style="color:' + (Math.abs(p.diff) <= 0.1 ? "#31ef55" : Math.abs(p.diff) <= 0.3 ? "#ffcf5b" : "#ff6b5a") + '">' + cm(p.diff, 1) + "</b>") +
+              "<br><small>" + esc(p.layerName || "") + (p.dist != null ? " · " + (p.dist < 1000 ? Math.round(p.dist) + " m" : (p.dist / 1000).toFixed(1) + " km") + " frå maskina" : "") + "</small>" +
+              '<div class="acts"><button onclick="map.panTo([' + p.lat + "," + p.lon + '])">Vis på kart</button><button onclick="delPoint(\'' + p.id + "')\">Slett</button></div></div>",
+          )
+          .join("");
+        ctlGroup.clearLayers();
+        c.points.forEach((p) =>
+          L.circleMarker([p.lat, p.lon], { radius: 7, color: "#ffffff", weight: 2, fillColor: "#b05cff", fillOpacity: 0.9 })
+            .bindTooltip(esc(p.name) + (p.diff != null ? " · avvik " + cm(p.diff, 1) : ""), { direction: "top" })
+            .addTo(ctlGroup),
+        );
+      }
+      async function saveCheck() {
+        let v = parseFloat(String($("ctlKnown").value).replace(",", "."));
+        if (isNaN(v)) return toast("Skriv inn kjend snødjupne (0 på barmark)");
+        try {
+          let r = await api("api/control/check", { known: v, note: $("ctlNote").value });
+          toast("Kontrollmåling lagra · avvik " + cm(r.check.raw - r.check.known, 1));
+          $("ctlKnown").value = "";
+          $("ctlNote").value = "";
+          loadControl();
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+      async function delCheck(id) {
+        if (!confirm("Slette kontrollmålinga?")) return;
+        await api("api/control/check/delete", { id });
+        loadControl();
+      }
+      async function applyOffset() {
+        let s = CTL.stats;
+        if (!confirm("Endre høgdeoffset med " + cm(s.mean, 1) + " basert på " + s.n + " kontrollmålingar?\n\nSnødjupna blir rekna på nytt med den nye kalibreringa.")) return;
+        try {
+          let r = await api("api/control/apply-offset", {});
+          cfg.zOff = r.zOff;
+          $("zOff").value = r.zOff;
+          persistCfg();
+          toast("Høgdeoffset er no " + r.zOff.toFixed(3).replace(".", ",") + " m");
+          loadControl();
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+      async function addPoint() {
+        try {
+          await api("api/control/point", {
+            name: $("cpName").value,
+            E: parseFloat($("cpE").value),
+            N: parseFloat($("cpN").value),
+            zone: +$("cpZone").value,
+            h: parseFloat($("cpH").value),
+          });
+          ["cpName", "cpE", "cpN", "cpH"].forEach((x) => ($(x).value = ""));
+          toast("Kontrollpunkt lagt til");
+          loadControl();
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+      async function delPoint(id) {
+        if (!confirm("Slette kontrollpunktet?")) return;
+        await api("api/control/point/delete", { id });
+        loadControl();
+      }
       async function saveCalibration() {
         save();
         let hm = $("heightMode").value,
@@ -2835,6 +2986,7 @@
       fillMapForm();
       pollGNSS();
       publishHUD();
+      loadControl(); // kontrollpunkt på kartet
     </script>
   </body>
 </html>

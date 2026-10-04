@@ -133,6 +133,15 @@ lat0, lon0 = 62.3905, 6.5810
 mlat = 111320; mlon = 111320 * math.cos(math.radians(lat0))
 L, W, v, hz = 120, 5.0, 2.2, 5
 AN = Anlegg() if a.anlegg else None
+FASIT = Path(__file__).resolve().parent / "data" / "sim-fasit.json"   # simulert snødjupne der maskina står (til kontrollmåling i test)
+last_fasit = 0
+def fasit(snow):
+    global last_fasit
+    if time.time() - last_fasit < 0.5: return
+    last_fasit = time.time()
+    try:
+        FASIT.parent.mkdir(parents=True, exist_ok=True); FASIT.write_text('{"snow": %.3f}' % snow)
+    except Exception: pass
 last_alt, last_chk = 350.0, 0
 t0 = time.time()
 while True:
@@ -148,6 +157,7 @@ while True:
             h = AN.height(lat, lon)
             if h is not None:
                 last_alt = h + sim_snow(s_, t_) + a.antenne + random.gauss(0, 0.008)
+                fasit(sim_snow(s_, t_))
             alt = last_alt                                       # utanfor modellen: SNOWMAN viser UTANFOR TERRENGMODELL
         else:
             lat, lon, alt = 62.3365, 6.7650, 350.0               # Fjellsætra, parkeringsplassen
@@ -159,6 +169,7 @@ while True:
         if a.terreng:
             E, N = utm_forward(lat, lon, 32)
             alt = terrain_h(E, N) + snow_truth(E, N) + a.antenne + random.gauss(0, 0.008)  # RTK-støy ca. 1 cm
+            fasit(snow_truth(E, N))
         else:
             alt = 905.31 + 0.01 * math.sin(t)
     lat += random.gauss(0, 0.01) / mlat; lon += random.gauss(0, 0.01) / mlon

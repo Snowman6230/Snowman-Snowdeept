@@ -9,6 +9,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.7 – kontroll av snødjupne og terrengmodell
+- **Nytt:** Fana **Kontroll** (Innst.) med to typar kontroll:
+  - **Kontrollmåling her:** maskina står med RTK FIX, føraren skriv inn kjend snødjupne (snøsonde rett under antenna, eller 0 på barmark). SNOWMAN lagrar si eiga utrekning ved sida av og viser avviket (grøn ≤ 5 cm, gul ≤ 15 cm, raud over).
+  - **Kontrollpunkt:** kjend koordinat (EUREF89 UTM 32/33/35) og terrenghøgd NN2000 frå landmålar. Terrengmodellen blir samanlikna med punktet utan GNSS. Punkta blir viste på kartet (lilla) med avvik og avstand frå maskina.
+- **Nytt:** Statistikk over kontrollmålingane: snittavvik, spreiing og største avvik. Med minst 3 målingar og eit systematisk avvik (≥ 3 cm og større enn spreiinga) kan SNOWMAN justere høgdeoffset med eitt trykk (med stadfesting).
+- **Nytt:** Avvika blir alltid rekna mot gjeldande antennehøgd og høgdeoffset, så gamle kontrollmålingar framleis gjeld etter ei justering.
+- **Nytt:** `kontroll.py`, API `GET /api/control` og `POST /api/control/check | check/delete | point | point/delete | apply-offset`. Data i `data/kontroll.json` (høyrer til anlegget, skal med i anleggspakka).
+- **Nytt:** I testmodus skriv simulatoren den simulerte snødjupna til `data/sim-fasit.json`, og fana viser ho merka «TEST» – så kontrollmåling kan prøvast heime.
+- **Testa:** 4 kontrollmålingar med 5 cm kjend feil → snittavvik +4,9 cm, spreiing ±0,5 cm → justering gav høgdeoffset 0,049 m og snittavvik 0. Kontrollpunkt 12 cm under modellen → avvik +12 cm. Ugyldige koordinatar og snødjupner blir avviste.
+- **Avgjerd:** SNOWMAN justerer aldri kalibreringa av seg sjølv – berre når føraren stadfestar, og berre når avviket er systematisk.
+- **Kvifor:** Utan kontroll mot kjende verdiar veit ein ikkje om snødjupna er til å stole på (t.d. WGS84-forskyving i lysmaster-modellen, ulike modellar som overlappar).
+
 ### Oppstart frå terminalen – kommandoen `snowman`
 - **Nytt:** `pc/installer-linux.sh` – køyr éin gong. Installerer kommandoen `snowman` (lenkje i `~/.local/bin`) og ein snarveg «SNOWMAN» i programmenyen. Legg `~/.local/bin` til i PATH i `~/.bashrc` om det manglar. Endrar ikkje noko utanfor heimemappa.
 - **Nytt:** `pc/snowman` – meny med start (Leica), demo, test over terrengmodellane, fullskjerm, oppdatering frå GitHub og stopp. Kan også brukast direkte: `snowman start | demo | test | oppdater | stopp | hjelp`.

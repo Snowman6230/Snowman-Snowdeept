@@ -21,6 +21,16 @@ CFG_FILE=HERE/"snowman-config.local.json"   # lokal, aldri i git (sjå .gitignor
 VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.js":"application/javascript","three.snowman.min.js":"application/javascript"}
 import terrain as T
 TERR=T.TerrainLibrary(DATA/"terrain")
+import kontroll as K
+KON=K.Kontroll(DATA/"kontroll.json",TERR if T.AVAILABLE else None,T.utm_inverse)
+SIM_FASIT=DATA/"sim-fasit.json"   # skriven av simuler-leica.py: simulert snødjupne der maskina står (berre test)
+def sim_truth():
+    """Fasit frå simulatoren, berre når mottakaren er simulert og fila er fersk."""
+    if not STATE.get("simulated"): return None
+    try:
+        if time.time()-SIM_FASIT.stat().st_mtime>3: return None
+        return json.loads(SIM_FASIT.read_text()).get("snow")
+    except Exception: return None
 
 STATE = {
     "version":"1.6","running":True,"serial_connected":False,"ntrip_connected":False,
@@ -204,6 +214,10 @@ class API(http.server.BaseHTTPRequestHandler):
             self.headers_ok(); self.wfile.write(json.dumps({"available":T.AVAILABLE,"error":T.IMPORT_ERROR,
                 "types":T.TYPES,"layers":TERR.listing() if T.AVAILABLE else [],
                 "calibration":{k:CFG[k] for k in ("antZ","zOff","heightMode","geoidN","calibrated")}}).encode()); return
+        if u.path=="/api/control":
+            r=KON.listing(CFG,STATE); r.update(ok=True,simTruth=sim_truth(),fix=STATE.get("fix"),depth=STATE.get("depth"),
+                raw=(STATE.get("depth_detail") or {}).get("raw"),depth_status=STATE.get("depth_status"),zOff=CFG["zOff"],calibrated=CFG["calibrated"])
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/terrain/patch":   # terrengutsnitt rundt maskina til 3D-visinga
             q=urllib.parse.parse_qs(u.query)
             try:
@@ -295,6 +309,20 @@ class API(http.server.BaseHTTPRequestHandler):
                 SESS.mkdir(parents=True,exist_ok=True)
                 tmp=SESS/f"{sid}.tmp"; tmp.write_text(json.dumps(d),"utf-8"); tmp.replace(SESS/f"{sid}.json")
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path.startswith("/api/control/"):
+            try:
+                d=json.loads(body or b"{}"); a=self.path[13:]
+                if a=="check": r={"ok":True,"check":KON.add_check(STATE,CFG,d.get("known"),d.get("note",""),sim_truth())}
+                elif a=="check/delete": KON.delete_check(d["id"]); r={"ok":True}
+                elif a=="point": r={"ok":True,"point":KON.add_point(d.get("name"),d.get("E"),d.get("N"),d.get("zone",32),d.get("h"))}
+                elif a=="point/delete": KON.delete_point(d["id"]); r={"ok":True}
+                elif a=="apply-offset":
+                    z,m=KON.apply_offset(CFG); save_cfg(); r={"ok":True,"zOff":z,"change":m}
+                else: raise ValueError("Ukjend kontroll-handling")
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return

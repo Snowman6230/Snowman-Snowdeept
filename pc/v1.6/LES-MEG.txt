@@ -33,6 +33,13 @@ START FRÅ TERMINALEN (Linux)
              snowman oppdater   – hent siste versjon frå GitHub
   Eller: Super + Space og søk etter «SNOWMAN».
 
+KONTROLL (v1.6.7) – Innst. › Kontroll
+- Kontrollmåling: stopp maskina, stikk snøsonda ned under antenna (eller stå på barmark
+  og skriv 0), vent på RTK FIX og trykk LAGRE. Ta minst 3 på ulike stader.
+  Er avviket likt overalt, kan SNOWMAN justere høgdeoffset med eitt trykk.
+- Kontrollpunkt: legg inn punkt med kjend koordinat og terrenghøgd frå landmålar.
+  SNOWMAN viser kor mykje terrengmodellen avvik der.
+
 VISINGAR (v1.6.5)
 - Knappen «Førarvising» blar gjennom: Kart → Førar → Horisont → 3D-terreng → Frontrute.
   Frontrute (v1.6.6) er som å sjå ut frå førarhuset. Zoom inn/ut endrar synsfeltet.
