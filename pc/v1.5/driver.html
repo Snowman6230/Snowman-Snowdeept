@@ -639,7 +639,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.5</b> (førargrensesnitt frå Driver v24)<br />Versjon 1.5 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.5.1</b> (førargrensesnitt frå Driver v24)<br />Versjon 1.5 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">
@@ -761,7 +761,13 @@
       }
       applyMapSource();
       const track = L.polyline([], { weight: 3, color: "#fff", opacity: 0.9 }).addTo(map),
+        // Preparert flate: eige kartlag der alle flater blir teikna heildekkande og laget som heilskap er
+        // halvgjennomsiktig. Då blir overlapp mellom spor ikkje mørkare, og opne felt synest tydeleg.
+        coverPane = (map.createPane("coverPane"), map.getPane("coverPane")),
+        coverRenderer = L.canvas({ pane: "coverPane", padding: 0.5 }),
         coverGroup = L.layerGroup().addTo(map);
+      coverPane.style.zIndex = 390;
+      coverPane.style.opacity = 0.5;
       arrowGroup = L.layerGroup().addTo(map);
       replayGroup = L.layerGroup().addTo(map);
 
@@ -1096,6 +1102,15 @@
         g.classList.toggle("tiny", w < 90);
       }
       map.on("zoomend", scaleGroomer);
+      // Pilene og senterlinja har fast storleik i pikslar. Langt ute blir dei tynnare/skjulte så sporflata synest.
+      function zoomDetail() {
+        let z = map.getZoom();
+        track.setStyle({ weight: z >= 19 ? 3 : z >= 18 ? 2 : 1, opacity: z >= 17 ? 0.9 : 0.5 });
+        let showArrows = z >= 18 && trackOn;
+        if (showArrows && !map.hasLayer(arrowGroup)) arrowGroup.addTo(map);
+        if (!showArrows && map.hasLayer(arrowGroup)) map.removeLayer(arrowGroup);
+      }
+      map.on("zoomend", zoomDetail);
       function toggleTools() {
         toolsFull = !toolsFull;
         $("toolMode").textContent = "ARBEIDSSTILLING: " + (toolsFull ? "FULL BREIDDE" : "INNKØYRD");
@@ -1251,21 +1266,26 @@
           let d = cfg.demoD;
           color = colors[d < cfg.bounds[0] ? 0 : d < cfg.bounds[1] ? 1 : d < cfg.bounds[2] ? 2 : d < cfg.bounds[3] ? 3 : d < cfg.bounds[4] ? 4 : 5];
         }
-        L.polyline([lastCoverage, p], {
-          weight: coverageWeight(p, toolsFull ? cfg.tiller : cfg.tillerN),
-          color,
-          opacity: 0.48,
-          lineCap: "butt",
-          lineJoin: "round",
-          interactive: false,
-        }).addTo(coverGroup);
+        // Sporet er ei flate i meter (fresbreidd) – ikkje ei linje i pikslar – så det følgjer zoomen.
+        let w = toolsFull ? cfg.tiller : cfg.tillerN,
+          opt = { renderer: coverRenderer, stroke: false, fill: true, fillColor: color, fillOpacity: 1, interactive: false };
+        let strip = stripPolygon(lastCoverage, p, w);
+        if (strip) L.polygon(strip, opt).addTo(coverGroup);
+        L.circle(p, Object.assign({ radius: w / 2 }, opt)).addTo(coverGroup); // fyller kilen i svingar
         lastCoverage = p;
       }
-      function coverageWeight(p, metres) {
-        let a = map.latLngToContainerPoint(p),
-          q = L.latLng(p[0], p[1] + metres / (111320 * Math.cos((p[0] * Math.PI) / 180))),
-          b = map.latLngToContainerPoint(q);
-        return Math.max(4, Math.abs(b.x - a.x));
+      // Rektangel med breidd w meter rundt segmentet a→b (lokal flat tilnærming, nøyaktig på desse avstandane)
+      function stripPolygon(a, b, w) {
+        let mLat = 111320,
+          mLng = 111320 * Math.cos((a[0] * Math.PI) / 180),
+          dx = (b[1] - a[1]) * mLng,
+          dy = (b[0] - a[0]) * mLat,
+          len = Math.hypot(dx, dy);
+        if (len < 0.01) return null;
+        let ox = (-dy / len) * (w / 2),
+          oy = (dx / len) * (w / 2),
+          off = (pt, sx) => [pt[0] + (sx * oy) / mLat, pt[1] + (sx * ox) / mLng];
+        return [off(a, 1), off(b, 1), off(b, -1), off(a, -1)];
       }
       function addArrow(a, b, h, group, cls, symbol) {
         let mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2],
@@ -1283,7 +1303,7 @@
         if (trackOn) {
           track.addTo(map);
           track.setLatLngs(pts);
-          arrowGroup.addTo(map);
+          zoomDetail();
         } else {
           if (map.hasLayer(track)) map.removeLayer(track);
           if (map.hasLayer(arrowGroup)) map.removeLayer(arrowGroup);
@@ -1299,11 +1319,13 @@
           lngM = 111320 * Math.cos((lat * Math.PI) / 180),
           length = 300,
           width = 50,
-          spacing = Math.max(4, toolsFull ? cfg.tiller : cfg.tillerN),
-          lanes = Math.ceil(width / spacing),
+          // Lanar med 0,2 m overlapp, slik ein dyktig førar køyrer: ingen opne felt mellom spora.
+          tool = toolsFull ? cfg.tiller : cfg.tillerN,
+          spacing = Math.max(1, tool - 0.2),
+          lanes = Math.max(2, Math.ceil((width - tool) / spacing) + 1),
           arr = [];
         for (let lane = 0; lane < lanes; lane++) {
-          let x = -width / 2 + lane * (width / (lanes - 1)),
+          let x = -width / 2 + tool / 2 + lane * spacing,
             steps = 60;
           for (let s = 0; s <= steps; s++) {
             let y = -length / 2 + (s * length) / steps;
@@ -1312,7 +1334,7 @@
           }
           if (lane < lanes - 1) {
             let last = arr[arr.length - 1],
-              nx = -width / 2 + (lane + 1) * (width / (lanes - 1));
+              nx = -width / 2 + tool / 2 + (lane + 1) * spacing;
             arr.push([last[0], lng + nx / lngM]);
           }
         }
