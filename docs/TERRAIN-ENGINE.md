@@ -1,6 +1,6 @@
 # Terrain Engine – spesifikasjon
 
-SNOWMAN by Alpindata · Analyse 2026-10-04 · Status: **v1.6 ferdig** (bibliotek, GeoTIFF, barmark, snødjupne) · v1.7 planlagt
+SNOWMAN by Alpindata · Analyse 2026-10-04 · Status: **v1.6 ferdig** (bibliotek, GeoTIFF, Topocad DTM, barmark, snødjupne) · v1.7 planlagt
 
 Terrain Engine reknar ut ekte snødjupne ved å samanlikne den kalibrerte høgda til maskina (RTK-GNSS)
 med ein terrengmodell av barmark. Dokumentet skildrar korleis terreng blir lagt inn, bytt ut og brukt.
@@ -51,6 +51,7 @@ v1.6 tek berre **barmark**, men biblioteket blir bygd slik at dei andre typane k
 | | Format | Krav |
 |---|---|---|
 | ✅ **Tilrådd** | **GeoTIFF (.tif)** – terrengmodell | Barmark, 0,25–1 m rute, EUREF89 UTM 32 eller 33, NN2000 |
+| ✅ Godteke | **Topocad DTM (.dtm)** – trekantmodell (v1.6.3) | Blir gjort om til 0,5 m rutenett. EPSG frå fila (eller tolka frå namnet). Høgdesystem står ikkje i fila – stadfest NN2000 |
 | ✅ Godteke | **LAS/LAZ** – punktsky | Bakkepunkt (klasse 2) blir brukte; blir gjort om til rutenett ved import |
 | ✅ Godteke | **XYZ/CSV** | Kolonnar austing, nording, høgd i same koordinatsystem |
 | ⛔ Ikkje godteke | OBJ, PLY, bilete | Manglar koordinatar / ikkje høgdedata |
@@ -109,7 +110,9 @@ Trasear og objekt blir lagra i anleggsprofilen og følgjer med til alle maskiner
 | Versjon | Innhald |
 |---|---|
 | **v1.6** | Terrengbibliotek (legg til, erstatt, av/på, prioritet), GeoTIFF, barmark. Ekte snødjupne i spor, førarskjerm og HUD. Testa med syntetisk terreng med kjend fasit |
-| **v1.6.2** | Kartverket DTM 1 m for Fjellsætra. Test av UTM 32/33 og NN2000 |
+| **v1.6.2** | HUD på mobil, HUD-knapp |
+| **v1.6.3** | Topocad DTM-import. Testa med parkeringsplass og lysmaster, Fjellsætra |
+| Neste | Kartverket DTM 1 m for Fjellsætra. Test av UTM 32/33 og NN2000 |
 | **v1.7** | LAS/LAZ- og XYZ-import, kontrollpunkt, anleggspakke |
 | **v1.8** | Trasear og anleggsobjekt (registrering, dekningsgrad, varsel, rapport per trasé) |
 | Seinare | Målflate og snøflate, IMU (pitch/roll), ekte 3D-terreng i førarperspektivet |

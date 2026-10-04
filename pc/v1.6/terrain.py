@@ -161,6 +161,129 @@ def analyse_geotiff(path):
     return (None if errors else grid), info, errors, warns
 
 
+# ---------------------------------------------------------------------------------------------
+# Topocad DTM (.dtm) – trekantmodell (TIN) frå landmålingsprogrammet Topocad (Adtollo)
+# Binært format, tolka 2026-10-04 frå filer levert til prosjektet (versjon 3):
+#   "Topocad DTM File", "TDTMBase", versjon, bbox (N,E,N,E,H,H),
+#   punkt: [0 N][0 E][0 H] + attributt (id, kode, ...),
+#   brotlinjenodar: (flagg, punktindeks, ?, førre, neste),
+#   trekantar: (flagg, p1, p2, p3, nabo1, nabo2, nabo3) med 1-baserte punktindeksar,
+#   til slutt innstillingar som tekst, mellom anna ProjPlaneEPSG.
+# ---------------------------------------------------------------------------------------------
+import struct
+
+
+def parse_topocad(path):
+    b = Path(path).read_bytes()
+    if b[9:25] != b"Topocad DTM File" or b"TDTMBase" not in b[:60]:
+        raise ValueError("Ikkje ei Topocad DTM-fil.")
+    i = b.index(b"TDTMBase") + 8
+    ver = struct.unpack_from("<i", b, i)[0]; i += 4
+    if ver != 3:
+        raise ValueError(f"Topocad DTM versjon {ver} er ikkje testa (berre versjon 3).")
+    i += 1 + 48  # bbox
+    _, npts = struct.unpack_from("<ii", b, i); i += 8
+    P = np.empty((npts, 3), np.float64)
+    for k in range(npts):
+        for j in range(3):
+            if b[i] != 0:
+                raise ValueError(f"Uventa punktformat ved punkt {k + 1}.")
+            P[k, j] = struct.unpack_from("<d", b, i + 1)[0]; i += 9
+        _, _, _, sl = struct.unpack_from("<iiii", b, i); i += 16 + sl
+        i += 4; d = b[i]; i += 1
+        if d:
+            sl2 = struct.unpack_from("<i", b, i)[0]; i += 4 + sl2
+    _, nn = struct.unpack_from("<ii", b, i); i += 8 + 20 * nn  # brotlinjer (alt med i trekantane)
+    _, nt = struct.unpack_from("<ii", b, i); i += 8
+    T = np.frombuffer(b, dtype="<i4", count=nt * 7, offset=i).reshape(nt, 7)
+    tris = T[T[:, 0] == 1][:, 1:4] - 1  # synlege trekantar, 0-baserte indeksar
+    if tris.size == 0 or tris.min() < 0 or tris.max() >= npts:
+        raise ValueError("Trekantane i fila peikar utanfor punktlista.")
+    epsg = None
+    k = b.find(b"ProjPlaneEPSG", i)
+    if k > 0:
+        n = struct.unpack_from("<i", b, k + 13)[0]
+        try:
+            epsg = int(b[k + 17:k + 17 + n].decode("latin1"))
+        except ValueError:
+            epsg = None
+    k = b.find(b"ProjPlaneName", i)
+    pname = ""
+    if k > 0:
+        n = struct.unpack_from("<i", b, k + 13)[0]; pname = b[k + 17:k + 17 + n].decode("latin1", "ignore")
+    # Topocad lagrar (N, E, H). Gjer om til (E, N, H).
+    pts = np.column_stack([P[:, 1], P[:, 0], P[:, 2]])
+    return pts, tris, epsg, pname, len(T) - len(tris), nn
+
+
+def rasterize_tin(pts, tris, res):
+    """Trekantmodell → rutenett (høgd i pikselmidten, NaN utanfor modellen)."""
+    E, N, H = pts[:, 0], pts[:, 1], pts[:, 2]
+    x0, y1 = math.floor(E.min() / res) * res, math.ceil(N.max() / res) * res
+    nx, ny = int(math.ceil((E.max() - x0) / res)) + 1, int(math.ceil((y1 - N.min()) / res)) + 1
+    grid = np.full((ny, nx), np.nan, np.float32)
+    for a, bb, c in tris:
+        xa, ya, xb, yb, xc, yc = E[a], N[a], E[bb], N[bb], E[c], N[c]
+        den = (yb - yc) * (xa - xc) + (xc - xb) * (ya - yc)
+        if abs(den) < 1e-9:
+            continue
+        c0, c1 = int((min(xa, xb, xc) - x0) / res), int((max(xa, xb, xc) - x0) / res) + 1
+        r0, r1 = int((y1 - max(ya, yb, yc)) / res), int((y1 - min(ya, yb, yc)) / res) + 1
+        cs, rs = np.arange(max(c0, 0), min(c1, nx)), np.arange(max(r0, 0), min(r1, ny))
+        if not len(cs) or not len(rs):
+            continue
+        X, Y = np.meshgrid(x0 + (cs + 0.5) * res, y1 - (rs + 0.5) * res)
+        l1 = ((yb - yc) * (X - xc) + (xc - xb) * (Y - yc)) / den
+        l2 = ((yc - ya) * (X - xc) + (xa - xc) * (Y - yc)) / den
+        l3 = 1 - l1 - l2
+        inside = (l1 >= -1e-6) & (l2 >= -1e-6) & (l3 >= -1e-6)
+        if inside.any():
+            sub = grid[rs[0]:rs[-1] + 1, cs[0]:cs[-1] + 1]
+            sub[inside] = (l1 * H[a] + l2 * H[bb] + l3 * H[c])[inside]
+    return grid, x0, y1, nx, ny
+
+
+def analyse_topocad(path, res=0.5):
+    errors, warns, info = [], [], {"format": "Topocad DTM (trekantmodell)"}
+    try:
+        pts, tris, epsg, pname, hidden, nbreak = parse_topocad(path)
+    except Exception as e:
+        return None, info, [f"Kunne ikkje lese Topocad-fila: {e}"], warns
+    if not epsg:  # nokre filer manglar EPSG-kode – tolk sona frå namnet (t.d. «EUREF UTM 32»)
+        import re as _re
+        m = _re.search(r"UTM\s*(?:zone\s*)?(3[2-5])", pname or "", _re.I)
+        if m:
+            zone = int(m.group(1))
+            epsg = {32: 25832, 33: 25833, 35: 25835}.get(zone) if "EUREF" in pname.upper() or "ETRS" in pname.upper() else {32: 32632, 33: 32633, 35: 32635}.get(zone)
+            emin, emax = pts[:, 0].min(), pts[:, 0].max()
+            nmin = pts[:, 1].min()
+            if not (160000 < emin and emax < 840000 and 6.4e6 < nmin < 8.0e6):
+                errors.append(f"Koordinatane passar ikkje med «{pname}» – sjekk koordinatsystemet i Topocad.")
+            else:
+                warns.append(f"EPSG-kode manglar i fila. Koordinatsystemet er tolka frå namnet «{pname}» som {CRS_NAME.get(epsg)}.")
+    if not epsg:
+        errors.append("Topocad-fila manglar koordinatsystem (ProjPlaneEPSG/ProjPlaneName).")
+    elif epsg not in CRS_ZONE:
+        errors.append(f"Koordinatsystemet ({pname or 'EPSG:' + str(epsg)}) er ikkje støtta. Bruk UTM 32/33.")
+    if errors:
+        return None, info, errors, warns
+    grid, x0, y0, nx, ny = rasterize_tin(pts, tris, res)
+    valid = np.isfinite(grid)
+    frac = float(valid.mean())
+    warns.append("Topocad-fila oppgir ikkje høgdesystem. Stadfest at høgdene er NN2000 før import.")
+    if epsg in (32632, 32633, 32635):
+        warns.append(f"Fila seier {CRS_NAME[epsg]}. Er koordinatane verkeleg WGS84 (ikkje EUREF89), ligg dei ca. 0,9 m forskyvde "
+                     "– det gir høgdefeil i bratt terreng. Sjekk med eit kontrollpunkt.")
+    info.update(vdatum="ukjent", epsg=epsg, crs=CRS_NAME.get(epsg), zone=CRS_ZONE[epsg], x0=x0, y0=y0, dx=res, dy=res,
+                nx=nx, ny=ny, res=res, valid=round(frac, 3), hmin=float(np.nanmin(grid)), hmax=float(np.nanmax(grid)),
+                area_km2=round(float(valid.sum()) * res * res / 1e6, 3),
+                points=int(len(pts)), triangles=int(len(tris)), breaklines=int(nbreak))
+    info["outline"] = _outline(info)
+    if len(pts) < 200:
+        warns.append(f"Modellen har berre {len(pts)} punkt – grov og passar best som oversikt, ikkje til snødjupnemåling.")
+    return grid, info, errors, warns
+
+
 def _outline(m):
     """Omrisset av laget som breidd/lengd-polygon (rotert i forhold til kartet når sona ikkje passar)."""
     x1, y1 = m["x0"] + m["nx"] * m["dx"], m["y0"] - m["ny"] * m["dy"]
@@ -208,6 +331,8 @@ class TerrainLibrary:
         ext = Path(filename).suffix.lower()
         if ext in (".tif", ".tiff"):
             grid, info, errors, warns = analyse_geotiff(tmp_path)
+        elif ext == ".dtm":
+            grid, info, errors, warns = analyse_topocad(tmp_path)
         elif ext in (".las", ".laz", ".xyz", ".csv", ".txt"):
             grid, info, errors, warns = None, {"format": ext[1:].upper()}, [
                 f"{ext[1:].upper()} blir støtta frå v1.7. Bruk GeoTIFF (.tif) inntil vidare, t.d. frå hoydedata.no."], []

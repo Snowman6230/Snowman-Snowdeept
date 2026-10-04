@@ -797,13 +797,14 @@
           </div>
           <table class="fmt">
             <tr><td>✅ <b>Tilrådd</b></td><td><b>GeoTIFF (.tif)</b> – barmark, 0,25–1 m rute, EUREF89 UTM 32 eller 33, NN2000</td></tr>
+            <tr><td>✅ Godteke</td><td><b>Topocad DTM (.dtm)</b> – trekantmodell, blir gjort om til 0,5 m rutenett</td></tr>
             <tr><td>🕓 v1.7</td><td>LAS/LAZ (punktsky, bakkepunkt) og XYZ/CSV</td></tr>
             <tr><td>⛔ Nei</td><td>OBJ, PLY, bilete – manglar koordinatar</td></tr>
           </table>
           <div class="history" style="font-size: 12px">
             Har du ikkje eiga skanning: last ned <b>DTM 1 m</b> for området frå <b>hoydedata.no</b> (GeoTIFF, EUREF89 UTM 33, NN2000).
           </div>
-          <input id="terrFile" type="file" accept=".tif,.tiff,.las,.laz,.xyz,.csv,.txt" style="width: 100%; margin: 8px 0" />
+          <input id="terrFile" type="file" accept=".tif,.tiff,.dtm,.las,.laz,.xyz,.csv,.txt" style="width: 100%; margin: 8px 0" />
           <button class="btn" onclick="analyseTerrain()">ANALYSER FIL</button>
           <div id="terrResult"></div>
           <div id="terrImport" class="hide">
@@ -825,7 +826,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.2</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.3</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">

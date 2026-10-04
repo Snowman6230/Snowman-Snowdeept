@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.3 – import av Topocad DTM
+- **Nytt:** Terrengbiblioteket les Topocad-terrengmodellar (`.dtm`, trekantmodell/TIN). Trekantane blir gjorde om til eit 0,5 m rutenett ved import, berre innanfor modellen (ingen gjetting utanfor kanten). Bruddlinjer er med i trekantane.
+- **Nytt:** Koordinatsystemet blir lese frå fila (EPSG). Manglar EPSG-koden, blir sona tolka frå namnet (t.d. «EUREF UTM 32») og føraren får ei åtvaring.
+- **Nytt:** Åtvaringar ved import: Topocad oppgir ikkje høgdesystem (stadfest NN2000), fil merkt WGS84 kan liggje ca. 0,9 m forskyvd, og modellar med under 200 punkt er for grove til snødjupnemåling.
+- **Endra:** Fana «Terreng» viser Topocad DTM som godteke format.
+- **Testa:** Dei to filene frå Drive (Fjellsætra). «Terrängmodell parkeringsplass»: 9 265 punkt, 17 591 trekantar, 338–366 m, 0,15 km². Oppslag i tenesta mot modellen: maks avvik 1,4 cm (200 punkt). «Terreng fra lysmaster»: berre 36 punkt – berre til oversikt. GeoTIFF-import uendra.
+- **Avgjerd:** Topocad-formatet er lese ut frå sjølve fila (ingen tredjepartskode). Formatet er ikkje offentleg dokumentert, så nye Topocad-versjonar må testast.
+
 ### PC-prototype v1.6.2 – HUD utan avbrot, HUD-knapp og HUD på mobil
 - **Retta:** HUD viste av og til «VENTAR PÅ SNOWMAN». Årsak: nettlesaren bremsar førarskjermen når han ligg i bakgrunnen, og HUD fekk data derifrå. No set tenesta saman HUD-dataa sjølv – GNSS, fart, kurs og snødjupne kjem direkte frå mottakaren. Førarskjermen leverer berre prepareringsstatus. Ventemeldinga viser no årsaka.
 - **Nytt:** Knappen «HUD» i verktøylinja: opne HUD på same PC (eigen skjerm), eller slå på «HUD på mobil» med QR-kode og adresse.

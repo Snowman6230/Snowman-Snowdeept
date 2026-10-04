@@ -8,6 +8,8 @@ KVA ER NYTT I v1.6
 - Opplasting med analyse: koordinatsystem, høgdesystem, oppløysing, dekning og
   tydelege feil/åtvaringar før import. Omriss av terrenget på kartet.
 - Støttar GeoTIFF (.tif) i EUREF89 UTM 32 og 33, med NN2000. LAS/LAZ og XYZ kjem i v1.7.
+- Topocad DTM (.dtm) kan lastast opp direkte (v1.6.3). Trekantmodellen blir gjort om
+  til 0,5 m rutenett. Stadfest at høgdene er NN2000.
 - Kalibrering (Innst. › Kalibrering): antennehøgd, høgdeoffset og kva høgd mottakaren
   leverer (NN2000 eller ellipsoidisk + geoidehøgd). Må lagrast før snødjupne blir vist.
 - Snødjupne blir berre vist når RTK FIX + terreng dekkjer posisjonen + kalibrering er lagra.
