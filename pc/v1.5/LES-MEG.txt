@@ -14,6 +14,11 @@ KVA ER NYTT I v1.5
   elles eit rutenett.
 - Skjermen sovnar ikkje under preparering (wake lock).
 - Kartretning: køyreretning opp eller nord opp.
+- Val av kartkjelde per anlegg (Innstillingar › Kart): Kartverket topo/gråtone,
+  lokale kartfliser (offline, data/tiles/{z}/{x}/{y}.png), eiga XYZ/WMTS- eller
+  WMS-kjelde, eller berre rutenett.
+- Anleggsprofil: eksporter alle innstillingar til ei fil og importer på dei
+  andre maskinene på same anlegg.
 
 VIKTIG
 - Snødjupne er IKKJE MÅLT under ekte køyring. Spor blir vist i nøytral blå farge.

@@ -157,6 +157,15 @@ class API(http.server.BaseHTTPRequestHandler):
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
         if u.path.startswith("/vendor/") and u.path[8:] in VENDOR:
             self.headers_ok(200,VENDOR[u.path[8:]]); self.wfile.write((HERE/"vendor"/u.path[8:]).read_bytes()); return
+        m=re.fullmatch(r"/tiles/(\d{1,2})/(\d{1,8})/(\d{1,8})",u.path)
+        if m:  # lokale kartfliser for offline drift: data/tiles/{z}/{x}/{y}.png|.jpg
+            for ext,typ in ((".png","image/png"),(".jpg","image/jpeg"),(".jpeg","image/jpeg"),(".webp","image/webp")):
+                f=DATA/"tiles"/m[1]/m[2]/(m[3]+ext)
+                if f.exists():
+                    self.send_response(200); self.send_header("Content-Type",typ)
+                    self.send_header("Cache-Control","max-age=86400"); self.end_headers()
+                    self.wfile.write(f.read_bytes()); return
+            self.send_response(404); self.end_headers(); return
         if u.path=="/api/sessions":
             out=[]
             for f in sorted(SESS.glob("*.json")):

@@ -572,6 +572,34 @@
           ><button class="btn" onclick="location.href = 'ntrip'">LEICA / CPOS / NTRIP-OPPSETT</button
           ><button class="btn" onclick="startGPS()">START MOBIL-GPS (TEST)</button>
           <div id="gnssInfo" class="history">Ingen kontakt med lokal SNOWMAN-teneste.</div>
+          <h3>ANLEGG OG KARTKJELDE</h3>
+          <div class="row"><span>Anlegg</span><input id="siteName" type="text" placeholder="t.d. Fjellsætra" style="width: 190px" /></div>
+          <div class="row">
+            <span>Kartkjelde</span
+            ><select id="mapSrc" style="width: 190px" onchange="mapFormUpdate()">
+              <option value="kv_topo">Kartverket – topografisk</option>
+              <option value="kv_grey">Kartverket – gråtone</option>
+              <option value="local">Lokale kartfliser (offline)</option>
+              <option value="xyz">Eiga kjelde – XYZ/WMTS-adresse</option>
+              <option value="wms">Eiga kjelde – WMS</option>
+              <option value="osm">OpenStreetMap (berre test)</option>
+              <option value="none">Ingen – berre rutenett</option>
+            </select>
+          </div>
+          <div id="mapUrlRow" class="row"><span>Adresse</span><input id="mapUrl" type="text" style="width: 190px" /></div>
+          <div id="mapLayersRow" class="row"><span>WMS-lag</span><input id="mapLayers" type="text" style="width: 190px" /></div>
+          <div id="mapAttrRow" class="row"><span>Kjeldetekst</span><input id="mapAttr" type="text" placeholder="© Kartdata: ..." style="width: 190px" /></div>
+          <div class="row"><span>Høgaste kartnivå (zoom)</span><input id="mapMaxNative" type="number" step="1" min="10" max="22" /></div>
+          <div id="mapHelp" class="history"></div>
+          <button class="btn" onclick="saveMapSource()">BRUK KARTKJELDE</button>
+          <h3>ANLEGGSPROFIL</h3>
+          <div class="history">
+            Eksporter alle innstillingar (anlegg, kart, maskin, kalibrering, snøintervall) til ei fil, og importer fila på dei andre
+            maskinene på same anlegg. Køyrehistorikk blir ikkje med.
+          </div>
+          <button class="btn" onclick="exportProfile()">EKSPORTER PROFIL</button
+          ><button class="btn" onclick="$('profileFile').click()">IMPORTER PROFIL</button>
+          <input id="profileFile" type="file" accept=".json" style="display: none" onchange="importProfile(this.files[0])" />
         </section>
         <section id="panelCal" class="panel">
           <h3>MASKINKALIBRERING</h3>
@@ -634,7 +662,7 @@
         ><button class="tool" onclick="openHistory()"><i>⏱</i>Historikk</button>
       </div>
       <div id="demoTag" class="demoTag hide">DEMO – SIMULERTE DATA</div>
-      <div class="attrib">© Kartverket</div>
+      <div id="attrib" class="attrib">© Kartverket</div>
       <div id="toast" class="toast"></div>
     </div>
     <script src="vendor/leaflet.js"></script>
@@ -702,11 +730,35 @@
         if (old) Object.assign(cfg, JSON.parse(old));
       } catch (e) {}
       const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([62.39, 6.58], 19);
-      // Kartverket topografisk kart (gratis, CC BY 4.0). Utan nett blir rutenettet under vist.
-      L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", {
-        maxZoom: 20,
-        maxNativeZoom: 18,
-      }).addTo(map);
+      /* ---------- Kartkjelder ----------
+         Kvart anlegg kan velje kartkjelde. Utan nett (eller med "Ingen") blir rutenettet under vist. */
+      const MAP_PRESETS = {
+        kv_topo: { url: "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", attr: "© Kartverket", max: 18, help: "Gratis frå Kartverket (CC BY 4.0). Krev nett." },
+        kv_grey: { url: "https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png", attr: "© Kartverket", max: 18, help: "Gratis frå Kartverket (CC BY 4.0). Krev nett." },
+        local: { url: "tiles/{z}/{x}/{y}", attr: "", max: 19, help: "Les kartfliser frå mappa data/tiles/{z}/{x}/{y}.png (eller .jpg) på denne PC-en. Fungerer heilt utan nett – t.d. eige ortofoto eller dronekart av anlegget." },
+        xyz: { url: "", attr: "", max: 19, help: "Lim inn ei XYZ- eller WMTS-adresse med {z}, {x} og {y}, t.d. frå anlegget sin kartleverandør. Sjekk at lisensen tillèt bruken." },
+        wms: { url: "", attr: "", max: 20, help: "Lim inn WMS-adressa (utan ?-parametrar) og namnet på laget/laga, skilde med komma." },
+        osm: { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "© OpenStreetMap", max: 19, help: "Berre til testing. OpenStreetMap sine vilkår tillèt ikkje bruk i eit kommersielt produkt." },
+        none: { url: "", attr: "", max: 20, help: "Ingen bakgrunnskart. Spor og maskin blir vist på rutenett." },
+      };
+      if (!cfg.mapSource) cfg.mapSource = { id: "kv_topo", url: "", layers: "", attr: "", max: 18 };
+      let baseLayer = null;
+      function applyMapSource() {
+        let m = cfg.mapSource,
+          pre = MAP_PRESETS[m.id] || MAP_PRESETS.kv_topo,
+          url = m.id === "xyz" || m.id === "wms" ? m.url : pre.url,
+          attr = m.attr || pre.attr,
+          max = +m.max || pre.max;
+        if (baseLayer) map.removeLayer(baseLayer);
+        baseLayer = null;
+        if (m.id === "wms" && url && m.layers)
+          baseLayer = L.tileLayer.wms(url, { layers: m.layers, format: "image/png", transparent: false, maxZoom: 22, maxNativeZoom: max });
+        else if (url) baseLayer = L.tileLayer(url, { maxZoom: 22, maxNativeZoom: max });
+        if (baseLayer) baseLayer.addTo(map).bringToBack();
+        $("attrib").textContent = attr;
+        $("attrib").classList.toggle("hide", !attr);
+      }
+      applyMapSource();
       const track = L.polyline([], { weight: 3, color: "#fff", opacity: 0.9 }).addTo(map),
         coverGroup = L.layerGroup().addTo(map);
       arrowGroup = L.layerGroup().addTo(map);
@@ -1498,7 +1550,66 @@
         refreshHistory();
         toast("Historikk sletta");
       }
+      /* ---------- Kartkjelde- og anleggsprofil-skjema ---------- */
+      function mapFormUpdate() {
+        let id = $("mapSrc").value,
+          pre = MAP_PRESETS[id],
+          custom = id === "xyz" || id === "wms";
+        $("mapUrlRow").classList.toggle("hide", !custom);
+        $("mapLayersRow").classList.toggle("hide", id !== "wms");
+        $("mapAttrRow").classList.toggle("hide", !custom && id !== "local");
+        $("mapHelp").textContent = pre.help;
+        if (id !== cfg.mapSource.id) $("mapMaxNative").value = pre.max;
+      }
+      function fillMapForm() {
+        let m = cfg.mapSource;
+        $("siteName").value = cfg.site || "";
+        $("mapSrc").value = m.id;
+        $("mapUrl").value = m.url || "";
+        $("mapLayers").value = m.layers || "";
+        $("mapAttr").value = m.attr || "";
+        $("mapMaxNative").value = m.max || MAP_PRESETS[m.id].max;
+        mapFormUpdate();
+      }
+      function saveMapSource() {
+        let id = $("mapSrc").value,
+          url = $("mapUrl").value.trim();
+        if (id === "xyz" && !/\{z\}/.test(url)) return toast("Adressa må innehalde {z}, {x} og {y}");
+        if (id === "wms" && (!url || !$("mapLayers").value.trim())) return toast("WMS treng både adresse og lagnamn");
+        cfg.site = $("siteName").value.trim();
+        cfg.mapSource = { id, url, layers: $("mapLayers").value.trim(), attr: $("mapAttr").value.trim(), max: +$("mapMaxNative").value || MAP_PRESETS[id].max };
+        persistCfg();
+        applyMapSource();
+        toast("Kartkjelde: " + $("mapSrc").selectedOptions[0].text);
+      }
+      function exportProfile() {
+        save();
+        cfg.site = $("siteName").value.trim() || cfg.site;
+        let prof = { snowmanProfile: 1, version: "1.5", exported: new Date().toISOString(), cfg: Object.assign({}, cfg, { demoD: 0.82 }) },
+          a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(prof, null, 2)], { type: "application/json" }));
+        a.download = "snowman-profil-" + (cfg.site || "anlegg").replace(/[^\wæøåÆØÅ-]+/g, "_") + ".json";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }
+      async function importProfile(f) {
+        if (!f) return;
+        try {
+          let d = JSON.parse(await f.text());
+          if (!d.snowmanProfile || !d.cfg) throw Error("ikkje ein SNOWMAN-profil");
+          if (!confirm("Erstatte innstillingane på denne maskina med profilen «" + (d.cfg.site || f.name) + "»?")) return;
+          Object.assign(cfg, d.cfg);
+          persistCfg();
+          load();
+          applyMapSource();
+          toast("Profil importert: " + (cfg.site || f.name));
+        } catch (e) {
+          toast("Kunne ikkje lese profil: " + e.message);
+        }
+        $("profileFile").value = "";
+      }
       load();
+      fillMapForm();
       pollGNSS();
     </script>
   </body>
