@@ -1990,7 +1990,7 @@
         if (!pendingToken) return;
         if (pendingInfo.vdatum !== "NN2000" && !$("vdConfirm").checked) return toast("Stadfest høgdesystemet først");
         try {
-          let r = await api("api/terrain/import", { token: pendingToken, name: $("terrName").value.trim(), type: $("terrType").value, replace: replaceId });
+          let r = await api("api/terrain/import", { token: pendingToken, name: $("terrName").value.trim(), type: $("terrType").value, replace: replaceId, vdatumConfirmed: $("vdConfirm").checked });
           toast((replaceId ? "Erstatta: " : "Lagt til: ") + r.layer.name);
           resetWizard();
           loadTerrain();

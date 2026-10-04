@@ -348,7 +348,7 @@ class TerrainLibrary:
         info.pop("outline_utm", None)
         return {"ok": grid is not None, "token": token, "file": filename, "info": info, "errors": errors, "warnings": warns}
 
-    def import_pending(self, token, name, ltype="barmark", priority=None, replace_id=None, source=""):
+    def import_pending(self, token, name, ltype="barmark", priority=None, replace_id=None, source="", vdatum_confirmed=False):
         with self.lock:
             p = self.pending.pop(token, None)
             if not p:
@@ -375,10 +375,13 @@ class TerrainLibrary:
             d.mkdir(parents=True, exist_ok=True)
             np.save(d / "grid.npy", p["grid"])
             i = p["info"]
+            vd = i["vdatum"]
+            if vd != "NN2000" and vdatum_confirmed:
+                vd = "NN2000 (stadfesta)"  # føraren har stadfest høgdesystemet ved import
             self.layers[lid] = {
                 "id": lid, "name": name or Path(p["file"]).stem, "type": ltype, "file": p["file"], "source": source,
                 "imported": time.strftime("%Y-%m-%d %H:%M"), "priority": int(priority), "active": True,
-                "epsg": i["epsg"], "crs": i["crs"], "zone": i["zone"], "vdatum": i["vdatum"], "res": i["res"],
+                "epsg": i["epsg"], "crs": i["crs"], "zone": i["zone"], "vdatum": vd, "res": i["res"],
                 "x0": i["x0"], "y0": i["y0"], "dx": i["dx"], "dy": i["dy"], "nx": i["nx"], "ny": i["ny"],
                 "hmin": i["hmin"], "hmax": i["hmax"], "valid": i["valid"], "area_km2": i["area_km2"],
                 "outline": i["outline"], "warnings": p["warns"], "versions": versions,

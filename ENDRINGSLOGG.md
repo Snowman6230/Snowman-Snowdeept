@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.3 – stadfesta høgdesystem blir lagra
+- **Endra:** Når føraren hakar av «Eg har sjekka at høgdene er NN2000» ved import, blir laget lagra som «NN2000 (stadfesta)» i staden for «ukjent». Det synest i terrenglista og i oppslaga.
+- **Avgjerd (eigar):** Topocad-filene frå Fjellsætra er i NN2000. Parkeringsmodellen er EUREF89 UTM 32N. Lysmaster-modellen er verkeleg WGS84 UTM 32N. Med 37 % median helling gir ei forskyving på ca. 0,9 m om lag 30 cm høgdefeil der, så modellen blir berre brukt til oversikt. Ingen automatisk WGS84→EUREF89-omrekning no: ho krev kva år punkta vart målte. Kontrollpunkt (v1.7) skal avdekkje slike skilnader.
+
 ### PC-prototype v1.6.3 – import av Topocad DTM
 - **Nytt:** Terrengbiblioteket les Topocad-terrengmodellar (`.dtm`, trekantmodell/TIN). Trekantane blir gjorde om til eit 0,5 m rutenett ved import, berre innanfor modellen (ingen gjetting utanfor kanten). Bruddlinjer er med i trekantane.
 - **Nytt:** Koordinatsystemet blir lese frå fila (EPSG). Manglar EPSG-koden, blir sona tolka frå namnet (t.d. «EUREF UTM 32») og føraren får ei åtvaring.

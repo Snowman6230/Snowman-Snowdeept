@@ -299,7 +299,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 elif not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
                 elif self.path=="/api/terrain/import":
                     r={"ok":True,"layer":TERR.import_pending(d.get("token"),d.get("name","").strip(),d.get("type","barmark"),
-                        d.get("priority"),d.get("replace") or None,d.get("source",""))}
+                        d.get("priority"),d.get("replace") or None,d.get("source",""),bool(d.get("vdatumConfirmed")))}
                 elif self.path=="/api/terrain/update":
                     r={"ok":True,"layer":TERR.update(d["id"],name=d.get("name"),active=d.get("active"),priority=d.get("priority"))}
                 else:
