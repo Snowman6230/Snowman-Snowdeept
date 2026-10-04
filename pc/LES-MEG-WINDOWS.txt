@@ -1,0 +1,34 @@
+SNOWMAN by Alpindata – Windows (Windows 10 og 11)
+==================================================
+
+INSTALLASJON (éin gong)
+1. Pakk ut zip-fila, t.d. til C:\SNOWMAN. Ikkje køyr frå inne i zip-fila.
+2. Dobbeltklikk INSTALLER-WINDOWS.bat.
+   - Manglar Python, spør installasjonen om å installere det (krev nett).
+     Køyr då INSTALLER-WINDOWS.bat ein gong til etterpå.
+   - Får du «Windows beskytta PC-en din»: trykk «Meir info» og «Køyr likevel».
+3. Når det står «Ferdig!», ligg det ein snarveg «SNOWMAN» på skrivebordet.
+
+START
+Dobbeltklikk SNOWMAN på skrivebordet (eller SNOWMAN.bat). Då kjem ein meny:
+  1  Start (Leica-mottakar)
+  2  Demo – simulert mottakar
+  3  Test over terrengmodellane dine
+  4  Start i fullskjerm (trakkemaskin)  – avslutt fullskjerm med Alt + F4
+  5  Hent siste versjon
+  6  Stopp SNOWMAN
+Førarskjermen opnar seg i Edge (eller Chrome) som eit eige vindauge.
+Stopp SNOWMAN med Ctrl + C i det svarte vindauget, eller lukk det.
+
+LEICA-MOTTAKAR
+Kople mottakaren til med USB-RS232-kabel. Sjå kva COM-port han får i Einingshandsaming
+(høgreklikk på Start-knappen › Einingshandsaming › Portar), t.d. COM3.
+Legg porten inn i SNOWMAN under Innst. › Kart › LEICA / CPOS / NTRIP-OPPSETT.
+
+HUD PÅ MOBIL
+Første gong spør Windows om Python får bruke nettverket. Vel «Privat nettverk» og Tillat.
+
+NY VERSJON
+Last ned ny zip og pakk ut over den gamle mappa. Terrengmodellar, kalibrering og
+kontrollmålingar ligg i mappa v1.6\data og blir verande.
+Har du installert Git, hentar menyval 5 den nye versjonen automatisk.

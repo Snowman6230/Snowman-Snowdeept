@@ -14,9 +14,12 @@ frå Fjellsætra). Lanane følgjer lengderetninga til modellen. Høgda er ekte t
 Når du legg inn, slår av/på eller endrar prioritet på eit lag, flyttar maskina seg dit innan nokre sekund.
 Snøen er SIMULERT – berre for å teste korleis SNOWMAN brukar terrengmodellen.
 
-Bruk: python3 simuler-leica.py [fil-for-portnamn] [--terreng | --anlegg] [--antenne 2.8]
+Utgang: virtuell seriellport (Linux/macOS), eller TCP med --tcp PORT (alle system, også Windows).
+SNOWMAN les TCP som seriellporten «socket://127.0.0.1:PORT».
+
+Bruk: python3 simuler-leica.py [fil-for-portnamn] [--terreng | --anlegg] [--antenne 2.8] [--tcp 7777]
 """
-import argparse, os, pty, time, math, random
+import argparse, os, socket, threading, time, math, random
 from pathlib import Path
 from terrain import utm_forward, utm_inverse
 
@@ -25,12 +28,36 @@ ap.add_argument("portfil", nargs="?")
 ap.add_argument("--terreng", action="store_true", help="høgd frå testterreng + fasit-snø")
 ap.add_argument("--anlegg", action="store_true", help="køyr over øvste aktive lag i terrengbiblioteket, med simulert snø")
 ap.add_argument("--antenne", type=float, default=2.8, help="antennehøgd over snøoverflata (m)")
+ap.add_argument("--tcp", type=int, help="send NMEA over TCP på denne porten i staden for virtuell seriellport (krevst på Windows)")
 a = ap.parse_args()
 if a.terreng:
     from testterreng import terrain_h, snow_truth
 
-m, s = pty.openpty(); port = os.ttyname(s)
+clients = []
+if a.tcp is None:
+    try:
+        import pty
+        m, s = pty.openpty(); port = os.ttyname(s)
+    except (ImportError, OSError):
+        a.tcp = 7777                                   # Windows: ingen virtuelle seriellportar – bruk TCP
+if a.tcp is not None:
+    srv = socket.socket(); srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(("127.0.0.1", a.tcp)); srv.listen(4)
+    port = f"socket://127.0.0.1:{a.tcp}"
+    def accept():
+        while True:
+            c, _ = srv.accept(); clients.append(c)
+    threading.Thread(target=accept, daemon=True).start()
 if a.portfil: open(a.portfil, "w").write(port)
+
+
+def send(data):
+    if a.tcp is None:
+        os.write(m, data); return
+    for c in clients[:]:
+        try: c.sendall(data)
+        except OSError:
+            clients.remove(c)
 print("Virtuell Leica på", port,
       "(høgd frå testterreng + fasit-snø)" if a.terreng else "(over terrengbiblioteket, simulert snø)" if a.anlegg else "",
       flush=True)
@@ -174,4 +201,4 @@ while True:
             alt = 905.31 + 0.01 * math.sin(t)
     lat += random.gauss(0, 0.01) / mlat; lon += random.gauss(0, 0.01) / mlon
     body = f"GNGGA,{time.strftime('%H%M%S')}.00,{dm(lat,2)},N,{dm(lon,3)},E,{q},19,0.6,{alt:.3f},M,40.0,M,1.0,0001"
-    os.write(m, f"${body}*{cs(body)}\r\n".encode()); time.sleep(1 / hz)
+    send(f"${body}*{cs(body)}\r\n".encode()); time.sleep(1 / hz)

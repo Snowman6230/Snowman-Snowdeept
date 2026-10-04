@@ -1,6 +1,3 @@
 @echo off
-cd /d "%~dp0"
-py -m pip install -r requirements.txt
-echo.
-echo SNOWMAN installasjon ferdig.
-pause
+rem Flytta: bruk INSTALLER-WINDOWS.bat i mappa over (pc).
+call "%~dp0..\INSTALLER-WINDOWS.bat"

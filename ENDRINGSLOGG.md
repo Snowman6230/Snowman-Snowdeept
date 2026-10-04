@@ -9,6 +9,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.9 – Windows-versjon
+- **Nytt:** `pc/INSTALLER-WINDOWS.bat` – sjekkar Python (tilbyr installasjon med winget om det manglar), lagar eige Python-miljø (`v1.6\.venv`), installerer bibliotek og lagar snarvegen «SNOWMAN» på skrivebordet.
+- **Nytt:** `pc/SNOWMAN.bat` – same meny som `snowman` på Linux: start, demo, test over terrengmodellane, fullskjerm, oppdater og stopp. Førarskjermen opnar i Edge eller Chrome som eige vindauge (fullskjerm med `--kiosk`).
+- **Nytt:** `start_snowman.py` – felles oppstart for alle system i Python (simulator, teneste, nettlesar, stopp, meny, versjon). Batch-filene er berre ein tynn inngang.
+- **Nytt:** Simulatoren kan sende NMEA over TCP (`--tcp 7777`), og tenesta les `socket://127.0.0.1:7777` som seriellport (pyserial `serial_for_url`). Windows har ikkje virtuelle seriellportar, så demo og test brukar dette der. Ekte Leica brukar COM-porten som før.
+- **Retta:** Simulatorporten blir ikkje lenger lagra i innstillingane. Før vart ein seinare vanleg start ståande og vente på simulatoren.
+- **Endra:** `v1.6\INSTALL.bat` og `v1.6\START-SNOWMAN.bat` viser vidare til dei nye filene i `pc\`.
+- **Nytt:** `pc/LES-MEG-WINDOWS.txt` med installasjon, start, COM-port og oppdatering.
+- **Testa:** Oppstart, demo over TCP, stopp, meny og oppdateringstekst frå utpakka zip (på Linux). Batch-filene er ikkje testa på ein ekte Windows-PC enno.
+- **Avgjerd:** Krev Python 3.10+ på PC-en (installert av installasjonen). Ei ferdig .exe krev bygging på Windows og kan kome seinare.
+
 ### PC-prototype v1.6.8 – ryddigare verktøylinje og versjonsnummer
 - **Endra:** Knappen for kartperspektiv viser no perspektivet som er i bruk (t.d. «Kart», «Horisont»). Trykk opnar ein meny med alle fem: Kart, Førar, Horisont, 3D-terreng og Frontrute.
 - **Nytt:** Eigen knapp **Bakgrunn** rett ved sida av perspektivknappen – slår bakgrunnskartet (og høgdekurvene i 3D) av og på.

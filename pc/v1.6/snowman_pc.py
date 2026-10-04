@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.8"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.9"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -46,8 +46,11 @@ def load_cfg():
     try: CFG.update({k:v for k,v in json.loads(CFG_FILE.read_text("utf-8")).items() if k in CFG})
     except FileNotFoundError: pass
     except Exception as e: print("Kunne ikkje lese config:",e)
+REAL_PORT=[None]   # seriellporten til ekte mottakar; simulatorporten blir aldri lagra i innstillingane
 def save_cfg():
-    try: CFG_FILE.write_text(json.dumps(CFG,indent=1),"utf-8")
+    d=dict(CFG)
+    if REAL_PORT[0] is not None: d["serial_port"]=REAL_PORT[0]
+    try: CFG_FILE.write_text(json.dumps(d,indent=1),"utf-8")
     except Exception as e: print("Kunne ikkje lagre config:",e)
 HUD={"t":0}   # siste tilstand frå førarskjermen (prep, tid, demo, mål), til HUD-visinga
 DEPTH_TXT={"OUTSIDE":"UTANFOR TERRENGMODELL","NO_CAL":"KALIBRERING MANGLAR","NO_FIX":"IKKJE MÅLT – KREV RTK FIX",
@@ -130,9 +133,10 @@ def serial_loop():
             try:
                 import serial
             except ImportError:
-                update(last_error="pyserial manglar. Køyr INSTALL.bat først.")
+                update(last_error="pyserial manglar. Køyr INSTALLER-WINDOWS.bat (Windows) eller start-snowman.sh (Linux).")
                 time.sleep(3); continue
-            serial_obj=serial.Serial(CFG["serial_port"], int(CFG["baud"]), timeout=.2)
+            # serial_for_url: vanleg port (COM3, /dev/ttyUSB0) eller simulator over TCP (socket://127.0.0.1:7777)
+            serial_obj=serial.serial_for_url(CFG["serial_port"], baudrate=int(CFG["baud"]), timeout=.2)
             update(serial_connected=True, port=CFG["serial_port"], baud=int(CFG["baud"]), last_error="")
             buf=b""
             while not STOP.is_set() and serial_obj.is_open:
@@ -413,7 +417,9 @@ def main():
     a=ap.parse_args()
     load_cfg()
     STATE["simulated"]=a.simulert
-    if a.serial: CFG["serial_port"]=a.serial; save_cfg()
+    if a.serial:
+        if a.simulert: REAL_PORT[0]=CFG["serial_port"]; CFG["serial_port"]=a.serial   # berre for denne økta
+        else: CFG["serial_port"]=a.serial; save_cfg()
     threading.Thread(target=serial_loop,daemon=True).start()
     threading.Thread(target=ntrip_loop,daemon=True).start()
     print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}")
