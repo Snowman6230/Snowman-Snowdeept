@@ -1,0 +1,31 @@
+SNOWMAN PC Prototype v1.5
+
+KVA ER NYTT I v1.5
+- Same førargrensesnitt som Driver v24 (testversjonen) – ingen nytt PC-grensesnitt.
+- Kopla til lokal GNSS-teneste: maskina flyttar seg etter Leica/RTK-posisjonen.
+- Ekte spor, distanse, areal, fart og kurs rekna frå GNSS-posisjonane.
+- Fix, satellittar og HDOP frå mottakaren i GNSS-boksen. Raudt/gult varsel utan RTK FIX.
+- Kalibrering (maskinnamn, antenne X/Y/Z, høgdeoffset) og LiDAR/terreng-registrering
+  frå v1.4 ligg no som faner under Innstillingar.
+- Arbeidsøkter blir lagra som filer i data/sessions på PC-en (ikkje berre i nettlesaren).
+- Seriellport og NTRIP-innstillingar blir hugsa mellom omstartar
+  (snowman-config.local.json – skal aldri inn i GitHub).
+- Fungerer utan nett: Leaflet ligg lokalt. Kartverket-kart blir vist når nett finst,
+  elles eit rutenett.
+- Skjermen sovnar ikkje under preparering (wake lock).
+- Kartretning: køyreretning opp eller nord opp.
+
+VIKTIG
+- Snødjupne er IKKJE MÅLT under ekte køyring. Spor blir vist i nøytral blå farge.
+  Fargar og tal for snødjupne finst berre i demo, tydeleg merka DEMO/SIMULERT.
+  Ekte snødjupne kjem med Terrain Engine (v1.6).
+- Antenneoffset blir lagra, men ikkje brukt i posisjonen enno (kjem i v1.6).
+
+START – WINDOWS
+Første gong: INSTALL.bat
+Deretter:    START-SNOWMAN.bat
+GNSS/CPOS:   Innstillingar › Kart, GNSS › LEICA / CPOS / NTRIP-OPPSETT
+
+START – LINUX (Surface)
+  pip install pyserial
+  ./start-snowman.sh /dev/ttyUSB0
