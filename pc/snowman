@@ -1,0 +1,97 @@
+#!/bin/sh
+# SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
+# Startar SNOWMAN frå terminalen. Blir installert som kommandoen «snowman» av installer-linux.sh.
+#
+#   snowman              meny
+#   snowman start        vanleg start (Leica-mottakar)
+#   snowman demo         simulert mottakar (sim)
+#   snowman test         simulert mottakar over terrengmodellane dine (simanlegg)
+#   snowman oppdater     hent siste versjon frå GitHub
+#   snowman stopp        stopp SNOWMAN som køyrer i bakgrunnen
+#   snowman hjelp        denne teksten
+#
+# Fullskjerm: KIOSK=1 snowman start   ·   HUD i eige vindauge: HUD=1 snowman start
+
+SELF=$(readlink -f "$0")
+PCDIR=$(dirname "$SELF")
+REPO=$(dirname "$PCDIR")
+# nyaste versjonsmappe (pc/v1.6, pc/v1.7 …)
+APP=$(ls -d "$PCDIR"/v*/ 2>/dev/null | sort -V | while read d; do [ -x "$d/start-snowman.sh" ] && echo "$d"; done | tail -n 1)
+APP=${APP%/}
+VER=$(basename "$APP")
+
+stopp() {
+  PIDS=$(ps -eo pid,args | awk '/snowman_pc\.py|simuler-leica\.py/ && !/awk/ {print $1}')
+  if [ -n "$PIDS" ]; then
+    kill $PIDS 2>/dev/null
+    sleep 1
+    echo "SNOWMAN er stoppa."
+  else
+    echo "SNOWMAN køyrde ikkje."
+  fi
+}
+
+start() {
+  if [ -z "$APP" ]; then
+    echo "Fann ikkje SNOWMAN-mappa under $PCDIR."
+    exit 1
+  fi
+  # SNOWMAN som alt køyrer (t.d. frå eit anna terminalvindauge) blir stoppa først, elles er porten oppteken
+  if ps -eo args | grep -q "[s]nowman_pc\.py"; then
+    echo "SNOWMAN køyrde alt – stoppar den gamle først."
+    stopp
+  fi
+  echo "Startar SNOWMAN ($VER) …  Stopp med Ctrl + C."
+  cd "$APP" && exec ./start-snowman.sh "$@"
+}
+
+oppdater() {
+  echo "Hentar siste versjon frå GitHub …"
+  if git -C "$REPO" pull --ff-only; then
+    echo "Ferdig. Start SNOWMAN på nytt for å bruke den nye versjonen."
+  else
+    echo "Oppdateringa feila. Sjekk nettet, eller om du har endra filer i mappa $REPO."
+  fi
+}
+
+hjelp() {
+  sed -n '4,13p' "$SELF" | sed 's/^# \{0,1\}//'
+}
+
+meny() {
+  echo ""
+  echo "  SNOWMAN by Alpindata  ($VER)"
+  echo "  ─────────────────────────────"
+  echo "  1  Start (Leica-mottakar)"
+  echo "  2  Demo – simulert mottakar"
+  echo "  3  Test over terrengmodellane dine"
+  echo "  4  Start i fullskjerm (trakkemaskin)"
+  echo "  5  Hent siste versjon frå GitHub"
+  echo "  6  Stopp SNOWMAN"
+  echo "  0  Avslutt"
+  echo ""
+  printf "  Vel eit tal og trykk Enter: "
+  read val
+  case "$val" in
+    1) start ;;
+    2) start sim ;;
+    3) start simanlegg ;;
+    4) KIOSK=1 start ;;
+    5) oppdater ;;
+    6) stopp ;;
+    *) exit 0 ;;
+  esac
+}
+
+case "$1" in
+  "") meny ;;
+  start) shift; start "$@" ;;
+  demo|sim) start sim ;;
+  test|simanlegg) start simanlegg ;;
+  simterreng) start simterreng ;;
+  oppdater|update) oppdater ;;
+  stopp|stop) stopp ;;
+  hjelp|help|-h|--help) hjelp ;;
+  /dev/*) start "$1" ;;
+  *) echo "Ukjent val: $1"; hjelp; exit 1 ;;
+esac

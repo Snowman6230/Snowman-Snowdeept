@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### Oppstart frå terminalen – kommandoen `snowman`
+- **Nytt:** `pc/installer-linux.sh` – køyr éin gong. Installerer kommandoen `snowman` (lenkje i `~/.local/bin`) og ein snarveg «SNOWMAN» i programmenyen. Legg `~/.local/bin` til i PATH i `~/.bashrc` om det manglar. Endrar ikkje noko utanfor heimemappa.
+- **Nytt:** `pc/snowman` – meny med start (Leica), demo, test over terrengmodellane, fullskjerm, oppdatering frå GitHub og stopp. Kan også brukast direkte: `snowman start | demo | test | oppdater | stopp | hjelp`.
+- **Nytt:** Køyrer SNOWMAN alt (t.d. frå eit anna vindauge), blir den gamle stoppa før ny start – elles er porten oppteken.
+- **Avgjerd:** Kommandoen ligg i `pc/` og vel den nyaste versjonsmappa (`pc/v1.6`, seinare `pc/v1.7` …), så han treng ikkje installerast på nytt ved ny versjon. `snowman oppdater` brukar `git pull --ff-only`, så lokale endringar aldri blir overskrivne.
+- **Kvifor:** Eigaren ville kunne opne SNOWMAN direkte frå terminalen utan å hugse mapper og kommandoar.
+
 ### PC-prototype v1.6.6 – frontrute, bakgrunn av og snødjupne framfor maskina
 - **Nytt:** Visinga **Frontrute** – 3D frå augehøgd i førarhuset (ca. 2,9 m), fast i køyreretninga, hallar med maskina i sidehelling og bakke. Zoom inn/ut endrar synsfeltet. Utan terrengmodell blir horisont vist.
 - **Nytt:** **Bakgrunn av/på** (Innst. › Kart): skjuler bakgrunnskartet, og i 3D blir terrenget mørkt utan høgdekurver. Då synest berre spor og snødjupne.
