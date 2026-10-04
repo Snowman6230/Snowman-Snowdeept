@@ -18,7 +18,7 @@ from pathlib import Path
 HERE=Path(__file__).resolve().parent
 DATA=HERE/"data"; SESS=DATA/"sessions"
 CFG_FILE=HERE/"snowman-config.local.json"   # lokal, aldri i git (sjå .gitignore)
-VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.js":"application/javascript"}
+VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.js":"application/javascript","three.snowman.min.js":"application/javascript"}
 import terrain as T
 TERR=T.TerrainLibrary(DATA/"terrain")
 
@@ -204,6 +204,15 @@ class API(http.server.BaseHTTPRequestHandler):
             self.headers_ok(); self.wfile.write(json.dumps({"available":T.AVAILABLE,"error":T.IMPORT_ERROR,
                 "types":T.TYPES,"layers":TERR.listing() if T.AVAILABLE else [],
                 "calibration":{k:CFG[k] for k in ("antZ","zOff","heightMode","geoidN","calibrated")}}).encode()); return
+        if u.path=="/api/terrain/patch":   # terrengutsnitt rundt maskina til 3D-visinga
+            q=urllib.parse.parse_qs(u.query)
+            try:
+                half=min(400.0,max(20.0,float(q.get("half",["150"])[0]))); step=min(5.0,max(0.5,float(q.get("step",["1"])[0])))
+                P=TERR.patch(float(q["lat"][0]),float(q["lon"][0]),half,step) if T.AVAILABLE else None
+                r={"ok":False} if P is None else {"ok":True,"lat0":P["lat0"],"lon0":P["lon0"],"half":P["half"],"step":P["step"],"n":P["n"],
+                   "layers":P["layers"],"h":base64.b64encode(P["h"].astype("<f4").tobytes()).decode()}
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/terrain/height":
             q=urllib.parse.parse_qs(u.query)
             try: r=TERR.height(float(q["lat"][0]),float(q["lon"][0]))

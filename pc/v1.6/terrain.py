@@ -430,6 +430,53 @@ class TerrainLibrary:
                 return {"h": hsum / wsum, "layer": m["id"], "name": m["name"], "res": m["res"], "vdatum": m["vdatum"]}
         return None
 
+    # --- terrengutsnitt til 3D-visinga ---
+    def patch(self, lat0, lon0, half=150.0, step=1.0, ltype="barmark"):
+        """Høgder i eit kvadratisk rutenett rundt (lat0, lon0) for 3D-visinga.
+        Rutenettet er i lokale meter: x mot aust, y mot nord, same flate tilnærming som førarskjermen brukar
+        (111 320 m per breiddegrad, 111 320·cos(lat0) per lengdegrad). Rad 0 er nordkanten.
+        Høgast prioriterte aktive lag vinn; NaN der ingen lag har data."""
+        if not AVAILABLE:
+            return None
+        n = int(round(2 * half / step)) + 1
+        xs = -half + np.arange(n) * step
+        X, Y = np.meshgrid(xs, -xs)                     # rad 0 = nord (y = +half)
+        mlat, mlon = 111320.0, 111320.0 * math.cos(math.radians(lat0))
+        H = np.full((n, n), np.nan, dtype=np.float32)
+        names = []
+        with self.lock:
+            layers = sorted((m for m in self.layers.values() if m["active"] and m["type"] == ltype), key=lambda m: -m["priority"])
+        for m in layers:
+            # lokal (x, y) → UTM med lineær tilnærming rundt midtpunktet (feil under 1 mm innanfor nokre hundre meter)
+            z = m["zone"]
+            E0, N0 = utm_forward(lat0, lon0, z)
+            Ex, Nx = utm_forward(lat0, lon0 + 10.0 / mlon, z)
+            Ey, Ny = utm_forward(lat0 + 10.0 / mlat, lon0, z)
+            E = E0 + (Ex - E0) / 10.0 * X + (Ey - E0) / 10.0 * Y
+            N = N0 + (Nx - N0) / 10.0 * X + (Ny - N0) / 10.0 * Y
+            c = (E - m["x0"]) / m["dx"] - 0.5
+            r = (m["y0"] - N) / m["dy"] - 0.5
+            inside = (c > -0.5) & (r > -0.5) & (c < m["nx"] - 0.5) & (r < m["ny"] - 0.5) & np.isnan(H)
+            if not inside.any():
+                continue
+            g = self._grid(m["id"])
+            ci, ri = c[inside], r[inside]
+            c0 = np.clip(np.floor(ci).astype(int), 0, m["nx"] - 1); r0 = np.clip(np.floor(ri).astype(int), 0, m["ny"] - 1)
+            c1 = np.clip(c0 + 1, 0, m["nx"] - 1); r1 = np.clip(r0 + 1, 0, m["ny"] - 1)
+            fc = np.clip(ci - c0, 0, 1); fr = np.clip(ri - r0, 0, 1)
+            vals = np.zeros(ci.shape); wsum = np.zeros(ci.shape)
+            for rr, cc, w in ((r0, c0, (1 - fr) * (1 - fc)), (r0, c1, (1 - fr) * fc), (r1, c0, fr * (1 - fc)), (r1, c1, fr * fc)):
+                v = np.asarray(g[rr, cc], dtype=np.float64)
+                ok = np.isfinite(v) & (w > 0)
+                vals += np.where(ok, w * np.nan_to_num(v), 0); wsum += np.where(ok, w, 0)
+            res = np.where(wsum > 0.5, vals / np.maximum(wsum, 1e-9), np.nan)
+            sub = H[inside]; fill = np.isnan(sub) & np.isfinite(res)
+            if fill.any():
+                sub[fill] = res[fill]; H[inside] = sub; names.append(m["name"])
+        if not names:
+            return None
+        return {"lat0": lat0, "lon0": lon0, "half": half, "step": step, "n": n, "h": H, "layers": names}
+
 
 def snow_depth(gga_alt, gga_sep, fix, terrain, cal):
     """Rekn ut snødjupne. cal: antZ, zOff, heightMode ('nn2000'|'ellipsoid'), geoidN, calibrated.

@@ -467,8 +467,8 @@
       }
       /* Førarperspektiv: kartet vippa bakover, sett frå bak og over maskina */
       #app.view3d {
-        perspective: 1600px;
-        perspective-origin: 50% calc(50% + 18vh);
+        perspective: var(--persp, 1600px);
+        perspective-origin: 50% calc(50% + var(--pshift, 18vh));
         background: linear-gradient(#0a1a26 0%, #16324a 22%, #22465f 40%, #1b2c35 60%);
       }
       #app.view3d .groomer {
@@ -515,6 +515,58 @@
       }
       #compass.locked small {
         color: #ffd33f;
+      }
+      /* Horisont: kartet fell av mot ein dis-himmel, så kanten av kartet ikkje synest */
+      #app.horizon::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 42%;
+        background: linear-gradient(#0a1a26 0%, #16324a 45%, #22465fcc 70%, transparent 100%);
+        pointer-events: none;
+      }
+      /* 3D-terreng: eigen WebGL-flate over kartet, under knappar og tal */
+      #t3d {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: none;
+      }
+      #app.terrain3d #t3d {
+        display: block;
+      }
+      #app.terrain3d #groomer {
+        display: none;
+      }
+      #t3dInfo {
+        position: absolute;
+        left: 50%;
+        bottom: 96px;
+        transform: translateX(-50%);
+        z-index: 900;
+        background: #02121bcc;
+        color: #9ab3c1;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 6px;
+        display: none;
+      }
+      #app.terrain3d #t3dInfo {
+        display: block;
+      }
+      .viewSet {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .viewSet .btn.on {
+        background: #1979d8;
+        border-color: #6cb6ff;
       }
       #app.view3d .groomer .tag {
         display: none;
@@ -635,6 +687,8 @@
   <body>
     <div id="app">
       <div id="map"></div>
+      <canvas id="t3d"></canvas>
+      <div id="t3dInfo"></div>
       <div class="top">
         <div class="brand">SNOWMAN<small>by Alpindata</small><small>PC v1.6</small></div>
         <div class="depth"><label id="depthLabel">SNØDJUPNE (MIDT)</label><b id="depth">--</b><small id="depthNote">IKKJE MÅLT</small></div>
@@ -721,6 +775,12 @@
         </section>
         <section id="panelMap" class="panel">
           <h3>KART, GNSS OG VISNING</h3>
+          <div id="viewSet" class="viewSet">
+            <button class="btn" data-v="kart" onclick="setView('kart')">KART</button
+            ><button class="btn" data-v="forar" onclick="setView('forar')">FØRAR</button
+            ><button class="btn" data-v="horisont" onclick="setView('horisont')">HORISONT</button
+            ><button class="btn" data-v="3d" onclick="setView('3d')">3D-TERRENG</button>
+          </div>
           <button id="northSet" class="btn" onclick="toggleNorth()">KARTRETNING: KØYRERETNING OPP</button>
           <button id="snowSet" class="btn toggle on" onclick="toggleSnow()">SNØDJUPNE: PÅ</button
           ><button id="machineMapSet" class="btn toggle on" onclick="toggleMachine()">VIS MASKIN: PÅ</button
@@ -826,7 +886,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.3</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.5</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">
@@ -841,8 +901,8 @@
             <rect x="7" y="32" width="56" height="5" rx="2" fill="#e23b32" /></svg
           >Maskin</button
         ><button class="tool" onclick="centerMap()"><i>⌖</i>Sentrer</button
-        ><button class="tool" onclick="map.zoomOut()"><i>⊖</i>Zoom ut</button
-        ><button class="tool" onclick="map.zoomIn()"><i>＋</i>Zoom inn</button
+        ><button class="tool" onclick="zoomBtn(-1)"><i>⊖</i>Zoom ut</button
+        ><button class="tool" onclick="zoomBtn(1)"><i>＋</i>Zoom inn</button
         ><button id="viewBtn" class="tool" onclick="toggle3D()"><i>◭</i>Førarvising</button
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
@@ -875,6 +935,7 @@
       <div id="toast" class="toast"></div>
     </div>
     <script src="vendor/leaflet.js"></script>
+    <script src="vendor/three.snowman.min.js"></script>
     <script src="vendor/qrcode.js"></script>
     <script>
       /* SNOWMAN PC v1.6 – førargrensesnitt frå Driver v24, kopla til lokal GNSS-teneste og Terrain Engine.
@@ -1088,7 +1149,353 @@
       }
 
       /* ---------- Kart, kompass og rotasjon ---------- */
-      const TILT = 50; // grader kartet blir vippa i førarperspektiv
+      /* ---------- 3D-terreng (WebGL, three.js) ----------
+         Hentar eit terrengutsnitt (300 × 300 m, 1 m rute) rundt maskina frå tenesta og teiknar det med lys og skugge.
+         Sporet blir måla på terrenget i snødjupnefargar, med høgdekurver kvar meter (tjukkare kvar 5. m).
+         Kameraet følgjer bak maskina. Utan terrengmodell under maskina blir horisontvisinga brukt i staden. */
+      const T3D = (function () {
+        const HALF = 150,
+          STEP = 1,
+          PX = 4; // utsnitt ±150 m, 1 m rute, 4 pikslar per meter i teksturen
+        const M_LAT = 111320; // same flate tilnærming som tenesta brukar for utsnittet
+        let renderer = null,
+          scene,
+          camera,
+          terrain = null,
+          machine = null,
+          machineKey = "",
+          tex = null,
+          texCv = null,
+          texCx = null,
+          patch = null,
+          H = null,
+          hRef = 0,
+          loading = false,
+          visible = false,
+          failed = false,
+          lastReq = 0,
+          wasReady = false,
+          segs = [],
+          camDist = 30,
+          camYaw = null,
+          sm = null, // utjamna maskinposisjon {x, y, h}
+          raf = null,
+          lastFrame = 0;
+        const mLon = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
+        function local(p) {
+          return [(p[1] - patch.lon0) * mLon(patch.lat0), (p[0] - patch.lat0) * M_LAT]; // x mot aust, y mot nord
+        }
+        function hAt(x, y) {
+          if (!patch) return NaN;
+          let n = patch.n,
+            c = (x + HALF) / STEP,
+            r = (HALF - y) / STEP,
+            c0 = Math.floor(c),
+            r0 = Math.floor(r);
+          if (c0 < 0 || r0 < 0 || c0 >= n - 1 || r0 >= n - 1) return NaN;
+          let fc = c - c0,
+            fr = r - r0,
+            a = H[r0 * n + c0],
+            b = H[r0 * n + c0 + 1],
+            d = H[(r0 + 1) * n + c0],
+            e = H[(r0 + 1) * n + c0 + 1];
+          return (a * (1 - fc) + b * fc) * (1 - fr) + (d * (1 - fc) + e * fc) * fr; // NaN om eitt av hjørna manglar
+        }
+        function init() {
+          if (renderer || failed) return !!renderer;
+          if (!window.THREE) return !(failed = true);
+          try {
+            renderer = new THREE.WebGLRenderer({ canvas: $("t3d"), antialias: true });
+          } catch (e) {
+            failed = true;
+            toast("3D-terreng er ikkje støtta på denne maskina (WebGL manglar)");
+            return false;
+          }
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+          scene = new THREE.Scene();
+          scene.background = new THREE.Color(0x1d3a52);
+          scene.fog = new THREE.Fog(0x1d3a52, 110, 240);
+          camera = new THREE.PerspectiveCamera(55, 1, 0.5, 1200);
+          scene.add(new THREE.HemisphereLight(0xe8f2ff, 0x2a3a48, 1.4));
+          let sun = new THREE.DirectionalLight(0xffffff, 2.2);
+          sun.position.set(-70, 80, -40); // lys frå nordvest, som på kart med skuggerelieff
+          scene.add(sun);
+          texCv = document.createElement("canvas");
+          texCv.width = texCv.height = 2 * HALF * PX;
+          texCx = texCv.getContext("2d");
+          tex = new THREE.CanvasTexture(texCv);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = 4;
+          return true;
+        }
+        // Enkel trakkemaskin i målestokk: belte, hus, førarhus, skjær framme og fres bak.
+        function buildMachine() {
+          let key = [cfg.machine, toolsFull ? cfg.blade : cfg.bladeN, toolsFull ? cfg.tiller : cfg.tillerN].join();
+          if (machine && key === machineKey) return;
+          if (machine) scene.remove(machine);
+          machineKey = key;
+          let g = new THREE.Group(),
+            mat = (c) => new THREE.MeshLambertMaterial({ color: c }),
+            box = (w, h, l, c, x, y, z) => {
+              let m = new THREE.Mesh(new THREE.BoxGeometry(w, h, l), mat(c));
+              m.position.set(x, y, z);
+              g.add(m);
+            },
+            W = cfg.machine,
+            blade = toolsFull ? cfg.blade : cfg.bladeN,
+            tiller = toolsFull ? cfg.tiller : cfg.tillerN;
+          box(1.1, 0.9, 5.2, 0x1a2228, -(W / 2 - 0.55), 0.45, 0); // belte venstre
+          box(1.1, 0.9, 5.2, 0x1a2228, W / 2 - 0.55, 0.45, 0); // belte høgre
+          box(W - 2.4, 1.1, 4.6, 0xe23b32, 0, 1.25, 0.2); // hus
+          box(2.3, 1.7, 2.1, 0xd8e4ea, 0, 2.6, -0.7); // førarhus
+          box(2.0, 1.2, 1.9, 0x263943, 0, 2.7, -0.75); // vindauge (mørkt, litt inne)
+          box(blade, 1.3, 0.35, 0xf2c230, 0, 0.7, -3.4); // skjær
+          box(tiller, 0.6, 1.4, 0x3a4a55, 0, 0.35, 3.6); // fres
+          box(tiller, 0.08, 1.0, 0xe9f3f8, 0, 0.05, 4.8); // finisher
+          machine = g;
+          machine.rotation.order = "YXZ";
+          scene.add(machine);
+        }
+        function buildTerrain() {
+          let n = patch.n,
+            pos = new Float32Array(n * n * 3),
+            uv = new Float32Array(n * n * 2),
+            idx = [],
+            sum = 0,
+            cnt = 0;
+          for (let k = 0; k < n * n; k++)
+            if (!isNaN(H[k])) {
+              sum += H[k];
+              cnt++;
+            }
+          hRef = sum / cnt;
+          for (let i = 0; i < n; i++)
+            for (let j = 0; j < n; j++) {
+              let k = i * n + j,
+                h = H[k];
+              pos[3 * k] = -HALF + j * STEP;
+              pos[3 * k + 1] = isNaN(h) ? 0 : h - hRef;
+              pos[3 * k + 2] = -(HALF - i * STEP);
+              uv[2 * k] = j / (n - 1);
+              uv[2 * k + 1] = 1 - i / (n - 1);
+            }
+          for (let i = 0; i < n - 1; i++)
+            for (let j = 0; j < n - 1; j++) {
+              let a = i * n + j,
+                b = a + 1,
+                c = a + n,
+                d = c + 1;
+              if (isNaN(H[a]) || isNaN(H[b]) || isNaN(H[c]) || isNaN(H[d])) continue; // ingen trekantar utanfor modellen
+              idx.push(a, c, b, b, c, d);
+            }
+          let geo = new THREE.BufferGeometry();
+          geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+          geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+          geo.setIndex(idx);
+          geo.computeVertexNormals();
+          if (terrain) {
+            terrain.geometry.dispose();
+            terrain.geometry = geo;
+          } else {
+            terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex }));
+            scene.add(terrain);
+          }
+        }
+        // Grunnfarge snøkvit (lyset gir skuggane). Høgdekurver kvar meter, tjukkare kvar 5. meter (marching squares).
+        function paintBase() {
+          let n = patch.n,
+            k = PX * STEP,
+            minor = new Path2D(),
+            major = new Path2D();
+          texCx.clearRect(0, 0, texCv.width, texCv.height);
+          texCx.fillStyle = "#eef4f9";
+          texCx.fillRect(0, 0, texCv.width, texCv.height);
+          for (let i = 0; i < n - 1; i++)
+            for (let j = 0; j < n - 1; j++) {
+              let a = H[i * n + j],
+                b = H[i * n + j + 1],
+                c = H[(i + 1) * n + j + 1],
+                d = H[(i + 1) * n + j];
+              if (isNaN(a) || isNaN(b) || isNaN(c) || isNaN(d)) continue;
+              let lo = Math.ceil(Math.min(a, b, c, d)),
+                hi = Math.floor(Math.max(a, b, c, d));
+              for (let L = lo; L <= hi; L++) {
+                // kryssingspunkt på kantane a-b (topp), b-c (høgre), c-d (botn), d-a (venstre)
+                let q = [],
+                  e = (h1, h2, x1, y1, x2, y2) => {
+                    if ((h1 - L) * (h2 - L) < 0) {
+                      let f = (L - h1) / (h2 - h1);
+                      q.push([(x1 + (x2 - x1) * f) * k, (y1 + (y2 - y1) * f) * k]);
+                    }
+                  };
+                e(a, b, j, i, j + 1, i);
+                e(b, c, j + 1, i, j + 1, i + 1);
+                e(c, d, j + 1, i + 1, j, i + 1);
+                e(d, a, j, i + 1, j, i);
+                let P = L % 5 === 0 ? major : minor;
+                for (let m = 0; m + 1 < q.length; m += 2) {
+                  P.moveTo(q[m][0], q[m][1]);
+                  P.lineTo(q[m + 1][0], q[m + 1][1]);
+                }
+              }
+            }
+          texCx.lineCap = "round";
+          texCx.strokeStyle = "#c3d3e0";
+          texCx.lineWidth = 1.2;
+          texCx.stroke(minor);
+          texCx.strokeStyle = "#7f9cb3";
+          texCx.lineWidth = 2.4;
+          texCx.stroke(major);
+        }
+        function paintSeg(sg) {
+          let a = local(sg.a),
+            b = local(sg.b);
+          if (Math.abs(a[0]) > HALF + 10 || Math.abs(a[1]) > HALF + 10) return;
+          texCx.strokeStyle = sg.color;
+          texCx.lineWidth = sg.w * PX;
+          texCx.lineCap = "round";
+          texCx.globalAlpha = 0.9;
+          texCx.beginPath();
+          texCx.moveTo((a[0] + HALF) * PX, (HALF - a[1]) * PX);
+          texCx.lineTo((b[0] + HALF) * PX, (HALF - b[1]) * PX);
+          texCx.stroke();
+          texCx.globalAlpha = 1;
+        }
+        function repaint() {
+          if (!patch) return;
+          paintBase();
+          segs.forEach(paintSeg);
+          tex.needsUpdate = true;
+        }
+        async function fetchPatch(p) {
+          loading = true;
+          lastReq = Date.now();
+          try {
+            let r = await (await fetch("api/terrain/patch?lat=" + p[0] + "&lon=" + p[1] + "&half=" + HALF + "&step=" + STEP)).json();
+            if (r.ok) {
+              let bin = atob(r.h),
+                u8 = new Uint8Array(bin.length);
+              for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+              patch = r;
+              H = new Float32Array(u8.buffer);
+              if (init()) {
+                buildTerrain();
+                repaint();
+              }
+            } else if (!patch || isNaN(hAt(...local(p)))) patch = null;
+          } catch (e) {}
+          loading = false;
+          check();
+        }
+        // Hent nytt utsnitt når maskina nærmar seg kanten (eller når det manglar)
+        function request(p) {
+          if (!p || loading || failed) return;
+          let far = !patch || Math.hypot(...local(p)) > 60;
+          if (far && Date.now() - lastReq > (patch ? 1500 : 5000)) fetchPatch(p);
+        }
+        function ready() {
+          return !failed && !!patch && !!pos && !isNaN(hAt(...local(pos)));
+        }
+        // Byt mellom 3D og horisont når maskina køyrer inn på eller ut av terrengmodellen
+        function check() {
+          let r = ready();
+          if (r !== wasReady) {
+            wasReady = r;
+            if (viewMode() === "3d") applyView();
+          }
+        }
+        function frame(t) {
+          raf = requestAnimationFrame(frame);
+          if (t - lastFrame < 33) return; // ca. 30 bilete i sekundet
+          lastFrame = t;
+          let cv = $("t3d"),
+            w = cv.clientWidth,
+            h = cv.clientHeight;
+          if (!w || !h || !patch || !pos) return;
+          if (cv.width !== Math.round(w * renderer.getPixelRatio())) {
+            renderer.setSize(w, h, false);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+          }
+          buildMachine();
+          let [x, y] = local(pos),
+            hm = hAt(x, y);
+          if (isNaN(hm)) hm = sm ? sm.h : hRef;
+          if (!sm || Math.hypot(x - sm.x, y - sm.y) > 30) sm = { x, y, h: hm };
+          sm.x += (x - sm.x) * 0.3;
+          sm.y += (y - sm.y) * 0.3;
+          sm.h += (hm - sm.h) * 0.3;
+          let hd = (headCont * Math.PI) / 180,
+            fx = Math.sin(hd),
+            fy = Math.cos(hd),
+            hF = hAt(sm.x + fx * 2.5, sm.y + fy * 2.5),
+            hB = hAt(sm.x - fx * 2.5, sm.y - fy * 2.5),
+            hR = hAt(sm.x + fy * 1.5, sm.y - fx * 1.5),
+            hL = hAt(sm.x - fy * 1.5, sm.y + fx * 1.5);
+          machine.visible = machineOn;
+          machine.position.set(sm.x, sm.h - hRef, -sm.y);
+          machine.rotation.set(isNaN(hF - hB) ? 0 : Math.atan((hF - hB) / 5), -hd, isNaN(hR - hL) ? 0 : Math.atan((hR - hL) / 3));
+          let yaw = cfg.northUp ? 0 : hd;
+          camYaw = camYaw == null ? yaw : camYaw + (yaw - camYaw) * 0.08;
+          let cx = sm.x - Math.sin(camYaw) * camDist,
+            cy = sm.y - Math.cos(camYaw) * camDist,
+            ch = sm.h - hRef + 3 + camDist * 0.32,
+            hg = hAt(cx, cy);
+          if (!isNaN(hg) && ch < hg - hRef + 4) ch = hg - hRef + 4; // aldri under bakken
+          camera.position.set(cx, ch, -cy);
+          camera.lookAt(sm.x + Math.sin(camYaw) * camDist * 0.5, sm.h - hRef + 1, -(sm.y + Math.cos(camYaw) * camDist * 0.5));
+          scene.fog.near = 60 + camDist * 2;
+          scene.fog.far = 200 + camDist * 2.5;
+          $("t3dInfo").textContent = "3D-TERRENG · " + patch.layers.join(", ") + " · " + Math.round(sm.h) + " moh.";
+          renderer.render(scene, camera);
+        }
+        return {
+          ready,
+          request,
+          show(on) {
+            visible = on && init();
+            if (visible && !raf) raf = requestAnimationFrame(frame);
+            if (!visible && raf) {
+              cancelAnimationFrame(raf);
+              raf = null;
+            }
+          },
+          update(p) {
+            if (viewMode() !== "3d") return;
+            request(p);
+            check();
+          },
+          addSeg(a, b, w, color) {
+            let sg = { a, b, w, color };
+            segs.push(sg);
+            if (patch && renderer) {
+              paintSeg(sg);
+              tex.needsUpdate = true;
+            }
+          },
+          clear() {
+            segs = [];
+            if (renderer) repaint();
+          },
+          zoom(d) {
+            camDist = Math.max(8, Math.min(140, camDist * (d > 0 ? 0.75 : 1.33)));
+          },
+        };
+      })();
+      // Visingar: kart ovanfrå, førar (vippa), horisont (sterkt vippa mot horisonten) og 3D-terreng (ekte relieff frå terrengmodellen).
+      const VIEWS = {
+        kart: { name: "Kart", desc: "Kartvising ovanfrå", tilt: 0 },
+        forar: { name: "Førar", desc: "Førarperspektiv – sett frå maskina", tilt: 50, persp: 1600, shift: 18, inset: "-60%", zoom: 19 },
+        horisont: { name: "Horisont", desc: "Horisont – lågt og langt framover", tilt: 68, persp: 950, shift: 30, inset: "-140%", zoom: 20 },
+        "3d": { name: "3D-terreng", desc: "3D-terreng – ekte relieff frå terrengmodellen", tilt: 0 },
+      };
+      const VIEW_ORDER = ["kart", "forar", "horisont", "3d"];
+      let TILT = 50,
+        SHIFT = 18; // gjeldande vipping (grader) og forskyving nedover (vh) for maskina
+      function viewMode() {
+        return VIEWS[cfg.viewMode] ? cfg.viewMode : cfg.view3d ? "forar" : "kart";
+      }
+      // Kart, kompass og rotasjon
       // Kartet roterer etter køyreretninga, eller er låst med nord opp (kompassknappen / Innst. › Kart).
       // Vinkelen blir halden samanhengande (359° → 1° er +2°, ikkje ein heil runde baklengs).
       let bearCont = 0,
@@ -1102,7 +1509,7 @@
         let target = cfg.northUp ? 0 : headCont;
         bearCont = cfg.northUp ? 0 : target;
         mapBearing = ((bearCont % 360) + 360) % 360;
-        if (cfg.view3d) $("map").style.transform = "translateY(18vh) rotateX(" + TILT + "deg) rotate(" + -bearCont + "deg)";
+        if (cfg.view3d) $("map").style.transform = "translateY(" + SHIFT + "vh) rotateX(" + TILT + "deg) rotate(" + -bearCont + "deg)";
         else $("map").style.transform = cfg.northUp ? "none" : "rotate(" + -bearCont + "deg) scale(1.42)";
         // Låst kart: maskina snur seg i staden. Roterande kart: maskina peikar alltid opp.
         let g = cfg.northUp ? headCont : 0;
@@ -1112,23 +1519,50 @@
         $("compassTxt").textContent = cfg.northUp ? "LÅST" : "ROTERER";
       }
       function applyView() {
+        let mode = viewMode();
+        // 3D-terreng utan terrengmodell under maskina: vis horisont i staden (T3D.ready seier om det finst terreng under maskina)
+        let use3d = mode === "3d" && T3D.ready(),
+          css = mode === "3d" && !use3d ? "horisont" : mode,
+          v = VIEWS[css];
+        cfg.view3d = css === "forar" || css === "horisont";
+        if (cfg.view3d) {
+          TILT = v.tilt;
+          SHIFT = v.shift;
+          $("app").style.setProperty("--persp", v.persp + "px");
+          $("app").style.setProperty("--pshift", v.shift + "vh");
+        }
         $("app").classList.toggle("view3d", !!cfg.view3d);
-        $("viewBtn").classList.toggle("on", !!cfg.view3d);
-        $("map").style.inset = cfg.view3d ? "-60%" : cfg.northUp ? "0" : "";
+        $("app").classList.toggle("horizon", css === "horisont");
+        $("app").classList.toggle("terrain3d", use3d);
+        $("viewBtn").classList.toggle("on", mode !== "kart");
+        $("viewBtn").innerHTML = "<i>◭</i>" + VIEWS[mode].name;
+        document.querySelectorAll("#viewSet button").forEach((b) => b.classList.toggle("on", b.dataset.v === mode));
+        $("map").style.inset = cfg.view3d ? v.inset : cfg.northUp ? "0" : "";
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP (LÅST)" : "KØYRERETNING OPP");
         rotateMap(heading || 0);
         scaleGroomer();
+        T3D.show(use3d);
         setTimeout(() => {
           map.invalidateSize({ animate: false });
           if (pos) map.panTo(pos, { animate: false });
         }, 60);
       }
-      function toggle3D() {
-        cfg.view3d = !cfg.view3d;
+      function setView(mode, quiet) {
+        cfg.viewMode = mode;
         persistCfg();
-        if (cfg.view3d && map.getZoom() < 19) map.setZoom(19, { animate: false }); // nært maskina, som frå førarsetet
+        let z = VIEWS[mode === "3d" ? "horisont" : mode].zoom; // 3D utan terreng fell tilbake til horisont
+        if (z && map.getZoom() < z) map.setZoom(z, { animate: false }); // nært maskina, som frå førarsetet
+        if (mode === "3d") T3D.request(pos);
         applyView();
-        toast(cfg.view3d ? "Førarperspektiv – sett frå maskina" : "Kartvising ovanfrå");
+        if (!quiet) toast(VIEWS[mode].desc + (mode === "3d" && !T3D.ready() ? " – ingen terrengmodell her, viser horisont" : ""));
+      }
+      // Knappen «Førarvising» blar gjennom visingane
+      function toggle3D() {
+        setView(VIEW_ORDER[(VIEW_ORDER.indexOf(viewMode()) + 1) % VIEW_ORDER.length]);
+      }
+      function zoomBtn(d) {
+        if (viewMode() === "3d" && T3D.ready()) T3D.zoom(d);
+        else d > 0 ? map.zoomIn() : map.zoomOut();
       }
       function toggleNorth() {
         cfg.northUp = !cfg.northUp;
@@ -1169,6 +1603,7 @@
         pts = [];
         track.setLatLngs([]);
         coverGroup.clearLayers();
+        T3D.clear();
         arrowGroup.clearLayers();
         total = 0;
         last = null;
@@ -1334,7 +1769,7 @@
           g = $("groomer");
         g.style.width = w + "px";
         g.style.height = (w * 330) / 190 + "px";
-        g.style.top = cfg.view3d ? "calc(50% + 18vh)" : "50%";
+        g.style.top = cfg.view3d ? "calc(50% + " + SHIFT + "vh)" : "50%";
         $("trackTag").style.top = w * 0.66 + "px";
         g.classList.toggle("tiny", w < 90);
       }
@@ -1511,6 +1946,7 @@
           }
         }
         map.panTo(newPos, { animate: false });
+        T3D.update(newPos);
       }
       function addCoverage(p) {
         if (!snowOn || !lastCoverage) {
@@ -1525,6 +1961,7 @@
           opt = { renderer: coverRenderer, stroke: false, fill: true, fillColor: color, fillOpacity: 1, interactive: false };
         let strip = stripPolygon(lastCoverage, p, w);
         if (strip) L.polygon(strip, opt).addTo(coverGroup);
+        T3D.addSeg(lastCoverage, p, w, color);
         L.circle(p, Object.assign({ radius: w / 2 }, opt)).addTo(coverGroup); // fyller kilen i svingar
         lastCoverage = p;
       }
@@ -1618,6 +2055,7 @@
         renderLegend();
         pts = [];
         coverGroup.clearLayers();
+        T3D.clear();
         arrowGroup.clearLayers();
         track.setLatLngs([]);
         total = 0;

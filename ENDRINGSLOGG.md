@@ -9,6 +9,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.5 – fleire visingar og 3D-terreng
+- **Nytt:** Fire visingar. Knappen «Førarvising» blar gjennom dei, og under Innst. › Kart kan du velje direkte:
+  - **Kart** – ovanfrå (som før).
+  - **Førar** – kartet vippa 50° (som før).
+  - **Horisont** – vippa 68° med dis-himmel og nærare zoom, så ein ser langt framover.
+  - **3D-terreng** – ekte relieff frå terrengmodellen (WebGL). Snøkvitt terreng med lys og skugge og høgdekurver kvar meter (tjukkare kvar 5. m). Sporet blir måla på terrenget i snødjupnefargar. Trakkemaskina er teikna i målestokk (beltebreidd, skjær og fres frå maskininnstillingane) og vippar etter terrenget. Kameraet følgjer bak maskina. Zoom inn/ut flyttar kameraet nærare eller lenger unna.
+- **Nytt:** `GET /api/terrain/patch` – terrengutsnitt (300 × 300 m, 1 m rute) rundt maskina frå det høgast prioriterte laget. Testa mot punktoppslag: maks avvik 0,5 mm. Nytt utsnitt blir henta når maskina har køyrt 60 m.
+- **Nytt:** `vendor/three.snowman.min.js` – three.js r186 (MIT-lisens), berre dei delane SNOWMAN brukar (540 kB). Lisens i `vendor/THREE-LICENSE`.
+- **Avgjerd:** 3D-terreng blir berre teikna der det finst terrengmodell. Utanfor modellen, eller utan terreng (t.d. i demo), blir horisontvisinga brukt automatisk – SNOWMAN dikter ikkje opp terreng.
+- **Avgjerd:** Blir verande i mappa `pc/v1.6` (v1.6.5). Terrengbiblioteket ligg i `pc/v1.6/data`, og ei ny mappe ville gjort at det måtte leggjast inn på nytt.
+- **Kvifor:** Eigaren ville ha fleire førarmodusar, meir vippa mot horisonten, så ein ser terrenget betre.
+
 ### Dokumentasjon – HUD på mobil stadfesta
 - **Endra:** LES-MEG: skriv HUD-adressa med `http://` først. Testa av eigaren: HUD virkar på mobil etter `sudo ufw allow 8766/tcp` på Omarchy.
 
