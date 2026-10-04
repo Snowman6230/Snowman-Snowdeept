@@ -1,0 +1,24 @@
+<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. --><meta charset="utf-8"><title>SNOWMAN NTRIP v1.1</title>
+<style>body{font:16px Arial;background:#07141c;color:#eef;margin:25px;max-width:900px}input{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:230px}button{padding:11px 18px;margin:8px;background:#1687bd;color:white;border:0;border-radius:7px}.g{display:grid;grid-template-columns:180px 1fr;gap:4px}.card{background:#0b202b;padding:18px;border-radius:12px;margin:12px 0}.ok{color:#4f6}.bad{color:#f86}</style>
+<h1>SNOWMAN NTRIP / GNSS <small>PC Prototype v1.5</small></h1>
+<div class=card><h3>GNSS / Leica</h3><div class=g>
+<label>COM-port</label><input id=serial_port value="COM3">
+<label>Baud</label><input id=baud value="115200"></div>
+<h3>CPOS / NTRIP</h3><div class=g>
+<label>Caster</label><input id=caster placeholder="caster-adresse">
+<label>Port</label><input id=caster_port value="2101">
+<label>Mountpoint</label><input id=mountpoint>
+<label>Brukarnamn</label><input id=username>
+<label>Passord</label><input id=password type=password></div>
+<button onclick=save()>LAGRE / KOPLE TIL</button></div>
+<div class=card><h3>Status</h3><pre id=s>Vent...</pre></div>
+<script>
+async function save(){let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x)})}
+async function poll(){try{let x=await(await fetch('/api/status')).json();s.textContent=`Serial: ${x.serial_connected?'TILKOPLA':'AV'}  ${x.port} @ ${x.baud}
+NTRIP: ${x.ntrip_connected?'TILKOPLA':'AV'}  ${x.caster}/${x.mountpoint}
+RTK: ${x.fix}   SAT: ${x.satellites}   HDOP: ${x.hdop??'--'}
+Høgd: ${x.altitude??'--'} m
+Posisjon: ${x.lat??'--'}, ${x.lon??'--'}
+RTCM mottatt: ${x.bytes_rtcm} byte
+Feil: ${x.last_error||'Ingen'}`;}catch(e){s.textContent='Tenesta svarar ikkje: '+e}setTimeout(poll,1000)}poll()
+</script>

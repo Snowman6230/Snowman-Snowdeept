@@ -1,0 +1,45 @@
+SNOWMAN PC Prototype v1.6 – Terrain Engine
+
+KVA ER NYTT I v1.6
+- Ekte snødjupne: SNOWMAN samanliknar den kalibrerte RTK-høgda med ein terrengmodell
+  av barmark og viser snødjupna i sporet (fargar), på førarskjermen og i HUD-en.
+- Terrengbibliotek (Innst. › Terreng): legg til fleire terrenglag, prioritet (▲▼),
+  slå av/på, erstatt (gammal versjon blir teken vare på) og slett.
+- Opplasting med analyse: koordinatsystem, høgdesystem, oppløysing, dekning og
+  tydelege feil/åtvaringar før import. Omriss av terrenget på kartet.
+- Støttar GeoTIFF (.tif) i EUREF89 UTM 32 og 33, med NN2000. LAS/LAZ og XYZ kjem i v1.7.
+- Kalibrering (Innst. › Kalibrering): antennehøgd, høgdeoffset og kva høgd mottakaren
+  leverer (NN2000 eller ellipsoidisk + geoidehøgd). Må lagrast før snødjupne blir vist.
+- Snødjupne blir berre vist når RTK FIX + terreng dekkjer posisjonen + kalibrering er lagra.
+  Elles står det kvifor: UTANFOR TERRENGMODELL, KALIBRERING MANGLAR, KREV RTK FIX osv.
+- Testterreng og simulator med fasit: testa med snittavvik under 1 cm.
+- Alt frå v1.5 er med: førarperspektiv, HUD, kartkjelder, anleggsprofil, historikk.
+
+TERRENGDATA
+- Tilrådd: GeoTIFF med barmark, 0,25–1 m rute, EUREF89 UTM 32/33, NN2000.
+- Utan eiga skanning: DTM 1 m frå hoydedata.no (stengt fre 16 – må 07).
+- Sjå docs/TERRAIN-ENGINE.md for detaljar.
+
+TEST UTAN LEICA (LINUX)
+  ./start-snowman.sh simterreng
+  1) Innst. › Terreng: vel testterreng.tif (ligg i mappa) › ANALYSER › IMPORTER
+  2) Innst. › Kalibrering: antennehøgd 2.8 › LAGRE KALIBRERING
+  3) Start prep – sporet får fargar etter snødjupna, og tala skal vere 0,2–1,3 m.
+
+START – WINDOWS
+  Første gong: INSTALL.bat   (installerer pyserial, numpy, tifffile, imagecodecs)
+  Deretter:    START-SNOWMAN.bat
+
+START – LINUX (t.d. Surface / Omarchy)
+  Første gong lagar start-snowman.sh eit eige python-miljø (.venv) og installerer
+  biblioteka sjølv (krev nett éin gong). Seriellport: sudo usermod -aG uucp $USER (Arch)
+  eller dialout (Ubuntu/Debian).
+  Med Leica:        ./start-snowman.sh /dev/ttyUSB0
+  I trakkemaskina:  KIOSK=1 ./start-snowman.sh /dev/ttyUSB0
+  Med HUD-vindauge: HUD=1 ./start-snowman.sh simterreng
+  HUD på mobil:     LAN=1 ./start-snowman.sh simterreng
+
+VIKTIG
+- Antenneplassering framover/sidevegs blir lagra, men ikkje brukt enno (posisjonen er
+  antenna sin). Pitch/roll (IMU) kjem seinare. Begge påverkar nøyaktigheita i bratt terreng.
+- Testa med simulator og syntetisk terreng – ikkje i maskin enno.

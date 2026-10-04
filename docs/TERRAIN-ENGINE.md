@@ -1,6 +1,6 @@
 # Terrain Engine – spesifikasjon
 
-SNOWMAN by Alpindata · Analyse 2026-10-04 · Status: **planlagt (v1.6–v1.7)**
+SNOWMAN by Alpindata · Analyse 2026-10-04 · Status: **v1.6 ferdig** (bibliotek, GeoTIFF, barmark, snødjupne) · v1.7 planlagt
 
 Terrain Engine reknar ut ekte snødjupne ved å samanlikne den kalibrerte høgda til maskina (RTK-GNSS)
 med ein terrengmodell av barmark. Dokumentet skildrar korleis terreng blir lagt inn, bytt ut og brukt.

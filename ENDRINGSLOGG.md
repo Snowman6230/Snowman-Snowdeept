@@ -9,6 +9,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6 – Terrain Engine (ekte snødjupne)
+- **Nytt:** `terrain.py` – terrengbibliotek med fleire lag: legg til, erstatt (eldre versjon blir teken vare på), slå av/på, prioritet og slett. Oppslag med interpolasjon frå det høgast prioriterte laget som har data.
+- **Nytt:** Snødjupne = (GNSS-høgd − antennehøgd − høgdeoffset) − terrenghøgd, rekna i den lokale tenesta for kvar GNSS-posisjon. Vist i spor (fargar), førarskjerm og HUD, og lagra i arbeidsøktene.
+- **Nytt:** Opplasting med analyse i fana «Terreng»: format, koordinatsystem (EUREF89/WGS84 UTM 32/33/35), høgdesystem (NN2000/NN54/ukjent), oppløysing, nodata, dekning av maskinposisjonen. Krev stadfesting når høgdesystemet er ukjent. Omriss av laga på kartet.
+- **Nytt:** Kalibrering lagra i tenesta: antennehøgd, høgdeoffset, høgdekjelde (NN2000 eller ellipsoidisk + geoidehøgd).
+- **Nytt:** `testterreng.py` (syntetisk bakke ved Fjellsætra) og `simuler-leica.py --terreng` med fasit-snødjupne. `./start-snowman.sh simterreng`.
+- **Nytt:** `start-snowman.sh` lagar eige python-miljø (.venv) og installerer bibliotek automatisk.
+- **Testa:** Snittavvik −0,1 cm, maks 2,1 cm mot fasit (simulert RTK-støy ca. 1 cm). Same resultat med lag i UTM-sone 33. Koordinatomrekning kontrollert mot pyproj: under 1 mm avvik.
+- **Avgjerd:** Snødjupne blir berre vist når RTK FIX, terrengdekning og lagra kalibrering er på plass – elles blir årsaka vist.
+- **Avgjerd:** Bibliotek: numpy, tifffile og imagecodecs (BSD-lisens). LAS/LAZ og XYZ kjem i v1.7.
+- **Kjent avgrensing:** Horisontal antenneoffset og pitch/roll er ikkje med enno.
+
 ### Spesifikasjon: Terrain Engine
 - **Nytt:** `docs/TERRAIN-ENGINE.md` – terrengbibliotek (legg til, erstatt, av/på, prioritet), typar flater (barmark, målflate, snøflate), opplastingsveivisar med formatkrav, fallgruver (UTM 32/33, NN2000 vs. ellipsoidisk høgd), trasear og anleggsobjekt, og rekkjefølgje v1.6–v1.8.
 - **Avgjerd:** Terreng blir lagt inn som eit bibliotek med fleire lag og prioritet, ikkje som éi fil.
@@ -100,7 +112,8 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## Planlagt
 
-- **v1.6 Terrain Engine:** sjå `docs/TERRAIN-ENGINE.md`. Testast med syntetisk terreng, deretter Kartverket DTM 1 m for Fjellsætra.
+- **v1.6.1:** Kartverket DTM 1 m for Fjellsætra (frå hoydedata.no).
+- **v1.7:** LAS/LAZ- og XYZ-import, kontrollpunkt, anleggspakke, horisontal antenneoffset.
 - **v1.8 Trasear og anleggsobjekt.**
 - Ekte 3D-terreng i førarperspektivet (frå LiDAR).
 - HUD-test i maskina: lesbarheit natt/dag, dobbeltbilete i buet frontrute.

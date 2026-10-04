@@ -1,0 +1,316 @@
+<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. -->
+<html lang="nn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <title>SNOWMAN HUD</title>
+    <style>
+      /* SNOWMAN HUD – visning for frontruta. Svart = gjennomsiktig i refleksen, så berre teksten synest. */
+      :root {
+        --fg: #ffffff;
+        --acc: #3dff6e;
+        --warn: #ffc23d;
+        --bad: #ff4d3d;
+        --dim: #8fa3ad;
+        --hi: #4db8ff;
+      }
+      body.night {
+        /* Natt: dempa raudt/rav som ikkje øydelegg nattsynet */
+        --fg: #ff5a2a;
+        --acc: #ff7a2a;
+        --warn: #ffb02a;
+        --bad: #ff2a1a;
+        --dim: #8a3a1a;
+        --hi: #ff9a5a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        color: var(--fg);
+        font-family: "Arial Narrow", Arial, sans-serif;
+        overflow: hidden;
+        user-select: none;
+        cursor: none;
+      }
+      #hud {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto auto;
+        padding: 3vh 4vw;
+        transform-origin: center;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 900;
+        letter-spacing: 0.05em;
+      }
+      .chip {
+        font-size: 4.2vh;
+      }
+      .ok {
+        color: var(--acc);
+      }
+      .warn {
+        color: var(--warn);
+      }
+      .bad {
+        color: var(--bad);
+      }
+      .dim {
+        color: var(--dim);
+      }
+      #center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #depthLabel {
+        font-size: 4vh;
+        font-weight: 800;
+        color: var(--dim);
+        letter-spacing: 0.15em;
+      }
+      #depth {
+        font-size: 30vh;
+        line-height: 0.95;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+      }
+      #depth small {
+        font-size: 9vh;
+        margin-left: 1vw;
+      }
+      #dev {
+        font-size: 7vh;
+        font-weight: 900;
+        min-height: 8vh;
+      }
+      #bottom {
+        font-size: 8vh;
+        font-variant-numeric: tabular-nums;
+      }
+      #bottom span small {
+        font-size: 4vh;
+        color: var(--dim);
+        margin-left: 0.6vw;
+      }
+      #demo {
+        font-size: 3.6vh;
+        color: var(--warn);
+      }
+      #stale {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 6vh;
+        font-weight: 900;
+        color: var(--dim);
+        background: #000;
+      }
+      .hide {
+        display: none !important;
+      }
+      /* Innstillingar – visast normalt (ikkje spegla), sidan dei blir brukte med handa */
+      #menu {
+        position: absolute;
+        z-index: 10;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: #0b1c25;
+        border: 1px solid #3d5c6c;
+        border-radius: 14px;
+        padding: 18px;
+        width: min(560px, 92vw);
+        color: #fff;
+        font-family: Arial, sans-serif;
+        cursor: default;
+      }
+      #menu h2 {
+        margin: 0 0 12px;
+        font-size: 20px;
+      }
+      #menu button {
+        width: 100%;
+        margin: 5px 0;
+        padding: 14px;
+        font-size: 17px;
+        font-weight: 800;
+        color: #fff;
+        background: #173545;
+        border: 1px solid #496575;
+        border-radius: 9px;
+      }
+      #menu .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      #menu p {
+        color: #9ab3c1;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <div class="row">
+        <span id="fix" class="chip dim">GNSS --</span>
+        <span id="demo" class="hide">DEMO – SIMULERT</span>
+        <span id="prep" class="chip dim">--:--:--</span>
+      </div>
+      <div id="center">
+        <div id="depthLabel">SNØDJUPNE</div>
+        <div id="depth">--</div>
+        <div id="dev"></div>
+      </div>
+      <div class="row" id="bottom">
+        <span id="speed">0,0<small>km/t</small></span>
+        <span id="course" class="dim">--°</span>
+      </div>
+    </div>
+    <div id="stale">VENTAR PÅ SNOWMAN …</div>
+
+    <div id="menu" class="hide">
+      <h2>SNOWMAN HUD</h2>
+      <button id="mirrorBtn" onclick="cycleMirror()">SPEGLING</button>
+      <button id="modeBtn" onclick="toggleNight()">MODUS</button>
+      <div class="two">
+        <button onclick="bright(-0.1)">LYSSTYRKE −</button><button onclick="bright(0.1)">LYSSTYRKE +</button>
+      </div>
+      <button onclick="fullscreen()">FULLSKJERM</button>
+      <button onclick="menu(false)">LUKK</button>
+      <p>
+        Legg skjermen flat på dashbordet under ein HUD-film på frontruta, og vel «Spegla». Svart blir usynleg i refleksen. Bruk
+        nattmodus i mørket så nattsynet ikkje blir øydelagt. Trykk på skjermen for å opne denne menyen.
+      </p>
+    </div>
+
+    <script>
+      const $ = (x) => document.getElementById(x);
+      // Innstillingane gjeld berre denne eininga
+      let st = { mirror: 1, night: false, bright: 1 };
+      try {
+        Object.assign(st, JSON.parse(localStorage.getItem("snowman_hud") || "{}"));
+      } catch (e) {}
+      const MIRROR = [
+        ["AV – vanleg skjerm", "none"],
+        ["SPEGLA – vanleg HUD-film", "scaleX(-1)"],
+        ["SNUDD – opp ned", "scaleY(-1)"],
+        ["SPEGLA + SNUDD", "scale(-1,-1)"],
+      ];
+      function persist() {
+        try {
+          localStorage.setItem("snowman_hud", JSON.stringify(st));
+        } catch (e) {}
+      }
+      function applySettings() {
+        $("hud").style.transform = MIRROR[st.mirror][1];
+        $("stale").style.transform = MIRROR[st.mirror][1];
+        document.body.classList.toggle("night", st.night);
+        document.body.style.filter = "brightness(" + st.bright + ")";
+        $("mirrorBtn").textContent = "SPEGLING: " + MIRROR[st.mirror][0];
+        $("modeBtn").textContent = "MODUS: " + (st.night ? "NATT (dempa raud)" : "DAG (sterk)");
+      }
+      function cycleMirror() {
+        st.mirror = (st.mirror + 1) % MIRROR.length;
+        persist();
+        applySettings();
+      }
+      function toggleNight() {
+        st.night = !st.night;
+        if (st.night && st.bright > 0.7) st.bright = 0.6;
+        persist();
+        applySettings();
+      }
+      function bright(d) {
+        st.bright = Math.min(1.5, Math.max(0.2, +(st.bright + d).toFixed(2)));
+        persist();
+        applySettings();
+      }
+      function fullscreen() {
+        document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {});
+        menu(false);
+      }
+      let menuTimer = null;
+      function menu(on) {
+        $("menu").classList.toggle("hide", !on);
+        document.body.style.cursor = on ? "default" : "none";
+        clearTimeout(menuTimer);
+        if (on) menuTimer = setTimeout(() => menu(false), 12000);
+      }
+      document.addEventListener("click", (e) => {
+        if (!$("menu").contains(e.target)) menu($("menu").classList.contains("hide"));
+      });
+      // Hald skjermen vaken
+      let wl = null;
+      async function wake() {
+        try {
+          if ("wakeLock" in navigator && !wl) wl = await navigator.wakeLock.request("screen");
+          wl && wl.addEventListener("release", () => (wl = null));
+        } catch (e) {}
+      }
+      document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && wake());
+
+      const fmt = (v, d = 2) => v.toFixed(d).replace(".", ",");
+      function render(h) {
+        // GNSS-status
+        let f = h.fix || "--",
+          cls = f === "RTK FIX" ? "ok" : f === "RTK FLOAT" || f === "DEMO" ? "warn" : f === "AV" ? "dim" : "bad";
+        $("fix").textContent = f + (h.sats ? " · " + h.sats : "");
+        $("fix").className = "chip " + cls;
+        $("demo").classList.toggle("hide", !h.demo);
+        $("prep").textContent = (h.preparing ? "● " : "") + (h.elapsed || "--:--:--");
+        $("prep").className = "chip " + (h.preparing ? "ok" : "dim");
+        // Snødjupne: berre tal når det finst ein verdi (demo i dag, Terrain Engine seinare)
+        if (h.depth == null) {
+          $("depthLabel").textContent = "SNØDJUPNE";
+          $("depth").innerHTML = "--";
+          $("depth").className = "dim";
+          $("dev").textContent = h.depthNote || "IKKJE MÅLT";
+          $("dev").className = "dim";
+        } else {
+          let d = h.depth,
+            diff = d - h.target,
+            within = Math.abs(diff) <= h.tol;
+          $("depthLabel").textContent = h.demo ? "SNØDJUPNE · DEMO" : "SNØDJUPNE";
+          $("depth").innerHTML = fmt(d) + "<small>m</small>";
+          $("depth").className = within ? "ok" : diff < 0 ? "bad" : "";
+          $("depth").style.color = !within && diff > 0 ? "var(--hi)" : "";
+          $("dev").textContent = within ? "✓ PÅ MÅL" : (diff < 0 ? "▼ " + fmt(-diff) + " m UNDER MÅL" : "▲ " + fmt(diff) + " m OVER MÅL");
+          $("dev").className = within ? "ok" : diff < 0 ? "bad" : "";
+          $("dev").style.color = !within && diff > 0 ? "var(--hi)" : "";
+        }
+        $("speed").innerHTML = fmt(h.speed || 0, 1) + "<small>km/t</small>";
+        $("course").textContent = (h.heading ?? "--") + "°";
+      }
+      async function poll() {
+        try {
+          let h = await (await fetch("api/hud", { cache: "no-store" })).json();
+          let stale = !h.t || h.age > 3;
+          $("stale").classList.toggle("hide", !stale);
+          if (!stale) render(h);
+        } catch (e) {
+          $("stale").classList.remove("hide");
+        }
+        setTimeout(poll, 300);
+      }
+      applySettings();
+      wake();
+      poll();
+    </script>
+  </body>
+</html>

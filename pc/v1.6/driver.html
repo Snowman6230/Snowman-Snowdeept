@@ -1,0 +1,1963 @@
+<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. -->
+
+<html lang="nn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover" />
+    <meta name="theme-color" content="#06121a" />
+    <title>SNOWMAN PC v1.6</title>
+    <link rel="stylesheet" href="vendor/leaflet.css" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body,
+      #app {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #06121a;
+        color: #fff;
+        font-family: Arial, sans-serif;
+      }
+      #map {
+        position: absolute;
+        inset: -22%;
+        transform-origin: center center;
+        transition: transform 0.18s linear;
+      }
+      .leaflet-control-container {
+        display: none;
+      }
+      .top {
+        position: absolute;
+        z-index: 900;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 72px;
+        background: #02141dee;
+        display: flex;
+        align-items: center;
+      }
+      .brand {
+        width: 190px;
+        padding-left: 14px;
+        font-size: 30px;
+        font-weight: 900;
+        font-style: italic;
+      }
+      .brand small {
+        display: block;
+        font-size: 11px;
+        text-align: center;
+        color: #b8d9ef;
+      }
+      .depth {
+        height: 60px;
+        min-width: 190px;
+        border: 1px solid #16d64c;
+        border-radius: 14px;
+        padding: 6px 18px;
+        text-align: center;
+      }
+      .depth label {
+        display: block;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .depth b {
+        font-size: 34px;
+        color: #31ef55;
+      }
+      .satbox {
+        position: absolute;
+        z-index: 1250;
+        right: 10px;
+        top: 78px;
+        width: 270px;
+        background: #03151ef7;
+        border: 1px solid #496575;
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 8px 30px #0008;
+      }
+      .satgrid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .satcell {
+        background: #0a2733;
+        border-radius: 8px;
+        padding: 9px;
+        text-align: center;
+      }
+      .satcell b {
+        display: block;
+        font-size: 22px;
+        color: #36ef64;
+      }
+      .prepOn {
+        background: #15943a !important;
+        border-color: #3cff6b !important;
+      }
+      .rtk {
+        margin-left: auto;
+        margin-right: 10px;
+        border-left: 1px solid #315063;
+        padding: 8px 16px;
+        text-align: center;
+        font-weight: 900;
+        cursor: pointer;
+      }
+      .rtk span {
+        display: block;
+        color: #36ef64;
+      }
+      .legend,
+      .tele div {
+        background: #02121bea;
+        border-radius: 12px;
+      }
+      .legend {
+        position: absolute;
+        z-index: 900;
+        top: 82px;
+        left: 10px;
+        padding: 10px;
+        width: 135px;
+      }
+      .leg {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 0;
+        font-size: 12px;
+      }
+      .sw {
+        width: 23px;
+        height: 26px;
+        border-radius: 4px;
+      }
+      .tele {
+        position: absolute;
+        z-index: 900;
+        left: 10px;
+        bottom: 88px;
+        display: grid;
+        gap: 6px;
+      }
+      .tele div {
+        padding: 7px 12px;
+        min-width: 150px;
+      }
+      .tele b {
+        display: block;
+        font-size: 21px;
+      }
+      .groomer {
+        position: absolute;
+        z-index: 800;
+        left: 50%;
+        top: 52%;
+        width: 150px;
+        height: 260px;
+        transform: translate(-50%, -50%);
+        opacity: 0.58;
+        pointer-events: none;
+      }
+      .groomer.hide {
+        display: none;
+      }
+      .groomer svg {
+        width: 100%;
+        height: 100%;
+      }
+      .tag {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #020f17e6;
+        border-radius: 7px;
+        padding: 3px 9px;
+        font-weight: 900;
+        white-space: nowrap;
+        font-size: 12px;
+      }
+      .bladeTag {
+        top: -4px;
+      }
+      .trackTag {
+        top: 119px;
+      }
+      .tillerTag {
+        bottom: -5px;
+      }
+      .toolbar {
+        position: absolute;
+        z-index: 950;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 78px;
+        background: #02121bf5;
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        padding: 6px;
+        overflow-x: auto;
+      }
+      .tool {
+        min-width: 76px;
+        border: 1px solid #3d5c6e;
+        border-radius: 10px;
+        background: #0d2531;
+        color: #fff;
+        font-weight: 800;
+      }
+      .tool i {
+        display: block;
+        font-style: normal;
+        font-size: 21px;
+      }
+      .tool.on,
+      .toggle.on {
+        background: #0878df;
+      }
+      .groomIcon {
+        display: block;
+        width: 36px;
+        height: 22px;
+        margin: 0 auto 3px;
+      }
+      .settings {
+        position: absolute;
+        z-index: 1100;
+        right: 0;
+        top: 72px;
+        bottom: 78px;
+        width: min(390px, 94vw);
+        background: #03151efb;
+        border-left: 1px solid #365466;
+        padding: 14px;
+        overflow: auto;
+      }
+      .hide {
+        display: none !important;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        position: sticky;
+        top: -14px;
+        background: #03151e;
+        padding: 7px 0;
+        z-index: 2;
+      }
+      .tabs button {
+        flex: 1;
+        background: #102b39;
+        color: #fff;
+        border: 1px solid #365466;
+        border-radius: 6px;
+        padding: 10px 2px;
+        font-size: 12px;
+      }
+      .tabs button.on {
+        background: #0785ed;
+      }
+      .panel {
+        display: none;
+      }
+      .panel.on {
+        display: block;
+      }
+      .row {
+        border-top: 1px solid #294452;
+        padding: 10px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      .row input,
+      .row select {
+        width: 110px;
+        background: #102b39;
+        color: #fff;
+        border: 1px solid #496575;
+        border-radius: 6px;
+        padding: 8px;
+        text-align: center;
+        font-weight: 800;
+      }
+      .btn {
+        width: 100%;
+        padding: 11px;
+        margin-top: 7px;
+        background: #173545;
+        color: #fff;
+        border: 1px solid #496575;
+        border-radius: 7px;
+        font-weight: 800;
+      }
+      .history {
+        margin-top: 10px;
+        padding: 10px;
+        background: #0a222d;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .about {
+        font-size: 11px;
+        color: #8aa5b5;
+        margin-top: 18px;
+        border-top: 1px solid #294452;
+        padding-top: 10px;
+      }
+      .toast {
+        position: absolute;
+        z-index: 1300;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 9px 14px;
+        background: #02121bf5;
+        border: 1px solid #496575;
+        border-radius: 8px;
+        display: none;
+      }
+      .arrow-icon {
+        background: transparent !important;
+        border: 0 !important;
+        color: #fff;
+        text-shadow: 0 1px 4px #000;
+        font-size: 16px;
+        font-weight: 900;
+      }
+      .replay-icon {
+        background: transparent !important;
+        border: 0 !important;
+        color: #ffec3d;
+        text-shadow: 0 1px 4px #000;
+        font-size: 18px;
+        font-weight: 900;
+      }
+      @media (max-width: 700px) {
+        .top {
+          height: 64px;
+        }
+        .brand {
+          width: 120px;
+          font-size: 21px;
+          padding-left: 8px;
+        }
+        .brand small {
+          font-size: 8px;
+        }
+        .depth {
+          min-width: 120px;
+          height: 52px;
+          padding: 4px 6px;
+        }
+        .depth label {
+          font-size: 8px;
+        }
+        .depth b {
+          font-size: 26px;
+        }
+        .rtk {
+          padding: 4px 6px;
+          margin-right: 2px;
+          font-size: 10px;
+        }
+        .settings {
+          top: 64px;
+          bottom: 68px;
+        }
+        .toolbar {
+          height: 68px;
+          justify-content: flex-start;
+          padding: 4px;
+        }
+        .tool {
+          min-width: 58px;
+          font-size: 8px;
+        }
+        .legend {
+          top: 72px;
+          width: 108px;
+          padding: 7px;
+        }
+        .leg {
+          font-size: 9px;
+          margin: 4px;
+        }
+        .sw {
+          width: 17px;
+          height: 18px;
+        }
+        .tele {
+          bottom: 74px;
+        }
+        .tele div {
+          min-width: 105px;
+          padding: 4px 7px;
+        }
+        .tele b {
+          font-size: 16px;
+        }
+        .groomer {
+          width: 105px;
+          height: 182px;
+        }
+        .tag {
+          font-size: 9px;
+        }
+        .trackTag {
+          top: 83px;
+        }
+      }
+      /* ---- PC v1.5 ---- */
+      #map {
+        background-color: #1b2c35;
+        background-image:
+          linear-gradient(#ffffff10 1px, transparent 1px),
+          linear-gradient(90deg, #ffffff10 1px, transparent 1px);
+        background-size: 40px 40px;
+      }
+      .depth small {
+        display: block;
+        font-size: 10px;
+        font-weight: 800;
+        color: #ffcf5b;
+      }
+      .depth.measured small {
+        color: #9ab3c1;
+      }
+      .tabs {
+        flex-wrap: wrap;
+      }
+      .tabs button {
+        flex: 1 1 30%;
+      }
+      .rtk.warn b {
+        color: #ffcf5b;
+      }
+      .rtk.bad b {
+        color: #ff6b5b;
+      }
+      .demoTag {
+        position: absolute;
+        z-index: 950;
+        top: 82px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #b06a00;
+        color: #fff;
+        font-weight: 900;
+        padding: 6px 14px;
+        border-radius: 8px;
+        letter-spacing: 1px;
+      }
+      /* Førarperspektiv: kartet vippa bakover, sett frå bak og over maskina */
+      #app.view3d {
+        perspective: 1600px;
+        perspective-origin: 50% calc(50% + 18vh);
+        background: linear-gradient(#0a1a26 0%, #16324a 22%, #22465f 40%, #1b2c35 60%);
+      }
+      #app.view3d .groomer {
+        transform: translate(-50%, -50%) rotateX(50deg);
+      }
+      #app.view3d .groomer .tag {
+        display: none;
+      }
+      #app.view3d .legend {
+        opacity: 0.85;
+      }
+      /* Terreng-fane */
+      .tlayer {
+        background: #0a222d;
+        border: 1px solid #294452;
+        border-radius: 8px;
+        padding: 9px;
+        margin: 7px 0;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .tlayer.off {
+        opacity: 0.5;
+      }
+      .tlayer b {
+        font-size: 14px;
+      }
+      .tlayer .acts {
+        display: flex;
+        gap: 4px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+      }
+      .tlayer .acts button,
+      .mini {
+        background: #173545;
+        color: #fff;
+        border: 1px solid #496575;
+        border-radius: 6px;
+        padding: 6px 9px;
+        font-weight: 800;
+        font-size: 12px;
+      }
+      .fmt {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+        margin: 6px 0;
+      }
+      .fmt td {
+        border-top: 1px solid #294452;
+        padding: 4px 3px;
+        vertical-align: top;
+      }
+      .chk {
+        margin: 3px 0;
+        font-size: 12px;
+      }
+      .chk.err {
+        color: #ff8b6e;
+      }
+      .chk.warn {
+        color: #ffcf5b;
+      }
+      .chk.ok {
+        color: #6bff8f;
+      }
+      .groomer.tiny .tag {
+        display: none;
+      }
+      .attrib {
+        position: absolute;
+        z-index: 900;
+        right: 6px;
+        bottom: 84px;
+        font-size: 10px;
+        color: #cfe3ee;
+        background: #02121b99;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="map"></div>
+      <div class="top">
+        <div class="brand">SNOWMAN<small>by Alpindata</small><small>PC v1.6</small></div>
+        <div class="depth"><label id="depthLabel">SNØDJUPNE (MIDT)</label><b id="depth">--</b><small id="depthNote">IKKJE MÅLT</small></div>
+        <div class="rtk" onclick="toggleSatStatus()">
+          <b id="fix">GNSS AV</b><span id="acc">VENTAR PÅ DATA</span><small id="fixSub">Leica / mobil / demo</small>
+        </div>
+      </div>
+      <div id="satPanel" class="satbox hide">
+        <b>GNSS / SATELLITTSTATUS</b>
+        <div class="satgrid">
+          <div class="satcell">Satellittar<b id="satCount">--</b></div>
+          <div class="satcell">Status<b id="satFix">GPS</b></div>
+          <div class="satcell">Nøyaktigheit<b id="satAcc">--</b></div>
+          <div class="satcell">Kjelde<b id="satSource">Mobil</b></div>
+        </div>
+        <small id="satNote" style="display: block; margin-top: 10px; color: #9ab3c1"
+          >Ekstern GNSS (Leica/RTK) blir lesen automatisk frå den lokale SNOWMAN-tenesta. Mobil-GPS kan brukast til test, men gir ikkje satellittal.</small
+        ><button
+          class="btn"
+          onclick="
+            startGPS();
+            toggleSatStatus();
+          "
+        >
+          START MOBIL-GPS (TEST)
+        </button>
+      </div>
+      <div id="legend" class="legend"></div>
+      <div class="tele">
+        <div><small>FART</small><b id="speed">0,0 km/t</b></div>
+        <div><small>KURS</small><b id="course">--</b></div>
+        <div><small>SPOR</small><b id="distance">0 m</b></div>
+        <div><small>AREAL</small><b id="areaV">0 m²</b></div>
+        <div><small>TID</small><b id="elapsed">00:00:00</b></div>
+      </div>
+      <div id="groomer" class="groomer">
+        <svg viewBox="0 0 190 330">
+          <path d="M8 20 Q95 -3 182 20 L171 61 Q95 47 19 61 Z" fill="#687782" stroke="#c8d1d7" stroke-width="3" />
+          <path d="M60 68 L130 68 L145 232 L122 255 L68 255 L45 232 Z" fill="#d22f2f" stroke="#7b0e0e" stroke-width="4" />
+          <rect x="25" y="92" width="35" height="145" rx="8" fill="#17242c" />
+          <rect x="130" y="92" width="35" height="145" rx="8" fill="#17242c" />
+          <rect x="18" y="274" width="154" height="36" rx="5" fill="#cf2525" stroke="#ffd33f" stroke-width="4" />
+        </svg>
+        <div id="bladeTag" class="tag bladeTag">5,5 m</div>
+        <div id="trackTag" class="tag trackTag">5,0 m</div>
+        <div id="tillerTag" class="tag tillerTag">5,5 m</div>
+      </div>
+      <div id="settings" class="settings hide">
+        <h2>
+          ⚙ INNSTILLINGAR
+          <button style="float: right; background: none; border: 0; color: #9bc6e2; font-size: 24px" onclick="toggleSettings()">×</button>
+        </h2>
+        <div class="tabs">
+          <button id="tabMachine" class="on" onclick="showTab('machine')">Maskin</button
+          ><button id="tabSnow" onclick="showTab('snow')">Snøintervall</button
+          ><button id="tabTarget" onclick="showTab('target')">Målprofil</button><button id="tabMap" onclick="showTab('map')">Kart</button
+          ><button id="tabCal" onclick="showTab('cal')">Kalibrering</button
+          ><button id="tabTerrain" onclick="showTab('terrain')">Terreng</button
+          ><button id="tabHistory" onclick="showTab('history')">Historikk</button>
+        </div>
+        <section id="panelMachine" class="panel on">
+          <h3>MASKINMÅL</h3>
+          <div class="row"><span>Frontskjer full</span><input id="blade" type="number" step=".1" /></div>
+          <div class="row"><span>Frontskjer innkøyrd</span><input id="bladeN" type="number" step=".1" /></div>
+          <div class="row"><span>Maskinbreidde</span><input id="machine" type="number" step=".1" /></div>
+          <div class="row"><span>Fres full</span><input id="tiller" type="number" step=".1" /></div>
+          <div class="row"><span>Fres innkøyrd</span><input id="tillerN" type="number" step=".1" /></div>
+          <button id="machineSet" class="btn toggle on" onclick="toggleMachine()">VIS MASKIN: PÅ</button
+          ><button id="toolMode" class="btn" onclick="toggleTools()">ARBEIDSSTILLING: FULL BREIDDE</button>
+        </section>
+        <section id="panelSnow" class="panel">
+          <h3>SNØINTERVALL</h3>
+          <div id="bounds"></div>
+        </section>
+        <section id="panelTarget" class="panel">
+          <h3>MÅLPROFIL</h3>
+          <div class="row"><span>Måldjupne</span><input id="target" type="number" step=".05" /></div>
+          <div class="row"><span>Toleranse ± m</span><input id="tol" type="number" step=".05" /></div>
+          <div class="row"><span>Demo snødjupne</span><input id="demoD" type="number" step=".05" /></div>
+        </section>
+        <section id="panelMap" class="panel">
+          <h3>KART, GNSS OG VISNING</h3>
+          <button id="northSet" class="btn" onclick="toggleNorth()">KARTRETNING: KØYRERETNING OPP</button>
+          <button id="snowSet" class="btn toggle on" onclick="toggleSnow()">SNØDJUPNE: PÅ</button
+          ><button id="machineMapSet" class="btn toggle on" onclick="toggleMachine()">VIS MASKIN: PÅ</button
+          ><button class="btn" onclick="centerMap()">SENTRER</button
+          ><button class="btn" onclick="location.href = 'ntrip'">LEICA / CPOS / NTRIP-OPPSETT</button
+          ><button class="btn" onclick="window.open('hud', 'snowmanHUD')">OPNE HUD-VISING (FRONTRUTE)</button
+          ><button class="btn" onclick="startGPS()">START MOBIL-GPS (TEST)</button>
+          <div id="gnssInfo" class="history">Ingen kontakt med lokal SNOWMAN-teneste.</div>
+          <h3>ANLEGG OG KARTKJELDE</h3>
+          <div class="row"><span>Anlegg</span><input id="siteName" type="text" placeholder="t.d. Fjellsætra" style="width: 190px" /></div>
+          <div class="row">
+            <span>Kartkjelde</span
+            ><select id="mapSrc" style="width: 190px" onchange="mapFormUpdate()">
+              <option value="kv_topo">Kartverket – topografisk</option>
+              <option value="kv_grey">Kartverket – gråtone</option>
+              <option value="local">Lokale kartfliser (offline)</option>
+              <option value="xyz">Eiga kjelde – XYZ/WMTS-adresse</option>
+              <option value="wms">Eiga kjelde – WMS</option>
+              <option value="osm">OpenStreetMap (berre test)</option>
+              <option value="none">Ingen – berre rutenett</option>
+            </select>
+          </div>
+          <div id="mapUrlRow" class="row"><span>Adresse</span><input id="mapUrl" type="text" style="width: 190px" /></div>
+          <div id="mapLayersRow" class="row"><span>WMS-lag</span><input id="mapLayers" type="text" style="width: 190px" /></div>
+          <div id="mapAttrRow" class="row"><span>Kjeldetekst</span><input id="mapAttr" type="text" placeholder="© Kartdata: ..." style="width: 190px" /></div>
+          <div class="row"><span>Høgaste kartnivå (zoom)</span><input id="mapMaxNative" type="number" step="1" min="10" max="22" /></div>
+          <div id="mapHelp" class="history"></div>
+          <button class="btn" onclick="saveMapSource()">BRUK KARTKJELDE</button>
+          <h3>ANLEGGSPROFIL</h3>
+          <div class="history">
+            Eksporter alle innstillingar (anlegg, kart, maskin, kalibrering, snøintervall) til ei fil, og importer fila på dei andre
+            maskinene på same anlegg. Køyrehistorikk blir ikkje med.
+          </div>
+          <button class="btn" onclick="exportProfile()">EKSPORTER PROFIL</button
+          ><button class="btn" onclick="$('profileFile').click()">IMPORTER PROFIL</button>
+          <input id="profileFile" type="file" accept=".json" style="display: none" onchange="importProfile(this.files[0])" />
+        </section>
+        <section id="panelCal" class="panel">
+          <h3>MASKINKALIBRERING</h3>
+          <div class="row"><span>Maskinnamn</span><input id="mname" type="text" style="width: 170px" /></div>
+          <div class="row"><span>Antenne fram/bak frå referansepunkt (m)</span><input id="antX" type="number" step=".001" /></div>
+          <div class="row"><span>Antenne venstre/høgre (m)</span><input id="antY" type="number" step=".001" /></div>
+          <div class="row"><span>Antennehøgd over referansepunkt (m)</span><input id="antZ" type="number" step=".001" /></div>
+          <div class="row"><span>Fast høgdeoffset (m)</span><input id="zOff" type="number" step=".001" /></div>
+          <div class="row">
+            <span>GNSS-høgd frå mottakaren</span
+            ><select id="heightMode" style="width: 170px" onchange="$('geoidRow').classList.toggle('hide', this.value !== 'ellipsoid')">
+              <option value="nn2000">NN2000 (tilrådd)</option>
+              <option value="ellipsoid">Ellipsoidisk + geoidehøgd</option>
+            </select>
+          </div>
+          <div id="geoidRow" class="row hide"><span>Geoidehøgd N (m), ca. 40 på Sunnmøre</span><input id="geoidN" type="number" step=".001" /></div>
+          <button class="btn" onclick="saveCalibration()">LAGRE KALIBRERING (BRUKAST TIL SNØDJUPNE)</button>
+          <div id="calInfo" class="history">Kalibrering ikkje lagra i SNOWMAN-tenesta.</div>
+          <div class="history">
+            <b>Kalibreringsrutine:</b> Plasser maskina på eit kjent, plant kontrollpunkt. Mål antenneplasseringa fysisk mot eit fast
+            referansepunkt på maskina. Når RTK FIX er stabil, samanlikn GNSS-høgda med kjent høgd og legg berre inn dokumentert offset.
+            Snødjupne = GNSS-høgd − antennehøgd − høgdeoffset − terrenghøgd. Snødjupne blir berre vist når kalibreringa er lagra.
+          </div>
+        </section>
+        <section id="panelTerrain" class="panel">
+          <h3>TERRENGBIBLIOTEK</h3>
+          <div id="terrEngine" class="history">Ventar på SNOWMAN-tenesta …</div>
+          <div id="terrList"></div>
+          <button id="showOutlines" class="btn toggle on" onclick="toggleOutlines()">VIS TERRENGOMRISS PÅ KARTET: PÅ</button>
+          <h3 id="wizTitle">LEGG TIL TERRENG</h3>
+          <div class="row">
+            <span>Type</span
+            ><select id="terrType" style="width: 190px">
+              <option value="barmark">Barmark (terreng utan snø)</option>
+              <option value="malflate" disabled>Målflate – kjem seinare</option>
+              <option value="snoflate" disabled>Snøflate (oppmåling) – kjem seinare</option>
+            </select>
+          </div>
+          <table class="fmt">
+            <tr><td>✅ <b>Tilrådd</b></td><td><b>GeoTIFF (.tif)</b> – barmark, 0,25–1 m rute, EUREF89 UTM 32 eller 33, NN2000</td></tr>
+            <tr><td>🕓 v1.7</td><td>LAS/LAZ (punktsky, bakkepunkt) og XYZ/CSV</td></tr>
+            <tr><td>⛔ Nei</td><td>OBJ, PLY, bilete – manglar koordinatar</td></tr>
+          </table>
+          <div class="history" style="font-size: 12px">
+            Har du ikkje eiga skanning: last ned <b>DTM 1 m</b> for området frå <b>hoydedata.no</b> (GeoTIFF, EUREF89 UTM 33, NN2000).
+          </div>
+          <input id="terrFile" type="file" accept=".tif,.tiff,.las,.laz,.xyz,.csv,.txt" style="width: 100%; margin: 8px 0" />
+          <button class="btn" onclick="analyseTerrain()">ANALYSER FIL</button>
+          <div id="terrResult"></div>
+          <div id="terrImport" class="hide">
+            <div class="row"><span>Namn på laget</span><input id="terrName" type="text" style="width: 190px" /></div>
+            <label id="vdConfirmRow" class="chk hide"><input id="vdConfirm" type="checkbox" /> Eg har sjekka at høgdene er NN2000</label>
+            <button class="btn" onclick="importTerrain()">IMPORTER TIL BIBLIOTEKET</button>
+            <button class="btn" onclick="resetWizard()">AVBRYT</button>
+          </div>
+        </section>
+        <section id="panelHistory" class="panel">
+          <h3>KØYREHISTORIKK</h3>
+          <div class="row">
+            <span>Vel dato / økt</span
+            ><select id="historyDate" onchange="showHistoryInfo()"></select>
+          </div>
+          <div id="historyInfo" class="history">Ingen lagra økter.</div>
+          <button class="btn" onclick="playHistory()">▶ SPEL AV VALD ØKT</button
+          ><button class="btn" onclick="stopPlayback()">■ STOPP AVSPELING</button
+          ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
+        </section>
+        <div class="about">
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+        </div>
+      </div>
+      <div class="toolbar">
+        <button id="snowBtn" class="tool on" onclick="toggleSnow()"><i>▰</i>Snødjupne</button
+        ><button id="trackBtn" class="tool on" onclick="toggleTrack()"><i>↝</i>Spor</button
+        ><button id="machineBtn" class="tool on" onclick="toggleMachine()">
+          <svg class="groomIcon" viewBox="0 0 70 40">
+            <path d="M4 5h62l-6 9H10z" fill="#b8c6cf" />
+            <rect x="22" y="12" width="26" height="18" rx="3" fill="#e23b32" />
+            <rect x="10" y="15" width="13" height="17" rx="4" fill="#263943" />
+            <rect x="47" y="15" width="13" height="17" rx="4" fill="#263943" />
+            <rect x="7" y="32" width="56" height="5" rx="2" fill="#e23b32" /></svg
+          >Maskin</button
+        ><button class="tool" onclick="centerMap()"><i>⌖</i>Sentrer</button
+        ><button class="tool" onclick="map.zoomOut()"><i>⊖</i>Zoom ut</button
+        ><button class="tool" onclick="map.zoomIn()"><i>＋</i>Zoom inn</button
+        ><button id="viewBtn" class="tool" onclick="toggle3D()"><i>◭</i>Førarvising</button
+        ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
+        ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
+        ><button class="tool" onclick="resetWork()"><i>↺</i>Reset spor</button
+        ><button id="demoBtn" class="tool" onclick="toggleDemo()"><i>▶</i>Demo</button
+        ><button class="tool" onclick="openHistory()"><i>⏱</i>Historikk</button>
+      </div>
+      <div id="demoTag" class="demoTag hide">DEMO – SIMULERTE DATA</div>
+      <div id="attrib" class="attrib">© Kartverket</div>
+      <div id="toast" class="toast"></div>
+    </div>
+    <script src="vendor/leaflet.js"></script>
+    <script>
+      /* SNOWMAN PC v1.6 – førargrensesnitt frå Driver v24, kopla til lokal GNSS-teneste og Terrain Engine.
+         Kjelder for posisjon: "gnss" (Leica/RTK via snowman_pc.py), "mobile" (nettlesar-GPS, test), "demo" (simulert). */
+      const $ = (x) => document.getElementById(x),
+        colors = ["#ed2024", "#ff9412", "#e9ed16", "#27d84d", "#08cbea", "#075de5"],
+        NEUTRAL = "#7fb2d6",
+        CFG_KEY = "snowman_pc_v15",
+        HIST_KEY = "snowman_pc_v15_history";
+      let cfg = {
+          machine: 5,
+          blade: 5.5,
+          bladeN: 4.6,
+          tiller: 5.5,
+          tillerN: 4.8,
+          demoD: 0.82,
+          target: 0.8,
+          tol: 0.1,
+          bounds: [0.3, 0.5, 0.8, 1.2, 1.6],
+          mname: "Trakkemaskin 1",
+          antX: 0,
+          antY: 0,
+          antZ: 2.8,
+          zOff: 0,
+          northUp: false,
+          terrain: null,
+        },
+        pos = null,
+        last = null,
+        watchId = null,
+        demo = false,
+        demoTimer = null,
+        total = 0,
+        heading = 0,
+        trackOn = true,
+        snowOn = true,
+        machineOn = true,
+        toolsFull = true,
+        pts = [],
+        playTimer = null,
+        playMarker = null,
+        currentSession = null,
+        sessionStart = null,
+        clockTimer = null,
+        arrowGroup = null,
+        replayGroup = null,
+        lastCoverage = null,
+        preparing = false,
+        mapBearing = 0,
+        src = "none", // gnss | mobile | demo | none
+        backendOK = false,
+        gnss = null, // siste status frå tenesta
+        lastGGA = "",
+        lastGnssPt = null, // {p,t} for fart/kurs frå GNSS
+        lastGnssAt = 0,
+        wakeLock = null,
+        HIST = []; // øktoversikt (summaries) – punkt blir henta ved avspeling
+      // Innstillingar: ta med frå eldre versjonar om dei finst (v24, v23, v22, v21)
+      try {
+        let old = ["snowman_pc_v15", "snowman_v24", "snowman_v23", "snowman_v22", "snowman_v21"]
+          .map((k) => localStorage.getItem(k))
+          .find(Boolean);
+        if (old) Object.assign(cfg, JSON.parse(old));
+      } catch (e) {}
+      const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([62.39, 6.58], 19);
+      /* ---------- Kartkjelder ----------
+         Kvart anlegg kan velje kartkjelde. Utan nett (eller med "Ingen") blir rutenettet under vist. */
+      const MAP_PRESETS = {
+        kv_topo: { url: "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", attr: "© Kartverket", max: 18, help: "Gratis frå Kartverket (CC BY 4.0). Krev nett." },
+        kv_grey: { url: "https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png", attr: "© Kartverket", max: 18, help: "Gratis frå Kartverket (CC BY 4.0). Krev nett." },
+        local: { url: "tiles/{z}/{x}/{y}", attr: "", max: 19, help: "Les kartfliser frå mappa data/tiles/{z}/{x}/{y}.png (eller .jpg) på denne PC-en. Fungerer heilt utan nett – t.d. eige ortofoto eller dronekart av anlegget." },
+        xyz: { url: "", attr: "", max: 19, help: "Lim inn ei XYZ- eller WMTS-adresse med {z}, {x} og {y}, t.d. frå anlegget sin kartleverandør. Sjekk at lisensen tillèt bruken." },
+        wms: { url: "", attr: "", max: 20, help: "Lim inn WMS-adressa (utan ?-parametrar) og namnet på laget/laga, skilde med komma." },
+        osm: { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "© OpenStreetMap", max: 19, help: "Berre til testing. OpenStreetMap sine vilkår tillèt ikkje bruk i eit kommersielt produkt." },
+        none: { url: "", attr: "", max: 20, help: "Ingen bakgrunnskart. Spor og maskin blir vist på rutenett." },
+      };
+      if (!cfg.mapSource) cfg.mapSource = { id: "kv_topo", url: "", layers: "", attr: "", max: 18 };
+      let baseLayer = null;
+      function applyMapSource() {
+        let m = cfg.mapSource,
+          pre = MAP_PRESETS[m.id] || MAP_PRESETS.kv_topo,
+          url = m.id === "xyz" || m.id === "wms" ? m.url : pre.url,
+          attr = m.attr || pre.attr,
+          max = +m.max || pre.max;
+        if (baseLayer) map.removeLayer(baseLayer);
+        baseLayer = null;
+        if (m.id === "wms" && url && m.layers)
+          baseLayer = L.tileLayer.wms(url, { layers: m.layers, format: "image/png", transparent: false, maxZoom: 22, maxNativeZoom: max });
+        else if (url) baseLayer = L.tileLayer(url, { maxZoom: 22, maxNativeZoom: max });
+        if (baseLayer) baseLayer.addTo(map).bringToBack();
+        $("attrib").textContent = attr;
+        $("attrib").classList.toggle("hide", !attr);
+      }
+      applyMapSource();
+      const track = L.polyline([], { weight: 3, color: "#fff", opacity: 0.9 }).addTo(map),
+        // Preparert flate: eige kartlag der alle flater blir teikna heildekkande og laget som heilskap er
+        // halvgjennomsiktig. Då blir overlapp mellom spor ikkje mørkare, og opne felt synest tydeleg.
+        coverPane = (map.createPane("coverPane"), map.getPane("coverPane")),
+        coverRenderer = L.canvas({ pane: "coverPane", padding: 0.5 }),
+        coverGroup = L.layerGroup().addTo(map);
+      coverPane.style.zIndex = 390;
+      coverPane.style.opacity = 0.5;
+      arrowGroup = L.layerGroup().addTo(map);
+      replayGroup = L.layerGroup().addTo(map);
+
+      /* ---------- GNSS-status ---------- */
+      function fixText() {
+        if (src === "demo") return ["DEMO", "SIMULERT RTK", "Ikkje ekte posisjon"];
+        if (src === "gnss" && gnss) {
+          let h = gnss.hdop == null ? "--" : gnss.hdop;
+          return [gnss.fix, "SAT " + gnss.satellites + " · HDOP " + h, "Leica/GNSS"];
+        }
+        if (src === "mobile") return ["MOBIL GPS", $("acc").textContent, "Test – ikkje RTK"];
+        return ["GNSS AV", backendOK ? "IKKJE TILKOPLA" : "INGA TENESTE", "Innst. › Kart, GNSS"];
+      }
+      function toggleSatStatus() {
+        $("satPanel").classList.toggle("hide");
+        renderSat();
+      }
+      function renderSat() {
+        if (src === "demo") {
+          $("satCount").textContent = "18*";
+          $("satFix").textContent = "DEMO";
+          $("satAcc").textContent = "simulert";
+          $("satSource").textContent = "DEMO";
+        } else if (src === "gnss" && gnss) {
+          $("satCount").textContent = gnss.satellites;
+          $("satFix").textContent = gnss.fix;
+          $("satAcc").textContent = gnss.hdop == null ? "--" : "HDOP " + gnss.hdop;
+          $("satSource").textContent = gnss.ntrip_connected ? "Leica + CPOS" : "Leica";
+        } else {
+          $("satCount").textContent = "--";
+          $("satFix").textContent = watchId !== null ? "GPS" : "AV";
+          $("satAcc").textContent = $("acc").textContent || "--";
+          $("satSource").textContent = watchId !== null ? "Mobil" : "Ingen";
+        }
+      }
+      function setFixBox() {
+        let [f, a, s] = fixText(),
+          box = document.querySelector(".rtk");
+        $("fix").textContent = f;
+        $("acc").textContent = a;
+        $("fixSub").textContent = (preparing ? "PREPARERER · " : "") + s;
+        box.classList.toggle("warn", src === "gnss" && gnss && gnss.fix === "RTK FLOAT");
+        box.classList.toggle("bad", src === "gnss" && gnss && !/RTK/.test(gnss.fix));
+      }
+      async function pollGNSS() {
+        try {
+          let r = await fetch("api/status", { cache: "no-store" });
+          if (!r.ok) throw 0;
+          let x = await r.json();
+          backendOK = true;
+          gnss = x;
+          $("gnssInfo").innerHTML =
+            "<b>Lokal SNOWMAN-teneste: OK</b><br>Seriellport: " +
+            (x.serial_connected ? "TILKOPLA " + x.port + " @ " + x.baud : "ikkje tilkopla") +
+            "<br>NTRIP/CPOS: " +
+            (x.ntrip_connected ? "TILKOPLA (" + x.bytes_rtcm + " B RTCM)" : "av") +
+            "<br>Fix: " +
+            x.fix +
+            " · satellittar " +
+            x.satellites +
+            (x.last_error ? "<br><span style='color:#ff8b6e'>Feil: " + x.last_error + "</span>" : "");
+          if (x.serial_connected && x.lat != null && x.lon != null && x.last_gga && x.last_gga !== lastGGA) {
+            lastGGA = x.last_gga;
+            onGNSS(x);
+          }
+          if (src === "gnss" && Date.now() - lastGnssAt > 5000) {
+            $("fix").textContent = "INGEN DATA";
+            $("acc").textContent = "GNSS har stoppa";
+            document.querySelector(".rtk").classList.add("bad");
+          }
+        } catch (e) {
+          backendOK = false;
+        }
+        if (src !== "gnss" && src !== "demo") setFixBox();
+        setTimeout(pollGNSS, 500);
+      }
+      function onGNSS(x) {
+        if (demo) return; // demo held fram til ho blir stoppa
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId); // ekstern GNSS har forrang framfor mobil-GPS
+          watchId = null;
+        }
+        src = "gnss";
+        lastGnssAt = Date.now();
+        let p = [x.lat, x.lon],
+          now = Date.now(),
+          speed = 0,
+          hdg = null;
+        if (lastGnssPt) {
+          let d = map.distance(lastGnssPt.p, p),
+            dt = (now - lastGnssPt.t) / 1000;
+          if (dt > 0) speed = 0.6 * (d / dt) + 0.4 * (lastGnssPt.v || 0); // jamna ut fart
+          if (d >= 0.3) hdg = bearing(lastGnssPt.p, p);
+        }
+        if (!lastGnssPt || map.distance(lastGnssPt.p, p) >= 0.3) lastGnssPt = { p, t: now, v: speed };
+        // Snødjupne frå Terrain Engine (den lokale tenesta)
+        realDepth = x.depth;
+        if (x.depth != null) {
+          showDepth(x.depth, "Terreng: " + x.terrain.name + " · " + x.terrain.res + " m");
+        } else {
+          depthNoteText = DEPTH_STATUS[x.depth_status] || "IKKJE MÅLT";
+          showDepth(null);
+        }
+        processPoint(p, speed, hdg, null, "gnss");
+      }
+
+      /* ---------- Kart, kompass og rotasjon ---------- */
+      const TILT = 50; // grader kartet blir vippa i førarperspektiv
+      function rotateMap(deg) {
+        if (deg == null || isNaN(deg)) return;
+        if (cfg.view3d) {
+          // Førarperspektiv: alltid køyreretning opp, maskina litt under midten, horisont øvst
+          mapBearing = deg;
+          $("map").style.transform = "translateY(18vh) rotateX(" + TILT + "deg) rotate(" + -deg + "deg)";
+          return;
+        }
+        mapBearing = cfg.northUp ? 0 : deg;
+        $("map").style.transform = cfg.northUp ? "none" : "rotate(" + -mapBearing + "deg) scale(1.42)";
+      }
+      function applyView() {
+        $("app").classList.toggle("view3d", !!cfg.view3d);
+        $("viewBtn").classList.toggle("on", !!cfg.view3d);
+        $("map").style.inset = cfg.view3d ? "-60%" : cfg.northUp ? "0" : "";
+        rotateMap(heading || 0);
+        scaleGroomer();
+        setTimeout(() => {
+          map.invalidateSize({ animate: false });
+          if (pos) map.panTo(pos, { animate: false });
+        }, 60);
+      }
+      function toggle3D() {
+        cfg.view3d = !cfg.view3d;
+        persistCfg();
+        if (cfg.view3d && map.getZoom() < 19) map.setZoom(19, { animate: false }); // nært maskina, som frå førarsetet
+        applyView();
+        toast(cfg.view3d ? "Førarperspektiv – sett frå maskina" : "Kartvising ovanfrå");
+      }
+      function toggleNorth() {
+        cfg.northUp = !cfg.northUp;
+        persistCfg();
+        $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
+        applyView();
+      }
+      function screenAngle() {
+        return (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+      }
+      let lastSpeed = 0;
+      function orientationHandler(e) {
+        // Kompass berre for mobil-test når maskina står nesten i ro. Under køyring styrer GNSS-kursen.
+        if (src !== "mobile" || lastSpeed > 0.8) return;
+        let d = e.webkitCompassHeading != null ? e.webkitCompassHeading : e.absolute && e.alpha != null ? 360 - e.alpha : null;
+        if (d == null) return;
+        d = (d + screenAngle()) % 360;
+        rotateMap(d);
+      }
+      let compassOn = false;
+      async function enableCompass() {
+        if (compassOn) return;
+        try {
+          if (typeof DeviceOrientationEvent != "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+            if ((await DeviceOrientationEvent.requestPermission()) !== "granted") return;
+            window.addEventListener("deviceorientation", orientationHandler, true);
+          } else if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", orientationHandler, true);
+          else window.addEventListener("deviceorientation", orientationHandler, true);
+          compassOn = true;
+        } catch (e) {}
+      }
+      window.addEventListener("orientationchange", () => setTimeout(() => map.invalidateSize(), 250));
+      addEventListener("resize", () => map.invalidateSize());
+
+      /* ---------- Arbeidsøkt ---------- */
+      function resetWork() {
+        pts = [];
+        track.setLatLngs([]);
+        coverGroup.clearLayers();
+        arrowGroup.clearLayers();
+        total = 0;
+        last = null;
+        lastCoverage = null;
+        $("distance").textContent = "0 m";
+        $("areaV").textContent = "0 m²";
+        if (!preparing) $("elapsed").textContent = "00:00:00";
+        toast("Synleg spor nullstilt – lagra historikk er ikkje sletta");
+      }
+      async function keepAwake(on) {
+        try {
+          if (on && "wakeLock" in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request("screen");
+          if (!on && wakeLock) {
+            await wakeLock.release();
+            wakeLock = null;
+          }
+        } catch (e) {}
+      }
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && (preparing || demo)) {
+          wakeLock = null;
+          keepAwake(true);
+        }
+      });
+      function togglePreparing() {
+        if (demo) stopDemo();
+        if (preparing) {
+          let n = currentSession ? currentSession.points.length : 0;
+          saveCurrentSession(true);
+          preparing = false;
+          stopClock();
+          currentSession = null;
+          $("prepBtn").classList.remove("prepOn");
+          $("prepBtn").innerHTML = "<i>▶</i>Start prep";
+          last = null;
+          lastCoverage = null;
+          keepAwake(false);
+          setFixBox();
+          toast(n >= 2 ? "Preparering stoppa og lagra (" + n + " punkt)" : "Preparering stoppa – for få GPS-punkt til å lagre økt");
+          return;
+        }
+        resetWork();
+        preparing = true;
+        currentSession = {
+          id: "drive-" + Date.now(),
+          date: new Date().toISOString().slice(0, 10),
+          start: Date.now(),
+          demo: false,
+          source: src,
+          machine: cfg.mname,
+          width: toolsFull ? cfg.tiller : cfg.tillerN,
+          points: [],
+        };
+        startClock(currentSession.start);
+        $("prepBtn").classList.add("prepOn");
+        $("prepBtn").innerHTML = "<i>■</i>Stopp prep";
+        if (src !== "gnss" && watchId === null && !backendOK) startGPS();
+        keepAwake(true);
+        setFixBox();
+        toast(src === "gnss" ? "Preparering starta – Leica/GNSS" : "Preparering starta");
+      }
+      function toast(t) {
+        $("toast").textContent = t;
+        $("toast").style.display = "block";
+        clearTimeout(toast.t);
+        toast.t = setTimeout(() => ($("toast").style.display = "none"), 2200);
+      }
+      function showTab(n) {
+        let a = { machine: "Machine", snow: "Snow", target: "Target", map: "Map", cal: "Cal", terrain: "Terrain", history: "History" };
+        Object.values(a).forEach((x) => {
+          $("panel" + x).classList.remove("on");
+          $("tab" + x).classList.remove("on");
+        });
+        $("panel" + a[n]).classList.add("on");
+        $("tab" + a[n]).classList.add("on");
+      }
+      function toggleSettings() {
+        $("settings").classList.toggle("hide");
+      }
+      function openHistory() {
+        $("settings").classList.remove("hide");
+        showTab("history");
+        refreshHistory();
+      }
+
+      /* ---------- Innstillingar ---------- */
+      const NUM = ["machine", "blade", "bladeN", "tiller", "tillerN", "demoD", "target", "tol", "antX", "antY", "antZ", "zOff"];
+      function load() {
+        NUM.forEach((x) => {
+          $(x).value = cfg[x];
+          $(x).onchange = save;
+        });
+        $("mname").value = cfg.mname;
+        $("mname").onchange = save;
+        $("bounds").innerHTML = cfg.bounds
+          .map((v, i) => '<div class="row"><span>Grense ' + (i + 1) + '</span><input id="b' + i + '" type="number" step=".05" value="' + v + '"></div>')
+          .join("");
+        cfg.bounds.forEach((v, i) => ($("b" + i).onchange = save));
+        $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
+        applyView();
+        loadTerrain();
+        renderLegend();
+        updateMachine();
+        showDepth(null);
+        refreshHistory();
+        setFixBox();
+      }
+      function persistCfg() {
+        try {
+          localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+        } catch (e) {}
+      }
+      function save() {
+        NUM.forEach((x) => {
+          let v = parseFloat($(x).value);
+          cfg[x] = isNaN(v) ? cfg[x] : v;
+        });
+        cfg.mname = $("mname").value.trim() || cfg.mname;
+        cfg.bounds = cfg.bounds.map((v, i) => parseFloat($("b" + i).value) || v);
+        persistCfg();
+        renderLegend();
+        updateMachine();
+      }
+      function renderLegend() {
+        $("legend").innerHTML =
+          "<b>Snødjupne" +
+          (src === "demo" ? " (demo)" : "") +
+          "</b>" +
+          colors
+            .map(
+              (c, i) =>
+                '<div class=leg><i class=sw style="background:' +
+                c +
+                '"></i>' +
+                [
+                  "< " + cfg.bounds[0],
+                  cfg.bounds[0] + "–" + cfg.bounds[1],
+                  cfg.bounds[1] + "–" + cfg.bounds[2],
+                  cfg.bounds[2] + "–" + cfg.bounds[3],
+                  cfg.bounds[3] + "–" + cfg.bounds[4],
+                  "> " + cfg.bounds[4],
+                ][i] +
+                " m</div>",
+            )
+            .join("") +
+          (src === "demo" ? "" : '<div class=leg><i class=sw style="background:' + NEUTRAL + '"></i>Preparert (ikkje målt)</div>');
+      }
+      function updateMachine() {
+        let b = toolsFull ? cfg.blade : cfg.bladeN,
+          t = toolsFull ? cfg.tiller : cfg.tillerN;
+        $("bladeTag").textContent = b.toFixed(1).replace(".", ",") + " m";
+        $("trackTag").textContent = cfg.machine.toFixed(1).replace(".", ",") + " m";
+        $("tillerTag").textContent = t.toFixed(1).replace(".", ",") + " m";
+        scaleGroomer();
+      }
+      // Maskinteikninga i målestokk: fresen (154 av 190 einingar i SVG-en) = fresbreidda i meter på kartet.
+      function scaleGroomer() {
+        let lat = (pos || [map.getCenter().lat])[0],
+          mPerPx = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, map.getZoom()),
+          pxPerM = (1 / mPerPx) * (cfg.northUp || cfg.view3d ? 1 : 1.42),
+          t = toolsFull ? cfg.tiller : cfg.tillerN,
+          w = Math.max(44, Math.min(420, (t * pxPerM * 190) / 154)),
+          g = $("groomer");
+        g.style.width = w + "px";
+        g.style.height = (w * 330) / 190 + "px";
+        g.style.top = cfg.view3d ? "calc(50% + 18vh)" : "50%";
+        $("trackTag").style.top = w * 0.66 + "px";
+        g.classList.toggle("tiny", w < 90);
+      }
+      map.on("zoomend", scaleGroomer);
+      // Pilene og senterlinja har fast storleik i pikslar. Langt ute blir dei tynnare/skjulte så sporflata synest.
+      function zoomDetail() {
+        let z = map.getZoom();
+        track.setStyle({ weight: z >= 19 ? 3 : z >= 18 ? 2 : 1, opacity: z >= 17 ? 0.9 : 0.5 });
+        let showArrows = z >= 18 && trackOn;
+        if (showArrows && !map.hasLayer(arrowGroup)) arrowGroup.addTo(map);
+        if (!showArrows && map.hasLayer(arrowGroup)) map.removeLayer(arrowGroup);
+      }
+      map.on("zoomend", zoomDetail);
+      function toggleTools() {
+        toolsFull = !toolsFull;
+        $("toolMode").textContent = "ARBEIDSSTILLING: " + (toolsFull ? "FULL BREIDDE" : "INNKØYRD");
+        updateMachine();
+      }
+      function toggleMachine() {
+        machineOn = !machineOn;
+        $("groomer").classList.toggle("hide", !machineOn);
+        ["machineBtn", "machineSet", "machineMapSet"].forEach((id) => $(id) && $(id).classList.toggle("on", machineOn));
+        $("machineSet").textContent = "VIS MASKIN: " + (machineOn ? "PÅ" : "AV");
+        $("machineMapSet").textContent = "VIS MASKIN: " + (machineOn ? "PÅ" : "AV");
+      }
+      function toggleSnow() {
+        snowOn = !snowOn;
+        $("legend").classList.toggle("hide", !snowOn);
+        $("depth").parentElement.classList.toggle("hide", !snowOn);
+        ["snowBtn", "snowSet"].forEach((id) => $(id) && $(id).classList.toggle("on", snowOn));
+        $("snowSet").textContent = "SNØDJUPNE: " + (snowOn ? "PÅ" : "AV");
+      }
+      // Snødjupne: demo = simulert (merka). Ekte køyring = frå Terrain Engine, berre når alle krav er oppfylte.
+      const DEPTH_STATUS = {
+        OUTSIDE: "UTANFOR TERRENGMODELL",
+        NO_CAL: "KALIBRERING MANGLAR",
+        NO_FIX: "IKKJE MÅLT – KREV RTK FIX",
+        NEGATIVE: "FEIL – SJEKK HØGDESYSTEM/KALIBRERING",
+        NO_ENGINE: "TERRENGMOTOR MANGLAR",
+        NO_HEIGHT: "INGA GNSS-HØGD",
+        NO_GEOID: "GEOIDEHØGD MANGLAR",
+      };
+      let realDepth = null,
+        depthNoteText = "IKKJE MÅLT";
+      function showDepth(d, note) {
+        let box = $("depth").parentElement;
+        if (d == null) {
+          $("depth").textContent = "--";
+          $("depthLabel").textContent = "SNØDJUPNE (MIDT)";
+          $("depthNote").textContent = note || depthNoteText;
+          box.classList.remove("measured");
+          return;
+        }
+        $("depth").textContent = d.toFixed(2).replace(".", ",") + " m";
+        $("depthLabel").textContent = src === "demo" ? "SNØDJUPNE (DEMO)" : "SNØDJUPNE (MIDT)";
+        $("depthNote").textContent = src === "demo" ? "SIMULERT" : note || "";
+        box.classList.toggle("measured", src !== "demo");
+      }
+      function depthColor(d) {
+        return colors[d < cfg.bounds[0] ? 0 : d < cfg.bounds[1] ? 1 : d < cfg.bounds[2] ? 2 : d < cfg.bounds[3] ? 3 : d < cfg.bounds[4] ? 4 : 5];
+      }
+      function centerMap() {
+        if (pos) map.setView(pos, 19);
+      }
+      function fmtTime(ms) {
+        let s = Math.max(0, Math.floor(ms / 1000)),
+          h = Math.floor(s / 3600),
+          m = Math.floor((s % 3600) / 60);
+        s %= 60;
+        return [h, m, s].map((x) => String(x).padStart(2, "0")).join(":");
+      }
+      function startClock(start) {
+        sessionStart = start || Date.now();
+        clearInterval(clockTimer);
+        $("elapsed").textContent = fmtTime(Date.now() - sessionStart);
+        clockTimer = setInterval(() => ($("elapsed").textContent = fmtTime(Date.now() - sessionStart)), 1000);
+      }
+      function stopClock() {
+        clearInterval(clockTimer);
+        clockTimer = null;
+      }
+
+      /* ---------- Mobil-GPS (test) ---------- */
+      function startGPS() {
+        if (src === "gnss") {
+          toast("Leica/GNSS er aktiv – mobil-GPS blir ikkje brukt");
+          return;
+        }
+        if (!navigator.geolocation) {
+          toast("GPS ikkje støtta");
+          return;
+        }
+        enableCompass();
+        if (watchId !== null) {
+          toast("GPS er allereie på");
+          return;
+        }
+        $("fix").textContent = "GPS STARTAR";
+        watchId = navigator.geolocation.watchPosition(gpsOK, gpsErr, { enableHighAccuracy: true, maximumAge: 500, timeout: 20000 });
+      }
+      let lastMob = null;
+      function gpsOK(p) {
+        if (src === "gnss") return;
+        src = "mobile";
+        let c = p.coords,
+          np = [c.latitude, c.longitude],
+          sp = c.speed,
+          hd = c.heading;
+        if (lastMob && (sp == null || hd == null)) {
+          let d = map.distance(lastMob.p, np),
+            dt = (p.timestamp - lastMob.t) / 1000;
+          if (sp == null && dt > 0) sp = d / dt;
+          if (hd == null && d >= 2) hd = bearing(lastMob.p, np);
+        }
+        lastMob = { p: np, t: p.timestamp };
+        $("acc").textContent = "± " + Math.round(c.accuracy) + " m";
+        processPoint(np, sp || 0, hd, c.accuracy, "mobile");
+      }
+      function gpsErr(e) {
+        $("fix").textContent = "GPS FEIL";
+        $("acc").textContent = "TRYKK IGJEN";
+        toast(e.message || "GPS-feil");
+      }
+
+      /* ---------- Felles punkthandsaming ---------- */
+      // Minste flytting før eit punkt blir logga (filtrerer GPS-støy når maskina står i ro)
+      const MIN_MOVE = { gnss: 0.3, mobile: 2, demo: 0 };
+      function processPoint(newPos, speed, hdg, acc, kind) {
+        pos = newPos;
+        src = kind;
+        lastSpeed = speed;
+        setFixBox();
+        $("speed").textContent = (speed * 3.6).toFixed(1).replace(".", ",") + " km/t";
+        if (hdg != null && !isNaN(hdg)) {
+          heading = hdg;
+          $("course").textContent = Math.round(heading) + "°";
+          if (kind === "demo" || speed > 0.5) rotateMap(heading);
+        }
+        if (!$("satPanel").classList.contains("hide")) renderSat();
+        let logging = preparing || kind === "demo";
+        if (kind === "mobile" && acc != null && acc > 20) logging = false; // for dårleg mobilposisjon til å loggast
+        if (kind === "gnss" && gnss && gnss.fix === "NO FIX") logging = false;
+        if (logging && (!last || map.distance(last, newPos) >= MIN_MOVE[kind])) {
+          let previous = last;
+          if (last) {
+            let d = map.distance(last, newPos);
+            if (d < 50) {
+              total += d;
+              $("distance").textContent = Math.round(total) + " m";
+              $("areaV").textContent = Math.round(total * (toolsFull ? cfg.tiller : cfg.tillerN)) + " m²";
+            }
+          }
+          last = newPos;
+          pts.push(newPos);
+          if (trackOn) track.setLatLngs(pts);
+          if (!lastCoverage && previous) lastCoverage = previous;
+          addCoverage(newPos);
+          if (pts.length > 1 && pts.length % 5 === 0) addArrow(pts[pts.length - 2], newPos, heading, arrowGroup, "arrow-icon", "➤");
+          if (currentSession) {
+            currentSession.points.push({
+              lat: +newPos[0].toFixed(8),
+              lng: +newPos[1].toFixed(8),
+              t: Date.now(),
+              speed: +speed.toFixed(2),
+              heading: Math.round(heading),
+              depth: kind === "demo" ? +cfg.demoD.toFixed(3) : kind === "gnss" && realDepth != null ? realDepth : null,
+              terrain: kind === "gnss" && gnss && gnss.terrain ? gnss.terrain.layer : null,
+              fix: kind === "gnss" && gnss ? gnss.fix : kind,
+              alt: kind === "gnss" && gnss ? gnss.altitude : null,
+            });
+            currentSession.distance = Math.round(total);
+            if (currentSession.points.length % 30 === 0) saveCurrentSession();
+          }
+        }
+        map.panTo(newPos, { animate: false });
+      }
+      function addCoverage(p) {
+        if (!snowOn || !lastCoverage) {
+          lastCoverage = p;
+          return;
+        }
+        let color = NEUTRAL;
+        if (src === "demo") color = depthColor(cfg.demoD);
+        else if (src === "gnss" && realDepth != null) color = depthColor(realDepth);
+        // Sporet er ei flate i meter (fresbreidd) – ikkje ei linje i pikslar – så det følgjer zoomen.
+        let w = toolsFull ? cfg.tiller : cfg.tillerN,
+          opt = { renderer: coverRenderer, stroke: false, fill: true, fillColor: color, fillOpacity: 1, interactive: false };
+        let strip = stripPolygon(lastCoverage, p, w);
+        if (strip) L.polygon(strip, opt).addTo(coverGroup);
+        L.circle(p, Object.assign({ radius: w / 2 }, opt)).addTo(coverGroup); // fyller kilen i svingar
+        lastCoverage = p;
+      }
+      // Rektangel med breidd w meter rundt segmentet a→b (lokal flat tilnærming, nøyaktig på desse avstandane)
+      function stripPolygon(a, b, w) {
+        let mLat = 111320,
+          mLng = 111320 * Math.cos((a[0] * Math.PI) / 180),
+          dx = (b[1] - a[1]) * mLng,
+          dy = (b[0] - a[0]) * mLat,
+          len = Math.hypot(dx, dy);
+        if (len < 0.01) return null;
+        let ox = (-dy / len) * (w / 2),
+          oy = (dx / len) * (w / 2),
+          off = (pt, sx) => [pt[0] + (sx * oy) / mLat, pt[1] + (sx * ox) / mLng];
+        return [off(a, 1), off(b, 1), off(b, -1), off(a, -1)];
+      }
+      function addArrow(a, b, h, group, cls, symbol) {
+        let mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2],
+          icon = L.divIcon({
+            className: cls,
+            html: '<div style="transform:rotate(' + (h - 90) + 'deg)">' + symbol + "</div>",
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+          });
+        L.marker(mid, { icon, interactive: false }).addTo(group);
+      }
+      function toggleTrack() {
+        trackOn = !trackOn;
+        $("trackBtn").classList.toggle("on", trackOn);
+        if (trackOn) {
+          track.addTo(map);
+          track.setLatLngs(pts);
+          zoomDetail();
+        } else {
+          if (map.hasLayer(track)) map.removeLayer(track);
+          if (map.hasLayer(arrowGroup)) map.removeLayer(arrowGroup);
+        }
+      }
+
+      /* ---------- Demo (300 × 50 m, simulert) ---------- */
+      function makeDemoRoute() {
+        let c = map.getCenter(),
+          lat = c.lat,
+          lng = c.lng,
+          latM = 111320,
+          lngM = 111320 * Math.cos((lat * Math.PI) / 180),
+          length = 300,
+          width = 50,
+          // Lanar med 0,2 m overlapp, slik ein dyktig førar køyrer: ingen opne felt mellom spora.
+          tool = toolsFull ? cfg.tiller : cfg.tillerN,
+          spacing = Math.max(1, tool - 0.2),
+          lanes = Math.max(2, Math.ceil((width - tool) / spacing) + 1),
+          arr = [];
+        for (let lane = 0; lane < lanes; lane++) {
+          let x = -width / 2 + tool / 2 + lane * spacing,
+            steps = 60;
+          for (let s = 0; s <= steps; s++) {
+            let y = -length / 2 + (s * length) / steps;
+            if (lane % 2) y = -y;
+            arr.push([lat + y / latM, lng + x / lngM]);
+          }
+          if (lane < lanes - 1) {
+            let last = arr[arr.length - 1],
+              nx = -width / 2 + tool / 2 + (lane + 1) * spacing;
+            arr.push([last[0], lng + nx / lngM]);
+          }
+        }
+        return arr;
+      }
+      function bearing(a, b) {
+        let y = Math.sin(((b[1] - a[1]) * Math.PI) / 180) * Math.cos((b[0] * Math.PI) / 180),
+          x =
+            Math.cos((a[0] * Math.PI) / 180) * Math.sin((b[0] * Math.PI) / 180) -
+            Math.sin((a[0] * Math.PI) / 180) * Math.cos((b[0] * Math.PI) / 180) * Math.cos(((b[1] - a[1]) * Math.PI) / 180);
+        return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+      }
+      let srcBeforeDemo = "none";
+      function toggleDemo() {
+        if (demo) {
+          stopDemo();
+          return;
+        }
+        if (preparing) togglePreparing(); // avslutt ekte økt før demo
+        stopPlayback();
+        srcBeforeDemo = src;
+        demo = true;
+        src = "demo";
+        $("demoBtn").classList.add("on");
+        $("demoTag").classList.remove("hide");
+        renderLegend();
+        pts = [];
+        coverGroup.clearLayers();
+        arrowGroup.clearLayers();
+        track.setLatLngs([]);
+        total = 0;
+        last = null;
+        lastCoverage = null;
+        let route = makeDemoRoute(),
+          i = 0;
+        currentSession = { id: "demo-" + Date.now(), date: new Date().toISOString().slice(0, 10), start: Date.now(), demo: true, machine: cfg.mname, points: [] };
+        startClock(currentSession.start);
+        keepAwake(true);
+        if (!cfg.view3d) map.fitBounds(L.latLngBounds(route).pad(0.12));
+        demoTimer = setInterval(() => {
+          if (i >= route.length) {
+            stopDemo();
+            toast("Demo ferdig – 300 × 50 m");
+            return;
+          }
+          let h = i < route.length - 1 ? bearing(route[i], route[i + 1]) : heading,
+            d = 0.45 + 0.65 * (0.5 + 0.5 * Math.sin(i / 13));
+          cfg.demoD = d;
+          showDepth(d);
+          processPoint(route[i], 1.4, h, 0.02, "demo");
+          i++;
+        }, 180);
+      }
+      function stopDemo() {
+        if (demoTimer) clearInterval(demoTimer);
+        demoTimer = null;
+        if (demo) {
+          saveCurrentSession(true);
+          demo = false;
+          src = srcBeforeDemo === "demo" ? "none" : srcBeforeDemo;
+          $("demoBtn").classList.remove("on");
+          $("demoTag").classList.add("hide");
+          currentSession = null;
+          last = null;
+          lastCoverage = null;
+          stopClock();
+          keepAwake(false);
+          showDepth(null);
+          renderLegend();
+          setFixBox();
+          try {
+            cfg.demoD = JSON.parse(localStorage.getItem(CFG_KEY) || "{}").demoD ?? cfg.demoD;
+          } catch (e) {}
+        }
+      }
+
+      /* ---------- Historikk: lagra på disk via lokal teneste, med nettlesarlagring som reserve ---------- */
+      function summary(s) {
+        return { id: s.id, date: s.date, start: s.start, end: s.end, durationMs: s.durationMs, demo: s.demo, distance: s.distance, machine: s.machine, width: s.width, n: s.points.length };
+      }
+      function localHist() {
+        try {
+          return JSON.parse(localStorage.getItem(HIST_KEY) || "[]");
+        } catch (e) {
+          return [];
+        }
+      }
+      function saveLocal(copy) {
+        let h = localHist().filter((x) => x.id !== copy.id);
+        h.push(copy);
+        while (h.length) {
+          try {
+            localStorage.setItem(HIST_KEY, JSON.stringify(h));
+            return true;
+          } catch (e) {
+            if (h.length === 1) return false;
+            h.shift(); // fullt: fjern eldste økt i nettlesarlageret (disken på PC-en har alt)
+          }
+        }
+      }
+      function saveCurrentSession(final = false) {
+        if (!currentSession || currentSession.points.length < 2) return;
+        let copy = JSON.parse(JSON.stringify(currentSession));
+        copy.end = Date.now();
+        copy.durationMs = copy.end - copy.start;
+        copy.distance = Math.round(sessionDistance(copy));
+        if (backendOK)
+          fetch("api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(copy) }).catch(() => {});
+        else saveLocal(copy);
+        let ix = HIST.findIndex((x) => x.id === copy.id),
+          sm = summary(copy);
+        if (!backendOK) sm.points = copy.points;
+        if (ix >= 0) HIST[ix] = sm;
+        else HIST.push(sm);
+        if (final) refreshHistory(false);
+      }
+      async function refreshHistory(fetchList = true) {
+        if (fetchList) {
+          try {
+            let r = await fetch("api/sessions", { cache: "no-store" });
+            if (!r.ok) throw 0;
+            HIST = await r.json();
+          } catch (e) {
+            HIST = localHist().map((s) => Object.assign(summary(s), { points: s.points }));
+          }
+        }
+        HIST.sort((a, b) => a.start - b.start);
+        let sel = $("historyDate"),
+          keep = sel.value;
+        sel.innerHTML = HIST.length
+          ? HIST.slice()
+              .reverse()
+              .map(
+                (x) =>
+                  '<option value="' +
+                  x.id +
+                  '">' +
+                  x.date +
+                  " " +
+                  new Date(x.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+                  " " +
+                  (x.demo ? "– DEMO" : "– KØYRING") +
+                  "</option>",
+              )
+              .join("")
+          : "<option>Ingen økter</option>";
+        if (HIST.some((x) => x.id === keep)) sel.value = keep;
+        showHistoryInfo();
+      }
+      function selectedSession() {
+        return HIST.find((x) => x.id === $("historyDate").value);
+      }
+      function sessionDistance(s) {
+        let km = 0;
+        for (let i = 1; i < s.points.length; i++) km += map.distance([s.points[i - 1].lat, s.points[i - 1].lng], [s.points[i].lat, s.points[i].lng]);
+        return km;
+      }
+      function showHistoryInfo() {
+        let s = selectedSession();
+        if (!s) {
+          $("historyInfo").textContent = "Ingen lagra økter.";
+          return;
+        }
+        let dist = s.distance || 0,
+          w = s.width || (toolsFull ? cfg.tiller : cfg.tillerN);
+        $("historyInfo").innerHTML =
+          "<b>" +
+          s.date +
+          "</b><br>" +
+          (s.demo ? "Demokøyring (simulert)" : "Registrert køyring") +
+          (s.machine ? " · " + s.machine : "") +
+          "<br>Tidsbruk: <b>" +
+          fmtTime(s.durationMs || 0) +
+          "</b><br>Distanse: <b>" +
+          Math.round(dist) +
+          " m</b><br>Estimert preparert areal: <b>" +
+          Math.round(dist * w) +
+          " m²</b><br>GPS-punkt: " +
+          s.n;
+      }
+      async function playHistory() {
+        let s = selectedSession();
+        if (!s || s.n < 2) {
+          toast("Ingen økt å spele av");
+          return;
+        }
+        if (!s.points) {
+          try {
+            s = await (await fetch("api/session?id=" + encodeURIComponent(s.id))).json();
+          } catch (e) {
+            toast("Fann ikkje økta");
+            return;
+          }
+        }
+        stopDemo();
+        stopPlayback();
+        replayGroup.clearLayers();
+        let route = s.points.map((p) => [p.lat, p.lng]),
+          i = 0;
+        map.fitBounds(L.latLngBounds(route).pad(0.15));
+        let replay = L.polyline([], { weight: 5, color: "#ffec3d", opacity: 0.9 }).addTo(replayGroup);
+        playMarker = L.circleMarker(route[0], { radius: 8, color: "#fff", fillColor: "#e33", fillOpacity: 1 }).addTo(replayGroup);
+        $("elapsed").textContent = "00:00:00";
+        playTimer = setInterval(() => {
+          if (i >= route.length) {
+            clearInterval(playTimer);
+            playTimer = null;
+            toast("Avspeling ferdig");
+            return;
+          }
+          let p = s.points[i];
+          playMarker.setLatLng(route[i]);
+          replay.addLatLng(route[i]);
+          if (i > 0 && i % 5 === 0) addArrow(route[i - 1], route[i], p.heading || bearing(route[i - 1], route[i]), replayGroup, "replay-icon", "➤");
+          $("elapsed").textContent = fmtTime((p.t || s.start) - s.start);
+          $("course").textContent = Math.round(p.heading || 0) + "°";
+          $("speed").textContent = ((p.speed || 0) * 3.6).toFixed(1).replace(".", ",") + " km/t";
+          pos = route[i];
+          map.panTo(route[i], { animate: false });
+          i++;
+        }, 100);
+      }
+      function stopPlayback() {
+        if (playTimer) clearInterval(playTimer);
+        playTimer = null;
+        replayGroup.clearLayers();
+        playMarker = null;
+      }
+      async function clearHistory() {
+        if (!confirm("Slette ALL lagra køyrehistorikk på denne maskina? Dette kan ikkje angrast.")) return;
+        try {
+          localStorage.removeItem(HIST_KEY);
+        } catch (e) {}
+        if (backendOK) await fetch("api/sessions/clear", { method: "POST" }).catch(() => {});
+        HIST = [];
+        refreshHistory();
+        toast("Historikk sletta");
+      }
+      /* ---------- Kartkjelde- og anleggsprofil-skjema ---------- */
+      function mapFormUpdate() {
+        let id = $("mapSrc").value,
+          pre = MAP_PRESETS[id],
+          custom = id === "xyz" || id === "wms";
+        $("mapUrlRow").classList.toggle("hide", !custom);
+        $("mapLayersRow").classList.toggle("hide", id !== "wms");
+        $("mapAttrRow").classList.toggle("hide", !custom && id !== "local");
+        $("mapHelp").textContent = pre.help;
+        if (id !== cfg.mapSource.id) $("mapMaxNative").value = pre.max;
+      }
+      function fillMapForm() {
+        let m = cfg.mapSource;
+        $("siteName").value = cfg.site || "";
+        $("mapSrc").value = m.id;
+        $("mapUrl").value = m.url || "";
+        $("mapLayers").value = m.layers || "";
+        $("mapAttr").value = m.attr || "";
+        $("mapMaxNative").value = m.max || MAP_PRESETS[m.id].max;
+        mapFormUpdate();
+      }
+      function saveMapSource() {
+        let id = $("mapSrc").value,
+          url = $("mapUrl").value.trim();
+        if (id === "xyz" && !/\{z\}/.test(url)) return toast("Adressa må innehalde {z}, {x} og {y}");
+        if (id === "wms" && (!url || !$("mapLayers").value.trim())) return toast("WMS treng både adresse og lagnamn");
+        cfg.site = $("siteName").value.trim();
+        cfg.mapSource = { id, url, layers: $("mapLayers").value.trim(), attr: $("mapAttr").value.trim(), max: +$("mapMaxNative").value || MAP_PRESETS[id].max };
+        persistCfg();
+        applyMapSource();
+        toast("Kartkjelde: " + $("mapSrc").selectedOptions[0].text);
+      }
+      function exportProfile() {
+        save();
+        cfg.site = $("siteName").value.trim() || cfg.site;
+        let prof = { snowmanProfile: 1, version: "1.5", exported: new Date().toISOString(), cfg: Object.assign({}, cfg, { demoD: 0.82 }) },
+          a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(prof, null, 2)], { type: "application/json" }));
+        a.download = "snowman-profil-" + (cfg.site || "anlegg").replace(/[^\wæøåÆØÅ-]+/g, "_") + ".json";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }
+      async function importProfile(f) {
+        if (!f) return;
+        try {
+          let d = JSON.parse(await f.text());
+          if (!d.snowmanProfile || !d.cfg) throw Error("ikkje ein SNOWMAN-profil");
+          if (!confirm("Erstatte innstillingane på denne maskina med profilen «" + (d.cfg.site || f.name) + "»?")) return;
+          Object.assign(cfg, d.cfg);
+          persistCfg();
+          load();
+          applyMapSource();
+          toast("Profil importert: " + (cfg.site || f.name));
+        } catch (e) {
+          toast("Kunne ikkje lese profil: " + e.message);
+        }
+        $("profileFile").value = "";
+      }
+      /* ---------- Terrain Engine: bibliotek, opplasting, kalibrering ---------- */
+      let TERR = { available: false, layers: [] },
+        pendingToken = null,
+        pendingInfo = null,
+        replaceId = null,
+        outlinesOn = true;
+      const outlineGroup = L.layerGroup().addTo(map);
+      async function api(path, body) {
+        let r = await fetch(path, body === undefined ? { cache: "no-store" } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        let j = await r.json();
+        if (!r.ok || j.ok === false) throw Error(j.error || (j.errors || []).join(" ") || "Feil " + r.status);
+        return j;
+      }
+      async function loadTerrain() {
+        try {
+          TERR = await api("api/terrain");
+        } catch (e) {
+          $("terrEngine").textContent = "Ingen kontakt med SNOWMAN-tenesta – terreng krev PC-versjonen.";
+          return;
+        }
+        $("terrEngine").innerHTML = TERR.available
+          ? "<b>Terrain Engine: klar</b> · " + TERR.layers.length + " lag i biblioteket"
+          : "<span style='color:#ff8b6e'>" + TERR.error + "</span>";
+        let c = TERR.calibration;
+        if (c) {
+          ["antZ", "zOff"].forEach((k) => c[k] != null && ($(k).value = cfg[k] = c[k]));
+          $("heightMode").value = c.heightMode || "nn2000";
+          $("geoidN").value = c.geoidN ?? "";
+          $("geoidRow").classList.toggle("hide", $("heightMode").value !== "ellipsoid");
+          $("calInfo").innerHTML = c.calibrated
+            ? "✅ Kalibrering lagra: antenne " + c.antZ + " m, offset " + c.zOff + " m, høgd " + (c.heightMode === "ellipsoid" ? "ellipsoidisk − N " + c.geoidN + " m" : "NN2000")
+            : "⚠️ Kalibrering ikkje lagra – snødjupne blir ikkje vist før ho er lagra.";
+        }
+        renderTerrain();
+      }
+      function renderTerrain() {
+        let L2 = TERR.layers || [];
+        $("terrList").innerHTML = L2.length
+          ? L2.map(
+              (l, i) =>
+                '<div class="tlayer' + (l.active ? "" : " off") + '"><b>' + esc(l.name) + "</b> " + (l.active ? "" : "(av)") +
+                "<br>" + (TERR.types[l.type] || l.type) + " · " + l.res + " m · " + l.crs + " · " + l.vdatum +
+                "<br>" + l.area_km2 + " km² · høgd " + Math.round(l.hmin) + "–" + Math.round(l.hmax) + " m · prioritet " + (L2.length - i) +
+                " · importert " + l.imported + (l.versions && l.versions.length ? " · " + l.versions.length + " eldre versjon(ar)" : "") +
+                '<div class="acts"><button onclick="moveLayer(\'' + l.id + "',1)\">▲</button><button onclick=\"moveLayer('" + l.id + "',-1)\">▼</button>" +
+                '<button onclick="toggleLayer(\'' + l.id + "')\">" + (l.active ? "SLÅ AV" : "SLÅ PÅ") + "</button>" +
+                '<button onclick="startReplace(\'' + l.id + "')\">ERSTATT</button>" +
+                '<button onclick="deleteLayer(\'' + l.id + "')\">SLETT</button></div></div>",
+            ).join("")
+          : '<div class="history">Biblioteket er tomt. Legg til ein terrengmodell (barmark) under.</div>';
+        drawOutlines();
+      }
+      const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      function drawOutlines() {
+        outlineGroup.clearLayers();
+        if (!outlinesOn) return;
+        (TERR.layers || []).forEach((l) =>
+          L.polygon(l.outline, { color: l.active ? "#ffd33f" : "#888", weight: 2, dashArray: "8 6", fill: false, interactive: false }).addTo(outlineGroup),
+        );
+      }
+      function toggleOutlines() {
+        outlinesOn = !outlinesOn;
+        $("showOutlines").classList.toggle("on", outlinesOn);
+        $("showOutlines").textContent = "VIS TERRENGOMRISS PÅ KARTET: " + (outlinesOn ? "PÅ" : "AV");
+        drawOutlines();
+      }
+      async function analyseTerrain() {
+        let f = $("terrFile").files[0];
+        if (!f) return toast("Vel ei fil først");
+        $("terrResult").innerHTML = '<div class="history">Analyserer ' + esc(f.name) + " (" + (f.size / 1048576).toFixed(1) + " MB) …</div>";
+        $("terrImport").classList.add("hide");
+        let r;
+        try {
+          r = await (await fetch("api/terrain/analyse?file=" + encodeURIComponent(f.name), { method: "POST", body: f })).json();
+        } catch (e) {
+          r = { ok: false, errors: ["Ingen kontakt med SNOWMAN-tenesta."], warnings: [], info: {} };
+        }
+        let i = r.info || {},
+          lines = (r.errors || []).map((t) => '<div class="chk err">⛔ ' + esc(t) + "</div>").concat((r.warnings || []).map((t) => '<div class="chk warn">⚠️ ' + esc(t) + "</div>"));
+        if (r.ok) {
+          lines.unshift('<div class="chk ok">✅ ' + esc(i.format) + " · " + esc(i.crs) + " · høgdesystem " + esc(i.vdatum) + " · " + i.res + " m rute</div>");
+          lines.push('<div class="chk">' + i.nx + " × " + i.ny + " ruter · " + i.area_km2 + " km² · høgd " + Math.round(i.hmin) + "–" + Math.round(i.hmax) + " m · " + Math.round(i.valid * 100) + " % med data</div>");
+          if (pos) {
+            let inside = pointInPoly(pos, i.outline);
+            lines.push(inside ? '<div class="chk ok">✅ Dekkjer posisjonen til maskina</div>' : '<div class="chk warn">⚠️ Fila dekkjer ikkje posisjonen til maskina</div>');
+          }
+          pendingToken = r.token;
+          pendingInfo = i;
+          $("terrName").value = replaceId ? "" : f.name.replace(/\.[^.]+$/, "");
+          $("terrName").placeholder = replaceId ? "(behald namnet)" : "";
+          $("vdConfirmRow").classList.toggle("hide", i.vdatum === "NN2000");
+          $("vdConfirm").checked = false;
+          $("terrImport").classList.remove("hide");
+          outlineGroup.addLayer(L.polygon(i.outline, { color: "#4db8ff", weight: 3, fill: true, fillOpacity: 0.08, interactive: false }));
+          map.fitBounds(L.latLngBounds(i.outline).pad(0.1));
+        }
+        $("terrResult").innerHTML = '<div class="history">' + lines.join("") + "</div>";
+      }
+      function pointInPoly(p, poly) {
+        let x = p[1], y = p[0], inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          let xi = poly[i][1], yi = poly[i][0], xj = poly[j][1], yj = poly[j][0];
+          if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+        }
+        return inside;
+      }
+      async function importTerrain() {
+        if (!pendingToken) return;
+        if (pendingInfo.vdatum !== "NN2000" && !$("vdConfirm").checked) return toast("Stadfest høgdesystemet først");
+        try {
+          let r = await api("api/terrain/import", { token: pendingToken, name: $("terrName").value.trim(), type: $("terrType").value, replace: replaceId });
+          toast((replaceId ? "Erstatta: " : "Lagt til: ") + r.layer.name);
+          resetWizard();
+          loadTerrain();
+        } catch (e) {
+          toast("Import feila: " + e.message);
+        }
+      }
+      function resetWizard() {
+        pendingToken = pendingInfo = replaceId = null;
+        $("wizTitle").textContent = "LEGG TIL TERRENG";
+        $("terrResult").innerHTML = "";
+        $("terrFile").value = "";
+        $("terrImport").classList.add("hide");
+        drawOutlines();
+      }
+      function startReplace(id) {
+        let l = TERR.layers.find((x) => x.id === id);
+        replaceId = id;
+        $("wizTitle").textContent = "ERSTATT: " + l.name;
+        $("terrType").value = l.type;
+        toast("Vel ny fil for «" + l.name + "». Den gamle blir teken vare på som eldre versjon.");
+        $("terrFile").scrollIntoView({ behavior: "smooth" });
+      }
+      async function toggleLayer(id) {
+        let l = TERR.layers.find((x) => x.id === id);
+        await api("api/terrain/update", { id, active: !l.active }).catch((e) => toast(e.message));
+        loadTerrain();
+      }
+      async function moveLayer(id, dir) {
+        // Byt prioritet med nabolaget (lista er sortert med høgast prioritet øvst)
+        let L2 = TERR.layers,
+          i = L2.findIndex((x) => x.id === id),
+          j = i - dir;
+        if (j < 0 || j >= L2.length) return;
+        await api("api/terrain/update", { id: L2[i].id, priority: L2[j].priority });
+        await api("api/terrain/update", { id: L2[j].id, priority: L2[i].priority });
+        loadTerrain();
+      }
+      async function deleteLayer(id) {
+        let l = TERR.layers.find((x) => x.id === id);
+        if (!confirm("Slette terrenglaget «" + l.name + "» og alle eldre versjonar? Dette kan ikkje angrast.")) return;
+        await api("api/terrain/delete", { id }).catch((e) => toast(e.message));
+        loadTerrain();
+      }
+      async function saveCalibration() {
+        save();
+        let hm = $("heightMode").value,
+          gN = parseFloat($("geoidN").value);
+        if (hm === "ellipsoid" && isNaN(gN)) return toast("Fyll inn geoidehøgd N");
+        try {
+          await api("api/calibration", { antZ: cfg.antZ, zOff: cfg.zOff, heightMode: hm, geoidN: isNaN(gN) ? null : gN, calibrated: true });
+          toast("Kalibrering lagra");
+          loadTerrain();
+        } catch (e) {
+          toast("Kunne ikkje lagre: " + e.message);
+        }
+      }
+
+      /* ---------- HUD: send tilstanden til den lokale tenesta, som HUD-visinga les ---------- */
+      function publishHUD() {
+        if (backendOK) {
+          let st = {
+            src,
+            fix: src === "demo" ? "DEMO" : src === "gnss" && gnss ? gnss.fix : src === "mobile" ? "MOBIL GPS" : "AV",
+            sats: src === "gnss" && gnss ? gnss.satellites : null,
+            speed: +(lastSpeed * 3.6).toFixed(1),
+            heading: Math.round(heading),
+            depth: src === "demo" ? +cfg.demoD.toFixed(2) : src === "gnss" ? realDepth : null,
+            depthNote: src === "demo" ? "SIMULERT" : realDepth == null ? depthNoteText : gnss && gnss.terrain ? gnss.terrain.name : "",
+            target: cfg.target,
+            tol: cfg.tol,
+            bounds: cfg.bounds,
+            preparing: preparing || demo,
+            demo,
+            distance: Math.round(total),
+            area: Math.round(total * (toolsFull ? cfg.tiller : cfg.tillerN)),
+            elapsed: $("elapsed").textContent,
+          };
+          fetch("api/hud", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(st) }).catch(() => {});
+        }
+        setTimeout(publishHUD, 400);
+      }
+      load();
+      fillMapForm();
+      pollGNSS();
+      publishHUD();
+    </script>
+  </body>
+</html>
