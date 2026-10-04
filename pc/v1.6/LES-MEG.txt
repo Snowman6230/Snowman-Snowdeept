@@ -22,6 +22,7 @@ KVA ER NYTT I v1.6
     Linux/Omarchy: sudo ufw allow 8766/tcp
     Windows: tillat Python i Windows-brannmuren når han spør (privat nettverk).
   Sjekk også at mobilen er på Wi-Fi, ikkje mobildata, og ikkje på eit gjestenett.
+  Skriv adressa med http:// først (t.d. http://10.0.0.121:8766/hud), elles kan mobilen prøve https.
 - Kompassknapp på kartet (v1.6.1): lås kartet med nord opp, eller la det rotere.
 - Alt frå v1.5 er med: førarperspektiv, HUD, kartkjelder, anleggsprofil, historikk.
 

@@ -9,6 +9,9 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### Dokumentasjon – HUD på mobil stadfesta
+- **Endra:** LES-MEG: skriv HUD-adressa med `http://` først. Testa av eigaren: HUD virkar på mobil etter `sudo ufw allow 8766/tcp` på Omarchy.
+
 ### PC-prototype v1.6.4 – test over ekte terrengmodell (simanlegg)
 - **Nytt:** `./start-snowman.sh simanlegg` – den simulerte Leica-mottakaren køyrer over det øvste aktive terrenglaget i biblioteket (t.d. Topocad-modellane frå Fjellsætra). Høgda er ekte terreng + simulert snø (ca. 0,4–1,2 m og eit tynt felt) + antennehøgd. Lanane følgjer lengderetninga til modellen og held seg innanfor han. Når du legg inn eller endrar prioritet på eit lag, flyttar maskina seg dit innan nokre sekund.
 - **Nytt:** Tenesta veit når mottakaren er simulatoren (`--simulert`, set automatisk av `sim`, `simterreng` og `simanlegg`). Førarskjermen viser då «TEST – SIMULERT MOTTAKAR OG SNØ», snødjupna heiter «SNØDJUPNE (TEST)» med «SIMULERT SNØ», HUD viser «DEMO – SIMULERT», og øktene blir lagra som demo.
