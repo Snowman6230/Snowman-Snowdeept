@@ -1,0 +1,6 @@
+# Lokale innstillingar og innloggingar (NTRIP/CPOS) skal aldri inn i repoet
+*.local.json
+config.json
+ntrip-config*.json
+__pycache__/
+*.pyc

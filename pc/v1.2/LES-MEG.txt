@@ -1,0 +1,24 @@
+SNOWMAN PC Prototype v1.2
+
+ALT LIGG I DENNE PAKKEN:
+- SNOWMAN førargrensesnitt
+- SNOWMAN NTRIP Service
+- Leica/NMEA seriell kommunikasjon
+- CPOS/NTRIP-oppsett
+
+FØRSTE GONG
+1. Pakk ut heile ZIP-fila.
+2. Køyr INSTALL.bat éin gong.
+3. Kople til Leica/RTK-GNSS.
+4. Kople PC-en til internett, til dømes mobil-hotspot.
+5. Køyr START-SNOWMAN.bat.
+
+SEINARE
+Berre dobbeltklikk START-SNOWMAN.bat.
+Den startar bakgrunnstenesta OG opnar SNOWMAN-grensesnittet.
+
+Lokal adresse: http://127.0.0.1:8765
+
+MERK
+Dette er test/prototype. CPOS-passord skal ikkje leggjast på GitHub.
+LiDAR/snødjupne-integrasjonen er neste steg.

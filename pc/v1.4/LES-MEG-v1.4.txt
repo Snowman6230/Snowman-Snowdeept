@@ -1,0 +1,28 @@
+SNOWMAN PC Prototype v1.4
+
+NYTT I v1.4
+- Offline/lokalt arbeidskart utan kartabonnement.
+- LiDAR/terrengmodell: filveljar for LAS, LAZ, PLY, XYZ og CSV.
+- Registrering av koordinatsystem og høgdesystem.
+- Maskinkalibrering med eigen maskinprofil.
+- Maskinbreidde, skjerbreidde og fresbreidde.
+- GNSS-antenneoffset X/Y/Z og fast dokumentert høgdeoffset.
+- Profilen blir lagra lokalt på test-PC/nettlesar.
+- Start/Stopp preparering, reset spor, tidsbruk, distanse, areal og historikk.
+- Lokal Leica/CPOS/NTRIP-teneste frå tidlegare prototype.
+
+VIKTIG OM LiDAR
+v1.4 kan velje og registrere LiDAR-fila og metadata lokalt i brukargrensesnittet.
+Han utfører enno ikkje full LAS/LAZ-punktsky/TIN-interpolasjon. Dette blir neste
+berekningsmodul. Vi skal ikkje late som snødjupna er ekte før denne modulen og
+koordinat-/høgdesystem er validert.
+
+KALIBRERING
+Kalibrering skal gjerast per trakkemaskin. Mål GNSS-antennas faktiske X/Y/Z-plassering
+mot eit definert maskinreferansepunkt. Kontroller høgde mot kjent kontrollpunkt med
+stabil RTK FIX. Lagre berre dokumentert offset.
+
+START
+Første gong: INSTALL.bat
+Deretter: START-SNOWMAN.bat
+Teknisk GNSS/NTRIP: NTRIP-INNSTILLINGAR.bat

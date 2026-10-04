@@ -1,0 +1,43 @@
+SNOWMAN PC Prototype v1.3 – TEST
+
+VIKTIG ENDRING FRÅ v1.2
+v1.3 brukar det SAME SNOWMAN Driver v24-brukargrensesnittet som HTML-/GitHub-versjonen.
+Dermed skal funksjonane og layouten frå v24 vere dei same i PC-prototypen.
+
+Dette omfattar mellom anna:
+- same fullskjerms førarlayout
+- snødjupnevising og snøintervall
+- maskinvising
+- justerbar maskin-, skjer- og fresbreidde
+- full/innkøyrd arbeidsstilling
+- spor av/på
+- Start/Stopp preparering
+- Reset spor
+- demo 300 x 50 meter
+- linjebasert prepareringsspor
+- køyreretningspiler
+- kartrotasjon
+- GPS/satellittstatus
+- fart, kurs, distanse og tidsbruk
+- målprofil
+- kartinnstillingar
+- historikk og avspeling av arbeidsøkter
+- zoom og sentrering
+
+I tillegg køyrer lokal SNOWMAN NTRIP/GNSS-teneste på same PC.
+
+FØRSTE GONG:
+1. Pakk ut heile ZIP-fila.
+2. Køyr INSTALL.bat.
+3. Køyr START-SNOWMAN.bat.
+
+NTRIP/GNSS:
+Når SNOWMAN er starta, køyr NTRIP-INNSTILLINGAR.bat for teknisk NTRIP/Leica-oppsett.
+
+MERK:
+I v1.3 blir v24-grensesnittet henta frå den eksisterande GitHub-versjonen når programmet startar.
+Dette sikrar at testprototypen brukar same layout og funksjonar som den versjonen vi allereie har testa.
+Den lokale NTRIP-tenesta køyrer parallelt. Neste integrasjonssteg er å mate ekte Leica/RTK-data direkte
+inn i v24-felta og deretter kople inn lokal LiDAR-modell/snødjupneberekning.
+
+CPOS-passord skal ikkje leggjast på GitHub.

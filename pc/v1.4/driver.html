@@ -1,0 +1,54 @@
+<!doctype html><html lang="nn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SNOWMAN PC Prototype v1.4</title><style>
+*{box-sizing:border-box}body{margin:0;background:#06131b;color:#eef;font:15px Arial;height:100vh;overflow:hidden}
+header{height:64px;background:#092431;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid #31505d}.logo{font-size:23px;font-weight:800}.sub{font-size:11px;color:#9bb}.status{margin-left:auto;display:flex;gap:7px}.badge{background:#12313d;padding:8px;border-radius:8px}.ok{color:#4df36b}.bad{color:#ff8b6e}
+main{display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 64px)}#map{position:relative;background:linear-gradient(145deg,#e0e8e9,#9eb4bb);overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%}.machine{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);font-size:55px;opacity:.62}
+.depth{position:absolute;left:16px;top:15px;background:#06202be8;padding:13px 16px;border-radius:11px}.depth b{font-size:34px}
+.toolbar{position:absolute;left:14px;bottom:14px;display:flex;gap:6px;flex-wrap:wrap}.btn{background:#103746;color:white;border:1px solid #617b86;padding:10px 12px;border-radius:8px;font-weight:bold}.green{background:#197a38}.orange{background:#9b5c13}
+aside{background:#081b24;padding:12px;overflow:auto}.card{background:#0e2935;border:1px solid #294b59;border-radius:10px;padding:12px;margin-bottom:9px}.card h3{margin:0 0 8px;font-size:15px}
+input,select{width:100%;background:#0a202a;color:white;border:1px solid #526b75;padding:7px;border-radius:5px;margin:3px 0 6px}.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.small{font-size:11px;color:#9bb}.kv{display:grid;grid-template-columns:1fr auto;gap:5px}
+dialog{background:#0b222d;color:white;border:1px solid #55717c;border-radius:12px;max-width:720px;width:92%}dialog::backdrop{background:#0009}
+</style></head><body>
+<header><div><div class=logo>SNOWMAN <span style="font-weight:400">by Alpindata</span></div><div class=sub>PC PROTOTYPE v1.4 · OFFLINE MAP · LiDAR · MACHINE CALIBRATION</div></div>
+<div class=status><div class=badge>GNSS <span id=gnss class=bad>AV</span></div><div class=badge>NTRIP <span id=ntrip class=bad>AV</span></div><div class=badge>RTK <span id=rtk class=bad>NO DATA</span></div></div></header>
+<main><section id=map><canvas id=c></canvas><div class=machine id=machine>🚜</div>
+<div class=depth>SNØDJUPNE<br><b id=depth>-- cm</b><div class=small id=terrainStatus>Ingen LiDAR-modell lasta</div></div>
+<div class=toolbar><button class="btn green" id=prep onclick=togglePrep()>▶ START PREPARERING</button><button class=btn onclick="machine.hidden=!machine.hidden">MASKIN AV/PÅ</button><button class=btn onclick=resetTrack()>RESET SPOR</button><button class=btn onclick="lidarDlg.showModal()">LAST LiDAR</button><button class=btn onclick="calDlg.showModal()">KALIBRER MASKIN</button><button class=btn onclick="historyDlg.showModal()">HISTORIKK</button></div></section>
+<aside>
+<div class=card><h3>LIVE GNSS</h3><div class=kv><span>Fix</span><b id=fix>--</b><span>Satellittar</span><b id=sat>--</b><span>HDOP</span><b id=hdop>--</b><span>Høgd</span><b id=alt>--</b><span>RTCM</span><b id=rtcm>0 B</b></div></div>
+<div class=card><h3>KARTLAG</h3><label><input type=checkbox checked onchange=draw()> Lokal terrengmodell</label><br><label><input type=checkbox checked> Preparert spor</label><br><label><input type=checkbox checked> Snødjupne</label><div class=small>Arbeidskartet er lokalt og krev ikkje kartabonnement.</div></div>
+<div class=card><h3>MASKINPROFIL</h3><div id=profileName>Standard · 5,5 m</div><div class=small id=profileInfo>Kalibrering ikkje utført</div></div>
+<div class=card><h3>ARBEIDSØKT</h3><div class=kv><span>Tid</span><b id=tm>00:00:00</b><span>Distanse</span><b id=dist>0 m</b><span>Areal</span><b id=area>0 m²</b></div></div>
+<div class=card><h3>TEKNISK</h3><button class=btn onclick="location.href='/ntrip'">LEICA / CPOS / NTRIP</button></div>
+</aside></main>
+
+<dialog id=lidarDlg><h2>Last inn LiDAR / terrengmodell</h2>
+<p>Prototype v1.4 kan lagre terrengfila lokalt på denne PC-en. LAS/LAZ/PLY/XYZ/CSV kan veljast. I denne prototypen blir filmetadata registrert; full punktsky-/TIN-motor kjem i neste berekningsmodul.</p>
+<input id=lidarFile type=file accept=".las,.laz,.ply,.xyz,.csv,.txt">
+<div class=row><div><label>Koordinatsystem</label><input id=crs placeholder="t.d. EUREF89 UTM 32N"></div><div><label>Høgdesystem</label><input id=vdatum placeholder="t.d. NN2000"></div></div>
+<button class=btn onclick=loadLidar()>LAGRE TERRINGMODELL</button> <button class=btn onclick=lidarDlg.close()>LUKK</button><div id=lidarInfo class=small></div></dialog>
+
+<dialog id=calDlg><h2>Kalibrering av trakkemaskin</h2><p>Opprett ein maskinprofil slik at GNSS-antenna og arbeidsreiskapen får korrekt geometrisk plassering.</p>
+<div class=row><div><label>Maskinnamn</label><input id=mname value="Trakkemaskin 1"></div><div><label>Maskinbreidde (m)</label><input id=mwidth type=number step=.01 value=5.5></div>
+<div><label>Skjer full breidde (m)</label><input id=blade type=number step=.01 value=5.5></div><div><label>Fresbreidde (m)</label><input id=tiller type=number step=.01 value=5.5></div>
+<div><label>Antenne fram/bak frå referansepunkt (m)</label><input id=antx type=number step=.001 value=0></div><div><label>Antenne venstre/høgre (m)</label><input id=anty type=number step=.001 value=0></div>
+<div><label>Antennehøgd over referansepunkt (m)</label><input id=antz type=number step=.001 value=2.8></div><div><label>Fast høgdeoffset (m)</label><input id=zoff type=number step=.001 value=0></div></div>
+<p><b>Kalibreringsrutine:</b> Plasser maskina på eit kjent, plant kontrollpunkt. Mål antenneplasseringa fysisk. Når RTK FIX er stabil, samanlikn GNSS-høgda med kjent referanse og legg berre inn dokumentert offset.</p>
+<button class=btn onclick=saveCal()>LAGRE MASKINPROFIL</button> <button class=btn onclick=calDlg.close()>LUKK</button></dialog>
+
+<dialog id=historyDlg><h2>Arbeidsøkter</h2><div id=history>Ingen lagra arbeidsøkter enno.</div><button class=btn onclick=historyDlg.close()>LUKK</button></dialog>
+<script>
+let preparing=false,start=0,timer=null,track=[],sessions=JSON.parse(localStorage.getItem('snowmanSessions')||'[]');
+function resize(){c.width=c.clientWidth;c.height=c.clientHeight;draw()}addEventListener('resize',resize);resize();
+function draw(){let x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);x.strokeStyle='#71889255';x.lineWidth=1;for(let i=0;i<c.width;i+=45){x.beginPath();x.moveTo(i,0);x.lineTo(i,c.height);x.stroke()}for(let i=0;i<c.height;i+=45){x.beginPath();x.moveTo(0,i);x.lineTo(c.width,i);x.stroke()}if(track.length>1){x.strokeStyle='#2589c6';x.lineWidth=12;x.lineCap='round';x.beginPath();track.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.stroke()}}
+function togglePrep(){preparing=!preparing;if(preparing){start=Date.now();track=[[c.width*.2,c.height*.55],[c.width*.35,c.height*.48],[c.width*.5,c.height*.52],[c.width*.7,c.height*.42]];prep.textContent='■ STOPP PREPARERING';timer=setInterval(tick,1000)}else{clearInterval(timer);prep.textContent='▶ START PREPARERING';sessions.unshift({date:new Date().toLocaleString(),seconds:Math.floor((Date.now()-start)/1000)});localStorage.setItem('snowmanSessions',JSON.stringify(sessions));renderHistory()}draw()}
+function tick(){let s=Math.floor((Date.now()-start)/1000),h=String(Math.floor(s/3600)).padStart(2,'0'),m=String(Math.floor(s%3600/60)).padStart(2,'0'),q=String(s%60).padStart(2,'0');tm.textContent=`${h}:${m}:${q}`;dist.textContent=Math.round(s*1.7)+' m';area.textContent=Math.round(s*1.7*5.5)+' m²'}
+function resetTrack(){track=[];draw()}
+function loadLidar(){let f=lidarFile.files[0];if(!f){lidarInfo.textContent='Vel ei fil først.';return}let meta={name:f.name,size:f.size,crs:crs.value,vdatum:vdatum.value,date:new Date().toISOString()};localStorage.setItem('snowmanLidarMeta',JSON.stringify(meta));terrainStatus.textContent='LiDAR: '+f.name;lidarInfo.textContent=`Registrert lokalt: ${f.name} · ${(f.size/1048576).toFixed(1)} MB · ${crs.value||'CRS ikkje sett'} · ${vdatum.value||'høgdesystem ikkje sett'}`}
+function saveCal(){let p={name:mname.value,width:+mwidth.value,blade:+blade.value,tiller:+tiller.value,antx:+antx.value,anty:+anty.value,antz:+antz.value,zoff:+zoff.value};localStorage.setItem('snowmanMachineProfile',JSON.stringify(p));showProfile();calDlg.close()}
+function showProfile(){let p=JSON.parse(localStorage.getItem('snowmanMachineProfile')||'null');if(p){profileName.textContent=`${p.name} · ${p.width.toFixed(2)} m`;profileInfo.textContent=`Skjer ${p.blade} m · fres ${p.tiller} m · antenne Z ${p.antz} m · Z-offset ${p.zoff} m`}}
+function renderHistory(){history.innerHTML=sessions.length?sessions.map(s=>`<div class=card>${s.date} · ${s.seconds}s <button class=btn>SPILL AV</button></div>`).join(''):'Ingen lagra arbeidsøkter enno.'}showProfile();renderHistory();
+let lm=JSON.parse(localStorage.getItem('snowmanLidarMeta')||'null');if(lm)terrainStatus.textContent='LiDAR: '+lm.name;
+async function poll(){try{let x=await(await fetch('/api/status',{cache:'no-store'})).json();gnss.textContent=x.serial_connected?'TILKOPLA':'AV';gnss.className=x.serial_connected?'ok':'bad';ntrip.textContent=x.ntrip_connected?'TILKOPLA':'AV';ntrip.className=x.ntrip_connected?'ok':'bad';rtk.textContent=x.fix;rtk.className=x.fix==='RTK FIX'?'ok':'bad';fix.textContent=x.fix;sat.textContent=x.satellites||'--';hdop.textContent=x.hdop??'--';alt.textContent=x.altitude==null?'--':x.altitude+' m';rtcm.textContent=x.bytes_rtcm+' B'}catch(e){}setTimeout(poll,1000)}poll();
+</script></body></html>
