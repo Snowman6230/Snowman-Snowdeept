@@ -109,7 +109,7 @@ Trasear og objekt blir lagra i anleggsprofilen og følgjer med til alle maskiner
 | Versjon | Innhald |
 |---|---|
 | **v1.6** | Terrengbibliotek (legg til, erstatt, av/på, prioritet), GeoTIFF, barmark. Ekte snødjupne i spor, førarskjerm og HUD. Testa med syntetisk terreng med kjend fasit |
-| **v1.6.1** | Kartverket DTM 1 m for Fjellsætra. Test av UTM 32/33 og NN2000 |
+| **v1.6.2** | Kartverket DTM 1 m for Fjellsætra. Test av UTM 32/33 og NN2000 |
 | **v1.7** | LAS/LAZ- og XYZ-import, kontrollpunkt, anleggspakke |
 | **v1.8** | Trasear og anleggsobjekt (registrering, dekningsgrad, varsel, rapport per trasé) |
 | Seinare | Målflate og snøflate, IMU (pitch/roll), ekte 3D-terreng i førarperspektivet |

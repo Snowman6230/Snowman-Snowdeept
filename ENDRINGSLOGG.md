@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-04
 
+### PC-prototype v1.6.1 – lås kartrotasjonen
+- **Nytt:** Kompassknapp øvst til høgre på kartet: trykk for å låse kartet med nord opp, eller la det rotere etter køyreretninga. Nålen viser alltid kvar nord er. Valet blir hugsa.
+- **Endra:** Når kartet er låst, snur maskinteikninga seg etter køyreretninga i staden. Fungerer òg i førarperspektivet.
+- **Retta:** Kartet snurra ein heil runde når kursen passerte nord (t.d. 359° → 1°). No blir vinkelen halden samanhengande, så kartet tek alltid den korte vegen.
+- **Endra:** Mjukare rotasjon (0,4 s).
+
 ### PC-prototype v1.6 – Terrain Engine (ekte snødjupne)
 - **Nytt:** `terrain.py` – terrengbibliotek med fleire lag: legg til, erstatt (eldre versjon blir teken vare på), slå av/på, prioritet og slett. Oppslag med interpolasjon frå det høgast prioriterte laget som har data.
 - **Nytt:** Snødjupne = (GNSS-høgd − antennehøgd − høgdeoffset) − terrenghøgd, rekna i den lokale tenesta for kvar GNSS-posisjon. Vist i spor (fargar), førarskjerm og HUD, og lagra i arbeidsøktene.
@@ -112,7 +118,7 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## Planlagt
 
-- **v1.6.1:** Kartverket DTM 1 m for Fjellsætra (frå hoydedata.no).
+- **v1.6.2:** Kartverket DTM 1 m for Fjellsætra (frå hoydedata.no).
 - **v1.7:** LAS/LAZ- og XYZ-import, kontrollpunkt, anleggspakke, horisontal antenneoffset.
 - **v1.8 Trasear og anleggsobjekt.**
 - Ekte 3D-terreng i førarperspektivet (frå LiDAR).

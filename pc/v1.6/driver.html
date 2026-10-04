@@ -26,7 +26,7 @@
         position: absolute;
         inset: -22%;
         transform-origin: center center;
-        transition: transform 0.18s linear;
+        transition: transform 0.4s ease-out;
       }
       .leaflet-control-container {
         display: none;
@@ -474,6 +474,48 @@
       #app.view3d .groomer {
         transform: translate(-50%, -50%) rotateX(50deg);
       }
+      .groomer {
+        transition: transform 0.4s ease-out;
+      }
+      /* Kompassknapp: viser kvar nord er, og låser/frigjer kartrotasjonen */
+      #compass {
+        position: absolute;
+        z-index: 950;
+        right: 10px;
+        top: 82px;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: #02121bea;
+        border: 2px solid #496575;
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        font-weight: 900;
+        user-select: none;
+      }
+      #compass.locked {
+        border-color: #ffd33f;
+      }
+      #compass .needle {
+        font-size: 15px;
+        line-height: 1;
+        transition: transform 0.4s ease-out;
+      }
+      #compass .needle b {
+        color: #ff5a4a;
+      }
+      #compass small {
+        font-size: 9px;
+        margin-top: 3px;
+        color: #9ab3c1;
+      }
+      #compass.locked small {
+        color: #ffd33f;
+      }
       #app.view3d .groomer .tag {
         display: none;
       }
@@ -561,6 +603,10 @@
         <div class="rtk" onclick="toggleSatStatus()">
           <b id="fix">GNSS AV</b><span id="acc">VENTAR PÅ DATA</span><small id="fixSub">Leica / mobil / demo</small>
         </div>
+      </div>
+      <div id="compass" onclick="toggleNorth()" title="Lås / frigjer kartrotasjon">
+        <div class="needle" id="needle"><b>▲</b><br />N</div>
+        <small id="compassTxt">ROTERER</small>
       </div>
       <div id="satPanel" class="satbox hide">
         <b>GNSS / SATELLITTSTATUS</b>
@@ -741,7 +787,7 @@
           ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b>PC v1.6.1</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon 1.6 – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart: © Kartverket
         </div>
       </div>
       <div class="toolbar">
@@ -979,21 +1025,33 @@
 
       /* ---------- Kart, kompass og rotasjon ---------- */
       const TILT = 50; // grader kartet blir vippa i førarperspektiv
+      // Kartet roterer etter køyreretninga, eller er låst med nord opp (kompassknappen / Innst. › Kart).
+      // Vinkelen blir halden samanhengande (359° → 1° er +2°, ikkje ein heil runde baklengs).
+      let bearCont = 0,
+        headCont = 0;
+      function unwrap(prev, deg) {
+        return prev + ((((deg - prev) % 360) + 540) % 360) - 180;
+      }
       function rotateMap(deg) {
         if (deg == null || isNaN(deg)) return;
-        if (cfg.view3d) {
-          // Førarperspektiv: alltid køyreretning opp, maskina litt under midten, horisont øvst
-          mapBearing = deg;
-          $("map").style.transform = "translateY(18vh) rotateX(" + TILT + "deg) rotate(" + -deg + "deg)";
-          return;
-        }
-        mapBearing = cfg.northUp ? 0 : deg;
-        $("map").style.transform = cfg.northUp ? "none" : "rotate(" + -mapBearing + "deg) scale(1.42)";
+        headCont = unwrap(headCont, deg);
+        let target = cfg.northUp ? 0 : headCont;
+        bearCont = cfg.northUp ? 0 : target;
+        mapBearing = ((bearCont % 360) + 360) % 360;
+        if (cfg.view3d) $("map").style.transform = "translateY(18vh) rotateX(" + TILT + "deg) rotate(" + -bearCont + "deg)";
+        else $("map").style.transform = cfg.northUp ? "none" : "rotate(" + -bearCont + "deg) scale(1.42)";
+        // Låst kart: maskina snur seg i staden. Roterande kart: maskina peikar alltid opp.
+        let g = cfg.northUp ? headCont : 0;
+        $("groomer").style.transform = "translate(-50%, -50%)" + (cfg.view3d ? " rotateX(" + TILT + "deg)" : "") + " rotate(" + g + "deg)";
+        $("needle").style.transform = "rotate(" + -bearCont + "deg)";
+        $("compass").classList.toggle("locked", !!cfg.northUp);
+        $("compassTxt").textContent = cfg.northUp ? "LÅST" : "ROTERER";
       }
       function applyView() {
         $("app").classList.toggle("view3d", !!cfg.view3d);
         $("viewBtn").classList.toggle("on", !!cfg.view3d);
         $("map").style.inset = cfg.view3d ? "-60%" : cfg.northUp ? "0" : "";
+        $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP (LÅST)" : "KØYRERETNING OPP");
         rotateMap(heading || 0);
         scaleGroomer();
         setTimeout(() => {
@@ -1011,8 +1069,9 @@
       function toggleNorth() {
         cfg.northUp = !cfg.northUp;
         persistCfg();
-        $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
+        $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP (LÅST)" : "KØYRERETNING OPP");
         applyView();
+        toast(cfg.northUp ? "Kartet er låst – nord opp" : "Kartet roterer etter køyreretninga");
       }
       function screenAngle() {
         return (screen.orientation && screen.orientation.angle) || window.orientation || 0;

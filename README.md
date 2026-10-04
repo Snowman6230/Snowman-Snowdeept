@@ -24,7 +24,7 @@ Sjå [ENDRINGSLOGG.md](ENDRINGSLOGG.md) for alle endringar og avgjerder, og [doc
 - Snødjupna i alle versjonar er **simulert**. Ingen versjon bereknar enno ekte snødjupne frå LiDAR.
 - NTRIP/CPOS-brukarnamn og passord skal aldri leggjast inn i dette repoet.
 - PC v1.6 viser ekte snødjupne når terrengmodell, kalibrering og RTK FIX er på plass. Demo er merka SIMULERT.
-- Neste: Kartverket DTM 1 m for Fjellsætra (v1.6.1), deretter LAS/LAZ-import (v1.7).
+- Neste: Kartverket DTM 1 m for Fjellsætra (v1.6.2), deretter LAS/LAZ-import (v1.7).
 
 ## Lisens
 
