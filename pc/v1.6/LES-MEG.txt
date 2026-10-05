@@ -43,6 +43,10 @@ KONTROLL (v1.6.7) – Innst. › Kontroll
 - Kontrollpunkt: legg inn punkt med kjend koordinat og terrenghøgd frå landmålar.
   SNOWMAN viser kor mykje terrengmodellen avvik der.
 
+FRI VISING (v1.6.22) – når prep er stoppa
+- 3D: dra for å snu, rull/knip for zoom, to fingrar for å flytte. Kart: ⟲ ⟳ snur, dra flyttar.
+- «⌖ Følg maskina» går tilbake. Når prep startar, følgjer visinga maskina att av seg sjølv.
+
 VISINGAR (v1.6.5)
 - Perspektivknappen (viser t.d. «Kart») opnar ein meny: Kart, Førar, Horisont, 3D-terreng
   og Frontrute. Knappen «Bakgrunn» ved sida av slår bakgrunnskartet av og på (v1.6.8).

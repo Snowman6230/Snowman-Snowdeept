@@ -590,6 +590,41 @@
         pointer-events: none;
       }
       /* 3D-terreng: eigen WebGL-flate over kartet, under knappar og tal */
+      /* Fri vising (når prep er stoppa) */
+      .freeBox {
+        position: absolute;
+        z-index: 940;
+        right: 10px;
+        top: 156px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+      }
+      .freeBox button {
+        min-width: 52px;
+        height: 46px;
+        border-radius: 10px;
+        border: 1px solid #3d5c6e;
+        background: #02121bea;
+        color: #fff;
+        font-size: 22px;
+        font-weight: 800;
+      }
+      .freeBox #followBtn {
+        font-size: 13px;
+        padding: 0 10px;
+        background: #0878df;
+      }
+      .freeBox small {
+        max-width: 170px;
+        text-align: right;
+        font-size: 10px;
+        color: #9ab3c1;
+        background: #02121bcc;
+        padding: 3px 6px;
+        border-radius: 6px;
+      }
       /* 3D-flata ligg mellom topplinja og verktøylinja – aldri under dei. På somme skjermkort teiknar nettlesaren
          WebGL-flata over alt anna når ho dekkjer heile vindauget, og då forsvann menyen nedst. */
       #t3d {
@@ -798,6 +833,12 @@
     <div id="app">
       <div id="map"></div>
       <canvas id="t3d"></canvas>
+      <div id="freeBox" class="freeBox">
+        <button onclick="rotateBy(-15)" title="Snu mot venstre">⟲</button
+        ><button onclick="rotateBy(15)" title="Snu mot høgre">⟳</button
+        ><button id="followBtn" class="hide" onclick="followView()">⌖ Følg maskina</button>
+        <small id="freeHint"></small>
+      </div>
       <div id="t3dInfo"></div>
       <div class="top">
         <div class="brand">SNOWMAN<small>by Alpindata</small><small id="brandVer">PC v1.6</small></div>
@@ -1130,7 +1171,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.21";
+      const APP_VERSION = "1.6.22";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1492,6 +1533,7 @@
           camDist = 30,
           camYaw = null,
           sm = null, // utjamna maskinposisjon {x, y, h}
+          free = null, // fri kamera når prep er stoppa: {yaw, pitch, dist, x, y, h} (snu og zoome rundt maskina)
           raf = null,
           lastFrame = 0;
         const mLon = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
@@ -1799,7 +1841,25 @@
           machine.children.forEach((m) => (m.visible = !fr || m.userData.keep)); // frontrute: berre skjæret synest
           machine.position.set(sm.x, sm.h - hRef, -sm.y);
           machine.rotation.set(pitch, -hd, isNaN(hR - hL) ? 0 : Math.atan((hR - hL) / 3));
-          if (fr) {
+          if (free) {
+            // Fri vising: kameraet går i bane rundt punktet (dra for å snu, rull/knip for zoom)
+            camera.up.set(0, 1, 0);
+            if (camera.fov !== 55) {
+              camera.fov = 55;
+              camera.updateProjectionMatrix();
+            }
+            machine.children.forEach((m) => (m.visible = true));
+            let cp = Math.cos(free.pitch),
+              cx = free.x - Math.sin(free.yaw) * cp * free.dist,
+              cy = free.y - Math.cos(free.yaw) * cp * free.dist,
+              ch = free.h + Math.sin(free.pitch) * free.dist,
+              hg = hAt(cx, cy);
+            if (!isNaN(hg) && ch < hg - hRef + 2) ch = hg - hRef + 2;
+            camera.position.set(cx, ch, -cy);
+            camera.lookAt(free.x, free.h, -free.y);
+            scene.fog.near = 80 + free.dist * 1.5;
+            scene.fog.far = 220 + free.dist * 2.5;
+          } else if (fr) {
             // Frontrute: augehøgd i førarhuset, ser framover og litt ned, følgjer hellinga til maskina
             if (camera.fov !== fov) {
               camera.fov = fov;
@@ -1863,7 +1923,36 @@
             segs = [];
             if (renderer) repaint();
           },
+          // Fri vising: start i same vinkel som kameraet har no
+          orbit(dx, dy) {
+            if (!sm) return;
+            if (!free) {
+              let yaw = camYaw == null ? 0 : camYaw;
+              free = { yaw, pitch: 0.55, dist: Math.max(20, camDist * 1.2), x: sm.x, y: sm.y, h: sm.h - hRef + 1 };
+            }
+            free.yaw += dx * 0.006;
+            free.pitch = Math.max(0.08, Math.min(1.45, free.pitch + dy * 0.005));
+          },
+          pan(dx, dy) {
+            if (!free) return;
+            let k = free.dist * 0.0015,
+              c = Math.cos(free.yaw),
+              sn = Math.sin(free.yaw);
+            // innhaldet følgjer fingeren: dra mot høgre flyttar punktet mot venstre i kameraretninga, dra ned flyttar det framover
+            free.x += (-c * dx + sn * dy) * k;
+            free.y += (sn * dx + c * dy) * k;
+            let h = hAt(free.x, free.y);
+            if (!isNaN(h)) free.h = h - hRef + 1;
+          },
+          follow() {
+            free = null;
+          },
+          isFree: () => !!free,
           zoom(d) {
+            if (free) {
+              free.dist = Math.max(6, Math.min(280, free.dist * (d > 0 ? 0.8 : 1.25)));
+              return;
+            }
             if (viewMode() === "frontrute") fov = Math.max(40, Math.min(95, fov + (d > 0 ? -10 : 10)));
             else camDist = Math.max(8, Math.min(140, camDist * (d > 0 ? 0.75 : 1.33)));
           },
@@ -1894,20 +1983,22 @@
       // Kartet roterer etter køyreretninga, eller er låst med nord opp (kompassknappen / Innst. › Kart).
       // Vinkelen blir halden samanhengande (359° → 1° er +2°, ikkje ein heil runde baklengs).
       let bearCont = 0,
-        headCont = 0;
+        headCont = 0,
+        manualBear = null, // fri vising: kartet snudd for hand (null = følgjer køyreretning/nord)
+        followMap = true; // kartet følgjer maskina (av når føraren drar kartet medan prep er stoppa)
       function unwrap(prev, deg) {
         return prev + ((((deg - prev) % 360) + 540) % 360) - 180;
       }
       function rotateMap(deg) {
         if (deg == null || isNaN(deg)) return;
         headCont = unwrap(headCont, deg);
-        let target = cfg.northUp ? 0 : headCont;
-        bearCont = cfg.northUp ? 0 : target;
+        let target = manualBear != null ? manualBear : cfg.northUp ? 0 : headCont;
+        bearCont = manualBear != null ? manualBear : cfg.northUp ? 0 : target;
         mapBearing = ((bearCont % 360) + 360) % 360;
         if (cfg.view3d) $("map").style.transform = "translateY(" + SHIFT + "vh) rotateX(" + TILT + "deg) rotate(" + -bearCont + "deg)";
-        else $("map").style.transform = cfg.northUp ? "none" : "rotate(" + -bearCont + "deg) scale(1.42)";
+        else $("map").style.transform = cfg.northUp && manualBear == null ? "none" : "rotate(" + -bearCont + "deg) scale(1.42)";
         // Låst kart: maskina snur seg i staden. Roterande kart: maskina peikar alltid opp.
-        let g = cfg.northUp ? headCont : 0;
+        let g = manualBear != null ? headCont - manualBear : cfg.northUp ? headCont : 0;
         $("groomer").style.transform = "translate(-50%, -50%)" + (cfg.view3d ? " rotateX(" + TILT + "deg)" : "") + " rotate(" + g + "deg)";
         $("needle").style.transform = "rotate(" + -bearCont + "deg)";
         $("compass").classList.toggle("locked", !!cfg.northUp);
@@ -1938,6 +2029,7 @@
         rotateMap(heading || 0);
         scaleGroomer();
         T3D.show(use3d);
+        updateFreeUI();
         setTimeout(() => {
           map.invalidateSize({ animate: false });
           if (pos) map.panTo(pos, { animate: false });
@@ -2299,11 +2391,13 @@
           lastCoverage = null;
           keepAwake(false);
           setFixBox();
-          toast(n >= 2 ? "Preparering stoppa og lagra (" + n + " punkt)" : "Preparering stoppa – for få GPS-punkt til å lagre økt");
+          updateFreeUI();
+          toast(n >= 2 ? "Preparering stoppa og lagra (" + n + " punkt) – du kan no snu og flytte visinga" : "Preparering stoppa – for få GPS-punkt til å lagre økt");
           return;
         }
         resetWork();
         preparing = true;
+        followView();
         currentSession = {
           id: "drive-" + Date.now(),
           date: new Date().toISOString().slice(0, 10),
@@ -2505,8 +2599,105 @@
         return colors[d < cfg.bounds[0] ? 0 : d < cfg.bounds[1] ? 1 : d < cfg.bounds[2] ? 2 : d < cfg.bounds[3] ? 3 : d < cfg.bounds[4] ? 4 : 5];
       }
       function centerMap() {
+        followView();
         if (pos) map.setView(pos, 19);
       }
+      /* ---------- Fri vising når prep er stoppa: snu, vipp og flytt for å sjå frå ulike vinklar ---------- */
+      function freeAllowed() {
+        return !preparing;
+      }
+      function freeActive() {
+        return manualBear != null || !followMap || T3D.isFree();
+      }
+      function updateFreeUI() {
+        $("freeBox").classList.toggle("hide", preparing);
+        $("followBtn").classList.toggle("hide", !freeActive());
+        $("freeHint").textContent = VIEWS[viewMode()].gl && T3D.ready() ? "Dra for å snu · rull/knip for zoom · to fingrar/høgre knapp for å flytte" : "Dra for å flytte · ⟲ ⟳ snur kartet";
+      }
+      function rotateBy(deg) {
+        if (!freeAllowed()) return;
+        if (VIEWS[viewMode()].gl && T3D.ready()) T3D.orbit((deg / 0.006) * (Math.PI / 180), 0);
+        else {
+          manualBear = (manualBear != null ? manualBear : bearCont) + deg;
+          rotateMap(heading || 0);
+        }
+        updateFreeUI();
+      }
+      function followView() {
+        manualBear = null;
+        followMap = true;
+        T3D.follow();
+        rotateMap(heading || 0);
+        if (pos) map.panTo(pos, { animate: false });
+        updateFreeUI();
+      }
+      map.on("dragstart", () => {
+        if (freeAllowed()) {
+          followMap = false;
+          updateFreeUI();
+        }
+      });
+      (function () {
+        // 3D: dra = snu (orbit), to fingrar / høgre knapp / Shift = flytte, hjul/knip = zoom
+        let cv = $("t3d"),
+          pts = new Map(),
+          last = null,
+          pinch = null;
+        cv.addEventListener("contextmenu", (e) => e.preventDefault());
+        cv.addEventListener("pointerdown", (e) => {
+          if (!freeAllowed()) return;
+          cv.setPointerCapture(e.pointerId);
+          pts.set(e.pointerId, [e.clientX, e.clientY]);
+          last = [e.clientX, e.clientY, e.button === 2 || e.shiftKey];
+        });
+        cv.addEventListener("pointermove", (e) => {
+          if (!pts.has(e.pointerId) || !freeAllowed()) return;
+          pts.set(e.pointerId, [e.clientX, e.clientY]);
+          if (pts.size === 2) {
+            let [a, b] = [...pts.values()],
+              d = Math.hypot(a[0] - b[0], a[1] - b[1]),
+              mx = (a[0] + b[0]) / 2,
+              my = (a[1] + b[1]) / 2;
+            if (pinch) {
+              if (Math.abs(d - pinch.d) > 12) {
+                T3D.zoom(d > pinch.d ? 1 : -1);
+                pinch.d = d;
+              }
+              T3D.orbit(0, 0);
+              T3D.pan(mx - pinch.x, my - pinch.y);
+              pinch.x = mx;
+              pinch.y = my;
+            } else pinch = { d, x: mx, y: my };
+          } else if (last) {
+            let dx = e.clientX - last[0],
+              dy = e.clientY - last[1];
+            if (last[2]) {
+              T3D.orbit(0, 0);
+              T3D.pan(dx, dy);
+            } else T3D.orbit(dx, dy);
+            last = [e.clientX, e.clientY, last[2]];
+          }
+          updateFreeUI();
+        });
+        let up = (e) => {
+          pts.delete(e.pointerId);
+          if (pts.size < 2) pinch = null;
+          if (!pts.size) last = null;
+        };
+        cv.addEventListener("pointerup", up);
+        cv.addEventListener("pointercancel", up);
+        cv.addEventListener(
+          "wheel",
+          (e) => {
+            if (!freeAllowed()) return;
+            e.preventDefault();
+            T3D.orbit(0, 0);
+            T3D.zoom(e.deltaY < 0 ? 1 : -1);
+            updateFreeUI();
+          },
+          { passive: false },
+        );
+      })();
       function fmtTime(ms) {
         let s = Math.max(0, Math.floor(ms / 1000)),
           h = Math.floor(s / 3600),
@@ -2622,7 +2813,7 @@
             }
           }
         }
-        map.panTo(newPos, { animate: false });
+        if (followMap) map.panTo(newPos, { animate: false });
         T3D.update(newPos);
         updateAhead();
       }

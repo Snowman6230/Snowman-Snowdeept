@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.22 – fri vising når prepareringa er stoppa
+- **Nytt:** Når prep er stoppa, kan føraren sjå på arbeidet frå ulike vinklar:
+  - **3D-terreng og frontrute:** dra for å snu kameraet rundt maskina (og vippe opp/ned), rull/knip for zoom, to fingrar, høgre museknapp eller Shift + dra for å flytte.
+  - **Kart, førar og horisont:** knappane ⟲ ⟳ snur kartet 15° om gongen, og kartet kan dragast utan at det hoppar tilbake til maskina.
+  - **⌖ Følg maskina** (eller Sentrer) går tilbake til vanleg vising.
+- **Endra:** Når prep startar, går visinga automatisk tilbake til å følgje maskina, og snu-knappane blir skjulte – føraren kan ikkje kome i fri vising ved eit uhell under køyring.
+- **Testa:** Knappane er skjulte under prep og synlege etter stopp; dra og zoom i 3D gir fri kamera; Følg maskina nullstiller; ⟲ ⟳ og dra i kartvising.
+
 ### Dokumentasjon – vegen vidare
 - **Nytt:** `docs/VEGEN-VIDARE.md` – moglege framtidige løysingar: maskingeometri (snødjupne ved fres og skjer ut frå antenneplassering og mål), IMU og to antenner (rygging, bratt terreng), følar for skjerhøgd, anleggspakke, opplasting av fleire terrengfiler, trasear og anleggsobjekt, fleire maskiner.
 - **Avgjerd (eigar):** Maskingeometri for fres og skjer blir ikkje laga no, men står som framtidig løysing. Antenna skal sitje midt på taket mellom førar og passasjer, om ho ikkje er i vegen for vinsjen.
