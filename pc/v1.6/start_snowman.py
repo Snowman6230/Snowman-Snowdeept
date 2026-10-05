@@ -146,8 +146,10 @@ def oppdater():
         if req.exists():
             subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--disable-pip-version-check", "-r", str(req)])
     new = version()
-    print(f"Ferdig: v{old} → v{new}." if new != old else f"Ferdig: du har siste versjon (v{new}).")
-    print("Start SNOWMAN på nytt for å bruke den nye versjonen.")
+    if new != old:
+        print(f"Ferdig: v{old} → v{new}. Start SNOWMAN på nytt for å bruke den nye versjonen.")
+    else:
+        print(f"Ferdig: du har siste versjon (v{new}).")
 
 
 def meny():
