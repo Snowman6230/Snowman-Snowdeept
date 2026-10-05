@@ -12,7 +12,8 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.18"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.19"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -50,7 +51,8 @@ REAL_PORT=[None]   # seriellporten til ekte mottakar; simulatorporten blir aldri
 def save_cfg():
     d=dict(CFG)
     if REAL_PORT[0] is not None: d["serial_port"]=REAL_PORT[0]
-    try: CFG_FILE.write_text(json.dumps(d,indent=1),"utf-8")
+    try:
+        tmp=CFG_FILE.with_name(CFG_FILE.name+".tmp"); tmp.write_text(json.dumps(d,indent=1),"utf-8"); os.replace(tmp,CFG_FILE)
     except Exception as e: print("Kunne ikkje lagre config:",e)
 HUD={"t":0}   # siste tilstand frå førarskjermen (prep, tid, demo, mål), til HUD-visinga
 DEPTH_TXT={"OUTSIDE":"UTANFOR TERRENGMODELL","NO_CAL":"KALIBRERING MANGLAR","NO_FIX":"IKKJE MÅLT – KREV RTK FIX",
@@ -90,9 +92,10 @@ def write_atomic(path,text):
     with open(tmp,"w",encoding="utf-8") as f:
         f.write(text); f.flush(); os.fsync(f.fileno())
     os.replace(tmp,path)
+import oppstart as O
 def system_cfg():
-    try: return json.loads((DATA/"system.json").read_text("utf-8"))
-    except Exception: return {}
+    d=O.system_cfg(); d["autostart"]=O.autostart_status(); return d
+RESTART=[False]   # «Start SNOWMAN på nytt» etter oppdatering: tenesta avsluttar med kode 3
 SERVER=[None]   # hovudtenesta, så «Avslutt SNOWMAN» kan stoppe ho
 HUD_TICK=threading.Condition()   # varslar HUD-straumane kvar gong ny GNSS-posisjon kjem
 def update(**kw):
@@ -398,11 +401,12 @@ class API(http.server.BaseHTTPRequestHandler):
             return
         if self.path=="/api/system":   # Innst. › System: kiosk ved oppstart (autostart kjem i steg 3)
             try:
-                d=json.loads(body or b"{}"); cur=system_cfg()
-                for k in ("kiosk",):
-                    if k in d: cur[k]=bool(d[k])
-                write_atomic(DATA/"system.json",json.dumps(cur,indent=1))
-                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"system":cur}).encode())
+                d=json.loads(body or b"{}"); msg=""
+                if "kiosk" in d: O.save_system(kiosk=bool(d["kiosk"]))
+                if "autostart" in d:
+                    ok,msg=O.autostart_set(bool(d["autostart"]))
+                    if not ok: raise ValueError(msg)
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"system":system_cfg(),"message":msg}).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
@@ -415,6 +419,16 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/update":   # Innst. › System › Hent siste versjon (same som menyval 5)
+            import io, contextlib, start_snowman as SS
+            buf=io.StringIO(); old=VERSION
+            with contextlib.redirect_stdout(buf): SS.oppdater()
+            new=SS.version()
+            self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"output":buf.getvalue().strip(),"changed":new!=old,"version":new}).encode()); return
+        if self.path=="/api/restart":
+            RESTART[0]=True; save_cfg()
+            self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            threading.Thread(target=lambda:(time.sleep(0.5),SERVER[0] and SERVER[0].shutdown()),daemon=True).start(); return
         if self.path=="/api/shutdown":   # «Avslutt SNOWMAN» frå førarskjermen (berre frå denne PC-en)
             save_cfg()
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True}).encode())
@@ -506,5 +520,6 @@ def main():
             if serial_obj: serial_obj.close()   # frigjer COM-porten til Leica
         except Exception: pass
         print("SNOWMAN-tenesta er avslutta.")
+    if RESTART[0]: sys.exit(3)   # oppstartsprogrammet startar tenesta og vindauget på nytt
 
 if __name__=="__main__": main()

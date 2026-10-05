@@ -1,6 +1,6 @@
 # Kioskmodus og autostart – spesifikasjon
 
-SNOWMAN by Alpindata · Analyse 2026-10-05 · Status: **under arbeid** (v1.6.17 →)
+SNOWMAN by Alpindata · Analyse 2026-10-05 · Status: **ferdig** (v1.6.17–1.6.19) – Windows-delen må testast på ekte PC
 
 I trakkemaskina skal SNOWMAN berre vere der når PC-en startar – utan terminal, meny eller val. Føraren skal likevel
 kunne gå ut til vanleg skjerm og tilbake til kiosk.
@@ -53,7 +53,23 @@ kunne gå ut til vanleg skjerm og tilbake til kiosk.
 |---|---|---|
 | 1 | Førarinnstillingane flytta til tenesta (`data/ui-config.json`) | v1.6.17 |
 | 2 | Kioskmodus med byte begge vegar, valfri PIN, vakthund | v1.6.18 |
-| 3 | Installasjon: Kontor-PC / Maskin-PC, autostart, ingen dvale (Windows og Linux) | |
-| 4 | Innst. › System, oppdatering frå skjermen, tryggare lagring | |
+| 3 | Installasjon: Kontor-PC / Maskin-PC, autostart, ingen dvale (Windows og Linux) | v1.6.19 |
+| 4 | Innst. › System, oppdatering frå skjermen, tryggare lagring | v1.6.19 |
 
 Windows-delen av steg 3 kan berre testast fullt ut på ein ekte Windows-PC.
+
+## 6. Rettleiing: automatisk innlogging (valfritt)
+
+Autostart startar SNOWMAN når brukaren loggar inn. For at alt skal starte utan at nokon rører PC-en, må PC-en logge inn av seg
+sjølv. Det er eit tryggleiksval: alle som slår på PC-en, kjem inn. Bruk helst ein eigen brukar berre for SNOWMAN på Maskin-PC-en.
+
+**Windows 10/11**
+1. Innstillingar › Kontoar › Påloggingsalternativ: slå av «Krev Windows Hello-pålogging for Microsoft-kontoar» (Windows 11).
+2. Trykk Windows-tasten + R, skriv `netplwiz` og trykk Enter.
+3. Fjern haken ved «Brukarar må skrive inn brukarnamn og passord …», trykk OK og skriv passordet to gonger.
+4. Start PC-en på nytt for å teste.
+
+**Linux**
+- GNOME: Innstillingar › Brukarar › Automatisk innlogging.
+- KDE: Systeminnstillingar › Innloggingsskjerm (SDDM) › Behaviour › Automatisk innlogging.
+- Omarchy/Hyprland: avheng av oppsettet (krypteringspassord ved oppstart kan ikkje hoppast over). Sjå Omarchy-dokumentasjonen.

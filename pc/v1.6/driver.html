@@ -230,8 +230,7 @@
       }
       /* Val av kartperspektiv (opnar seg over knappen) */
       .quitBtn {
-        float: right;
-        margin-right: 10px;
+        margin-left: auto;
         background: #7a1f1a;
         border: 1px solid #c2453b;
         color: #fff;
@@ -852,10 +851,10 @@
         <div id="tillerTag" class="tag tillerTag">5,5 m</div>
       </div>
       <div id="settings" class="settings hide">
-        <h2>
+        <h2 style="display: flex; align-items: center; gap: 8px">
           ⚙ INNSTILLINGAR
-          <button style="float: right; background: none; border: 0; color: #9bc6e2; font-size: 24px" onclick="toggleSettings()">×</button>
           <button class="quitBtn" onclick="quitSnowman()">⏻ AVSLUTT SNOWMAN</button>
+          <button style="background: none; border: 0; color: #9bc6e2; font-size: 24px" onclick="toggleSettings()">×</button>
         </h2>
         <div class="tabs">
           <button id="tabMachine" class="on" onclick="showTab('machine')">Maskin</button
@@ -1030,6 +1029,7 @@
         <section id="panelSys" class="panel">
           <h3>KIOSKMODUS</h3>
           <div id="sysLauncher" class="history"></div>
+          <button id="sysAuto" class="btn toggle" onclick="toggleSysAuto()">START SNOWMAN AUTOMATISK NÅR PC-EN STARTAR: AV</button>
           <button id="sysKiosk" class="btn toggle" onclick="toggleSysKiosk()">START I KIOSKMODUS (AUTOSTART): AV</button>
           <div class="history">
             Kioskmodus viser berre SNOWMAN på skjermen – ingen oppgåvelinje eller nettlesarmeny. Knappen nede byter mellom kiosk og vanleg
@@ -1041,6 +1041,10 @@
           <div class="row"><span>Gjenta PIN-koden</span><input id="pin2" type="password" inputmode="numeric" autocomplete="new-password" /></div>
           <button class="btn" onclick="savePin()">LAGRE PIN-KODE</button>
           <button id="pinClear" class="btn hide" onclick="clearPin()">FJERN PIN-KODE</button>
+          <h3>OPPDATERING</h3>
+          <button class="btn" onclick="updateSnowman()">HENT SISTE VERSJON</button>
+          <div id="updOut" class="history" style="white-space: pre-wrap">Krev nett. Terrengmodellar, kalibrering og historikk blir ikkje rørte.</div>
+          <button id="updRestart" class="btn hide" onclick="restartSnowman()">START SNOWMAN PÅ NYTT</button>
         </section>
         <section id="panelHistory" class="panel">
           <h3>KØYREHISTORIKK</h3>
@@ -1116,7 +1120,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.18";
+      const APP_VERSION = "1.6.19";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -2048,7 +2052,10 @@
       }
       /* ---------- Innst. › System ---------- */
       function renderSystem() {
-        let k = !!(WINSTATE.system && WINSTATE.system.kiosk);
+        let k = !!(WINSTATE.system && WINSTATE.system.kiosk),
+          au = !!(WINSTATE.system && WINSTATE.system.autostart);
+        $("sysAuto").classList.toggle("on", au);
+        $("sysAuto").textContent = "START SNOWMAN AUTOMATISK NÅR PC-EN STARTAR: " + (au ? "PÅ" : "AV");
         $("sysKiosk").classList.toggle("on", k);
         $("sysKiosk").textContent = "START I KIOSKMODUS (AUTOSTART): " + (k ? "PÅ" : "AV");
         $("pinState").textContent = cfg.kioskPinHash ? "PIN-kode er sett – trengst for å gå ut av kioskmodus." : "Ingen PIN-kode – alle kan gå ut av kioskmodus.";
@@ -2056,6 +2063,39 @@
         $("sysLauncher").textContent = WINSTATE.launcher
           ? "SNOWMAN er starta med oppstartsprogrammet – kiosk og vanleg skjerm kan byttast med knappen nede."
           : "SNOWMAN er ikkje starta med oppstartsprogrammet – knappen nede slår berre fullskjerm av og på.";
+      }
+      async function toggleSysAuto() {
+        try {
+          let r = await api("api/system", { autostart: !(WINSTATE.system && WINSTATE.system.autostart) });
+          WINSTATE.system = r.system;
+          renderSystem();
+          toast(r.message || "Lagra");
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+      async function updateSnowman() {
+        $("updOut").textContent = "Hentar siste versjon …";
+        $("updRestart").classList.add("hide");
+        try {
+          let r = await api("api/update", {});
+          $("updOut").textContent = r.output;
+          $("updRestart").classList.toggle("hide", !r.changed);
+        } catch (e) {
+          $("updOut").textContent = "Oppdateringa feila: " + e.message;
+        }
+      }
+      async function restartSnowman() {
+        if (!WINSTATE.launcher) return toast("Avslutt SNOWMAN og start han på nytt frå snarvegen eller menyen");
+        if (preparing && !confirm("Prepareringa blir stoppa og lagra. Halde fram?")) return;
+        await Promise.all([stopAndSavePrep(), persistCfg(true)]);
+        try {
+          await api("api/restart", {});
+        } catch (e) {
+          return toast(e.message);
+        }
+        $("updOut").textContent = "Startar SNOWMAN på nytt …";
+        setTimeout(() => location.reload(), WINSTATE.launcher ? 8000 : 4000);
       }
       async function toggleSysKiosk() {
         try {
@@ -2167,6 +2207,7 @@
         toast("Synleg spor nullstilt – lagra historikk er ikkje sletta");
       }
       async function keepAwake(on) {
+        if (!on && IN_KIOSK) return; // kioskmodus: skjermen skal aldri sovne
         try {
           if (on && "wakeLock" in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request("screen");
           if (!on && wakeLock) {
@@ -2176,7 +2217,7 @@
         } catch (e) {}
       }
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible" && (preparing || demo)) {
+        if (document.visibilityState === "visible" && (preparing || demo || IN_KIOSK)) {
           wakeLock = null;
           keepAwake(true);
         }
@@ -2261,6 +2302,7 @@
         applyBg();
         updateFsButtons();
         loadWindowState();
+        if (IN_KIOSK) keepAwake(true);
         $("estSet").classList.toggle("on", cfg.estOn !== false);
         $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn !== false ? "PÅ" : "AV");
         loadTerrain();
@@ -2509,7 +2551,11 @@
               alt: kind === "gnss" && gnss ? gnss.altitude : null,
             });
             currentSession.distance = Math.round(total);
-            if (currentSession.points.length % 30 === 0) saveCurrentSession();
+            // lagre kvart 5. sekund – straumen kan bli kutta når maskina blir slått av
+            if (Date.now() - (currentSession.savedAt || currentSession.start) > 5000) {
+              currentSession.savedAt = Date.now();
+              saveCurrentSession();
+            }
           }
         }
         map.panTo(newPos, { animate: false });

@@ -222,7 +222,8 @@ def meny():
 
 def main():
     ap = argparse.ArgumentParser(description="Start SNOWMAN")
-    ap.add_argument("mode", nargs="?", default="", help="sim | simterreng | simanlegg | stopp | seriellport (COM3, /dev/ttyUSB0)")
+    ap.add_argument("mode", nargs="?", default="", help="sim | simterreng | simanlegg | stopp | installer | autostart | seriellport (COM3, /dev/ttyUSB0)")
+    ap.add_argument("arg", nargs="?", default="", help="installer: kontor | maskin   autostart: pa | av")
     ap.add_argument("--kiosk", action="store_true", help="kioskmodus (trakkemaskin)")
     ap.add_argument("--auto", action="store_true", help="kiosk eller vanleg etter Innst. › System (autostart)")
     ap.add_argument("--hud", action="store_true", help="opne HUD i eige vindauge")
@@ -238,6 +239,12 @@ def main():
         return oppdater()
     if a.mode == "versjon":
         return print(version())
+    if a.mode == "installer":  # val i installasjonen: kontor eller maskin
+        import oppstart
+        return oppstart.install("maskin" if a.arg.lower().startswith("m") else "kontor")
+    if a.mode == "autostart":
+        import oppstart
+        return print(oppstart.autostart_set(a.arg.lower() in ("pa", "på", "on", "1"))[1])
     if port_busy(8765):
         print("SNOWMAN køyrde alt – stoppar den gamle først.")
         stopp(quiet=True)
@@ -310,6 +317,18 @@ def main():
                 # Tenesta stoppa. Avslutt SNOWMAN (kode 0) → ferdig. Krasj → start på nytt (vakthund, maks 5 gonger på 2 min).
                 if srv.returncode == 0:
                     break
+                if srv.returncode == 3:  # «Start SNOWMAN på nytt» etter oppdatering: ny teneste og nytt vindauge
+                    print("Startar SNOWMAN på nytt …")
+                    procs[-1] = subprocess.Popen(srv_args, cwd=HERE)
+                    PIDS.write_text(json.dumps([os.getpid()] + [p.pid for p in procs]))
+                    for _ in range(80):
+                        if port_busy(8765):
+                            break
+                        time.sleep(0.1)
+                    if b:
+                        close_window(win)
+                        win = open_checked(b, URL, kiosk)
+                    continue
                 restarts = [t for t in restarts if time.time() - t < 120] + [time.time()]
                 if len(restarts) > 5:
                     print("SNOWMAN-tenesta krasjar gong på gong – stoppar. Sjå meldingane over.")

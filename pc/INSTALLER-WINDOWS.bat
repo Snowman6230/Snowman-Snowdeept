@@ -57,6 +57,14 @@ rem --- 4. Snarveg paa skrivebordet ---
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$d=[Environment]::GetFolderPath('Desktop'); $s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d 'SNOWMAN.lnk')); $s.TargetPath='%~dp0SNOWMAN.bat'; $s.WorkingDirectory='%~dp0'; $s.Description='SNOWMAN by Alpindata'; $s.Save()" && echo   Snarveg «SNOWMAN» lagd på skrivebordet.
 
 echo.
+echo   Kva type PC er dette?
+echo     K = Kontor-PC: du startar SNOWMAN sjølv med snarvegen
+echo     M = Maskin-PC: SNOWMAN startar av seg sjølv i kioskmodus når PC-en startar
+choice /c KM /m "  Vel K eller M"
+if errorlevel 2 (set "PCTYPE=maskin") else (set "PCTYPE=kontor")
+"%APP%\.venv\Scripts\python.exe" "%APP%\start_snowman.py" installer %PCTYPE%
+echo   Valet kan endrast seinare under Innst. › System i SNOWMAN.
+echo.
 echo   Ferdig! Start SNOWMAN med snarvegen på skrivebordet, eller SNOWMAN.bat i denne mappa.
 echo   Første gong kan Windows spørje om Python får bruke nettverket: vel «Privat nettverk» og Tillat
 echo   (trengst berre for HUD på mobil).

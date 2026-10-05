@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.19 – installasjon som Maskin-PC, autostart og oppdatering frå skjermen (kiosk, steg 3–4)
+- **Nytt:** Installasjonen spør om **Kontor-PC** (du startar SNOWMAN sjølv) eller **Maskin-PC** (startar av seg sjølv i kioskmodus). Både `INSTALLER-WINDOWS.bat` og `installer-linux.sh`. Kan endrast seinare under Innst. › System.
+- **Nytt:** `oppstart.py` – autostart utan administratorrettar. Windows: snarveg i Oppstart-mappa som startar utan svart vindauge (`pythonw`). Linux: merkt `exec-once`-linje i Hyprland-oppsettet (Omarchy) eller `~/.config/autostart/snowman.desktop` (GNOME, KDE, XFCE). Autostart brukar `--auto`: kiosk eller vanleg etter innstillinga.
+- **Nytt:** Maskin-PC på Windows: dvale og skjermsparar blir slått av på straum (`powercfg`). I kioskmodus held SNOWMAN skjermen vaken sjølv (Wake Lock) – også på Linux.
+- **Nytt:** Innst. › System: «Start SNOWMAN automatisk når PC-en startar», «Start i kioskmodus», PIN-kode, og **Hent siste versjon** med **Start SNOWMAN på nytt** – så kiosk-PC-en kan oppdaterast utan meny og terminal (`POST /api/update`, `POST /api/restart`; oppstartsprogrammet startar teneste og vindauge på nytt ved kode 3).
+- **Endra:** Økta blir lagra kvart 5. sekund (før kvart 30. punkt). Innstillingane i tenesta blir skrivne trygt (mellombels fil + byte), som økter og kontrolldata alt var.
+- **Retta:** Overskrifta i Innstillingar med «Avslutt SNOWMAN» skuva fanene saman.
+- **Testa (Linux):** installasjon som Maskin-PC med og utan Hyprland-oppsett, autostart av/på, oppdatering og omstart frå skjermen. Windows-delen (snarveg, pythonw, powercfg) er ikkje testa på ein ekte Windows-PC enno.
+
 ### PC-prototype v1.6.18 – kioskmodus med byte begge vegar, PIN og vakthund (kiosk, steg 2)
 - **Nytt:** Kioskmodus: berre SNOWMAN på skjermen (Edge/Chromium `--kiosk`). Knappen nede heiter **«Vanleg skjerm»** i kiosk og **«Kioskmodus»** i vanleg vindauge. Oppstartsprogrammet lukkar det eine vindauget, ventar til det er heilt lukka, og opnar det andre. Kontrollerer at vindauget kom opp, og prøver ein gong til om ikkje.
 - **Nytt:** Eigne nettlesarprofilar for kiosk og vanleg vindauge (`data/nettlesar-kiosk`, `data/nettlesar`), så det nye vindauget alltid blir ein eigen prosess. Innstillingane er like i begge (ligg i tenesta sidan v1.6.17).

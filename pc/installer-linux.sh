@@ -44,5 +44,19 @@ case ":$PATH:" in
     ;;
 esac
 
+# Kontor-PC eller Maskin-PC (kiosk + autostart)
+APP=$(ls -d "$PCDIR"/v*/ 2>/dev/null | sort -V | while read d; do [ -f "$d/start_snowman.py" ] && echo "$d"; done | tail -n 1)
+echo ""
+echo "Kva type PC er dette?"
+echo "  K = Kontor-PC: du startar SNOWMAN sjølv (snowman i terminalen)"
+echo "  M = Maskin-PC: SNOWMAN startar av seg sjølv i kioskmodus når PC-en startar"
+printf "Vel K eller M og trykk Enter: "
+read TYPE
+case "$TYPE" in
+  [Mm]*) sh "${APP}start-snowman.sh" installer maskin ;;
+  *)     sh "${APP}start-snowman.sh" installer kontor ;;
+esac
+echo "Valet kan endrast seinare under Innst. › System i SNOWMAN."
+
 echo ""
 echo "Ferdig! Skriv  snowman  i terminalen for å starte."
