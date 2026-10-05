@@ -1042,6 +1042,15 @@
           <div class="row"><span>Gjenta PIN-koden</span><input id="pin2" type="password" inputmode="numeric" autocomplete="new-password" /></div>
           <button class="btn" onclick="savePin()">LAGRE PIN-KODE</button>
           <button id="pinClear" class="btn hide" onclick="clearPin()">FJERN PIN-KODE</button>
+          <h3>FELTLOGG</h3>
+          <div id="logState" class="history">–</div>
+          <button id="logBtn" class="btn" onclick="toggleLog()">START LOGG</button>
+          <button id="logAlways" class="btn toggle" onclick="toggleLogAlways()">LOGG ALLTID NÅR SNOWMAN STARTAR: AV</button>
+          <div class="history">
+            Loggen lagrar alt mottakaren sender og kva SNOWMAN rekna ut (snødjupne, terreng, status). Bruk han ved prøving i maskina, og
+            send loggen til Alpindata om noko ikkje stemmer. Loggen inneheld ingen passord.
+          </div>
+          <div id="logList"></div>
           <h3>OPPDATERING</h3>
           <button class="btn" onclick="updateSnowman()">HENT SISTE VERSJON</button>
           <div id="updOut" class="history" style="white-space: pre-wrap">Krev nett. Terrengmodellar, kalibrering og historikk blir ikkje rørte.</div>
@@ -1121,7 +1130,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.20";
+      const APP_VERSION = "1.6.21";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -2098,6 +2107,59 @@
         $("updOut").textContent = "Startar SNOWMAN på nytt …";
         setTimeout(() => location.reload(), WINSTATE.launcher ? 8000 : 4000);
       }
+      /* ---------- Feltlogg ---------- */
+      let LOGST = null,
+        logTimer = null;
+      async function loadLog() {
+        try {
+          LOGST = await api("api/log");
+        } catch (e) {
+          $("logState").textContent = "Feltlogg krev SNOWMAN-tenesta.";
+          return;
+        }
+        renderLog();
+        clearTimeout(logTimer);
+        if ($("panelSys").classList.contains("on") && !$("settings").classList.contains("hide")) logTimer = setTimeout(loadLog, 2000);
+      }
+      function renderLog() {
+        let l = LOGST,
+          mm = Math.floor(l.seconds / 60) + " min " + (l.seconds % 60) + " s";
+        $("logState").innerHTML = l.active
+          ? "● <b>Loggar</b> – " + esc(l.name) + " · " + mm + " · " + l.lines + " linjer frå mottakaren · " + l.rows + " posisjonar"
+          : "Loggen er av. Alle loggar: " + l.totalMB + " MB.";
+        $("logBtn").textContent = l.active ? "STOPP LOGG" : "START LOGG";
+        $("logBtn").classList.toggle("on", l.active);
+        $("logAlways").classList.toggle("on", l.always);
+        $("logAlways").textContent = "LOGG ALLTID NÅR SNOWMAN STARTAR: " + (l.always ? "PÅ" : "AV");
+        $("logList").innerHTML =
+          l.logs
+            .slice(0, 15)
+            .map(
+              (g) =>
+                '<div class="tlayer"><b>' + esc(g.name.replace("snowman-", "")) + "</b> · " + (g.bytes / 1e6).toFixed(1).replace(".", ",") + " MB" +
+                (g.name === l.name ? " · <i>pågår</i>" : "") +
+                '<div class="acts"><a class="mini" style="padding:6px 10px;text-decoration:none" href="api/log/download?name=' + encodeURIComponent(g.name) + '" download>Last ned (zip)</a></div></div>',
+            )
+            .join("") + (l.logs.length ? '<button class="btn" onclick="deleteLogs()">SLETT ALLE LOGGAR</button>' : "");
+      }
+      async function toggleLog() {
+        try {
+          LOGST = await api("api/log", { action: LOGST && LOGST.active ? "stop" : "start" });
+          renderLog();
+          toast(LOGST.active ? "Feltlogg starta" : "Feltlogg stoppa og lagra");
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+      async function toggleLogAlways() {
+        LOGST = await api("api/log", { always: !(LOGST && LOGST.always) });
+        renderLog();
+      }
+      async function deleteLogs() {
+        if (!confirm("Slette alle feltloggar (utanom den som pågår)?")) return;
+        LOGST = await api("api/log", { action: "delete" });
+        renderLog();
+      }
       async function toggleSysKiosk() {
         try {
           let r = await api("api/system", { kiosk: !(WINSTATE.system && WINSTATE.system.kiosk) });
@@ -2275,6 +2337,7 @@
         $("panel" + a[n]).classList.add("on");
         $("tab" + a[n]).classList.add("on");
         if (n === "ctl") loadControl();
+        if (n === "sys") loadLog();
       }
       function toggleSettings() {
         $("settings").classList.toggle("hide");

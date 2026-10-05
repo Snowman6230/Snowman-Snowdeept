@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.20"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.21"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -24,6 +24,8 @@ VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.j
 import terrain as T
 TERR=T.TerrainLibrary(DATA/"terrain")
 import kontroll as K
+import feltlogg as F
+LOG=F.FeltLogg(DATA/"logg")   # feltlogg: alt frå mottakaren + det SNOWMAN rekna ut (Innst. › System)
 KON=K.Kontroll(DATA/"kontroll.json",TERR if T.AVAILABLE else None,T.utm_inverse)
 SIM_FASIT=DATA/"sim-fasit.json"   # skriven av simuler-leica.py: simulert snødjupne der maskina står (berre test)
 def sim_truth():
@@ -140,6 +142,7 @@ def parse_gga(line):
                altitude=alt, geoid_sep=sep, lat=lat, lon=lon,
                terrain=ter, depth=None if depth is None else round(depth,3), depth_status=dstat, depth_detail=det)
         v,h=_motion(lat,lon); update(speed=round(v,2), course=None if h is None else round(h))
+        LOG.row(STATE,CFG)
     except Exception as e: update(last_error=f"GGA parse: {e}")
 
 def serial_loop():
@@ -156,6 +159,7 @@ def serial_loop():
             # serial_for_url: vanleg port (COM3, /dev/ttyUSB0) eller simulator over TCP (socket://127.0.0.1:7777)
             serial_obj=serial.serial_for_url(CFG["serial_port"], baudrate=int(CFG["baud"]), timeout=.2)
             update(serial_connected=True, port=CFG["serial_port"], baud=int(CFG["baud"]), last_error="")
+            LOG.event(f"Mottakar tilkopla: {CFG['serial_port']} @ {CFG['baud']}")
             buf=b""
             while not STOP.is_set() and serial_obj.is_open:
                 b=serial_obj.read(4096)
@@ -164,10 +168,12 @@ def serial_loop():
                     while b"\n" in buf:
                         raw,buf=buf.split(b"\n",1)
                         line=raw.decode("ascii","ignore").strip()
+                        if line: LOG.raw(line)
                         if line.startswith("$") and "GGA" in line: parse_gga(line)
                 else: time.sleep(.02)
         except Exception as e:
             update(serial_connected=False,last_error=f"Serial: {e}")
+            LOG.event(f"Mottakar-feil: {e}")
             try:
                 if serial_obj: serial_obj.close()
             except: pass
@@ -200,6 +206,7 @@ def ntrip_loop():
                 time.sleep(1); continue
             ntrip_sock=connect_ntrip()
             update(ntrip_connected=True,caster=CFG["caster"],mountpoint=CFG["mountpoint"],last_error="")
+            LOG.event(f"NTRIP tilkopla: {CFG['caster']} / {CFG['mountpoint']}")
             while not STOP.is_set():
                 now=time.time()
                 gga=STATE.get("last_gga","")
@@ -213,6 +220,7 @@ def ntrip_loop():
                 update(bytes_rtcm=STATE["bytes_rtcm"]+len(data))
         except Exception as e:
             update(ntrip_connected=False,last_error=f"NTRIP: {e}")
+            LOG.event(f"NTRIP-feil: {e}")
             try:
                 if ntrip_sock: ntrip_sock.close()
             except: pass
@@ -239,6 +247,17 @@ class API(http.server.BaseHTTPRequestHandler):
             self.headers_ok(); self.wfile.write(json.dumps({"available":T.AVAILABLE,"error":T.IMPORT_ERROR,
                 "types":T.TYPES,"layers":TERR.listing() if T.AVAILABLE else [],
                 "calibration":{k:CFG[k] for k in ("antZ","zOff","heightMode","geoidN","calibrated")}}).encode()); return
+        if u.path=="/api/log":
+            r=LOG.status(); r.update(ok=True,logs=LOG.listing(),always=bool(O.system_cfg().get("logAlways")))
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/log/download":   # zip med begge filene i ein logg
+            try:
+                name=urllib.parse.parse_qs(u.query)["name"][0]; data=LOG.zip(name)
+                self.send_response(200); self.send_header("Content-Type","application/zip")
+                self.send_header("Content-Disposition",f'attachment; filename="{name}.zip"'); self.end_headers(); self.wfile.write(data)
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if u.path=="/api/window":   # kiosk/vanleg: styrt av oppstartsprogrammet om det køyrer
             try: st=json.loads((DATA/"launcher.json").read_text())
             except Exception: st={}
@@ -389,6 +408,18 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/log":
+            try:
+                d=json.loads(body or b"{}"); a=d.get("action")
+                if a=="start": LOG.start(f"SNOWMAN v{VERSION}, port {CFG['serial_port'] or '-'}, antZ {CFG['antZ']}, zOff {CFG['zOff']}, høgd {CFG['heightMode']}")
+                elif a=="stop": LOG.stop()
+                elif a=="delete": LOG.delete_all()
+                if "always" in d: O.save_system(logAlways=bool(d["always"]))
+                r=LOG.status(); r.update(ok=True,logs=LOG.listing(),always=bool(O.system_cfg().get("logAlways")))
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if self.path=="/api/window":   # «Vanleg skjerm» / «Kioskmodus»: oppstartsprogrammet byter vindauge
             try:
                 m=json.loads(body or b"{}").get("mode")
@@ -511,11 +542,12 @@ def main():
     print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}")
     if a.lan or CFG.get("hudLan"): set_hud_lan(True)
     # Hovudtenesta (styring, innstillingar) er berre tilgjengeleg på denne PC-en.
+    if O.system_cfg().get("logAlways"): LOG.start(f"Starta automatisk. SNOWMAN v{VERSION}")
     SERVER[0]=http.server.ThreadingHTTPServer(("127.0.0.1",a.http_port),API)
     try: SERVER[0].serve_forever()
     except KeyboardInterrupt: pass
     finally:
-        STOP.set(); save_cfg()
+        STOP.set(); save_cfg(); LOG.stop()
         try:
             if serial_obj: serial_obj.close()   # frigjer COM-porten til Leica
         except Exception: pass

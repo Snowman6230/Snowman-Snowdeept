@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.21 – feltlogg for prøving i maskina
+- **Nytt:** `feltlogg.py` – lagrar alt mottakaren sender (alle NMEA-linjer, med PC-tid) og hendingar (mottakar/NTRIP tilkopla, feil) i `data/logg/<namn>.nmea`, og éi CSV-linje per posisjon med det SNOWMAN rekna ut: fix, satellittar, HDOP, posisjon, høgd, geoidehøgd, terrenghøgd og lag, snødjupne (rå og vist), status, fart, kurs, antennehøgd og høgdeoffset.
+- **Nytt:** Innst. › System › FELTLOGG: start/stopp, «Logg alltid når SNOWMAN startar», liste over loggar med **Last ned (zip)**, og slett alle. Loggen inneheld ingen passord. Mappa blir halden under 500 MB (eldste loggar blir sletta).
+- **Nytt:** `GET /api/log`, `POST /api/log` (start/stopp/slett/alltid), `GET /api/log/download?name=` (berre loggfiler kan lastast ned).
+- **Nytt:** `docs/FELTPROVE.md` – sjekkliste for første prøvetur med Leica i trakkemaskina.
+- **Testa:** 5 s logg med simulert mottakar: NMEA- og CSV-fil med rett innhald, nedlasting som zip, forsøk på å laste ned andre filer blir avvist.
+
 ### PC-prototype v1.6.20 – eigen logo (trakkemaskin)
 - **Nytt:** SNOWMAN-ikon: raud trakkemaskin på preparert snø med fjell, i eit avrunda blått felt. Eiga teikning (`pc/v1.6/ikon/snowman.svg`), med PNG og Windows-ikon (`snowman.ico`, 16–256 px).
 - **Nytt:** Ikonet blir brukt på snarvegen på skrivebordet (Windows), i autostart, i programmenyen (Linux) og som ikon for SNOWMAN-vindauget, HUD-sida og nettlesarfana.
