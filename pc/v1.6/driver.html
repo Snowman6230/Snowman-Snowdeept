@@ -1022,6 +1022,8 @@
           ><button id="tabTerrain" onclick="showTab('terrain')">Terreng</button
           ><button id="tabCtl" onclick="showTab('ctl')">Kontroll</button
           ><button id="tabTrase" onclick="showTab('trase')">Trasear</button
+          ><button id="tabFuel" onclick="showTab('fuel')">Drivstoff</button
+          ><button id="tabReport" onclick="showTab('report')">Rapport</button
           ><button id="tabHistory" onclick="showTab('history')">Historikk</button
           ><button id="tabSys" onclick="showTab('sys')">System</button>
         </div>
@@ -1237,6 +1239,35 @@
             Demo og simulator tel ikkje – dei blir viste som TEST.
           </div>
         </section>
+        <section id="panelFuel" class="panel">
+          <h3>REGISTRER FYLLING</h3>
+          <div class="row"><span>Liter fylt</span><input id="fuelL" type="text" inputmode="decimal" placeholder="t.d. 180" /></div>
+          <div class="row"><span>Timeteljar motor (valfri)</span><input id="fuelH" type="text" inputmode="decimal" placeholder="t.d. 4521,3" /></div>
+          <div class="row"><span>Merknad (valfri)</span><input id="fuelNote" type="text" maxlength="120" /></div>
+          <button id="fuelFull" class="btn toggle on" onclick="RAP.toggleFull()">FYLT HEILT OPP: JA</button>
+          <button class="btn" onclick="RAP.addFuel()">LAGRE FYLLING</button>
+          <div class="history" style="font-size: 12px">
+            Fyll tanken <b>heilt opp</b> kvar gong og skriv inn literane. Då er literane det maskina har brukt sidan førre fylling, og
+            SNOWMAN reknar <b>liter per time</b> og <b>liter per daa</b> preparert (frå øktene). Med timeteljaren blir det rekna mot
+            motortimar, elles mot tida med prep på. Første fylling er startpunktet.
+          </div>
+          <h3>FORBRUK</h3>
+          <div id="fuelSum" class="history">–</div>
+          <div id="fuelList"></div>
+        </section>
+        <section id="panelReport" class="panel">
+          <h3>RAPPORT</h3>
+          <div class="row">
+            <span>Prepareringsdøgn</span
+            ><select id="repDay" style="width: 230px" onchange="RAP.loadReport()"></select>
+          </div>
+          <div id="repOut"></div>
+          <button class="btn" onclick="RAP.csv()">LAST NED RAPPORT (CSV / EXCEL)</button>
+          <div class="history" style="font-size: 12px">
+            Rapporten gjeld eitt prepareringsdøgn (kl. 12 til kl. 12 neste dag): tid med prep, køyrd lengd og areal, prosent preparert
+            og snødjupne per trasé, og drivstoff. Demo og simulator er merka TEST og er ikkje med i summane.
+          </div>
+        </section>
         <section id="panelHistory" class="panel">
           <h3>KØYREHISTORIKK</h3>
           <div class="row">
@@ -1346,7 +1377,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.23";
+      const APP_VERSION = "1.6.24";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -2600,7 +2631,7 @@
         toast.t = setTimeout(() => ($("toast").style.display = "none"), 2200);
       }
       function showTab(n) {
-        let a = { machine: "Machine", snow: "Snow", target: "Target", map: "Map", cal: "Cal", terrain: "Terrain", ctl: "Ctl", trase: "Trase", history: "History", sys: "Sys" };
+        let a = { machine: "Machine", snow: "Snow", target: "Target", map: "Map", cal: "Cal", terrain: "Terrain", ctl: "Ctl", trase: "Trase", fuel: "Fuel", report: "Report", history: "History", sys: "Sys" };
         Object.values(a).forEach((x) => {
           $("panel" + x).classList.remove("on");
           $("tab" + x).classList.remove("on");
@@ -2610,6 +2641,8 @@
         if (n === "ctl") loadControl();
         if (n === "sys") loadLog();
         if (n === "trase") TRA.load();
+        if (n === "fuel") RAP.loadFuel();
+        if (n === "report") RAP.loadDays();
       }
       function toggleSettings() {
         $("settings").classList.toggle("hide");
@@ -3900,6 +3933,174 @@
             render();
           },
           drawing: () => !!D,
+        };
+      })();
+      /* ---------- Drivstoff (manuell registrering, full tank) og rapport per prepareringsdøgn ---------- */
+      const RAP = (function () {
+        const n = (x, d) => (x == null ? "–" : (+x).toFixed(d).replace(".", ",")),
+          hm = (t) => {
+            if (!t) return "–";
+            let d = new Date(t);
+            return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+          },
+          dm = (t) => {
+            let d = new Date(t);
+            return d.getDate() + "." + (d.getMonth() + 1) + ". " + hm(t);
+          },
+          mins = (m) => Math.floor(m / 60) + " t " + String(m % 60).padStart(2, "0") + " min";
+        let full = true;
+        function setFull(v) {
+          full = v;
+          $("fuelFull").classList.toggle("on", full);
+          $("fuelFull").textContent = "FYLT HEILT OPP: " + (full ? "JA" : "NEI");
+        }
+        function renderFuel(r) {
+          let s = r.summary || {};
+          $("fuelSum").innerHTML =
+            "<b>Siste " + s.days + " dagar:</b> " + n(s.litres, 0) + " l fylt · " +
+            (s.lph != null ? "<b>" + n(s.lph, 1) + " l/time</b>" : "l/time: –") + " · " +
+            (s.lpdaa != null ? "<b>" + n(s.lpdaa, 2) + " l/daa</b>" : "l/daa: –") +
+            ((r.fuel || []).length < 2 ? "<br><small>Forbruket blir rekna frå og med andre fylling.</small>" : "");
+          $("fuelList").innerHTML = (r.fuel || [])
+            .slice(0, 30)
+            .map(
+              (f) =>
+                '<div class="tlayer"><b>' + dm(f.t) + " · " + n(f.litres, 1) + " l</b>" + (f.full ? "" : " (ikkje full tank)") +
+                (f.hours != null ? " · timeteljar " + n(f.hours, 1) : "") + (f.machine ? " · " + esc(f.machine) : "") +
+                (f.lph != null || f.lpdaa != null
+                  ? "<br>" + (f.lph != null ? n(f.lph, 1) + " l/time (" + (f.hourSource === "motor" ? "timeteljar" : "prep-tid") + ")" : "") +
+                    (f.lpdaa != null ? " · " + n(f.lpdaa, 2) + " l/daa (" + n(f.areaDaa, 1) + " daa køyrt)" : "")
+                  : f.litresInterval == null ? "<br><small>Startpunkt</small>" : "<br><small>For lite køyring eller ingen timeteljar til å rekne forbruk</small>") +
+                (f.note ? "<br><small>" + esc(f.note) + "</small>" : "") +
+                '<div class="acts"><button onclick="RAP.delFuel(\'' + f.id + "')\">SLETT</button></div></div>",
+            )
+            .join("");
+        }
+        async function loadFuel() {
+          try {
+            renderFuel(await api("api/fuel"));
+          } catch (e) {
+            $("fuelSum").textContent = "Drivstoff er ikkje tilgjengeleg: " + e.message;
+          }
+        }
+        async function addFuel() {
+          let l = $("fuelL").value.trim().replace(",", ".");
+          if (!(+l > 0)) return toast("Skriv inn kor mange liter du fylte");
+          try {
+            let r = await api("api/fuel/add", { litres: l, hours: $("fuelH").value.trim().replace(",", "."), full, note: $("fuelNote").value.trim(), machine: cfg.mname });
+            renderFuel(r);
+            $("fuelL").value = $("fuelNote").value = "";
+            $("fuelH").value = "";
+            setFull(true); // neste fylling er normalt full tank
+            toast("Fylling lagra: " + n(+l, 1) + " l");
+          } catch (e) {
+            toast("Kunne ikkje lagre: " + e.message);
+          }
+        }
+        async function delFuel(id) {
+          if (!confirm("Slette denne fyllinga?")) return;
+          try {
+            renderFuel(await api("api/fuel/delete", { id }));
+          } catch (e) {
+            toast(e.message);
+          }
+        }
+        // --- rapport ---
+        async function loadDays() {
+          let sel = $("repDay"),
+            cur = sel.value;
+          try {
+            let d = (await api("api/report/days")).days || [];
+            sel.innerHTML = d.length
+              ? d.map((x) => '<option value="' + x + '">' + x.split("-").reverse().join(".") + " kl. 12 – neste dag kl. 12</option>").join("")
+              : "<option value=''>Ingen økter enno</option>";
+            if (cur && d.includes(cur)) sel.value = cur;
+          } catch (e) {
+            sel.innerHTML = "<option value=''>Ikkje tilgjengeleg</option>";
+          }
+          await loadReport();
+        }
+        async function loadReport() {
+          let date = $("repDay").value,
+            r;
+          if (!date) {
+            $("repOut").innerHTML = '<div class="history">Ingen økter å rapportere. Rapporten blir laga av øktene (Start prep) og fyllingane.</div>';
+            return;
+          }
+          try {
+            r = await api("api/report?date=" + date);
+          } catch (e) {
+            $("repOut").innerHTML = '<div class="history">' + esc(e.message) + "</div>";
+            return;
+          }
+          let T = r.total,
+            h = [];
+          h.push(
+            '<div class="history"><b>Samla:</b> ' + mins(T.prepMin) + " med prep · " + n(T.km, 1) + " km · " + n(T.areaDaa, 1) +
+              " daa køyrt · " + n(T.litres, 0) + " l drivstoff fylt" + (T.depthAvg != null ? "<br>Snødjupne målt: snitt " + n(T.depthAvg, 2) + " m, minst " + n(T.depthMin, 2) + " m" : "") +
+              (r.test.n ? "<br><span style='color:#ffb24d'>TEST/demo: " + r.test.n + " økt(er), " + mins(r.test.prepMin) + " – ikkje med i summen</span>" : "") +
+              "</div>",
+          );
+          if (r.trasear.length)
+            h.push(
+              "<h3>TRASEAR</h3><table class='fmt'><tr><td><b>Trasé</b></td><td><b>Preparert</b></td><td><b>Sist</b></td><td><b>Snødjupne</b></td></tr>" +
+                r.trasear
+                  .map(
+                    (t) =>
+                      "<tr><td><span class='traSw' style='background:" + t.color + "'></span>" + esc(t.name) + "<br><small>" + n(t.areaDaa, 1) + " daa</small></td><td><b>" +
+                      n(t.pct, 0) + " %</b>" + (t.pctTest > t.pct ? "<br><small style='color:#ffb24d'>" + n(t.pctTest, 0) + " % med TEST</small>" : "") +
+                      "</td><td>" + hm(t.last) + "</td><td>" +
+                      (t.depthAvg != null ? "snitt " + n(t.depthAvg, 2) + " m<br>minst " + n(t.depthMin, 2) + " m" : "–") +
+                      (t.target != null ? "<br><small>mål " + n(t.target, 2) + " m</small>" : "") + "</td></tr>",
+                  )
+                  .join("") + "</table>",
+            );
+          h.push(
+            "<h3>ØKTER</h3>" +
+              (r.sessions.length
+                ? "<table class='fmt'><tr><td><b>Tid</b></td><td><b>Prep</b></td><td><b>Areal</b></td><td><b>Snødjupne</b></td></tr>" +
+                  r.sessions
+                    .map(
+                      (s) =>
+                        "<tr" + (s.test ? " style='color:#ffb24d'" : "") + "><td>" + hm(s.start) + "–" + hm(s.end) + (s.test ? " TEST" : "") +
+                        "<br><small>" + esc(s.machine || "") + "</small></td><td>" + s.prepMin + " min<br><small>" + n(s.km, 2) + " km</small></td><td>" +
+                        n(s.areaDaa, 1) + " daa</td><td>" + (s.depthAvg != null ? "snitt " + n(s.depthAvg, 2) + " m<br>minst " + n(s.depthMin, 2) + " m" : "–") + "</td></tr>",
+                    )
+                    .join("") + "</table>"
+                : '<div class="history">Ingen økter.</div>'),
+          );
+          h.push(
+            "<h3>DRIVSTOFF</h3>" +
+              (r.fuel.length
+                ? "<table class='fmt'>" +
+                  r.fuel
+                    .map(
+                      (f) =>
+                        "<tr><td>" + hm(f.t) + "</td><td>" + n(f.litres, 1) + " l</td><td>" + (f.lph != null ? n(f.lph, 1) + " l/time" : "–") + "</td><td>" +
+                        (f.lpdaa != null ? n(f.lpdaa, 2) + " l/daa" : "–") + "</td></tr>",
+                    )
+                    .join("") + "</table>"
+                : '<div class="history">Ingen fyllingar registrerte dette døgnet.</div>'),
+          );
+          $("repOut").innerHTML = h.join("");
+        }
+        return {
+          loadFuel,
+          addFuel,
+          delFuel,
+          loadDays,
+          loadReport,
+          toggleFull: () => setFull(!full),
+          csv() {
+            let d = $("repDay").value;
+            if (!d) return toast("Ingen rapport å laste ned");
+            let a = document.createElement("a");
+            a.href = "api/report/csv?date=" + d;
+            a.download = "snowman-rapport-" + d + ".csv";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          },
         };
       })();
       async function importTerrain() {

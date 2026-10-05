@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.23"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.24"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -30,8 +30,10 @@ KON=K.Kontroll(DATA/"kontroll.json",TERR if T.AVAILABLE else None,T.utm_inverse)
 try:
     import trasear as TR   # trasear (yttergrenser), forbodne område og prosent preparert – krev numpy som Terrain Engine
     TRA=TR.Trasear(DATA/"trasear.json",SESS)
+    import drivstoff as DS   # drivstoff (manuelt) og rapport per prepareringsdøgn
+    FUEL=DS.Drivstoff(DATA/"drivstoff.json",TRA)
 except ImportError as e:
-    TR=TRA=None; TRA_ERR=str(e)
+    TR=TRA=FUEL=None; TRA_ERR=str(e)
 SIM_FASIT=DATA/"sim-fasit.json"   # skriven av simuler-leica.py: simulert snødjupne der maskina står (berre test)
 def sim_truth():
     """Fasit frå simulatoren, berre når mottakaren er simulert og fila er fersk."""
@@ -275,6 +277,24 @@ class API(http.server.BaseHTTPRequestHandler):
             r=KON.listing(CFG,STATE); r.update(ok=True,simTruth=sim_truth(),fix=STATE.get("fix"),depth=STATE.get("depth"),
                 raw=(STATE.get("depth_detail") or {}).get("raw"),depth_status=STATE.get("depth_status"),zOff=CFG["zOff"],calibrated=CFG["calibrated"])
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path in ("/api/fuel","/api/report","/api/report/days"):
+            try:
+                if FUEL is None: raise RuntimeError("Drivstoff og rapport krev numpy: "+TRA_ERR)
+                q=urllib.parse.parse_qs(u.query); date=q.get("date",[None])[0]
+                if u.path=="/api/fuel": r={"ok":True,"fuel":FUEL.computed(),"summary":FUEL.summary()}
+                elif u.path=="/api/report/days": r={"ok":True,"days":FUEL.days()}
+                else: r=FUEL.report(date); r["ok"]=True
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/report/csv":   # rapporten som CSV (Excel)
+            try:
+                date=urllib.parse.parse_qs(u.query).get("date",[None])[0]
+                data=FUEL.report_csv(date).encode("utf-8"); name="snowman-rapport-"+(date or time.strftime("%Y-%m-%d"))+".csv"
+                self.send_response(200); self.send_header("Content-Type","text/csv; charset=utf-8")
+                self.send_header("Content-Disposition",f'attachment; filename="{name}"'); self.end_headers(); self.wfile.write(data)
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if u.path in ("/api/trasear","/api/trasear/status"):
             try:
                 if TRA is None: raise RuntimeError("Trasear krev numpy: "+TRA_ERR)
@@ -388,6 +408,17 @@ class API(http.server.BaseHTTPRequestHandler):
                 SESS.mkdir(parents=True,exist_ok=True)
                 tmp=SESS/f"{sid}.tmp"; tmp.write_text(json.dumps(d),"utf-8"); tmp.replace(SESS/f"{sid}.json")
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path in ("/api/fuel/add","/api/fuel/delete"):
+            try:
+                if FUEL is None: raise RuntimeError("Drivstoff krev numpy: "+TRA_ERR)
+                d=json.loads(body or b"{}")
+                if self.path=="/api/fuel/add": r={"ok":True,"fill":FUEL.add(d)}
+                else: FUEL.delete(d["id"]); r={"ok":True}
+                r.update(fuel=FUEL.computed(),summary=FUEL.summary())
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return

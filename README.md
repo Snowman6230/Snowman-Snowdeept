@@ -27,6 +27,7 @@ Sjå [docs/VEGEN-VIDARE.md](docs/VEGEN-VIDARE.md) for moglege framtidige løysin
 - NTRIP/CPOS-brukarnamn og passord skal aldri leggjast inn i dette repoet.
 - PC v1.6 viser ekte snødjupne når terrengmodell, kalibrering og RTK FIX er på plass. Demo er merka SIMULERT.
 - Køyrer på Linux og Windows 10/11 (Python 3.10+). Neste: anleggspakke (v1.7).
+- PC v1.6.23–24: trasear (yttergrense, prosent preparert, varsel), drivstoff og rapport per prepareringsdøgn (Innst. › Trasear, Drivstoff, Rapport).
 
 ## Lisens
 

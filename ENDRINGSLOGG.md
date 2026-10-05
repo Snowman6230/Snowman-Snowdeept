@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.24 – drivstoff og rapport
+- **Nytt:** Innst. › **Drivstoff**: registrer fylling (liter, timeteljar på motoren, merknad, «fylt heilt opp»). SNOWMAN reknar **liter per time** og **liter per daa** med full tank-metoden: literane ved ei fylling er det maskina har brukt sidan førre fulle fylling. Med timeteljar blir det rekna mot motortimar, elles mot tida med prep på (frå øktene). Ei fylling som ikkje er full blir lagt saman med neste fulle. Viser snitt for dei siste 30 dagane.
+- **Nytt:** Innst. › **Rapport** for eitt prepareringsdøgn: samla tid med prep, køyrd lengd, areal køyrt, drivstoff og målt snødjupne; per trasé prosent preparert, sist preparert og snødjupne (med måldjupne); kvar økt; og fyllingane. **Last ned som CSV** (semikolon og desimalkomma, opnar rett i norsk Excel).
+- **Nytt:** `drivstoff.py`, `data/drivstoff.json`, `GET /api/fuel`, `POST /api/fuel/add`, `/api/fuel/delete`, `GET /api/report?date=`, `/api/report/days`, `/api/report/csv?date=`.
+- **Avgjerd:** Drivstoff blir registrert for hand no (alternativ A). Automatisk forbruk (CAN-bus, straummålar) står i `docs/VEGEN-VIDARE.md`.
+- **Avgjerd:** Demo og simulator er med i rapporten, merka TEST, men ikkje i summane.
+- **Testa:** To fyllingar med timeteljar over ei 1-times økt (43,9 daa) gir 29,6 l/time og 0,81 l/daa; lågare timeteljar enn førre fylling blir avvist; registrering og sletting i Innst. › Drivstoff; rapport og CSV-nedlasting i nettlesaren, ingen JS-feil.
+
 ### PC-prototype v1.6.23 – trasear (yttergrense for preparering) og forbodne område
 - **Nytt:** Innst. › **Trasear**. Kvar trasé er eit omriss med namn, vanskegrad/farge (grøn, blå, raud, svart, langrenn, anna) og valfri måldjupne. **Forbodne område** (veg, bygg, bekk, parkering) blir lagra på same måte.
 - **Nytt:** Tre måtar å lage omrisset på:

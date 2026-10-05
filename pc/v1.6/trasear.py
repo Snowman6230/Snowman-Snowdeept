@@ -282,6 +282,10 @@ class Trasear:
         return g
 
     # --- økter ---
+    def sessions(self, since_s, until_s=None):
+        with self.lock:
+            return self._sessions(since_s, until_s)
+
     def _sessions(self, since_s, until_s=None):
         out = []
         if not self.sess.exists():

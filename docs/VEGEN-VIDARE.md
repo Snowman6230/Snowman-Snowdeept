@@ -64,12 +64,22 @@ steinar (varsel ved nærleik). Sjå `docs/TERRAIN-ENGINE.md` kap. 6.
 
 Moglege utvidingar: teikne traseen ved å køyre rundt han med maskina, og importere omriss frå GIS (GeoJSON/SOSI/DXF).
 
-## 5. Fleire maskiner
+## 5. Drivstoff automatisk
+
+Drivstoff blir no registrert for hand (v1.6.24, full tank-metoden). Seinare kan forbruket lesast automatisk:
+- **CAN-bus / J1939** frå motoren (liter per time, timeteljar, tomgang) – krev CAN-adapter (USB) og tilgang til maskina sitt
+  CAN-nett. Mest presist, men ulikt mellom PistenBully og Prinoth.
+- **Straummålar på drivstoffleidninga** – produsentuavhengig, men krev montering.
+- **Tal frå driftssystemet til maskina** (t.d. eksport frå produsenten) – avheng av leverandøren.
+
+Rapporten kan òg få ei utskriftsvennleg side (PDF) i tillegg til CSV.
+
+## 6. Fleire maskiner
 
 To eller fleire trakkemaskiner ser kvarandre sine spor og snødjupner. Krev nett mellom maskinene (fungerer offline, synkroniserer
 når det er dekning).
 
-## 6. Anna
+## 7. Anna
 
 - LAS/LAZ-import (punktsky) om terrengdata kjem i det formatet.
 - Målflate og snøflate (kor mykje snø som skal flyttast, snøvolum).
