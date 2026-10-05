@@ -579,12 +579,26 @@
         pointer-events: none;
       }
       /* 3D-terreng: eigen WebGL-flate over kartet, under knappar og tal */
+      /* 3D-flata ligg mellom topplinja og verktøylinja – aldri under dei. På somme skjermkort teiknar nettlesaren
+         WebGL-flata over alt anna når ho dekkjer heile vindauget, og då forsvann menyen nedst. */
       #t3d {
         position: absolute;
-        inset: 0;
+        z-index: 0;
+        left: 0;
+        top: 72px;
         width: 100%;
-        height: 100%;
+        height: calc(100% - 150px);
         display: none;
+      }
+      @media (max-width: 700px) {
+        #t3d {
+          top: 64px;
+          height: calc(100% - 132px);
+        }
+      }
+      .toolbar,
+      .top {
+        transform: translateZ(0); /* eige teiknelag over kart og 3D */
       }
       #app.terrain3d #t3d {
         display: block;
@@ -1074,7 +1088,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.12";
+      const APP_VERSION = "1.6.13";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));

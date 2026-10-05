@@ -9,6 +9,11 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.13 – menyen nedst blir verande i 3D-terreng og frontrute
+- **Retta:** Verktøylinja nedst forsvann hos eigaren når han bytte til 3D-terreng eller frontrute. Truleg årsak: på somme skjermkort/nettlesarar blir ei WebGL-flate som dekkjer heile vindauget teikna over resten av sida. Feilen kom ikkje fram i testmiljøet her.
+- **Endra:** 3D-flata ligg no berre mellom topplinja og verktøylinja (aldri under dei), og topplinja og verktøylinja får eigne teiknelag (`translateZ(0)`).
+- **Testa:** 3D-terreng og frontrute teiknar som før, og verktøylinja er øvst på 1024–1440 px breie skjermar.
+
 ### PC-prototype v1.6.12 – raskare HUD på mobil
 - **Endra:** HUD-en hentar ikkje lenger data ved å spørje PC-en kvart 0,3 sekund (ny nettverkstilkopling kvar gong). I staden held han éi tilkopling open, og PC-en sender ny verdi med éin gong ein ny GNSS-posisjon kjem – 5 gonger i sekundet (Server-Sent Events, `GET /api/hud/stream`). Også tilgjengeleg på mobil-porten 8766; alt anna er framleis stengt der.
 - **Nytt:** Vakthund i HUD-en: kjem det ikkje data på 4 sekund (t.d. mobilen har sove), koplar han til på nytt. Fell tilbake til spørjing om nettlesaren ikkje støttar straum.
