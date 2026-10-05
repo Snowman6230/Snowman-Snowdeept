@@ -9,6 +9,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.30 – varsel om hindringar, og rapportar lagra automatisk
+- **Nytt:** **Hindringar** under Innst. › Trasear: hydrant, snøkanon, heismast, stein, kum, bygg, gjerde/stolpe eller anna, med namn, radius og merknad. Leggjast inn ved å trykke på kartet, eller «framfor skjeret» når maskina står inntil hindringa. Vist på kartet som raudt merke med symbol og ring i rett storleik.
+- **Nytt:** **Varsel berre for hindringar maskina kan treffe:** når ei hindring ligg i køyrebana (breidda til frontskjeret + radius + 0,5 m), kjem eit stort raudt varsel **10 m før skjeret** når ho, med nedteljing i meter («⚠ HYDRANT 7 · 8 m» … «STOPP!»). Blinkar dei siste 3 m. Kort pip når varselet kjem og for kvar meter dei siste 5 m. Hindringar ved sida av køyrebana gir ikkje varsel.
+- **Nytt:** Varselet kjem **både på førarskjermen og på HUD** (stor raud tekst, blinkar nær). Er det inga hindring, viser HUD varsel om forbode område.
+- **Nytt:** **Rapportar blir lagra automatisk** til ei mappe (standard: `Dokument/SNOWMAN-rapportar`) kvart 5. minutt og med éin gong prep blir stoppa – også utan nett. Éi CSV-fil per prepareringsdøgn og maskin. Ligg mappa i OneDrive, Google Drive eller Dropbox på PC-en, lastar synkroniseringsprogrammet opp filene når PC-en har nett (wifi eller mobildata). Mappa og av/på blir valde i Innst. › Rapport, med «Lagre rapportane no».
+- **Nytt:** `trasear.py` `Objekt`, `data/objekt.json`, `GET /api/objekt`, `POST /api/objekt/save`, `/delete`; `GET/POST /api/report/export`. HUD får `warn` og `warnLevel`.
+- **Avgjerd (eigar):** Varsel om hindringar skal kome på både HUD og skjerm, berre for hindringar maskina er i fare for å treffe, 10 m før, med nedteljing.
+- **Avgjerd:** Opplasting skjer via synkroniseringsprogrammet på PC-en (OneDrive o.l.), ikkje frå SNOWMAN sjølv. Då treng SNOWMAN ingen passord eller nett, og fungerer offline.
+- **Testa:** simanlegg over Familietrekk: hindring lagt inn frå kartet, hydrant lagd 14–16 m framfor maskina gir nedteljing 8 → 5 → 1 m → STOPP!, same tekst på HUD, varselet forsvinn når hindringa er passert. Rapportmappe valt i nettlesaren: CSV-fil skriven med maskinnamn. Ingen JS-feil. (Testmaskina oppdaterer posisjonen sjeldnare enn ein ekte mottakar, så nedteljinga hoppa fleire meter om gongen i testen.)
+
 ### PC-prototype v1.6.29 – frontskjeret ser ut som eit skjer
 - **Endra:** Frontskjeret i 3D-terreng og frontrute var ein kloss (eigaren: «ser ikkje ut som eit frontskjer»). No er det ei tynn, bøygd skjærplate (1,15 m høg, krummar fram i toppen) med svart kant øvst, to sidevengjer vinkla fram og to skyvearmar. Plata er halvgjennomsiktig, så føraren ser snødjupnefargane framfor skjeret gjennom ho i frontrutevisinga. Breidda følgjer framleis innstillinga for frontskjer (full / innkøyrd).
 - **Testa:** simanlegg over Familietrekk, frontrute og 3D-terreng, ingen JS-feil.

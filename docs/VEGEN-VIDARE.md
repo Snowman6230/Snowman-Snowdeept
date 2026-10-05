@@ -60,8 +60,9 @@ anlegget, éi fil om gongen (kvar fil blir eit lag). Står att: velje alle filen
 ## 4. Trasear og anleggsobjekt
 
 **Trasear er laga i v1.6.23** (teikne, omriss frå terrengmodell, prosent preparert, varsel ved kant og i forbodne område).
-Uprepart areal på kartet og måldjupne per trasé (snødjupnetal og HUD) kom i v1.6.25. Står att: punkt for hydrantar, master
-og steinar (varsel ved nærleik). Sjå `docs/TERRAIN-ENGINE.md` kap. 6.
+Uprepart areal på kartet og måldjupne per trasé (snødjupnetal og HUD) kom i v1.6.25. Hindringar (hydrantar, snøkanonar,
+master, steinar …) med varsel og nedteljing på skjerm og HUD kom i v1.6.30. Står att: trasear, uprepart areal og hindringar
+i 3D-terreng og frontrute, og rettleiingslinjer framfor skjeret. Sjå `docs/TERRAIN-ENGINE.md` kap. 6.
 
 Moglege utvidingar: teikne traseen ved å køyre rundt han med maskina, og importere omriss frå GIS (GeoJSON/SOSI/DXF).
 

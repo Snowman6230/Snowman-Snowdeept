@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.29"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.30"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -30,10 +30,11 @@ KON=K.Kontroll(DATA/"kontroll.json",TERR if T.AVAILABLE else None,T.utm_inverse)
 try:
     import trasear as TR   # trasear (yttergrenser), forbodne område og prosent preparert – krev numpy som Terrain Engine
     TRA=TR.Trasear(DATA/"trasear.json",SESS)
+    OBJ=TR.Objekt(DATA/"objekt.json")   # hindringar (punkt) med varsel på skjerm og HUD
     import drivstoff as DS   # drivstoff (manuelt) og rapport per prepareringsdøgn
     FUEL=DS.Drivstoff(DATA/"drivstoff.json",TRA)
 except ImportError as e:
-    TR=TRA=FUEL=None; TRA_ERR=str(e)
+    TR=TRA=FUEL=OBJ=None; TRA_ERR=str(e)
 SIM_FASIT=DATA/"sim-fasit.json"   # skriven av simuler-leica.py: simulert snødjupne der maskina står (berre test)
 def sim_truth():
     """Fasit frå simulatoren, berre når mottakaren er simulert og fila er fersk."""
@@ -75,7 +76,7 @@ def hud_state():
     if fresh_drv and drv.get("demo"):
         out=drv; age=drv_age
     elif gnss_ok:
-        out={k:drv.get(k) for k in ("preparing","elapsed","distance","area","target","tol","bounds","trase")} if fresh_drv else {"target":0.8,"tol":0.1}
+        out={k:drv.get(k) for k in ("preparing","elapsed","distance","area","target","tol","bounds","trase","warn","warnLevel")} if fresh_drv else {"target":0.8,"tol":0.1}
         d=STATE.get("depth"); ter=STATE.get("terrain") or {}
         out.update(src="gnss",demo=bool(STATE.get("simulated")),fix=STATE.get("fix"),sats=STATE.get("satellites"),
                    speed=round((STATE.get("speed") or 0)*3.6,1),heading=STATE.get("course"),
@@ -286,6 +287,9 @@ class API(http.server.BaseHTTPRequestHandler):
                 else: r=FUEL.report(date); r["ok"]=True
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/report/export":
+            r={"ok":True,**report_cfg(),**EXPORT}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/report/csv":   # rapporten som CSV (Excel)
             try:
                 date=urllib.parse.parse_qs(u.query).get("date",[None])[0]
@@ -295,6 +299,9 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if u.path=="/api/objekt":
+            r={"ok":True,"objekt":OBJ.listing(),"types":{k:{"name":v[0],"radius":v[1],"sym":v[2]} for k,v in TR.OBJ_TYPES.items()}} if OBJ else {"ok":False,"error":TRA_ERR}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path in ("/api/trasear","/api/trasear/status"):
             try:
                 if TRA is None: raise RuntimeError("Trasear krev numpy: "+TRA_ERR)
@@ -407,7 +414,33 @@ class API(http.server.BaseHTTPRequestHandler):
                 if not sid: raise ValueError("manglar id")
                 SESS.mkdir(parents=True,exist_ok=True)
                 tmp=SESS/f"{sid}.tmp"; tmp.write_text(json.dumps(d),"utf-8"); tmp.replace(SESS/f"{sid}.json")
+                if d.get("final"): threading.Thread(target=export_now,daemon=True).start()   # prep stoppa: lagre rapporten no
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path=="/api/report/export":   # innstillingar for automatisk lagring, og «lagre no»
+            try:
+                d=json.loads(body or b"{}")
+                if "on" in d: O.save_system(reportExport=bool(d["on"]))
+                if d.get("dir") is not None:
+                    p=str(d["dir"]).strip()
+                    if p:
+                        Path(p).expanduser().mkdir(parents=True,exist_ok=True)
+                        p=str(Path(p).expanduser())
+                    O.save_system(reportDir=p)
+                if d.get("now") or "dir" in d or d.get("on"): export_now()
+                r={"ok":True,**report_cfg(),**EXPORT}
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":"Kunne ikkje bruke mappa: "+str(e)}).encode())
+            return
+        if self.path in ("/api/objekt/save","/api/objekt/delete"):
+            try:
+                if OBJ is None: raise RuntimeError("Hindringar krev numpy: "+TRA_ERR)
+                d=json.loads(body or b"{}")
+                r={"ok":True,"objekt":OBJ.save(d)} if self.path.endswith("save") else (OBJ.delete(d["id"]) or {"ok":True})
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
@@ -598,6 +631,28 @@ def set_hud_lan(on):
         srv=HUDLAN["srv"]; HUDLAN["srv"]=None; threading.Thread(target=srv.shutdown,daemon=True).start()
     return ""
 
+# --- Automatisk lagring av rapportar (Innst. › Rapport). Synkroniseringsprogram lastar opp når PC-en har nett. ---
+EXPORT={"last":None,"error":"","files":[],"written":0}
+def report_cfg():
+    s=O.system_cfg()
+    return {"on":s.get("reportExport",True),"dir":s.get("reportDir") or str(DS.default_report_dir())} if FUEL else {"on":False,"dir":""}
+def ui_machine():
+    try: return json.loads(UI_CFG.read_text("utf-8")).get("mname","")
+    except Exception: return ""
+def export_now():
+    c=report_cfg()
+    if not (FUEL and c["on"]): return
+    try:
+        n,files=DS.export_reports(FUEL,c["dir"],ui_machine())
+        EXPORT.update(last=time.strftime("%Y-%m-%d %H:%M"),error="",files=files,written=EXPORT["written"]+n)
+    except Exception as e:
+        EXPORT.update(last=time.strftime("%Y-%m-%d %H:%M"),error=str(e))
+def export_loop():
+    time.sleep(20)
+    while not STOP.is_set():
+        export_now()
+        STOP.wait(300)   # kvart 5. minutt (og når prep blir stoppa)
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--http-port",type=int,default=8765)
@@ -611,6 +666,7 @@ def main():
         if a.simulert: REAL_PORT[0]=CFG["serial_port"]; CFG["serial_port"]=a.serial   # berre for denne økta
         else: CFG["serial_port"]=a.serial; save_cfg()
     threading.Thread(target=serial_loop,daemon=True).start()
+    threading.Thread(target=export_loop,daemon=True).start()
     threading.Thread(target=ntrip_loop,daemon=True).start()
     print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}")
     if a.lan or CFG.get("hudLan"): set_hud_lan(True)

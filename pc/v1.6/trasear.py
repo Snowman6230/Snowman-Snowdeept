@@ -421,3 +421,67 @@ class Trasear:
             out = {"since": int(since_s * 1000), "until": int(until_s * 1000) if until_s else None, "dayStartHour": DAY_START_HOUR, "status": res}
             self._status = (now, (since_s, until_s), out)
             return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Hindringar og anleggsobjekt (punkt): snøkanon, hydrant, heismast, stein, kum, bygg …
+# Føraren får varsel på skjerm og HUD når eit objekt ligg i køyrebana framfor skjeret (sjå driver.html, OBJ).
+# ---------------------------------------------------------------------------------------------
+OBJ_TYPES = {  # type → (namn, standard radius i meter, kort symbol på kartet)
+    "hydrant": ("Hydrant", 0.5, "H"),
+    "snokanon": ("Snøkanon", 1.5, "SK"),
+    "mast": ("Heismast", 1.0, "M"),
+    "stein": ("Stein", 1.0, "S"),
+    "kum": ("Kum", 0.6, "K"),
+    "bygg": ("Bygg", 3.0, "B"),
+    "gjerde": ("Gjerde / stolpe", 0.5, "G"),
+    "anna": ("Anna hindring", 1.0, "!"),
+}
+
+
+class Objekt:
+    def __init__(self, path):
+        self.path = Path(path)
+        self.lock = threading.Lock()
+        self.items = []
+        try:
+            self.items = json.loads(self.path.read_text("utf-8")).get("objekt", [])
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print("Kunne ikkje lese objekt.json:", e)
+
+    def _save(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"objekt": self.items}, indent=1, ensure_ascii=False), "utf-8")
+        tmp.replace(self.path)
+
+    def listing(self):
+        with self.lock:
+            return [dict(o) for o in self.items]
+
+    def save(self, d):
+        lat, lng = float(d["lat"]), float(d["lng"])
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            raise ValueError("Ugyldig koordinat.")
+        typ = d.get("type") if d.get("type") in OBJ_TYPES else "anna"
+        r = d.get("radius")
+        r = OBJ_TYPES[typ][1] if r in (None, "") else float(str(r).replace(",", "."))
+        if not (0 < r <= 30):
+            raise ValueError("Radius må vere mellom 0 og 30 m.")
+        with self.lock:
+            old = next((o for o in self.items if o["id"] == d.get("id")), None)
+            o = old or {"id": uuid.uuid4().hex[:8], "created": time.strftime("%Y-%m-%d %H:%M")}
+            o.update(type=typ, name=str(d.get("name") or "").strip()[:60] or OBJ_TYPES[typ][0], lat=round(lat, 8), lng=round(lng, 8),
+                     radius=round(r, 2), note=str(d.get("note") or "")[:120], source=str(d.get("source") or o.get("source") or "kart")[:40],
+                     updated=time.strftime("%Y-%m-%d %H:%M:%S"))
+            if not old:
+                self.items.append(o)
+            self._save()
+            return dict(o)
+
+    def delete(self, oid):
+        with self.lock:
+            self.items = [o for o in self.items if o["id"] != oid]
+            self._save()

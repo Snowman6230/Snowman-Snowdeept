@@ -109,6 +109,27 @@
         font-size: 3.6vh;
         color: var(--warn);
       }
+      /* Varsel: hindring i køyrebana (nedteljing) eller forbode område */
+      #warn {
+        position: absolute;
+        left: 50%;
+        top: 14vh;
+        transform: translateX(-50%);
+        font-size: 11vh;
+        font-weight: 900;
+        color: var(--bad);
+        white-space: nowrap;
+        text-align: center;
+        letter-spacing: 0.03em;
+      }
+      #warn.near {
+        animation: blink 0.5s steps(2) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0.15;
+        }
+      }
       #stale {
         position: absolute;
         inset: 0;
@@ -173,6 +194,7 @@
         <span id="demo" class="hide">DEMO – SIMULERT</span>
         <span id="prep" class="chip dim">--:--:--</span>
       </div>
+      <div id="warn" class="hide"></div>
       <div id="center">
         <div id="depthLabel">SNØDJUPNE</div>
         <div id="depth">--</div>
@@ -298,6 +320,9 @@
           $("dev").style.color = !within && diff > 0 ? "var(--hi)" : "";
         }
         $("speed").innerHTML = fmt(h.speed || 0, 1) + "<small>km/t</small>";
+        $("warn").textContent = h.warn || "";
+        $("warn").classList.toggle("hide", !h.warn);
+        $("warn").classList.toggle("near", h.warnLevel === "near");
         $("course").textContent = (h.heading ?? "--") + "°";
       }
       function show(h) {

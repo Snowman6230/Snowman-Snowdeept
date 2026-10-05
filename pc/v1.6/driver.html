@@ -879,6 +879,58 @@
       .traV.first {
         border-color: #27d84d;
       }
+      /* Hindring i køyrebana: stort varsel med nedteljing */
+      .obstWarn {
+        position: absolute;
+        z-index: 960;
+        top: 116px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #c41f1f;
+        color: #fff;
+        font-weight: 900;
+        padding: 8px 26px 10px;
+        border-radius: 14px;
+        text-align: center;
+        box-shadow: 0 6px 24px #000c;
+        pointer-events: none;
+        border: 3px solid #fff;
+      }
+      .obstWarn #obstName {
+        font-size: 24px;
+        letter-spacing: 1px;
+        white-space: nowrap;
+      }
+      .obstWarn #obstDist {
+        font-size: 64px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .obstWarn.near {
+        animation: traBlink 0.5s steps(2) infinite;
+      }
+      #app.drawing .obstWarn {
+        display: none;
+      }
+      .objIco {
+        background: #ff3b30;
+        color: #fff;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        font-weight: 900;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 0 2px #0008;
+      }
+      .objIco.inl {
+        display: inline-flex;
+        width: 20px;
+        height: 20px;
+        margin-right: 6px;
+        vertical-align: -4px;
+      }
       .drawBar {
         position: absolute;
         z-index: 1300;
@@ -1242,6 +1294,15 @@
           <div id="traList"></div>
           <button id="traShow" class="btn toggle on" onclick="TRA.toggleShow()">VIS TRASEAR PÅ KARTET: PÅ</button>
           <button id="traUnprep" class="btn toggle on" onclick="TRA.toggleUnprep()">VIS UPREPARERT AREAL I DAG: PÅ</button>
+          <h3>HINDRINGAR</h3>
+          <div id="objList"></div>
+          <button class="btn" onclick="TRA.drawObj()">⚠ LEGG INN HINDRING PÅ KARTET</button>
+          <button class="btn" onclick="TRA.objAtMachine()">⚠ HINDRING FRAMFOR SKJERET (MASKINA STÅR INNTIL)</button>
+          <div class="history" style="font-size: 12px">
+            Hydrantar, snøkanonar, heismaster, steinar, kummar. Når ei hindring ligg i køyrebana (breidda til skjeret), kjem eit raudt
+            varsel <b>10 m</b> før skjeret når ho, med nedteljing i meter og pip – på skjermen og på HUD. Hindringar ved sida av
+            køyrebana gir ikkje varsel.
+          </div>
           <h3>LEGG TIL</h3>
           <button class="btn" onclick="TRA.draw('trase')">✎ TEIKN NY TRASÉ PÅ KARTET</button>
           <button class="btn" onclick="TRA.draw('forbode')">⛔ TEIKN FORBODE OMRÅDE</button>
@@ -1286,6 +1347,17 @@
           </div>
           <div id="repOut"></div>
           <button class="btn" onclick="RAP.csv()">LAST NED RAPPORT (CSV / EXCEL)</button>
+          <h3>AUTOMATISK LAGRING</h3>
+          <button id="expOn" class="btn toggle on" onclick="RAP.expToggle()">LAGRE RAPPORTANE AUTOMATISK: PÅ</button>
+          <div class="row"><span>Mappe</span><input id="expDir" type="text" style="width: 230px" /></div>
+          <button class="btn" onclick="RAP.expSave()">BRUK DENNE MAPPA</button>
+          <button class="btn" onclick="RAP.expNow()">LAGRE RAPPORTANE NO</button>
+          <div id="expState" class="history">–</div>
+          <div class="history" style="font-size: 12px">
+            SNOWMAN lagrar rapporten for dei to siste prepareringsdøgna i mappa kvart 5. minutt og når prep blir stoppa – også
+            utan nett. Ligg mappa i <b>OneDrive</b>, <b>Google Drive</b> eller <b>Dropbox</b> på PC-en, blir filene lasta opp av seg
+            sjølv når PC-en har nett (wifi eller mobildata). På Windows ligg «Dokument» ofte allereie i OneDrive.
+          </div>
           <div class="history" style="font-size: 12px">
             Rapporten gjeld eitt prepareringsdøgn (kl. 12 til kl. 12 neste dag): tid med prep, køyrd lengd og areal, prosent preparert
             og snødjupne per trasé, og drivstoff. Demo og simulator er merka TEST og er ikkje med i summane.
@@ -1358,6 +1430,19 @@
       </div>
       <div id="demoTag" class="demoTag hide">DEMO – SIMULERTE DATA</div>
       <div id="traseWarn" class="traseWarn hide"></div>
+      <div id="obstWarn" class="obstWarn hide"><div id="obstName"></div><div id="obstDist"></div></div>
+      <div id="objDlg" class="hudDlg hide">
+        <h3>HINDRING</h3>
+        <div class="row">
+          <span>Type</span><select id="objType" style="width: 200px" onchange="TRA.objTypeChanged()"></select>
+        </div>
+        <div class="row"><span>Namn (valfritt)</span><input id="objName" type="text" maxlength="60" style="width: 200px" placeholder="t.d. Hydrant 12" /></div>
+        <div class="row"><span>Radius (m)</span><input id="objRadius" type="number" step="0.1" min="0.1" max="30" style="width: 200px" /></div>
+        <div class="row"><span>Merknad</span><input id="objNote" type="text" maxlength="120" style="width: 200px" /></div>
+        <div class="history" style="font-size: 12px">Posisjon: <span id="objPos"></span>. Radius er kor stor hindringa er (frå midten).</div>
+        <button class="btn" onclick="TRA.saveObj()">LAGRE HINDRING</button>
+        <button class="btn" onclick="TRA.objCancel()">AVBRYT</button>
+      </div>
       <div id="drawBar" class="drawBar hide">
         <span id="drawTxt"></span>
         <button onclick="TRA.undo()">↶ ANGRE</button>
@@ -1400,7 +1485,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.29";
+      const APP_VERSION = "1.6.30";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3104,6 +3189,7 @@
         T3D.update(newPos);
         updateAhead();
         TRA.live();
+        TRA.objCheck();
       }
       let estLast = 0;
       function updateAhead(force) {
@@ -3310,6 +3396,7 @@
         let copy = JSON.parse(JSON.stringify(currentSession));
         copy.end = Date.now();
         copy.durationMs = copy.end - copy.start;
+        if (final) copy.final = true; // tenesta lagrar då rapporten til rapportmappa med éin gong
         copy.distance = Math.round(sessionDistance(copy));
         let done = Promise.resolve();
         if (backendOK)
@@ -3754,6 +3841,7 @@
             return;
           }
           fillLayers();
+          await loadObj();
           await refresh(true);
         }
         async function refresh(force) {
@@ -3829,6 +3917,7 @@
                 className: "traLbl",
               });
             });
+          renderObj();
           lblSet = null;
           if (show && !D) upright(lblDeg);
           lastLive = 0;
@@ -3839,6 +3928,135 @@
           if (!show || !list.length || (lblSet != null && Math.abs(deg - lblSet) < 2)) return;
           lblSet = deg;
           document.querySelectorAll(".traLblIn").forEach((e) => (e.style.transform = "rotate(" + deg + "deg)"));
+        }
+        /* --- Hindringar (punkt): varsel på skjerm og HUD når hindringa ligg i køyrebana framfor skjeret --- */
+        const OBJ_WARN_M = 10, // varsel startar så mange meter før skjeret når hindringa
+          BLADE_AHEAD = 3.4, // skjeret er om lag så langt framfor antenna (midt på taket)
+          OBJ_MARGIN = 0.5; // ekstra klaring på sida
+        let objs = [],
+          objTypes = {},
+          objPending = null,
+          objWarn = null, // {text, dist, name} når ei hindring er i køyrebana
+          objGroup = L.layerGroup().addTo(map),
+          beepLast = null,
+          audio = null;
+        async function loadObj() {
+          try {
+            let r = await api("api/objekt");
+            objs = r.objekt || [];
+            objTypes = r.types || {};
+          } catch (e) {
+            return;
+          }
+          let sel = $("objType");
+          if (!sel.options.length) sel.innerHTML = Object.entries(objTypes).map(([k, v]) => '<option value="' + k + '">' + v.name + "</option>").join("");
+          renderObj();
+          objCheck(); // ny hindring kan liggje rett framfor maskina
+        }
+        function renderObj() {
+          objGroup.clearLayers();
+          $("objList").innerHTML = objs.length
+            ? objs
+                .map(
+                  (o) =>
+                    '<div class="tlayer"><b><span class="objIco inl">' + esc((objTypes[o.type] || {}).sym || "!") + "</span>" + esc(o.name) + "</b> · " +
+                    esc((objTypes[o.type] || {}).name || o.type) + " · radius " + fmt(o.radius, 1) + " m" + (o.note ? "<br><small>" + esc(o.note) + "</small>" : "") +
+                    '<div class="acts"><button onclick="TRA.objZoom(\'' + o.id + "')\">VIS</button><button onclick=\"TRA.objDelete('" + o.id + "')\">SLETT</button></div></div>",
+                )
+                .join("")
+            : '<div class="history">Ingen hindringar lagt inn.</div>';
+          if (!show || D) return;
+          objs.forEach((o) => {
+            L.circle([o.lat, o.lng], { radius: o.radius, color: "#ff3b30", weight: 2, fillOpacity: 0.25, interactive: false }).addTo(objGroup);
+            L.marker([o.lat, o.lng], {
+              interactive: false,
+              icon: L.divIcon({ className: "objIco", html: esc((objTypes[o.type] || {}).sym || "!"), iconSize: [26, 26] }),
+            })
+              .bindTooltip(esc(o.name), { direction: "top", offset: [0, -12], className: "traLbl" })
+              .addTo(objGroup);
+          });
+        }
+        function openObjDlg(p) {
+          objPending = p;
+          $("objType").value = $("objType").value || "hydrant";
+          objTypeChanged();
+          $("objName").value = "";
+          $("objNote").value = "";
+          $("objPos").textContent = p[0].toFixed(6) + ", " + p[1].toFixed(6);
+          $("objDlg").classList.remove("hide");
+        }
+        function objTypeChanged() {
+          let t = objTypes[$("objType").value];
+          if (t) $("objRadius").value = t.radius;
+        }
+        async function saveObj() {
+          if (!objPending) return;
+          try {
+            await api("api/objekt/save", {
+              lat: objPending[0],
+              lng: objPending[1],
+              type: $("objType").value,
+              name: $("objName").value.trim(),
+              radius: $("objRadius").value,
+              note: $("objNote").value.trim(),
+              source: D ? "kart" : "maskin",
+            });
+          } catch (e) {
+            return toast("Kunne ikkje lagre: " + e.message);
+          }
+          toast("Hindring lagra");
+          $("objDlg").classList.add("hide");
+          objPending = null;
+          if (D) end();
+          await loadObj();
+        }
+        // Lyd i førarhuset: kort pip når varselet kjem, og for kvar meter dei siste 5 m
+        function beep(f) {
+          try {
+            audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+            let o = audio.createOscillator(),
+              g = audio.createGain();
+            o.frequency.value = f;
+            o.type = "square";
+            g.gain.value = 0.08;
+            o.connect(g);
+            g.connect(audio.destination);
+            o.start();
+            o.stop(audio.currentTime + 0.12);
+          } catch (e) {}
+        }
+        // Kalla for kvar posisjon: finn næraste hindring i køyrebana (breidda til skjeret + radius + klaring)
+        function objCheck() {
+          let box = $("obstWarn");
+          objWarn = null;
+          if (objs.length && pos && !D && lastSpeed > 0.3 && heading != null) {
+            let h = (heading * Math.PI) / 180,
+              mx = 111320 * Math.cos((pos[0] * Math.PI) / 180),
+              half = (toolsFull ? cfg.blade : cfg.bladeN) / 2;
+            for (let o of objs) {
+              let dx = (o.lng - pos[1]) * mx,
+                dy = (o.lat - pos[0]) * 111320,
+                f = dx * Math.sin(h) + dy * Math.cos(h), // fram langs køyreretninga
+                l = dx * Math.cos(h) - dy * Math.sin(h), // til sida (+ = høgre)
+                d = f - BLADE_AHEAD - o.radius; // avstand frå skjeret til kanten av hindringa
+              if (Math.abs(l) <= half + o.radius + OBJ_MARGIN && f > -2 && d <= OBJ_WARN_M && (!objWarn || d < objWarn.dist))
+                objWarn = { dist: Math.max(0, d), name: o.name, type: (objTypes[o.type] || {}).name || o.type, side: l };
+            }
+          }
+          if (!objWarn) {
+            box.classList.add("hide");
+            beepLast = null;
+            return;
+          }
+          let m = Math.ceil(objWarn.dist);
+          objWarn.text = "⚠ " + objWarn.name.toUpperCase() + " · " + (m <= 0 ? "STOPP!" : m + " m");
+          $("obstName").textContent = "⚠ " + objWarn.name.toUpperCase();
+          $("obstDist").textContent = m <= 0 ? "STOPP!" : m + " m";
+          box.classList.toggle("near", objWarn.dist <= 3);
+          box.classList.remove("hide");
+          $("traseWarn").classList.add("hide");
+          if (beepLast == null || (m < beepLast && m <= 5)) beep(m <= 3 ? 1400 : 950);
+          beepLast = beepLast == null ? m : Math.min(beepLast, m);
         }
         // Uprepart areal som bilete over traseen: oransje der fresen ikkje har gått i dag
         function unprepOverlay(m) {
@@ -3913,7 +4131,7 @@
               if (d < half + 0.5) msg = "⚠ KANTEN AV TRASEEN: " + fmt(d, 1) + " m";
             }
           }
-          if (msg) {
+          if (msg && !objWarn) {
             w.textContent = msg;
             w.classList.toggle("bad", bad);
             w.classList.remove("hide");
@@ -3956,6 +4174,7 @@
           $("app").classList.remove("drawing");
           $("drawBar").classList.add("hide");
           $("traDlg").classList.add("hide");
+          $("objDlg").classList.add("hide");
           drawGroup.clearLayers();
           applyView();
           render();
@@ -3991,6 +4210,10 @@
             });
           });
           let n = D.poly.length;
+          if (D.kind === "objekt") {
+            $("drawTxt").innerHTML = "<b>LEGG INN HINDRING</b><br><small>Trykk på kartet der hindringa er (zoom inn for å treffe nøyaktig)</small>";
+            return;
+          }
           $("drawTxt").innerHTML =
             "<b>" + (D.edit ? "ENDRE" : "TEIKN") + " " + (D.kind === "forbode" ? "FORBODE OMRÅDE" : "TRASÉ") + "</b> · " + n + " hjørne" +
             (n > 2 ? " · " + fmt(polyArea(D.poly) / 1000, 1) + " daa" : "") +
@@ -4005,9 +4228,14 @@
           return Math.abs(a / 2);
         }
         map.on("click", (e) => {
-          if (!D || !$("traDlg").classList.contains("hide")) return;
+          if (!D || !$("traDlg").classList.contains("hide") || !$("objDlg").classList.contains("hide")) return;
           push();
           let p = [e.latlng.lat, e.latlng.lng];
+          if (D.kind === "objekt") {
+            D.poly = [p];
+            drawShape();
+            return openObjDlg(p);
+          }
           if (!D.edit || D.poly.length < 3) D.poly.push(p);
           else {
             // ved redigering: set inn på den næraste kanten
@@ -4023,6 +4251,7 @@
         });
         function finish() {
           if (!D) return;
+          if (D.kind === "objekt") return D.poly.length ? openObjDlg(D.poly[0]) : toast("Trykk på kartet der hindringa er");
           if (D.poly.length < 3) return toast("Set minst 3 hjørne");
           let m = D.meta;
           $("traDlgT").textContent = D.edit ? "LAGRE ENDRINGA" : D.kind === "forbode" ? "LAGRE FORBODE OMRÅDE" : "LAGRE TRASÉ";
@@ -4132,6 +4361,41 @@
             render();
           },
           drawing: () => !!D,
+          objCheck,
+          objTypeChanged,
+          saveObj,
+          objWarn: () => objWarn,
+          drawObj: () => begin("objekt"),
+          objAtMachine() {
+            if (!pos) return toast("Ingen posisjon frå maskina");
+            let h = ((heading || 0) * Math.PI) / 180,
+              a = BLADE_AHEAD + 0.5; // midt framfor skjeret
+            $("settings").classList.add("hide");
+            openObjDlg([pos[0] + (a * Math.cos(h)) / 111320, pos[1] + (a * Math.sin(h)) / (111320 * Math.cos((pos[0] * Math.PI) / 180))]);
+          },
+          objCancel() {
+            $("objDlg").classList.add("hide");
+            objPending = null;
+            if (D) end();
+          },
+          objZoom(id) {
+            let o = objs.find((x) => x.id === id);
+            if (!o) return;
+            $("settings").classList.add("hide");
+            followMap = false;
+            map.setView([o.lat, o.lng], 19);
+            updateFreeUI();
+          },
+          async objDelete(id) {
+            let o = objs.find((x) => x.id === id);
+            if (!o || !confirm("Slette hindringa «" + o.name + "»?")) return;
+            try {
+              await api("api/objekt/delete", { id });
+            } catch (e) {
+              return toast(e.message);
+            }
+            loadObj();
+          },
           // Namna på traseane står rett opp: berre dei få namne-elementa blir snudde, og berre når vinkelen er endra.
           // (Ein CSS-variabel på heile kartet gjorde at nettlesaren måtte rekne om stilen til alle element i kartet for kvar posisjon.)
           uprightLabels: upright,
@@ -4216,7 +4480,36 @@
           }
         }
         // --- rapport ---
+        // --- automatisk lagring av rapportar til ei mappe (OneDrive/Google Drive lastar opp når det er nett) ---
+        function renderExp(r) {
+          $("expOn").classList.toggle("on", !!r.on);
+          $("expOn").textContent = "LAGRE RAPPORTANE AUTOMATISK: " + (r.on ? "PÅ" : "AV");
+          if (document.activeElement !== $("expDir")) $("expDir").value = r.dir || "";
+          $("expState").innerHTML = !r.on
+            ? "Automatisk lagring er av."
+            : r.error
+              ? "<span style='color:#ff8b6e'>⛔ " + esc(r.error) + "</span>"
+              : r.last
+                ? "✅ Sist lagra " + esc(r.last) + (r.files && r.files.length ? "<br><small>" + r.files.map(esc).join("<br>") + "</small>" : " – ingen økter å rapportere enno")
+                : "Ventar på første lagring …";
+        }
+        async function expLoad() {
+          try {
+            renderExp(await api("api/report/export"));
+          } catch (e) {
+            $("expState").textContent = "Ikkje tilgjengeleg: " + e.message;
+          }
+        }
+        async function expPost(body, msg) {
+          try {
+            renderExp(await api("api/report/export", body));
+            if (msg) toast(msg);
+          } catch (e) {
+            toast(e.message);
+          }
+        }
         async function loadDays() {
+          expLoad();
           let sel = $("repDay"),
             cur = sel.value;
           try {
@@ -4296,6 +4589,9 @@
         }
         return {
           loadFuel,
+          expToggle: () => expPost({ on: !$("expOn").classList.contains("on") }),
+          expSave: () => expPost({ dir: $("expDir").value }, "Mappa er lagra"),
+          expNow: () => expPost({ now: true }, "Rapportane er lagra"),
           addFuel,
           delFuel,
           loadDays,
@@ -4551,6 +4847,9 @@
             depthNote: src === "demo" ? "SIMULERT" : realDepth == null ? depthNoteText : gnss && gnss.terrain ? gnss.terrain.name : "",
             target: TRA.target() ? TRA.target().target : cfg.target,
             trase: TRA.target() ? TRA.target().name : null,
+            // varsel på HUD: hindring i køyrebana (nedteljing), elles forbode område
+            warn: TRA.objWarn() ? TRA.objWarn().text : $("traseWarn").classList.contains("bad") && !$("traseWarn").classList.contains("hide") ? $("traseWarn").textContent : null,
+            warnLevel: TRA.objWarn() ? (TRA.objWarn().dist <= 3 ? "near" : "obst") : "zone",
             tol: cfg.tol,
             bounds: cfg.bounds,
             preparing: preparing || demo,

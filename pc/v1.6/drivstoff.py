@@ -211,3 +211,71 @@ class Drivstoff:
             L.append(";".join([hm(f["t"]), num(f["litres"]), num(f["hours"]), "ja" if f["full"] else "nei", num(f["lph"]),
                                {"motor": "timeteljar", "prep": "prep-tid"}.get(f["hourSource"], ""), num(f["lpdaa"]), f["note"].replace(";", ",")]))
         return "﻿" + "\r\n".join(L) + "\r\n"
+
+
+# ---------------------------------------------------------------------------------------------
+# Automatisk lagring av rapportar til ei mappe (t.d. OneDrive/Google Drive-mappa på PC-en).
+# SNOWMAN skriv alltid lokalt – også utan nett. Synkroniseringsprogrammet (OneDrive, Google Drive for skrivebord,
+# Dropbox …) lastar filene opp når PC-en har nett (wifi eller mobildata). Ingen passord i SNOWMAN.
+# ---------------------------------------------------------------------------------------------
+def documents_dir():
+    """«Dokument»-mappa til brukaren (på Windows også når ho er flytt til OneDrive)."""
+    import os, subprocess
+    if os.name == "nt":
+        try:
+            r = subprocess.run(["powershell", "-NoProfile", "-Command", "[Environment]::GetFolderPath('MyDocuments')"],
+                               capture_output=True, text=True, timeout=15)
+            p = Path(r.stdout.strip())
+            if r.stdout.strip() and p.exists():
+                return p
+        except Exception:
+            pass
+        return Path.home() / "Documents"
+    try:
+        r = subprocess.run(["xdg-user-dir", "DOCUMENTS"], capture_output=True, text=True, timeout=5)
+        p = Path(r.stdout.strip())
+        if r.stdout.strip() and p.exists() and p != Path.home():
+            return p
+    except Exception:
+        pass
+    for n in ("Documents", "Dokumenter", "Dokument"):
+        if (Path.home() / n).exists():
+            return Path.home() / n
+    return Path.home()
+
+
+_DOCS = []
+
+
+def default_report_dir():
+    if not _DOCS:
+        _DOCS.append(documents_dir() / "SNOWMAN-rapportar")
+    return _DOCS[0]
+
+
+def export_reports(fuel, folder, machine="", days=2):
+    """Skriv rapporten (CSV) for dei siste prepareringsdøgna til mappa. Berre filer som er endra blir skrivne på nytt.
+    Returnerer (talet på filer skrivne, filnamn)."""
+    import re
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    tag = re.sub(r"[^A-Za-z0-9ÆØÅæøå_-]+", "-", machine or "").strip("-")
+    written, names = 0, []
+    for date in fuel.days()[:days]:
+        rep = fuel.report(date)
+        if not rep["sessions"] and not rep["fuel"]:
+            continue
+        name = f"SNOWMAN-rapport-{date}" + (f"-{tag}" if tag else "") + ".csv"
+        data = fuel.report_csv(date)
+        f = folder / name
+        names.append(name)
+        try:
+            if f.exists() and f.read_text("utf-8-sig") == data.lstrip("﻿"):
+                continue
+        except Exception:
+            pass
+        tmp = folder / (name + ".tmp")
+        tmp.write_text(data, "utf-8")
+        tmp.replace(f)
+        written += 1
+    return written, names
