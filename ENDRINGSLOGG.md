@@ -9,6 +9,11 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.20 – eigen logo (trakkemaskin)
+- **Nytt:** SNOWMAN-ikon: raud trakkemaskin på preparert snø med fjell, i eit avrunda blått felt. Eiga teikning (`pc/v1.6/ikon/snowman.svg`), med PNG og Windows-ikon (`snowman.ico`, 16–256 px).
+- **Nytt:** Ikonet blir brukt på snarvegen på skrivebordet (Windows), i autostart, i programmenyen (Linux) og som ikon for SNOWMAN-vindauget, HUD-sida og nettlesarfana.
+- **Kvifor:** Eigaren ville at filene og snarvegane skal vise at dette er hans program.
+
 ### PC-prototype v1.6.19 – installasjon som Maskin-PC, autostart og oppdatering frå skjermen (kiosk, steg 3–4)
 - **Nytt:** Installasjonen spør om **Kontor-PC** (du startar SNOWMAN sjølv) eller **Maskin-PC** (startar av seg sjølv i kioskmodus). Både `INSTALLER-WINDOWS.bat` og `installer-linux.sh`. Kan endrast seinare under Innst. › System.
 - **Nytt:** `oppstart.py` – autostart utan administratorrettar. Windows: snarveg i Oppstart-mappa som startar utan svart vindauge (`pythonw`). Linux: merkt `exec-once`-linje i Hyprland-oppsettet (Omarchy) eller `~/.config/autostart/snowman.desktop` (GNOME, KDE, XFCE). Autostart brukar `--auto`: kiosk eller vanleg etter innstillinga.

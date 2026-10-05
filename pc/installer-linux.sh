@@ -24,6 +24,7 @@ Name=SNOWMAN
 GenericName=Snødjupne for trakkemaskin
 Comment=SNOWMAN by Alpindata – meny for start, demo og test
 Exec=$BIN/snowman
+Icon=$(ls -d "$PCDIR"/v*/ikon/snowman-256.png 2>/dev/null | sort -V | tail -n 1)
 Terminal=true
 Categories=Utility;
 Keywords=snowman;snødjupne;trakkemaskin;alpindata;

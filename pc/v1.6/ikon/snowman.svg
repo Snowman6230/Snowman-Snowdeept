@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b2a44"/><stop offset="1" stop-color="#16507a"/></linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d6e8f5"/></linearGradient>
+  </defs>
+  <rect x="4" y="4" width="248" height="248" rx="52" fill="url(#sky)"/>
+  <!-- fjell -->
+  <path d="M20 150 L84 72 L118 112 L150 70 L236 150 Z" fill="#2b6f9e" opacity=".55"/>
+  <path d="M84 72 L98 89 L90 88 L84 95 L78 88 L70 89 Z M150 70 L166 88 L157 87 L150 95 L143 87 L134 88 Z" fill="#ffffff" opacity=".9"/>
+  <!-- snø -->
+  <path d="M4 168 C70 150 170 150 252 166 L252 200 C252 228 228 252 200 252 L56 252 C28 252 4 228 4 200 Z" fill="url(#snow)"/>
+  <!-- preparert spor bak maskina -->
+  <path d="M150 196 L252 190 L252 214 L150 214 Z" fill="#bcd6ea"/>
+  <g stroke="#a3c4dc" stroke-width="2"><line x1="160" y1="200" x2="252" y2="196"/><line x1="160" y1="207" x2="252" y2="204"/></g>
+  <!-- trakkemaskin (sett frå sida) -->
+  <g>
+    <!-- fres bak -->
+    <rect x="166" y="170" width="34" height="18" rx="5" fill="#3a4a55"/>
+    <rect x="198" y="184" width="22" height="6" rx="3" fill="#e8f2f8"/>
+    <!-- belte -->
+    <rect x="56" y="168" width="116" height="34" rx="17" fill="#1a2228"/>
+    <g fill="#5b6b75"><circle cx="74" cy="185" r="9"/><circle cx="100" cy="185" r="9"/><circle cx="126" cy="185" r="9"/><circle cx="152" cy="185" r="9"/></g>
+    <!-- hus -->
+    <path d="M60 170 L60 140 Q60 132 68 132 L168 132 Q176 132 176 140 L176 170 Z" fill="#e23b32"/>
+    <!-- førarhus -->
+    <path d="M82 132 L92 98 Q94 92 100 92 L146 92 Q152 92 154 98 L160 132 Z" fill="#e23b32"/>
+    <path d="M92 128 L100 102 L122 102 L122 128 Z M128 102 L146 102 L152 128 L128 128 Z" fill="#9fd3f2"/>
+    <rect x="60" y="148" width="116" height="6" fill="#ffffff" opacity=".85"/>
+    <!-- skjær framme -->
+    <path d="M22 136 Q14 160 24 192 L40 192 Q32 162 38 136 Z" fill="#f2c230"/>
+    <rect x="36" y="150" width="26" height="8" rx="3" fill="#3a4a55"/>
+  </g>
+</svg>

@@ -97,7 +97,7 @@ def autostart_set(on):
         py, script = _win_python(), HERE / "start_snowman.py"
         r = _ps(
             "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('%s'); $s.TargetPath='%s'; $s.Arguments='\"%s\" --auto'; "
-            "$s.WorkingDirectory='%s'; $s.Description='SNOWMAN by Alpindata'; $s.Save()" % (lnk, py, script, HERE)
+            "$s.WorkingDirectory='%s'; $s.Description='SNOWMAN by Alpindata'; $s.IconLocation='%s'; $s.Save()" % (lnk, py, script, HERE, HERE / "ikon" / "snowman.ico")
         )
         return (lnk.exists(), "SNOWMAN startar no automatisk når du loggar inn." if lnk.exists() else "Kunne ikkje lage autostart: " + r.stderr.strip())
     # Linux
@@ -111,7 +111,7 @@ def autostart_set(on):
         xdg.parent.mkdir(parents=True, exist_ok=True)
         xdg.write_text(
             "[Desktop Entry]\nType=Application\nName=SNOWMAN\nComment=SNOWMAN by Alpindata – autostart\n"
-            f"Exec={_linux_cmd()}\nX-GNOME-Autostart-enabled=true\nTerminal=false\n", "utf-8")
+            f"Exec={_linux_cmd()}\nIcon={HERE / 'ikon' / 'snowman-256.png'}\nX-GNOME-Autostart-enabled=true\nTerminal=false\n", "utf-8")
     elif not on:
         xdg.unlink(missing_ok=True)
     return True, ("SNOWMAN startar no automatisk når du loggar inn." if on else "Autostart er slått av.")

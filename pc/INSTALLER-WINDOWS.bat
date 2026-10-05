@@ -54,7 +54,7 @@ if not exist "%APP%\.venv\Scripts\python.exe" %PYEXE% -m venv "%APP%\.venv" || g
 "%APP%\.venv\Scripts\python.exe" -c "import serial, numpy, tifffile; print('  Bibliotek installert.')" || goto feil
 
 rem --- 4. Snarveg paa skrivebordet ---
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$d=[Environment]::GetFolderPath('Desktop'); $s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d 'SNOWMAN.lnk')); $s.TargetPath='%~dp0SNOWMAN.bat'; $s.WorkingDirectory='%~dp0'; $s.Description='SNOWMAN by Alpindata'; $s.Save()" && echo   Snarveg «SNOWMAN» lagd på skrivebordet.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$d=[Environment]::GetFolderPath('Desktop'); $s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d 'SNOWMAN.lnk')); $s.TargetPath='%~dp0SNOWMAN.bat'; $s.WorkingDirectory='%~dp0'; $s.Description='SNOWMAN by Alpindata'; $s.IconLocation='%~dp0%APP%\ikon\snowman.ico'; $s.Save()" && echo   Snarveg «SNOWMAN» lagd på skrivebordet.
 
 echo.
 echo   Kva type PC er dette?

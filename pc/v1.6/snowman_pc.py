@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.19"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.20"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -20,7 +20,7 @@ from pathlib import Path
 HERE=Path(__file__).resolve().parent
 DATA=HERE/"data"; SESS=DATA/"sessions"
 CFG_FILE=HERE/"snowman-config.local.json"   # lokal, aldri i git (sjå .gitignore)
-VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.js":"application/javascript","three.snowman.min.js":"application/javascript"}
+VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.js":"application/javascript","three.snowman.min.js":"application/javascript","snowman-icon.png":"image/png"}
 import terrain as T
 TERR=T.TerrainLibrary(DATA/"terrain")
 import kontroll as K
@@ -474,7 +474,7 @@ def lan_ip():
 class HUDOnly(API):
     def do_GET(self):
         u=urllib.parse.urlparse(self.path)
-        if u.path in ("/","/hud","/api/hud","/api/hud/stream"):
+        if u.path in ("/","/hud","/api/hud","/api/hud/stream","/vendor/snowman-icon.png"):
             if u.path=="/": self.path="/hud"
             return API.do_GET(self)
         self.send_response(403); self.end_headers()
