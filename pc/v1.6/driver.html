@@ -1221,6 +1221,7 @@
           <div id="traInfo" class="history">Ventar på SNOWMAN-tenesta …</div>
           <div id="traList"></div>
           <button id="traShow" class="btn toggle on" onclick="TRA.toggleShow()">VIS TRASEAR PÅ KARTET: PÅ</button>
+          <button id="traUnprep" class="btn toggle on" onclick="TRA.toggleUnprep()">VIS UPREPARERT AREAL I DAG: PÅ</button>
           <h3>LEGG TIL</h3>
           <button class="btn" onclick="TRA.draw('trase')">✎ TEIKN NY TRASÉ PÅ KARTET</button>
           <button class="btn" onclick="TRA.draw('forbode')">⛔ TEIKN FORBODE OMRÅDE</button>
@@ -1235,6 +1236,8 @@
             <b>Frå terrengmodell:</b> passar når terrengmodellen er målt for éin bakke (t.d. Topocad-fil). SNOWMAN finn yttergrensa
             av modellen, og du justerer hjørna før du lagrar.<br />
             <b>Forbode område</b> (veg, bygg, bekk, parkering): raudt varsel når maskina kjem inn i området.<br />
+            <b>Oransje</b> i ein trasé er areal fresen ikkje har gått over i dag. <b>Måldjupne</b> for traseen blir brukt i
+            snødjupnetalet øvst og på HUD når maskina er i traseen (raudt under mål, blått over).<br />
             <b>Prosent preparert</b> blir rekna frå økter med «Start prep» i prepareringsdøgnet (kl. 12 til kl. 12), med fresbreidda.
             Demo og simulator tel ikkje – dei blir viste som TEST.
           </div>
@@ -1377,7 +1380,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.24";
+      const APP_VERSION = "1.6.25";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -2796,6 +2799,7 @@
         let box = $("depth").parentElement;
         if (d == null) {
           $("depth").textContent = "--";
+          $("depth").style.color = "";
           $("depthLabel").textContent = "SNØDJUPNE (MIDT)";
           $("depthNote").textContent = note || depthNoteText;
           box.classList.remove("measured");
@@ -2806,6 +2810,17 @@
         $("depthLabel").textContent = src === "demo" ? "SNØDJUPNE (DEMO)" : simd ? "SNØDJUPNE (TEST)" : "SNØDJUPNE (MIDT)";
         $("depthNote").textContent = src === "demo" ? "SIMULERT" : simd ? "SIMULERT SNØ · " + (note || "") : note || "";
         box.classList.toggle("measured", !simd);
+        // Måldjupne i traseen: raudt under, blått over (toleranse frå Målprofil)
+        let tg = TRA.target();
+        $("depth").style.color = "";
+        if (tg) {
+          let diff = d - tg.target,
+            tol = cfg.tol || 0.1;
+          if (Math.abs(diff) > tol) $("depth").style.color = diff < 0 ? "#ff6b5b" : "#4db8ff";
+          $("depthNote").textContent =
+            (Math.abs(diff) <= tol ? "✓ PÅ MÅL " : diff < 0 ? "▼ " + (-diff).toFixed(2).replace(".", ",") + " UNDER MÅL " : "▲ " + diff.toFixed(2).replace(".", ",") + " OVER MÅL ") +
+            tg.target.toFixed(2).replace(".", ",") + " m" + (simd ? " · SIMULERT" : "");
+        }
       }
       function depthColor(d) {
         return colors[d < cfg.bounds[0] ? 0 : d < cfg.bounds[1] ? 1 : d < cfg.bounds[2] ? 2 : d < cfg.bounds[3] ? 3 : d < cfg.bounds[4] ? 4 : 5];
@@ -3559,6 +3574,8 @@
         let list = [],
           st = {},
           show = true,
+          unprep = cfg.traUnprep !== false, // vis uprepart areal i traseane
+          curT = null, // traseen maskina er i no
           lastLive = 0,
           lastPoll = 0,
           D = null; // teiknemodus: {kind, poly, edit, meta, hist, prev}
@@ -3596,6 +3613,7 @@
           return best;
         }
         async function load() {
+          unprep = cfg.traUnprep !== false; // innstillinga er lasta no
           try {
             let r = await api("api/trasear");
             list = r.trasear || [];
@@ -3615,7 +3633,7 @@
           if (!force && Date.now() - lastPoll < 4000) return;
           lastPoll = Date.now();
           try {
-            st = (await api("api/trasear/status")).status || {};
+            st = (await api("api/trasear/status" + (show && unprep ? "?map=1" : ""))).status || {};
           } catch (e) {}
           render();
         }
@@ -3652,6 +3670,13 @@
             .join("");
           $("traShow").classList.toggle("on", show);
           $("traShow").textContent = "VIS TRASEAR PÅ KARTET: " + (show ? "PÅ" : "AV");
+          $("traUnprep").classList.toggle("on", unprep);
+          $("traUnprep").textContent = "VIS UPREPARERT AREAL I DAG: " + (unprep ? "PÅ" : "AV");
+          if (show && unprep && !D)
+            list.forEach((t) => {
+              let m = st[t.id] && st[t.id].map;
+              if (m) unprepOverlay(m).addTo(group);
+            });
           if (show && !D)
             list.forEach((t) => {
               let f = t.kind === "forbode",
@@ -3673,11 +3698,41 @@
           lastLive = 0;
           live(true);
         }
+        // Uprepart areal som bilete over traseen: oransje der fresen ikkje har gått i dag
+        function unprepOverlay(m) {
+          let bits = atob(testMode() ? m.all : m.real),
+            cv = document.createElement("canvas");
+          cv.width = m.W;
+          cv.height = m.H;
+          let cx = cv.getContext("2d"),
+            img = cx.createImageData(m.W, m.H),
+            px = img.data;
+          for (let r = 0; r < m.H; r++)
+            for (let c = 0; c < m.W; c++) {
+              let i = r * m.W + c;
+              if ((bits.charCodeAt(i >> 3) >> (7 - (i & 7))) & 1) {
+                let o = ((m.H - 1 - r) * m.W + c) * 4; // rad 0 i rutenettet er sør, i biletet nord
+                px[o] = 255;
+                px[o + 1] = 140;
+                px[o + 2] = 26;
+                px[o + 3] = 90;
+              }
+            }
+          cx.putImageData(img, 0, 0);
+          return L.imageOverlay(
+            cv.toDataURL(),
+            [
+              [m.lat0 + m.y0 / m.my, m.lon0 + m.x0 / m.mx],
+              [m.lat0 + (m.y0 + m.H * m.cell) / m.my, m.lon0 + (m.x0 + m.W * m.cell) / m.mx],
+            ],
+            { interactive: false, className: "traUnprepImg" },
+          );
+        }
         // Gjeldande trasé og varsel – kalla for kvar posisjon (maks éin gong i sekundet)
         function live(force) {
           if (!force && Date.now() - lastLive < 1000) return;
           lastLive = Date.now();
-          if (Date.now() - lastPoll > 15000 && list.length) refresh();
+          if (Date.now() - lastPoll > (preparing ? 8000 : 15000) && list.length) refresh();
           let tr = list.filter((t) => t.kind === "trase"),
             fb = list.filter((t) => t.kind === "forbode"),
             cell = $("traCell"),
@@ -3688,6 +3743,7 @@
           let half = (toolsFull ? cfg.tiller : cfg.tillerN) / 2,
             here = tr.filter((t) => pointInPoly(pos, t.poly)),
             cur = here.sort((a, b) => a.area - b.area)[0];
+          curT = cur || null;
           if (tr.length) {
             $("traCellLbl").textContent = cur ? "TRASÉ · " + pctText(cur.id) : "TRASÉ";
             $("traCellV").textContent = cur ? cur.name : "Utanfor";
@@ -3933,6 +3989,14 @@
             render();
           },
           drawing: () => !!D,
+          // måldjupna i traseen maskina er i (null når traseen ikkje har eiga måldjupne)
+          target: () => (curT && curT.target != null && pos ? { target: curT.target, name: curT.name } : null),
+          toggleUnprep() {
+            unprep = !unprep;
+            cfg.traUnprep = unprep;
+            persistCfg();
+            refresh(true);
+          },
         };
       })();
       /* ---------- Drivstoff (manuell registrering, full tank) og rapport per prepareringsdøgn ---------- */
@@ -4332,7 +4396,8 @@
             heading: Math.round(heading),
             depth: src === "demo" ? +cfg.demoD.toFixed(2) : src === "gnss" ? realDepth : null,
             depthNote: src === "demo" ? "SIMULERT" : realDepth == null ? depthNoteText : gnss && gnss.terrain ? gnss.terrain.name : "",
-            target: cfg.target,
+            target: TRA.target() ? TRA.target().target : cfg.target,
+            trase: TRA.target() ? TRA.target().name : null,
             tol: cfg.tol,
             bounds: cfg.bounds,
             preparing: preparing || demo,

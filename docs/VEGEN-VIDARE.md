@@ -59,8 +59,8 @@ Kartverket leverer ofte fleire GeoTIFF-ruter («Som kildedata»). Vel alle på e
 ## 4. Trasear og anleggsobjekt
 
 **Trasear er laga i v1.6.23** (teikne, omriss frå terrengmodell, prosent preparert, varsel ved kant og i forbodne område).
-Står att: uprepart areal synleg på kartet, måldjupne per trasé i fargane, trasé på HUD, og punkt for hydrantar, master og
-steinar (varsel ved nærleik). Sjå `docs/TERRAIN-ENGINE.md` kap. 6.
+Uprepart areal på kartet og måldjupne per trasé (snødjupnetal og HUD) kom i v1.6.25. Står att: punkt for hydrantar, master
+og steinar (varsel ved nærleik). Sjå `docs/TERRAIN-ENGINE.md` kap. 6.
 
 Moglege utvidingar: teikne traseen ved å køyre rundt han med maskina, og importere omriss frå GIS (GeoJSON/SOSI/DXF).
 

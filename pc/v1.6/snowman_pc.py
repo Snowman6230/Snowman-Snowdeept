@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.24"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.25"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -75,7 +75,7 @@ def hud_state():
     if fresh_drv and drv.get("demo"):
         out=drv; age=drv_age
     elif gnss_ok:
-        out={k:drv.get(k) for k in ("preparing","elapsed","distance","area","target","tol","bounds")} if fresh_drv else {"target":0.8,"tol":0.1}
+        out={k:drv.get(k) for k in ("preparing","elapsed","distance","area","target","tol","bounds","trase")} if fresh_drv else {"target":0.8,"tol":0.1}
         d=STATE.get("depth"); ter=STATE.get("terrain") or {}
         out.update(src="gnss",demo=bool(STATE.get("simulated")),fix=STATE.get("fix"),sats=STATE.get("satellites"),
                    speed=round((STATE.get("speed") or 0)*3.6,1),heading=STATE.get("course"),
@@ -303,7 +303,7 @@ class API(http.server.BaseHTTPRequestHandler):
                     q=urllib.parse.parse_qs(u.query)
                     since=TR.prep_day_start(date=q["date"][0]) if q.get("date") else (float(q["since"][0])/1000 if q.get("since") else None)
                     until=since+86400 if q.get("date") else None
-                    r=TRA.status(since,until); r["ok"]=True
+                    r=TRA.status(since,until,with_map=q.get("map",["0"])[0]=="1"); r["ok"]=True
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/terrain/patch":   # terrengutsnitt rundt maskina til 3D-visinga

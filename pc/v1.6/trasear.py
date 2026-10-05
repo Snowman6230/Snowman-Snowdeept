@@ -10,7 +10,7 @@
 Prepareringsdøgnet går frå kl. 12 til kl. 12 neste dag, slik at ei natt med preparering (t.d. 17–03) blir
 rekna som éin dag. Data blir lagra i data/trasear.json og høyrer til anlegget.
 """
-import json, math, threading, time, uuid
+import base64, json, math, threading, time, uuid
 from collections import deque
 from pathlib import Path
 
@@ -347,9 +347,16 @@ class Trasear:
         v = (C >= 0) & (C < g["W"]) & (R >= 0) & (R < g["H"])
         cov[R[v], C[v]] = True
 
-    def status(self, since_s=None, until_s=None, cache_s=4.0):
+    def status(self, since_s=None, until_s=None, cache_s=4.0, with_map=False):
         """Prosent preparert per trasé sidan since_s (standard: starten på dette prepareringsdøgnet).
-        pct tel berre ekte økter; pctTest tek med demo/simulator (berre til test, alltid merka TEST)."""
+        pct tel berre ekte økter; pctTest tek med demo/simulator (berre til test, alltid merka TEST).
+        with_map: ta med kart over uprepart areal (bitmap) for kvar trasé."""
+        r = self._status_all(since_s, until_s, cache_s)
+        if with_map:
+            return r
+        return dict(r, status={k: {a: b for a, b in v.items() if a != "map"} for k, v in r["status"].items()})
+
+    def _status_all(self, since_s=None, until_s=None, cache_s=4.0):
         since_s = prep_day_start() if since_s is None else since_s
         now = time.time()
         with self.lock:
@@ -405,6 +412,11 @@ class Trasear:
                     "last": int(last * 1000) if last else None, "sessions": ids,
                     "depthAvg": round(sum(depths) / len(depths), 2) if depths else None,
                     "depthMin": round(min(depths), 2) if depths else None, "depthN": len(depths),
+                    # uprepart areal: rad 0 = sørkanten, bit = rute inne i traseen som ikkje er køyrd
+                    "map": {"lat0": g["L"].lat0, "lon0": g["L"].lon0, "mx": g["L"].mx, "my": g["L"].my, "x0": g["x0"], "y0": g["y0"],
+                            "cell": g["cell"], "W": g["W"], "H": g["H"],
+                            "real": base64.b64encode(np.packbits(g["ins"] & ~cov_real).tobytes()).decode(),
+                            "all": base64.b64encode(np.packbits(g["ins"] & ~cov_all).tobytes()).decode()},
                 }
             out = {"since": int(since_s * 1000), "until": int(until_s * 1000) if until_s else None, "dayStartHour": DAY_START_HOUR, "status": res}
             self._status = (now, (since_s, until_s), out)

@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.25 – uprepart areal og måldjupne per trasé
+- **Nytt:** **Uprepart areal** blir vist oransje inne i kvar trasé – areal fresen ikkje har gått over i prepareringsdøgnet. Blir oppdatert kvart 8. sekund under prep (frå øktene som blir lagra kvart 5. sekund). Kan slåast av i Innst. › Trasear. I test blir demo/simulator rekna med.
+- **Nytt:** **Måldjupne per trasé:** når maskina er i ein trasé med eiga måldjupne, viser snødjupnetalet øvst avviket («✓ PÅ MÅL», «▼ 0,40 UNDER MÅL», «▲ 0,50 OVER MÅL») og blir raudt under og blått over mål. Toleransen kjem frå Målprofil. HUD brukar same måldjupne og viser namnet på traseen.
+- **Endra:** `GET /api/trasear/status?map=1` gir òg kart over uprepart areal (bitmap per trasé).
+- **Avgjerd:** Fargane på sporet i kartet følgjer framleis forklaringa (snøintervall), så forklaringa alltid stemmer. Måldjupna blir vist i talet øvst og på HUD.
+- **Testa:** simanlegg over Familietrekk med måldjupne 0,90 m: køyrt stripe blir borte frå det oransje, avvik og farge rett under/på/over mål, HUD får måldjupne og trasénamn, ingen JS-feil.
+
 ### PC-prototype v1.6.24 – drivstoff og rapport
 - **Nytt:** Innst. › **Drivstoff**: registrer fylling (liter, timeteljar på motoren, merknad, «fylt heilt opp»). SNOWMAN reknar **liter per time** og **liter per daa** med full tank-metoden: literane ved ei fylling er det maskina har brukt sidan førre fulle fylling. Med timeteljar blir det rekna mot motortimar, elles mot tida med prep på (frå øktene). Ei fylling som ikkje er full blir lagt saman med neste fulle. Viser snitt for dei siste 30 dagane.
 - **Nytt:** Innst. › **Rapport** for eitt prepareringsdøgn: samla tid med prep, køyrd lengd, areal køyrt, drivstoff og målt snødjupne; per trasé prosent preparert, sist preparert og snødjupne (med måldjupne); kvar økt; og fyllingane. **Last ned som CSV** (semikolon og desimalkomma, opnar rett i norsk Excel).

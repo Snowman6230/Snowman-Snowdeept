@@ -289,7 +289,7 @@
           let d = h.depth,
             diff = d - h.target,
             within = Math.abs(diff) <= h.tol;
-          $("depthLabel").textContent = h.demo ? "SNØDJUPNE · DEMO" : "SNØDJUPNE";
+          $("depthLabel").textContent = (h.demo ? "SNØDJUPNE · DEMO" : "SNØDJUPNE") + (h.trase ? " · MÅL " + fmt(h.target) + " m (" + h.trase + ")" : "");
           $("depth").innerHTML = fmt(d) + "<small>m</small>";
           $("depth").className = within ? "ok" : diff < 0 ? "bad" : "";
           $("depth").style.color = !within && diff > 0 ? "var(--hi)" : "";

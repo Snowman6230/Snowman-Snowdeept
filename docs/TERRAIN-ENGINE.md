@@ -80,8 +80,8 @@ Merk: hoydedata.no er stengt fredag kl. 16 – måndag kl. 07.
 ## 6. Trasear og anleggsobjekt
 
 > **Status (v1.6.23):** trasear og forbodne område er laga – teikning, omriss frå terrengmodell, prosent preparert i
-> prepareringsdøgnet, gjeldande trasé på førarskjermen og varsel. Rapport per trasé, uprepart areal på kartet,
-> måldjupne i fargane og anleggsobjekt (punkt) står att. Sjå `pc/v1.6/trasear.py`.
+> prepareringsdøgnet, gjeldande trasé på førarskjermen og varsel. Rapport per trasé (v1.6.24), uprepart areal på kartet og
+> måldjupne per trasé (v1.6.25) er òg laga. Anleggsobjekt (punkt) står att. Sjå `pc/v1.6/trasear.py`.
 
 Anlegget kan registrere **ytterpunkt (omriss) for kvar trasé** og **punkt for faste objekt**.
 
