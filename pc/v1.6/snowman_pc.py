@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.15"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.16"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -82,6 +82,7 @@ STOP=threading.Event()
 serial_obj=None
 ntrip_sock=None
 
+SERVER=[None]   # hovudtenesta, så «Avslutt SNOWMAN» kan stoppe ho
 HUD_TICK=threading.Condition()   # varslar HUD-straumane kvar gong ny GNSS-posisjon kjem
 def update(**kw):
     with LOCK:
@@ -366,6 +367,14 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/shutdown":   # «Avslutt SNOWMAN» frå førarskjermen (berre frå denne PC-en)
+            save_cfg()
+            self.headers_ok(); self.wfile.write(json.dumps({"ok":True}).encode())
+            def stop():
+                time.sleep(0.5)
+                if SERVER[0]: SERVER[0].shutdown()
+            threading.Thread(target=stop,daemon=True).start()
+            return
         if self.path=="/api/hudlan":
             try:
                 on=bool(json.loads(body or b"{}").get("enable")); err=set_hud_lan(on); CFG["hudLan"]=on and not err; save_cfg()
@@ -440,8 +449,14 @@ def main():
     print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}")
     if a.lan or CFG.get("hudLan"): set_hud_lan(True)
     # Hovudtenesta (styring, innstillingar) er berre tilgjengeleg på denne PC-en.
-    try: http.server.ThreadingHTTPServer(("127.0.0.1",a.http_port),API).serve_forever()
+    SERVER[0]=http.server.ThreadingHTTPServer(("127.0.0.1",a.http_port),API)
+    try: SERVER[0].serve_forever()
     except KeyboardInterrupt: pass
-    finally: STOP.set()
+    finally:
+        STOP.set(); save_cfg()
+        try:
+            if serial_obj: serial_obj.close()   # frigjer COM-porten til Leica
+        except Exception: pass
+        print("SNOWMAN-tenesta er avslutta.")
 
 if __name__=="__main__": main()

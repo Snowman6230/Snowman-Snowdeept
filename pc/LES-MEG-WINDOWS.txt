@@ -18,7 +18,8 @@ Dobbeltklikk SNOWMAN på skrivebordet (eller SNOWMAN.bat). Då kjem ein meny:
   5  Hent siste versjon
   6  Stopp SNOWMAN
 Førarskjermen opnar seg i Edge (eller Chrome) som eit eige vindauge.
-Stopp SNOWMAN med Ctrl + C i det svarte vindauget, eller lukk det.
+Avslutt SNOWMAN med knappen «⏻ AVSLUTT SNOWMAN» øvst i Innstillingar – då blir alt lagra.
+(Ctrl + C i det svarte vindauget stoppar også.)
 FULLSKJERM: knappen «Fullskjerm» nede slår fullskjerm av og på, i alle visingar. Esc går også ut.
 
 LEICA-MOTTAKAR

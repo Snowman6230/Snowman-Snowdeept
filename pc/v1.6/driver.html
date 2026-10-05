@@ -229,6 +229,17 @@
         background: #0878df;
       }
       /* Val av kartperspektiv (opnar seg over knappen) */
+      .quitBtn {
+        float: right;
+        margin-right: 10px;
+        background: #7a1f1a;
+        border: 1px solid #c2453b;
+        color: #fff;
+        font-weight: 800;
+        font-size: 12px;
+        border-radius: 8px;
+        padding: 6px 10px;
+      }
       .viewMenu {
         position: absolute;
         z-index: 1200;
@@ -844,6 +855,7 @@
         <h2>
           ⚙ INNSTILLINGAR
           <button style="float: right; background: none; border: 0; color: #9bc6e2; font-size: 24px" onclick="toggleSettings()">×</button>
+          <button class="quitBtn" onclick="quitSnowman()">⏻ AVSLUTT SNOWMAN</button>
         </h2>
         <div class="tabs">
           <button id="tabMachine" class="on" onclick="showTab('machine')">Maskin</button
@@ -1088,7 +1100,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.15";
+      const APP_VERSION = "1.6.16";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -2580,8 +2592,9 @@
         copy.end = Date.now();
         copy.durationMs = copy.end - copy.start;
         copy.distance = Math.round(sessionDistance(copy));
+        let done = Promise.resolve();
         if (backendOK)
-          fetch("api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(copy) }).catch(() => {});
+          done = fetch("api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(copy) }).catch(() => saveLocal(copy));
         else saveLocal(copy);
         let ix = HIST.findIndex((x) => x.id === copy.id),
           sm = summary(copy);
@@ -2589,6 +2602,33 @@
         if (ix >= 0) HIST[ix] = sm;
         else HIST.push(sm);
         if (final) refreshHistory(false);
+        return done;
+      }
+      /* ---------- Avslutt SNOWMAN: lagre alt, stopp tenesta, lukk vindauget ---------- */
+      async function quitSnowman() {
+        let msg = "Avslutte SNOWMAN?\n\n" + (preparing ? "Prepareringa som pågår blir stoppa og lagra. " : "") + "Alle innstillingar er lagra.";
+        if (!confirm(msg)) return;
+        if (demo) stopDemo();
+        let saves = [];
+        if (preparing && currentSession) {
+          saves.push(saveCurrentSession(true)); // vent til økta er lagra i tenesta før vi stoppar
+          preparing = false;
+          stopClock();
+          currentSession = null;
+        }
+        persistCfg();
+        await Promise.all(saves);
+        let ok = false;
+        try {
+          await api("api/shutdown", {});
+          ok = true;
+        } catch (e) {}
+        document.body.innerHTML =
+          '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#06121a;color:#fff;font-family:Arial,sans-serif;text-align:center">' +
+          '<div style="font-size:34px;font-weight:900;font-style:italic">SNOWMAN</div><p style="font-size:20px">' +
+          (ok ? "er avslutta. Alt er lagra." : "Fann ikkje SNOWMAN-tenesta – data i nettlesaren er lagra.") +
+          '</p><p style="color:#9ab3c1">Vindauget kan lukkast.</p></div>';
+        setTimeout(() => window.close(), 1500);
       }
       async function refreshHistory(fetchList = true) {
         if (fetchList) {

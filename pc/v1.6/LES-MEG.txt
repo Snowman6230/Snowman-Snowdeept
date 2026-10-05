@@ -32,6 +32,7 @@ START FRÅ TERMINALEN (Linux)
              snowman test       – test over terrengmodellane dine
              snowman oppdater   – hent siste versjon frå GitHub
   Eller: Super + Space og søk etter «SNOWMAN».
+  Avslutt med «⏻ AVSLUTT SNOWMAN» øvst i Innstillingar – då blir alt lagra.
   Fullskjerm: knappen «Fullskjerm» nede slår av og på, i alle visingar (Esc går også ut).
   Val 4 startar SNOWMAN slik at første trykk på skjermen gir fullskjerm.
 

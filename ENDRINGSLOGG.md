@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.16 – «Avslutt SNOWMAN» i skjermbiletet
+- **Nytt:** Knappen **⏻ AVSLUTT SNOWMAN** øvst i Innstillingar. Etter stadfesting: pågåande preparering blir stoppa og lagra (SNOWMAN ventar til økta er lagra i tenesta), innstillingane blir lagra, tenesta stoppar, simulatoren og vindauget blir lukka. Står vindauget att (t.d. starta utan oppstartsprogrammet), viser det «SNOWMAN er avslutta. Alt er lagra.»
+- **Nytt:** `POST /api/shutdown` (berre på denne PC-en, ikkje på mobil-porten). Tenesta lagrar innstillingane og frigjer COM-porten til Leica når ho stoppar.
+- **Endra:** `saveCurrentSession` returnerer når lagringa er ferdig; feilar lagringa i tenesta, blir økta lagra i nettlesaren i staden.
+- **Testa:** Ekte Chromium: preparering med 23 punkt → Avslutt → økta lagra med 24 punkt, alle prosessar stoppa, vindauget lukka.
+- **Avgjerd:** Knappen ligg i Innstillingar (ikkje i verktøylinja), så han ikkje blir trykt på ved eit uhell under køyring.
+
 ### PC-prototype v1.6.15 – HUD utan venting
 - **Retta:** I demo (Demo-knappen) og når førarskjermen sender prepareringsstatus, venta HUD-straumen på neste GNSS-posisjon – utan mottakar berre éin gong i sekundet. No blir HUD-en varsla med éin gong førarskjermen sender noko (5 gonger i sekundet).
 - **Endra:** Straumen sender kvar melding med éin gong (TCP_NODELAY), utan at operativsystemet samlar små pakkar.
