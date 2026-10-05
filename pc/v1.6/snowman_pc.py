@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.27"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.28"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -452,6 +452,15 @@ class API(http.server.BaseHTTPRequestHandler):
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path=="/api/terrain/crop":   # utsnitt av ei stor fil (Kartverket DTM1 o.l.)
+            try:
+                if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
+                d=json.loads(body or b"{}")
+                r=TERR.crop(d.get("bigToken"),d["lat"],d["lon"],d.get("half",2000))
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"errors":[str(e)],"warnings":[],"info":{}}).encode())
             return
         if self.path in ("/api/terrain/import","/api/terrain/update","/api/terrain/delete","/api/calibration"):
             try:

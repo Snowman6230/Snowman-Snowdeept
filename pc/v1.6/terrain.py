@@ -72,6 +72,13 @@ TYPES = {"barmark": "Barmark (terreng utan snø)", "malflate": "Målflate", "sno
 # GeoTIFF-analyse
 # ---------------------------------------------------------------------------------------------
 
+def _epsg_from_name(name):
+    """Kartverket-namn som dtm1_33_111_133.tif: sone 33 → EUREF89 UTM 33 (EPSG:25833)."""
+    import re
+    m = re.match(r"(?:dtm|dom|dtm1|dtm10|dtm50|dom1)\d*_(32|33|35)_", Path(name or "").name.lower())
+    return {"32": 25832, "33": 25833, "35": 25835}[m.group(1)] if m else None
+
+
 def _geokeys(tag_value):
     v = list(tag_value or [])
     keys = {}
@@ -83,16 +90,99 @@ def _geokeys(tag_value):
     return keys
 
 
-def analyse_geotiff(path):
-    """Les ei GeoTIFF-fil og returner (rutenett, info, feil, åtvaringar). Rutenett er None ved feil."""
+BIG_CELLS = 40_000_000  # over dette (160 MB som flyttal) blir berre eit utsnitt lese – sjå window i analyse_geotiff
+
+
+def _read_window(tf, page, r0, r1, c0, c1):
+    """Les berre radene r0:r1 og kolonnane c0:c1 frå ei (stor) GeoTIFF-side, rute for rute eller stripe for stripe.
+    Resten av fila blir aldri pakka ut, så ei fil på fleire GB kan klippast med lite minne."""
+    H, W = page.shape[:2]
+    out = np.full((r1 - r0, c1 - c0), np.nan, dtype=np.float32)
+    fh = tf.filehandle
+    if page.is_tiled:
+        th, tw = page.tilelength, page.tilewidth
+        ntx = (W + tw - 1) // tw
+        cells = [(tr, tc) for tr in range(r0 // th, (r1 - 1) // th + 1) for tc in range(c0 // tw, (c1 - 1) // tw + 1)]
+        segs = [(tr * ntx + tc, tr * th, tc * tw) for tr, tc in cells]
+    else:
+        rps = min(page.rowsperstrip or H, H)
+        segs = [(i, i * rps, 0) for i in range(r0 // rps, (r1 - 1) // rps + 1)]
+    for idx, sr, sc in segs:
+        off, n = page.dataoffsets[idx], page.databytecounts[idx]
+        if not n:
+            continue
+        fh.seek(off)
+        seg, _, shape = page.decode(fh.read(n), idx, jpegtables=page.jpegtables)
+        if seg is None:
+            continue
+        seg = np.asarray(seg)
+        seg = seg.reshape(seg.shape[-3], seg.shape[-2], -1)[..., 0] if seg.ndim >= 3 else seg.reshape(seg.shape[-2:])
+        h, w = seg.shape
+        a0, a1 = max(r0, sr), min(r1, sr + h)
+        b0, b1 = max(c0, sc), min(c1, sc + w)
+        if a0 < a1 and b0 < b1:
+            out[a0 - r0:a1 - r0, b0 - c0:b1 - c0] = seg[a0 - sr:a1 - sr, b0 - sc:b1 - sc]
+    return out
+
+
+def analyse_geotiff(path, window=None, filename=""):
+    """Les ei GeoTIFF-fil og returner (rutenett, info, feil, åtvaringar). Rutenett er None ved feil.
+    window = (E0, N0, E1, N1) i koordinatsystemet til fila: les berre dette utsnittet.
+    Utan window: er fila større enn BIG_CELLS, blir ingenting lese, og info["big"] er sett (føraren vel utsnitt)."""
     errors, warns, info = [], [], {"format": "GeoTIFF"}
     try:
-        with tifffile.TiffFile(path) as tf:
-            page = tf.pages[0]
-            tags = {t.code: t.value for t in page.tags.values()}
-            arr = page.asarray()
+        tf = tifffile.TiffFile(path)
     except Exception as e:
         return None, info, [f"Kunne ikkje lese fila som GeoTIFF: {e}"], warns
+    with tf:
+        page = tf.pages[0]
+        tags = {t.code: t.value for t in page.tags.values()}
+        H, W = page.shape[:2]
+        scale, tie = tags.get(33550), tags.get(33922)
+        win = None
+        if scale and tie:
+            dx0, dy0 = float(scale[0]), float(scale[1])
+            gx0 = float(tie[3]) - float(tie[0]) * dx0
+            gy0 = float(tie[4]) + float(tie[1]) * dy0
+            if _geokeys(tags.get(34735)).get(1025) == 2:
+                gx0, gy0 = gx0 - dx0 / 2, gy0 + dy0 / 2
+            if window:
+                E0, N0, E1, N1 = window
+                c0, c1 = max(0, int(math.floor((E0 - gx0) / dx0))), min(W, int(math.ceil((E1 - gx0) / dx0)))
+                r0, r1 = max(0, int(math.floor((gy0 - N1) / dy0))), min(H, int(math.ceil((gy0 - N0) / dy0)))
+                if c1 <= c0 or r1 <= r0:
+                    return None, info, ["Utsnittet ligg utanfor denne fila. Flytt kartet til området fila dekkjer, eller vel den andre fila."], warns
+                win = (r0, r1, c0, c1)
+            elif H * W > BIG_CELLS:
+                info["big"] = True
+        try:
+            if info.get("big"):
+                arr = None
+            elif win:
+                arr = _read_window(tf, page, *win)
+                warns.append(f"Utsnitt av ei stor fil: {win[3] - win[2]} × {win[1] - win[0]} ruter ({(win[3] - win[2]) * dx0 / 1000:.1f} × {(win[1] - win[0]) * dy0 / 1000:.1f} km).")
+            else:
+                arr = page.asarray()
+        except Exception as e:
+            return None, info, [f"Kunne ikkje lese høgdene i fila: {e}"], warns
+    if win:  # tiepunktet blir øvre venstre hjørne av utsnittet
+        tie = (0, 0, 0, gx0 + win[2] * dx0, gy0 - win[0] * dy0, 0)
+        tags[34735] = [x for x in (tags.get(34735) or [])]
+        gk = _geokeys(tags[34735])
+        if gk.get(1025) == 2:  # tiepunktet over er hjørne, ikkje pikselmidte
+            tie = (0, 0, 0, tie[3] + dx0 / 2, tie[4] - dy0 / 2, 0)
+        tags[33922] = tie
+    if info.get("big"):
+        gk = _geokeys(tags.get(34735))
+        epsg = gk.get(3072) or _epsg_from_name(filename)
+        zone = CRS_ZONE.get(epsg)
+        info.update(epsg=epsg, crs=CRS_NAME.get(epsg, f"EPSG:{epsg}"), zone=zone, x0=gx0, y0=gy0, dx=dx0, dy=dy0, nx=W, ny=H, res=dx0,
+                    area_km2=round(W * dx0 * H * dy0 / 1e6, 1), dtype=str(page.dtype))
+        if zone:
+            info["outline"] = _outline(info)
+        else:
+            errors.append("Fila manglar koordinatsystem (EUREF89 UTM 32/33) – kan ikkje klippast.")
+        return None, info, errors, warns
     if arr.ndim == 3:
         arr = arr[..., 0] if arr.shape[-1] <= 4 else arr[0]
         warns.append("Fila har fleire band – berre det første blir brukt.")
@@ -115,6 +205,9 @@ def analyse_geotiff(path):
     if gk.get(1025) == 2:  # RasterPixelIsPoint: tiepunkt er midt i pikselen
         x0, y0 = x0 - dx / 2, y0 + dy / 2
     epsg = gk.get(3072)
+    if (not epsg or epsg == 32767) and _epsg_from_name(filename):
+        epsg = _epsg_from_name(filename)
+        warns.append(f"Koordinatsystemet er henta frå filnamnet ({CRS_NAME.get(epsg)}). Sjekk at fila ligg rett på kartet.")
     if not epsg or epsg == 32767:
         errors.append("Fila manglar koordinatsystem – kan ikkje brukast. Eksporter med EUREF89 UTM 32 eller 33.")
     elif epsg not in CRS_ZONE:
@@ -303,6 +396,8 @@ class TerrainLibrary:
         if AVAILABLE:
             self.root.mkdir(parents=True, exist_ok=True)
             self._load()
+            for f in (self.root.parent / "upload").glob("stor-*"):  # store opplastingar frå førre køyring
+                f.unlink(missing_ok=True)
 
     def _load(self):
         for d in self.root.iterdir():
@@ -330,7 +425,9 @@ class TerrainLibrary:
     def analyse(self, tmp_path, filename):
         ext = Path(filename).suffix.lower()
         if ext in (".tif", ".tiff"):
-            grid, info, errors, warns = analyse_geotiff(tmp_path)
+            grid, info, errors, warns = analyse_geotiff(tmp_path, filename=filename)
+            if info.get("big") and not errors:
+                return self._keep_big(tmp_path, filename, info, warns)
         elif ext == ".dtm":
             grid, info, errors, warns = analyse_topocad(tmp_path)
         elif ext in (".las", ".laz", ".xyz", ".csv", ".txt"):
@@ -347,6 +444,45 @@ class TerrainLibrary:
                 self.pending[token] = {"grid": grid, "info": info, "warns": warns, "file": filename, "t": time.time()}
         info.pop("outline_utm", None)
         return {"ok": grid is not None, "token": token, "file": filename, "info": info, "errors": errors, "warnings": warns}
+
+    # --- store filer (t.d. Kartverket DTM1 «som kildedata», fleire GB): behald fila og klipp ut eit utsnitt ---
+    BIG_TTL = 3 * 3600
+
+    def _big_dir(self):
+        d = self.root.parent / "upload"
+        d.mkdir(parents=True, exist_ok=True)
+        for f in d.glob("stor-*"):  # rydd gamle
+            if time.time() - f.stat().st_mtime > self.BIG_TTL:
+                f.unlink(missing_ok=True)
+        return d
+
+    def _keep_big(self, tmp_path, filename, info, warns):
+        token = uuid.uuid4().hex
+        dst = self._big_dir() / f"stor-{token}{Path(filename).suffix.lower()}"
+        shutil.move(str(tmp_path), str(dst))
+        with self.lock:
+            self.big = {k: v for k, v in getattr(self, "big", {}).items() if time.time() - v["t"] < self.BIG_TTL and Path(v["path"]).exists()}
+            self.big[token] = {"path": str(dst), "file": filename, "info": dict(info), "t": time.time()}
+        warns = warns + [f"Fila er stor ({info['nx']} × {info['ny']} ruter, {info['area_km2']} km²). SNOWMAN les berre eit utsnitt rundt anlegget."]
+        return {"ok": False, "big": True, "bigToken": token, "file": filename, "info": info, "errors": [], "warnings": warns}
+
+    def crop(self, big_token, lat, lon, half_m):
+        """Klipp eit kvadrat (± half_m meter rundt lat/lon) ut av ei stor fil og analyser det som ei vanleg fil."""
+        with self.lock:
+            b = getattr(self, "big", {}).get(big_token)
+        if not b or not Path(b["path"]).exists():
+            raise ValueError("Den store fila er ikkje lenger tilgjengeleg – last ho opp på nytt.")
+        half_m = max(250.0, min(3000.0, float(half_m)))
+        zone = b["info"]["zone"]
+        E, N = utm_forward(float(lat), float(lon), zone)
+        grid, info, errors, warns = analyse_geotiff(b["path"], window=(E - half_m, N - half_m, E + half_m, N + half_m), filename=b["file"])
+        token = None
+        if grid is not None:
+            token = uuid.uuid4().hex
+            with self.lock:
+                self.pending = {k: v for k, v in self.pending.items() if time.time() - v["t"] < 3600}
+                self.pending[token] = {"grid": grid, "info": info, "warns": warns, "file": b["file"], "t": time.time()}
+        return {"ok": grid is not None, "token": token, "file": b["file"], "info": info, "errors": errors, "warnings": warns, "cropped": True}
 
     def import_pending(self, token, name, ltype="barmark", priority=None, replace_id=None, source="", vdatum_confirmed=False):
         with self.lock:

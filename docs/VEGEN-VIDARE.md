@@ -54,7 +54,8 @@ Nødvendig før sal til andre anlegg.
 
 ## 3. Opplasting av fleire terrengfiler samstundes
 
-Kartverket leverer ofte fleire GeoTIFF-ruter («Som kildedata»). Vel alle på ein gong i Innst. › Terreng.
+Kartverket leverer ofte fleire GeoTIFF-ruter («Som kildedata»). **v1.6.28:** store filer blir klipte til eit utsnitt rundt
+anlegget, éi fil om gongen (kvar fil blir eit lag). Står att: velje alle filene på ein gong og slå dei saman til eitt lag.
 
 ## 4. Trasear og anleggsobjekt
 

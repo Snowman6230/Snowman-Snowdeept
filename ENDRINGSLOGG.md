@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.28 – store terrengfiler (Kartverket DTM1) blir klipte til anlegget
+- **Nytt:** GeoTIFF-filer over 40 millionar ruter (t.d. Kartverket DTM1 «som kildedata», 1,1 GB per fil) blir ikkje lesne heilt inn. SNOWMAN viser kva fila dekkjer, og føraren vel eit utsnitt (2×2, 3×3, 4×4 eller 6×6 km) rundt kartmidten i Innst. › Terreng. Berre rutene/stripene i fila som ligg i utsnittet blir pakka ut, så minnebruken held seg låg.
+- **Nytt:** Utsnitt av ei stor fil blir lagt **under** dei andre laga (grunnlag), så Topocad-modellar for bakkane blir brukte først der dei finst. Ligg anlegget over to filer, blir kvar fil eit eige lag – biblioteket brukar dei saman.
+- **Nytt:** Manglar fila koordinatsystem, blir det henta frå Kartverket-filnamnet (t.d. `dtm1_33_…` → EUREF89 UTM 33), med åtvaring.
+- **Nytt:** `POST /api/terrain/crop` (bigToken, lat, lon, half). Store opplastingar ligg i `data/upload/stor-*` i inntil 3 timar og blir sletta ved oppstart.
+- **Bakgrunn:** Eigaren har lasta ned Kartverket-bestilling 1763175: to filer, `dtm1_33_111_133.tif` og `dtm1_33_111_134.tif`, 1,1 GB kvar (+ `.tfw` og metadata).
+- **Testa:** Syntetisk 7×7 km GeoTIFF (LZW, flyttal-prediktor, både ruter og striper): utsnitt på 2×2 km lese på 0,15–0,4 s, høgdene identiske med fila, rett plassering. Heile flyten i nettlesaren: stor fil → utsnitt → import nedst i biblioteket → rett høgd ved oppslag.
+
 ### PC-prototype v1.6.27 – retta frys når det berre finst forbodne område
 - **Retta:** SNOWMAN fraus (ingen knappar verka, kartet vart blankt eller svart) når anlegget hadde eit forbode område men ingen trasé. Teikninga av traseane bad om ny prosent, og når det ikkje fanst nokon trasé å rekne prosent for, teikna ho kartet på nytt – som igjen bad om ny prosent, i ring. Nettlesaren gav opp med «Maximum call stack size exceeded» mange gonger i sekundet. Funne frå skjermbilete av konsollen hos eigaren.
 - **Endra:** Ny prosent blir no berre henta frå den vanlege oppdateringa (kvart 8./15. sekund), aldri frå sjølve teikninga, og berre når det finst minst éin trasé.

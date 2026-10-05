@@ -1180,6 +1180,26 @@
           <input id="terrFile" type="file" accept=".tif,.tiff,.dtm,.las,.laz,.xyz,.csv,.txt" style="width: 100%; margin: 8px 0" />
           <button class="btn" onclick="analyseTerrain()">ANALYSER FIL</button>
           <div id="terrResult"></div>
+          <div id="terrCrop" class="hide">
+            <div class="row">
+              <span>Storleik på utsnittet</span
+              ><select id="cropSize" style="width: 190px" onchange="cropPreview()">
+                <option value="2000">2 × 2 km</option>
+                <option value="3000">3 × 3 km</option>
+                <option value="4000" selected>4 × 4 km</option>
+                <option value="6000">6 × 6 km</option>
+              </select>
+            </div>
+            <div id="cropInfo" class="history"></div>
+            <button class="btn" onclick="toggleSettings()">LUKK INNSTILLINGANE OG SJÅ PÅ KARTET</button>
+            <button class="btn" onclick="cropToLayers()">FLYTT KARTET TIL TERRENGLAGA</button>
+            <button class="btn" onclick="cropTerrain()">KLIPP UT OG ANALYSER</button>
+            <div class="history" style="font-size: 12px">
+              Ligg anlegget over to filer (t.d. dtm1_33_111_133 og _134), gjer det same med begge filene med same kartmidte. SNOWMAN
+              brukar laga saman.
+            </div>
+            <div id="cropResult"></div>
+          </div>
           <div id="terrImport" class="hide">
             <div class="row"><span>Namn på laget</span><input id="terrName" type="text" style="width: 190px" /></div>
             <label id="vdConfirmRow" class="chk hide"><input id="vdConfirm" type="checkbox" /> Eg har sjekka at høgdene er NN2000</label>
@@ -1380,7 +1400,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.27";
+      const APP_VERSION = "1.6.28";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3529,19 +3549,88 @@
         $("showOutlines").textContent = "VIS TERRENGOMRISS PÅ KARTET: " + (outlinesOn ? "PÅ" : "AV");
         drawOutlines();
       }
+      let bigToken = null,
+        bigInfo = null,
+        bigName = "",
+        pendingCropped = false;
+      const cropGroup = L.layerGroup().addTo(map);
       async function analyseTerrain() {
         let f = $("terrFile").files[0];
         if (!f) return toast("Vel ei fil først");
-        $("terrResult").innerHTML = '<div class="history">Analyserer ' + esc(f.name) + " (" + (f.size / 1048576).toFixed(1) + " MB) …</div>";
+        $("terrResult").innerHTML =
+          '<div class="history">Analyserer ' + esc(f.name) + " (" + (f.size / 1048576).toFixed(1) + " MB) …" +
+          (f.size > 200e6 ? "<br>Stor fil – opplastinga kan ta eitt minutt." : "") + "</div>";
         $("terrImport").classList.add("hide");
+        $("terrCrop").classList.add("hide");
+        cropGroup.clearLayers();
         let r;
         try {
           r = await (await fetch("api/terrain/analyse?file=" + encodeURIComponent(f.name), { method: "POST", body: f })).json();
         } catch (e) {
           r = { ok: false, errors: ["Ingen kontakt med SNOWMAN-tenesta."], warnings: [], info: {} };
         }
+        if (r.big) return showBig(r);
+        showAnalysis(r, f.name);
+      }
+      // Stor fil (t.d. Kartverket DTM1 «som kildedata», fleire GB): føraren vel utsnitt rundt anlegget
+      function showBig(r) {
+        bigToken = r.bigToken;
+        bigInfo = r.info;
+        bigName = r.file;
+        let i = r.info;
+        $("terrResult").innerHTML =
+          '<div class="history"><div class="chk warn">📦 Stor fil: ' + esc(r.file) + " · " + esc(i.crs || "") + " · " + i.res + " m rute · " +
+          (i.nx * i.res / 1000).toFixed(1) + " × " + (i.ny * i.res / 1000).toFixed(1) + " km (" + i.area_km2 + " km²)</div>" +
+          '<div class="chk">SNOWMAN les berre eit utsnitt rundt anlegget. Flytt kartet slik at anlegget er midt i den blå firkanten.</div></div>';
+        $("terrCrop").classList.remove("hide");
+        if (i.outline) {
+          L.polygon(i.outline, { color: "#ffd33f", weight: 2, dashArray: "8 6", fill: false, interactive: false }).addTo(cropGroup);
+        }
+        followMap = false; // kartet skal ikkje hoppe tilbake til maskina medan føraren vel utsnitt
+        updateFreeUI();
+        map.fitBounds(L.latLngBounds(cropSquare().b).pad(0.15), { animate: false });
+        cropPreview();
+      }
+      function cropSquare() {
+        let c = map.getCenter(),
+          h = +$("cropSize").value / 2,
+          dlat = h / 111320,
+          dlon = h / (111320 * Math.cos((c.lat * Math.PI) / 180));
+        return { c, h, b: [[c.lat - dlat, c.lng - dlon], [c.lat + dlat, c.lng + dlon]] };
+      }
+      function cropPreview() {
+        if (!bigToken || $("terrCrop").classList.contains("hide")) return;
+        cropGroup.eachLayer((l) => l.options.className === "cropSq" && cropGroup.removeLayer(l));
+        let q = cropSquare();
+        L.rectangle(q.b, { color: "#4db8ff", weight: 3, fillOpacity: 0.08, interactive: false, className: "cropSq" }).addTo(cropGroup);
+        let inside = bigInfo && bigInfo.outline ? pointInPoly([q.c.lat, q.c.lng], bigInfo.outline) : true;
+        $("cropInfo").innerHTML = inside
+          ? "Utsnitt: " + $("cropSize").selectedOptions[0].text + " rundt kartmidten (" + q.c.lat.toFixed(4) + ", " + q.c.lng.toFixed(4) + ")"
+          : "<span style='color:#ffcf5b'>⚠️ Kartmidten er utanfor denne fila (gul stipla firkant). Flytt kartet, eller bruk den andre fila.</span>";
+      }
+      map.on("moveend", cropPreview);
+      function cropToLayers() {
+        let L2 = (TERR.layers || []).filter((l) => l.outline);
+        if (!L2.length) return toast("Ingen terrenglag å flytte til");
+        map.fitBounds(L.latLngBounds(L2.flatMap((l) => l.outline)).pad(0.2));
+      }
+      async function cropTerrain() {
+        if (!bigToken) return;
+        let q = cropSquare();
+        $("cropInfo").textContent = "Klipper ut og analyserer …";
+        let r;
+        try {
+          r = await (await fetch("api/terrain/crop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bigToken, lat: q.c.lat, lon: q.c.lng, half: q.h }) })).json();
+        } catch (e) {
+          r = { ok: false, errors: ["Ingen kontakt med SNOWMAN-tenesta."], warnings: [], info: {} };
+        }
+        cropPreview();
+        showAnalysis(r, bigName, true);
+      }
+      function showAnalysis(r, fname, cropped) {
         let i = r.info || {},
           lines = (r.errors || []).map((t) => '<div class="chk err">⛔ ' + esc(t) + "</div>").concat((r.warnings || []).map((t) => '<div class="chk warn">⚠️ ' + esc(t) + "</div>"));
+        pendingCropped = !!cropped;
         if (r.ok) {
           lines.unshift('<div class="chk ok">✅ ' + esc(i.format) + " · " + esc(i.crs) + " · høgdesystem " + esc(i.vdatum) + " · " + i.res + " m rute</div>");
           lines.push('<div class="chk">' + i.nx + " × " + i.ny + " ruter · " + i.area_km2 + " km² · høgd " + Math.round(i.hmin) + "–" + Math.round(i.hmax) + " m · " + Math.round(i.valid * 100) + " % med data</div>");
@@ -3549,17 +3638,18 @@
             let inside = pointInPoly(pos, i.outline);
             lines.push(inside ? '<div class="chk ok">✅ Dekkjer posisjonen til maskina</div>' : '<div class="chk warn">⚠️ Fila dekkjer ikkje posisjonen til maskina</div>');
           }
+          if (cropped) lines.push('<div class="chk">Laget blir lagt <b>under</b> dei andre laga (grunnlag), så meir detaljerte modellar (t.d. Topocad) blir brukte først der dei finst.</div>');
           pendingToken = r.token;
           pendingInfo = i;
-          $("terrName").value = replaceId ? "" : f.name.replace(/\.[^.]+$/, "");
+          $("terrName").value = replaceId ? "" : fname.replace(/\.[^.]+$/, "") + (cropped ? " (utsnitt)" : "");
           $("terrName").placeholder = replaceId ? "(behald namnet)" : "";
           $("vdConfirmRow").classList.toggle("hide", i.vdatum === "NN2000");
           $("vdConfirm").checked = false;
           $("terrImport").classList.remove("hide");
           outlineGroup.addLayer(L.polygon(i.outline, { color: "#4db8ff", weight: 3, fill: true, fillOpacity: 0.08, interactive: false }));
-          map.fitBounds(L.latLngBounds(i.outline).pad(0.1));
+          if (!cropped) map.fitBounds(L.latLngBounds(i.outline).pad(0.1));
         }
-        $("terrResult").innerHTML = '<div class="history">' + lines.join("") + "</div>";
+        $(cropped ? "cropResult" : "terrResult").innerHTML = '<div class="history">' + lines.join("") + "</div>";
       }
       function pointInPoly(p, poly) {
         let x = p[1], y = p[0], inside = false;
@@ -4189,7 +4279,9 @@
         if (!pendingToken) return;
         if (pendingInfo.vdatum !== "NN2000" && !$("vdConfirm").checked) return toast("Stadfest høgdesystemet først");
         try {
-          let r = await api("api/terrain/import", { token: pendingToken, name: $("terrName").value.trim(), type: $("terrType").value, replace: replaceId, vdatumConfirmed: $("vdConfirm").checked });
+          let prios = (TERR.layers || []).map((l) => l.priority),
+            prio = pendingCropped && prios.length && !replaceId ? Math.min(...prios) - 10 : undefined; // utsnitt av stor fil = grunnlag nedst
+          let r = await api("api/terrain/import", { token: pendingToken, name: $("terrName").value.trim(), type: $("terrType").value, replace: replaceId, vdatumConfirmed: $("vdConfirm").checked, priority: prio });
           toast((replaceId ? "Erstatta: " : "Lagt til: ") + r.layer.name);
           resetWizard();
           loadTerrain();
@@ -4199,6 +4291,11 @@
       }
       function resetWizard() {
         pendingToken = pendingInfo = replaceId = null;
+        pendingCropped = false;
+        $("cropResult").innerHTML = "";
+        $("terrCrop").classList.add("hide");
+        bigToken = null;
+        cropGroup.clearLayers();
         $("wizTitle").textContent = "LEGG TIL TERRENG";
         $("terrResult").innerHTML = "";
         $("terrFile").value = "";
