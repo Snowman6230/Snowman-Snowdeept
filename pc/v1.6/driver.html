@@ -1380,7 +1380,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.26";
+      const APP_VERSION = "1.6.27";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3630,6 +3630,8 @@
         }
         async function refresh(force) {
           if (!list.some((t) => t.kind === "trase")) {
+            // berre forbodne område: ingen prosent å hente
+            lastPoll = Date.now();
             st = {};
             render();
             return;
@@ -3744,7 +3746,8 @@
         function live(force) {
           if (!force && Date.now() - lastLive < 1000) return;
           lastLive = Date.now();
-          if (Date.now() - lastPoll > (preparing ? 8000 : 15000) && list.length) refresh();
+          // Hent ny prosent jamleg – aldri frå render() (force), elles kan render → live → refresh → render gå i ring
+          if (!force && Date.now() - lastPoll > (preparing ? 8000 : 15000) && list.some((t) => t.kind === "trase")) refresh();
           let tr = list.filter((t) => t.kind === "trase"),
             fb = list.filter((t) => t.kind === "forbode"),
             cell = $("traCell"),

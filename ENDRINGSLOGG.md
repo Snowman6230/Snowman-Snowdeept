@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.27 – retta frys når det berre finst forbodne område
+- **Retta:** SNOWMAN fraus (ingen knappar verka, kartet vart blankt eller svart) når anlegget hadde eit forbode område men ingen trasé. Teikninga av traseane bad om ny prosent, og når det ikkje fanst nokon trasé å rekne prosent for, teikna ho kartet på nytt – som igjen bad om ny prosent, i ring. Nettlesaren gav opp med «Maximum call stack size exceeded» mange gonger i sekundet. Funne frå skjermbilete av konsollen hos eigaren.
+- **Endra:** Ny prosent blir no berre henta frå den vanlege oppdateringa (kvart 8./15. sekund), aldri frå sjølve teikninga, og berre når det finst minst éin trasé.
+- **Testa:** Berre eitt forbode område + demo + Innst. › Trasear + bakgrunn av/på: før rettinga fraus sida (som hos eigaren), etter rettinga ingen feil.
+- **Merknad:** Retting i v1.6.26 (namn på traseane) var ikkje årsaka, men er behalden fordi ho gjer visinga lettare.
+
 ### PC-prototype v1.6.26 – retting av treg vising
 - **Retta:** Eigaren melde at v1.6.25 var tydeleg tregare enn før i alle startval (1–4). Frå v1.6.23 sette førarskjermen ein CSS-variabel på heile kartet for kvar posisjon (for at trasénamna skulle stå rett opp). Då måtte nettlesaren rekne om stilen til alle element i kartet fleire gonger i sekundet. No blir berre namne-elementa snudde, og berre når kartvinkelen er endra med minst 2°.
 - **Testa:** 90 s demo i nettlesar: tid til stilutrekning ned ca. 30 %. Treigleiken kunne ikkje framkallast fullt ut her (testmaskina har ikkje skjermkort), så eigaren må stadfeste på eigen PC.
