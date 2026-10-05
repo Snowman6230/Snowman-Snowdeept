@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.15 – HUD utan venting
+- **Retta:** I demo (Demo-knappen) og når førarskjermen sender prepareringsstatus, venta HUD-straumen på neste GNSS-posisjon – utan mottakar berre éin gong i sekundet. No blir HUD-en varsla med éin gong førarskjermen sender noko (5 gonger i sekundet).
+- **Endra:** Straumen sender kvar melding med éin gong (TCP_NODELAY), utan at operativsystemet samlar små pakkar.
+- **Nytt:** HUD-menyen viser kor ofte HUD-en får nye tal («Oppdatering: 5,0 gonger/s (straum)»), så ein kan sjå om det er nettverket som er tregt.
+- **Retta:** Knappen FULLSKJERM i HUD-menyen gjorde ingenting (same namnefelle som før: `fullscreen` er ein eigenskap på document).
+- **Testa:** HUD med simulert mottakar: 10 oppdateringar/s. Demo utan mottakar: 5/s (før 1/s).
+
 ### PC-prototype v1.6.14 – oppdatering frå menyen også på Windows
 - **Nytt:** Menyval 5 «Hent siste versjon» fungerer no utan git: SNOWMAN lastar ned siste versjon frå GitHub (zip), skriv berre filer som er endra inn i pc-mappa og oppdaterer bibliotek ved behov. Mappene `data` (terreng, kalibrering, kontroll) og `.venv` blir aldri rørte, og gamle prototypar (v1.2–v1.5) blir ikkje lasta ned. Med git (Linux-maskina) blir `git pull` brukt som før.
 - **Testa:** Utpakka Windows-pakke v1.6.10 → menyval 5 → v1.6.13, 9 filer oppdaterte, data-mappa uendra.

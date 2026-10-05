@@ -191,8 +191,9 @@
       <div class="two">
         <button onclick="bright(-0.1)">LYSSTYRKE −</button><button onclick="bright(0.1)">LYSSTYRKE +</button>
       </div>
-      <button onclick="fullscreen()">FULLSKJERM</button>
+      <button onclick="goFullscreen()">FULLSKJERM</button>
       <button onclick="menu(false)">LUKK</button>
+      <p id="rate" style="text-align: center; color: #9ab3c1">Oppdatering: –</p>
       <p>
         Legg skjermen flat på dashbordet under ein HUD-film på frontruta, og vel «Spegla». Svart blir usynleg i refleksen. Bruk
         nattmodus i mørket så nattsynet ikkje blir øydelagt. Trykk på skjermen for å opne denne menyen.
@@ -241,7 +242,8 @@
         persist();
         applySettings();
       }
-      function fullscreen() {
+      // (ikkje kalla fullscreen(): onclick ville då treffe document.fullscreen og ingenting skje)
+      function goFullscreen() {
         document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {});
         menu(false);
       }
@@ -309,7 +311,8 @@
       }
       // Straum frå PC-en: ny verdi med éin gong ny GNSS-posisjon kjem (5 gonger i sekundet), utan ny tilkopling kvar gong.
       // Fell tilbake til spørjing om straumen ikkje fungerer.
-      let es = null,
+      let msgs = 0,
+        es = null,
         lastMsg = 0,
         polling = false;
       function stream() {
@@ -317,6 +320,7 @@
         es = new EventSource("api/hud/stream");
         es.onmessage = (ev) => {
           lastMsg = Date.now();
+          msgs++;
           try {
             show(JSON.parse(ev.data));
           } catch (e) {}
@@ -331,8 +335,14 @@
           lastMsg = Date.now();
         }
       }, 2000);
+      // Kor ofte HUD-en får nye tal (synest i menyen) – 5/s er normalt med RTK-mottakar
+      setInterval(() => {
+        $("rate").textContent = "Oppdatering: " + (msgs / 2).toFixed(1).replace(".", ",") + " gonger/s" + (polling ? " (spørjing)" : " (straum)");
+        msgs = 0;
+      }, 2000);
       async function poll() {
         polling = true;
+        msgs++;
         try {
           show(await (await fetch("api/hud", { cache: "no-store" })).json());
         } catch (e) {

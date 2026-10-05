@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.14"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.15"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -245,6 +245,8 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/api/hud/stream":   # HUD-straum (Server-Sent Events): ny melding med éin gong ny posisjon kjem
             self.send_response(200); self.send_header("Content-Type","text/event-stream")
             self.send_header("Cache-Control","no-cache"); self.send_header("Access-Control-Allow-Origin","*"); self.end_headers()
+            try: self.connection.setsockopt(socket.IPPROTO_TCP,socket.TCP_NODELAY,1)   # send kvar melding med éin gong (ingen Nagle-venting)
+            except OSError: pass
             try:
                 while not STOP.is_set():
                     self.wfile.write(b"data: "+json.dumps(hud_state()).encode()+b"\n\n"); self.wfile.flush()
@@ -375,6 +377,7 @@ class API(http.server.BaseHTTPRequestHandler):
         if self.path=="/api/hud":
             try:
                 d=json.loads(body or b"{}"); d["t"]=time.time(); HUD.clear(); HUD.update(d)
+                with HUD_TICK: HUD_TICK.notify_all()   # demo/preparering frå førarskjermen: send til HUD med éin gong
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
