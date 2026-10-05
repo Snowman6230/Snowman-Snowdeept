@@ -32,7 +32,8 @@ START FRÅ TERMINALEN (Linux)
              snowman test       – test over terrengmodellane dine
              snowman oppdater   – hent siste versjon frå GitHub
   Eller: Super + Space og søk etter «SNOWMAN».
-  Fullskjerm (val 4) avsluttar du med knappen «Avslutt fullskjerm» nede, eller Alt + F4.
+  Fullskjerm: knappen «Fullskjerm» nede slår av og på, i alle visingar (Esc går også ut).
+  Val 4 startar SNOWMAN slik at første trykk på skjermen gir fullskjerm.
 
 KONTROLL (v1.6.7) – Innst. › Kontroll
 - Kontrollmåling: stopp maskina, stikk snøsonda ned under antenna (eller stå på barmark

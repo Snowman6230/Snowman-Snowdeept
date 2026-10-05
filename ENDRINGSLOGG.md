@@ -7,6 +7,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-05
+
+### PC-prototype v1.6.11 – fullskjerm av og på medan SNOWMAN køyrer
+- **Retta:** «Avslutt fullskjerm» på Windows lukka fullskjermvindauget, men det nye vanlege vindauget kom ikkje opp – føraren hamna i terminalvindauget. Årsak: SNOWMAN lukka og starta Edge på nytt.
+- **Endra:** Fullskjerm blir no slått av og på inne i SNOWMAN (nettlesaren sin fullskjerm), utan å lukke eller opne vindauge. Knappen **Fullskjerm / Avslutt fullskjerm** står alltid i verktøylinja og under Innst. › Kart, og verkar i alle visingar (kart, førar, horisont, 3D-terreng, frontrute). Esc går også ut.
+- **Nytt:** Valet blir hugsa. Var SNOWMAN i fullskjerm sist, går han i fullskjerm att ved første trykk på skjermen (nettlesaren tillèt ikkje fullskjerm utan eit trykk). Menyval 4 / `--kiosk` gjer det same.
+- **Fjerna:** Kiosk-oppstart av nettlesaren og `POST /api/kiosk`.
+- **Avgjerd:** Vanleg fullskjerm i staden for kiosk. Føraren kan alltid kome ut med knappen eller Esc, og vindauget blir aldri borte.
+- **Testa:** Ekte Chromium (virtuell skjerm): første trykk → fullskjerm, byte av vising i fullskjerm, Avslutt fullskjerm → vanleg vindauge (same vindauge, ope), Fullskjerm igjen.
+
 ## 2026-10-04
 
 ### PC-prototype v1.6.10 – knapp for å avslutte fullskjerm

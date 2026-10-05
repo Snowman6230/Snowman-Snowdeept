@@ -14,7 +14,7 @@ førarskjermen i nettlesaren. Ctrl + C (eller å lukke vindauget) stoppar alt.
   python start_snowman.py meny            meny (brukt av SNOWMAN.bat på Windows)
   python start_snowman.py oppdater        hent siste versjon frå GitHub (krev git)
   python start_snowman.py versjon         skriv versjonsnummeret
-  --kiosk   fullskjerm (trakkemaskin)   --hud   HUD i eige vindauge   --lan   HUD på mobil
+  --kiosk   fullskjerm ved første trykk (trakkemaskin)   --hud   HUD i eige vindauge   --lan   HUD på mobil
 """
 import argparse, json, os, shutil, signal, socket, subprocess, sys, time, webbrowser
 from pathlib import Path
@@ -22,7 +22,6 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PIDS = HERE / "data" / "run.pids"
 PROFILE = HERE / "data" / "nettlesar"        # eigen nettlesarprofil: eigne innstillingar, og vindauget kan lukkast av SNOWMAN
-KREQ = HERE / "data" / "kiosk-request.txt"   # skriven av tenesta når føraren trykkjer «Avslutt fullskjerm»
 LAUNCHER = HERE / "data" / "launcher.json"
 URL = "http://127.0.0.1:8765"
 WIN = os.name == "nt"
@@ -74,7 +73,8 @@ def find_browser():
 def open_window(browser, url, kiosk=False):
     if browser:
         base = [browser, f"--user-data-dir={PROFILE}", "--no-first-run", "--no-default-browser-check", "--noerrdialogs"]
-        args = base + (["--kiosk", url + "/?kiosk=1", "--edge-kiosk-type=fullscreen", "--disable-infobars"] if kiosk else ["--app=" + url])
+        # Alltid vanleg app-vindauge. Fullskjerm blir slått av/på med knappen i SNOWMAN (?fs=1: fullskjerm ved første trykk).
+        args = base + ["--app=" + url + ("/?fs=1" if kiosk else ""), "--start-maximized"]
         return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     webbrowser.open(url)
     return None
@@ -200,22 +200,13 @@ def main():
         if a.hud:
             open_window(b, URL + "/hud")
         win = open_window(b, URL, kiosk=a.kiosk)
-    KREQ.unlink(missing_ok=True)
     LAUNCHER.write_text(json.dumps({"pid": os.getpid(), "kiosk": bool(a.kiosk), "browser": bool(b)}))
     print(f"SNOWMAN køyrer på {URL} – trykk Ctrl + C her for å stoppe.")
     if a.kiosk:
-        print("Fullskjerm: avslutt med knappen «Avslutt fullskjerm» i SNOWMAN, eller Alt + F4.")
+        print("Fullskjerm: trykk éin gong på skjermen. Knappen «Avslutt fullskjerm» (eller Esc) går ut.")
     try:
         while procs[-1].poll() is None:
             time.sleep(0.5)
-            if KREQ.exists():  # «Avslutt fullskjerm»: lukk fullskjermvindauget og opne SNOWMAN i vanleg vindauge
-                req = KREQ.read_text().strip()
-                KREQ.unlink(missing_ok=True)
-                if req == "window" and b:
-                    close_window(win)
-                    time.sleep(0.5)
-                    win = open_window(b, URL)
-                    print("Fullskjerm avslutta – SNOWMAN er opna i vanleg vindauge.")
     except KeyboardInterrupt:
         pass
     finally:
