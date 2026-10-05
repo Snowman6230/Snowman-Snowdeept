@@ -297,22 +297,52 @@
         $("speed").innerHTML = fmt(h.speed || 0, 1) + "<small>km/t</small>";
         $("course").textContent = (h.heading ?? "--") + "°";
       }
+      function show(h) {
+        let stale = h.age == null || h.age > 5;
+        $("stale").classList.toggle("hide", !stale);
+        $("staleWhy").textContent = h.reason || "Ingen ferske data frå GNSS eller førarskjermen";
+        if (!stale) render(h);
+      }
+      function lost() {
+        $("stale").classList.remove("hide");
+        $("staleWhy").textContent = "Ingen kontakt med SNOWMAN-PC-en – sjekk nettverket";
+      }
+      // Straum frå PC-en: ny verdi med éin gong ny GNSS-posisjon kjem (5 gonger i sekundet), utan ny tilkopling kvar gong.
+      // Fell tilbake til spørjing om straumen ikkje fungerer.
+      let es = null,
+        lastMsg = 0,
+        polling = false;
+      function stream() {
+        if (!window.EventSource) return poll();
+        es = new EventSource("api/hud/stream");
+        es.onmessage = (ev) => {
+          lastMsg = Date.now();
+          try {
+            show(JSON.parse(ev.data));
+          } catch (e) {}
+        };
+        es.onerror = () => lost(); // EventSource koplar til att av seg sjølv
+      }
+      setInterval(() => {
+        // vakthund: ingen melding på 4 s (t.d. mobilen har sove) → kople til på nytt
+        if (es && Date.now() - lastMsg > 4000) {
+          es.close();
+          stream();
+          lastMsg = Date.now();
+        }
+      }, 2000);
       async function poll() {
+        polling = true;
         try {
-          let h = await (await fetch("api/hud", { cache: "no-store" })).json();
-          let stale = h.age == null || h.age > 5;
-          $("stale").classList.toggle("hide", !stale);
-          $("staleWhy").textContent = h.reason || "Ingen ferske data frå GNSS eller førarskjermen";
-          if (!stale) render(h);
+          show(await (await fetch("api/hud", { cache: "no-store" })).json());
         } catch (e) {
-          $("stale").classList.remove("hide");
-          $("staleWhy").textContent = "Ingen kontakt med SNOWMAN-PC-en – sjekk nettverket";
+          lost();
         }
         setTimeout(poll, 300);
       }
       applySettings();
       wake();
-      poll();
+      stream();
     </script>
   </body>
 </html>

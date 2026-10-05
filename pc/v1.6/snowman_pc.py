@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.11"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.12"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -82,9 +82,12 @@ STOP=threading.Event()
 serial_obj=None
 ntrip_sock=None
 
+HUD_TICK=threading.Condition()   # varslar HUD-straumane kvar gong ny GNSS-posisjon kjem
 def update(**kw):
     with LOCK:
         STATE.update(kw); STATE["last_update"]=time.time()
+    if "last_gga" in kw:
+        with HUD_TICK: HUD_TICK.notify_all()
 
 def nmea_coord(v, hemi, is_lat):
     if not v: return None
@@ -239,6 +242,15 @@ class API(http.server.BaseHTTPRequestHandler):
             try: r=TERR.height(float(q["lat"][0]),float(q["lon"][0]))
             except Exception as e: r={"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/hud/stream":   # HUD-straum (Server-Sent Events): ny melding med éin gong ny posisjon kjem
+            self.send_response(200); self.send_header("Content-Type","text/event-stream")
+            self.send_header("Cache-Control","no-cache"); self.send_header("Access-Control-Allow-Origin","*"); self.end_headers()
+            try:
+                while not STOP.is_set():
+                    self.wfile.write(b"data: "+json.dumps(hud_state()).encode()+b"\n\n"); self.wfile.flush()
+                    with HUD_TICK: HUD_TICK.wait(1.0)   # ny GNSS-posisjon (5 Hz), elles kvart sekund
+            except (BrokenPipeError,ConnectionResetError,OSError): pass
+            return
         if u.path=="/api/hud":
             self.headers_ok(); self.wfile.write(json.dumps(hud_state()).encode()); return
         if u.path=="/api/info":
@@ -388,7 +400,7 @@ def lan_ip():
 class HUDOnly(API):
     def do_GET(self):
         u=urllib.parse.urlparse(self.path)
-        if u.path in ("/","/hud","/api/hud"):
+        if u.path in ("/","/hud","/api/hud","/api/hud/stream"):
             if u.path=="/": self.path="/hud"
             return API.do_GET(self)
         self.send_response(403); self.end_headers()

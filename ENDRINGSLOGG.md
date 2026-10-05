@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.12 – raskare HUD på mobil
+- **Endra:** HUD-en hentar ikkje lenger data ved å spørje PC-en kvart 0,3 sekund (ny nettverkstilkopling kvar gong). I staden held han éi tilkopling open, og PC-en sender ny verdi med éin gong ein ny GNSS-posisjon kjem – 5 gonger i sekundet (Server-Sent Events, `GET /api/hud/stream`). Også tilgjengeleg på mobil-porten 8766; alt anna er framleis stengt der.
+- **Nytt:** Vakthund i HUD-en: kjem det ikkje data på 4 sekund (t.d. mobilen har sove), koplar han til på nytt. Fell tilbake til spørjing om nettlesaren ikkje støttar straum.
+- **Testa:** 5–6 meldingar i sekundet på begge portane, data under 0,01 s gamle når dei blir sende. HUD-sida opnar éi straumtilkopling og oppdaterer fart og snødjupne fortløpande.
+- **Kvifor:** Eigaren opplevde at HUD på mobil låg etter førarskjermen.
+
 ### PC-prototype v1.6.11 – fullskjerm av og på medan SNOWMAN køyrer
 - **Retta:** «Avslutt fullskjerm» på Windows lukka fullskjermvindauget, men det nye vanlege vindauget kom ikkje opp – føraren hamna i terminalvindauget. Årsak: SNOWMAN lukka og starta Edge på nytt.
 - **Endra:** Fullskjerm blir no slått av og på inne i SNOWMAN (nettlesaren sin fullskjerm), utan å lukke eller opne vindauge. Knappen **Fullskjerm / Avslutt fullskjerm** står alltid i verktøylinja og under Innst. › Kart, og verkar i alle visingar (kart, førar, horisont, 3D-terreng, frontrute). Esc går også ut.
