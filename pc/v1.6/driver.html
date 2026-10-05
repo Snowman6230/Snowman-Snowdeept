@@ -864,7 +864,8 @@
           ><button id="tabCal" onclick="showTab('cal')">Kalibrering</button
           ><button id="tabTerrain" onclick="showTab('terrain')">Terreng</button
           ><button id="tabCtl" onclick="showTab('ctl')">Kontroll</button
-          ><button id="tabHistory" onclick="showTab('history')">Historikk</button>
+          ><button id="tabHistory" onclick="showTab('history')">Historikk</button
+          ><button id="tabSys" onclick="showTab('sys')">System</button>
         </div>
         <section id="panelMachine" class="panel on">
           <h3>MASKINMÅL</h3>
@@ -1026,6 +1027,21 @@
             <button class="btn" onclick="resetWizard()">AVBRYT</button>
           </div>
         </section>
+        <section id="panelSys" class="panel">
+          <h3>KIOSKMODUS</h3>
+          <div id="sysLauncher" class="history"></div>
+          <button id="sysKiosk" class="btn toggle" onclick="toggleSysKiosk()">START I KIOSKMODUS (AUTOSTART): AV</button>
+          <div class="history">
+            Kioskmodus viser berre SNOWMAN på skjermen – ingen oppgåvelinje eller nettlesarmeny. Knappen nede byter mellom kiosk og vanleg
+            skjerm. Blir kioskvindauget lukka ved eit uhell, kjem det opp att av seg sjølv.
+          </div>
+          <h3>PIN-KODE FOR Å GÅ UT AV KIOSK</h3>
+          <div id="pinState" class="history"></div>
+          <div class="row"><span>Ny PIN-kode (4–8 siffer)</span><input id="pin1" type="password" inputmode="numeric" autocomplete="new-password" /></div>
+          <div class="row"><span>Gjenta PIN-koden</span><input id="pin2" type="password" inputmode="numeric" autocomplete="new-password" /></div>
+          <button class="btn" onclick="savePin()">LAGRE PIN-KODE</button>
+          <button id="pinClear" class="btn hide" onclick="clearPin()">FJERN PIN-KODE</button>
+        </section>
         <section id="panelHistory" class="panel">
           <h3>KØYREHISTORIKK</h3>
           <div class="row">
@@ -1100,7 +1116,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.17";
+      const APP_VERSION = "1.6.18";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1944,11 +1960,30 @@
       document.addEventListener("click", (e) => {
         if (!$("viewMenu").contains(e.target)) $("viewMenu").classList.add("hide");
       });
-      // Fullskjerm: knappen slår fullskjerm av og på i alle visingar, medan SNOWMAN køyrer (Esc går også ut).
-      // Valet blir hugsa: neste gong går SNOWMAN i fullskjerm ved første trykk på skjermen
-      // (nettlesaren tillèt berre fullskjerm etter eit trykk). Menyval 4 / --kiosk gjer det same med ?fs=1.
-      const FS_AUTO = new URLSearchParams(location.search).has("fs");
+      /* ---------- Kioskmodus og fullskjerm ----------
+         Starta med oppstartsprogrammet (SNOWMAN.bat / snowman / autostart): knappen byter mellom KIOSK (berre SNOWMAN
+         på skjermen) og VANLEG SKJERM. Valfri PIN for å gå ut av kiosk (Innst. › System).
+         Utan oppstartsprogrammet: knappen slår nettlesaren sin fullskjerm av og på (Esc går også ut). */
+      const IN_KIOSK = new URLSearchParams(location.search).has("kiosk");
+      let WINSTATE = { launcher: false, mode: IN_KIOSK ? "kiosk" : "window", system: {} };
+      async function loadWindowState() {
+        try {
+          WINSTATE = await api("api/window");
+          if (IN_KIOSK) WINSTATE.mode = "kiosk";
+        } catch (e) {}
+        updateFsButtons();
+        renderSystem();
+        armAutoFullscreen();
+      }
       function updateFsButtons() {
+        if (WINSTATE.launcher) {
+          let k = WINSTATE.mode === "kiosk";
+          $("fsBtn").innerHTML = k ? "<i>⤡</i>Vanleg skjerm" : "<i>⛶</i>Kioskmodus";
+          $("fsBtn").classList.toggle("on", k);
+          $("fsSet").classList.toggle("on", k);
+          $("fsSet").textContent = k ? "KIOSKMODUS: PÅ – TRYKK FOR VANLEG SKJERM" : "KIOSKMODUS: AV – TRYKK FOR KIOSK";
+          return;
+        }
         let fs = !!document.fullscreenElement;
         $("fsBtn").innerHTML = fs ? "<i>⤡</i>Avslutt fullskjerm" : "<i>⛶</i>Fullskjerm";
         $("fsBtn").classList.toggle("on", fs);
@@ -1956,8 +1991,10 @@
         $("fsSet").textContent = "FULLSKJERM: " + (fs ? "PÅ" : "AV");
       }
       document.addEventListener("fullscreenchange", () => {
-        cfg.fullscreen = !!document.fullscreenElement;
-        persistCfg();
+        if (!WINSTATE.launcher) {
+          cfg.fullscreen = !!document.fullscreenElement;
+          persistCfg();
+        }
         updateFsButtons();
         setTimeout(() => map.invalidateSize({ animate: false }), 200);
       });
@@ -1967,17 +2004,89 @@
         el.requestFullscreen({ navigationUI: "hide" }).catch(() => toast("Fullskjerm vart ikkje tillate – prøv F11"));
       }
       function toggleFullscreen() {
+        if (WINSTATE.launcher) return switchWindow(WINSTATE.mode === "kiosk" ? "window" : "kiosk");
         if (document.fullscreenElement) document.exitFullscreen();
         else enterFullscreen();
       }
       function armAutoFullscreen() {
-        if (!(FS_AUTO || cfg.fullscreen) || document.fullscreenElement) return;
+        if (WINSTATE.launcher || !cfg.fullscreen || document.fullscreenElement) return;
         toast("Trykk på skjermen for fullskjerm");
         let go = (e) => {
           document.removeEventListener("pointerdown", go, true);
           if (!document.fullscreenElement && !(e.target.closest && e.target.closest("#fsBtn, #fsSet"))) enterFullscreen();
         };
         document.addEventListener("pointerdown", go, true);
+      }
+      async function pinHash(pin) {
+        let b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("snowman-kiosk:" + pin));
+        return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+      }
+      // Stopp og lagre ei preparering som pågår (før vindauget blir lukka eller SNOWMAN avslutta)
+      function stopAndSavePrep() {
+        if (demo) stopDemo();
+        if (!(preparing && currentSession)) return Promise.resolve();
+        let p = saveCurrentSession(true);
+        preparing = false;
+        stopClock();
+        currentSession = null;
+        return p;
+      }
+      async function switchWindow(target) {
+        if (target === "window" && cfg.kioskPinHash) {
+          let pin = prompt("PIN-kode for å gå ut av kioskmodus:");
+          if (pin === null) return;
+          if ((await pinHash(pin.trim())) !== cfg.kioskPinHash) return toast("Feil PIN-kode");
+        }
+        if (preparing && !confirm("Prepareringa blir stoppa og lagra før skjermen blir bytt. Halde fram?")) return;
+        await Promise.all([stopAndSavePrep(), persistCfg(true)]);
+        try {
+          await api("api/window", { mode: target });
+        } catch (e) {
+          return toast("Kunne ikkje byte: " + e.message);
+        }
+        toast(target === "kiosk" ? "Byter til kioskmodus …" : "Byter til vanleg skjerm …");
+      }
+      /* ---------- Innst. › System ---------- */
+      function renderSystem() {
+        let k = !!(WINSTATE.system && WINSTATE.system.kiosk);
+        $("sysKiosk").classList.toggle("on", k);
+        $("sysKiosk").textContent = "START I KIOSKMODUS (AUTOSTART): " + (k ? "PÅ" : "AV");
+        $("pinState").textContent = cfg.kioskPinHash ? "PIN-kode er sett – trengst for å gå ut av kioskmodus." : "Ingen PIN-kode – alle kan gå ut av kioskmodus.";
+        $("pinClear").classList.toggle("hide", !cfg.kioskPinHash);
+        $("sysLauncher").textContent = WINSTATE.launcher
+          ? "SNOWMAN er starta med oppstartsprogrammet – kiosk og vanleg skjerm kan byttast med knappen nede."
+          : "SNOWMAN er ikkje starta med oppstartsprogrammet – knappen nede slår berre fullskjerm av og på.";
+      }
+      async function toggleSysKiosk() {
+        try {
+          let r = await api("api/system", { kiosk: !(WINSTATE.system && WINSTATE.system.kiosk) });
+          WINSTATE.system = r.system;
+          renderSystem();
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+      async function savePin() {
+        let p1 = $("pin1").value.trim(),
+          p2 = $("pin2").value.trim();
+        if (!/^\d{4,8}$/.test(p1)) return toast("PIN-koden må vere 4–8 siffer");
+        if (p1 !== p2) return toast("PIN-kodane er ikkje like");
+        cfg.kioskPinHash = await pinHash(p1);
+        await persistCfg(true);
+        $("pin1").value = $("pin2").value = "";
+        renderSystem();
+        toast("PIN-kode lagra");
+      }
+      async function clearPin() {
+        if (cfg.kioskPinHash) {
+          let pin = prompt("Skriv noverande PIN-kode for å fjerne han:");
+          if (pin === null) return;
+          if ((await pinHash(pin.trim())) !== cfg.kioskPinHash) return toast("Feil PIN-kode");
+        }
+        delete cfg.kioskPinHash;
+        await persistCfg(true);
+        renderSystem();
+        toast("PIN-kode fjerna");
       }
       function zoomBtn(d) {
         if (VIEWS[viewMode()].gl && T3D.ready()) T3D.zoom(d);
@@ -2116,7 +2225,7 @@
         toast.t = setTimeout(() => ($("toast").style.display = "none"), 2200);
       }
       function showTab(n) {
-        let a = { machine: "Machine", snow: "Snow", target: "Target", map: "Map", cal: "Cal", terrain: "Terrain", ctl: "Ctl", history: "History" };
+        let a = { machine: "Machine", snow: "Snow", target: "Target", map: "Map", cal: "Cal", terrain: "Terrain", ctl: "Ctl", history: "History", sys: "Sys" };
         Object.values(a).forEach((x) => {
           $("panel" + x).classList.remove("on");
           $("tab" + x).classList.remove("on");
@@ -2151,7 +2260,7 @@
         applyView();
         applyBg();
         updateFsButtons();
-        armAutoFullscreen();
+        loadWindowState();
         $("estSet").classList.toggle("on", cfg.estOn !== false);
         $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn !== false ? "PÅ" : "AV");
         loadTerrain();
@@ -2629,16 +2738,7 @@
       async function quitSnowman() {
         let msg = "Avslutte SNOWMAN?\n\n" + (preparing ? "Prepareringa som pågår blir stoppa og lagra. " : "") + "Alle innstillingar er lagra.";
         if (!confirm(msg)) return;
-        if (demo) stopDemo();
-        let saves = [];
-        if (preparing && currentSession) {
-          saves.push(saveCurrentSession(true)); // vent til økta er lagra i tenesta før vi stoppar
-          preparing = false;
-          stopClock();
-          currentSession = null;
-        }
-        saves.push(persistCfg(true));
-        await Promise.all(saves);
+        await Promise.all([stopAndSavePrep(), persistCfg(true)]); // vent til økta og innstillingane er lagra
         let ok = false;
         try {
           await api("api/shutdown", {});

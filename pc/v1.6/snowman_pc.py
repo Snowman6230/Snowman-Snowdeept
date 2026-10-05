@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.17"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.18"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -90,6 +90,9 @@ def write_atomic(path,text):
     with open(tmp,"w",encoding="utf-8") as f:
         f.write(text); f.flush(); os.fsync(f.fileno())
     os.replace(tmp,path)
+def system_cfg():
+    try: return json.loads((DATA/"system.json").read_text("utf-8"))
+    except Exception: return {}
 SERVER=[None]   # hovudtenesta, så «Avslutt SNOWMAN» kan stoppe ho
 HUD_TICK=threading.Condition()   # varslar HUD-straumane kvar gong ny GNSS-posisjon kjem
 def update(**kw):
@@ -233,6 +236,10 @@ class API(http.server.BaseHTTPRequestHandler):
             self.headers_ok(); self.wfile.write(json.dumps({"available":T.AVAILABLE,"error":T.IMPORT_ERROR,
                 "types":T.TYPES,"layers":TERR.listing() if T.AVAILABLE else [],
                 "calibration":{k:CFG[k] for k in ("antZ","zOff","heightMode","geoidN","calibrated")}}).encode()); return
+        if u.path=="/api/window":   # kiosk/vanleg: styrt av oppstartsprogrammet om det køyrer
+            try: st=json.loads((DATA/"launcher.json").read_text())
+            except Exception: st={}
+            self.headers_ok(); self.wfile.write(json.dumps({"launcher":bool(st.get("browser")),"mode":st.get("mode","window"),"system":system_cfg()}).encode()); return
         if u.path=="/api/ui-config":
             try: d=json.loads(UI_CFG.read_text("utf-8"))
             except Exception: d={}
@@ -376,6 +383,26 @@ class API(http.server.BaseHTTPRequestHandler):
                 else:
                     TERR.delete(d["id"]); r={"ok":True}
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path=="/api/window":   # «Vanleg skjerm» / «Kioskmodus»: oppstartsprogrammet byter vindauge
+            try:
+                m=json.loads(body or b"{}").get("mode")
+                if m not in ("kiosk","window"): raise ValueError("Ukjend modus")
+                if not (DATA/"launcher.json").exists(): raise ValueError("SNOWMAN er ikkje starta med oppstartsprogrammet")
+                (DATA/"window-request.txt").write_text(m)
+                self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path=="/api/system":   # Innst. › System: kiosk ved oppstart (autostart kjem i steg 3)
+            try:
+                d=json.loads(body or b"{}"); cur=system_cfg()
+                for k in ("kiosk",):
+                    if k in d: cur[k]=bool(d[k])
+                write_atomic(DATA/"system.json",json.dumps(cur,indent=1))
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"system":cur}).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return

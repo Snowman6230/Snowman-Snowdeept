@@ -14,15 +14,23 @@ førarskjermen i nettlesaren. Ctrl + C (eller å lukke vindauget) stoppar alt.
   python start_snowman.py meny            meny (brukt av SNOWMAN.bat på Windows)
   python start_snowman.py oppdater        hent siste versjon frå GitHub (krev git)
   python start_snowman.py versjon         skriv versjonsnummeret
-  --kiosk   fullskjerm ved første trykk (trakkemaskin)   --hud   HUD i eige vindauge   --lan   HUD på mobil
+  --kiosk   kioskmodus (berre SNOWMAN på skjermen)      --hud   HUD i eige vindauge   --lan   HUD på mobil
+  --auto    bruk innstillinga i SNOWMAN (Innst. › System) for kiosk – brukt ved autostart
+
+Kioskmodus: knappen «Vanleg skjerm» i SNOWMAN lukkar kioskvindauget og opnar vanleg vindauge,
+«Kioskmodus» går tilbake. Lukkar nokon kioskvindauget (t.d. Alt + F4), blir det opna att (vakthund).
 """
 import argparse, json, os, shutil, signal, socket, subprocess, sys, time, webbrowser
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PIDS = HERE / "data" / "run.pids"
-PROFILE = HERE / "data" / "nettlesar"        # eigen nettlesarprofil: eigne innstillingar, og vindauget kan lukkast av SNOWMAN
+# Eigne nettlesarprofilar for kiosk og vanleg vindauge: kvart vindauge blir sin eigen prosess som SNOWMAN kan lukke og
+# opne att. (Innstillingane i førarskjermen ligg i tenesta, så dei er like i begge.)
+PROFILE = {"kiosk": HERE / "data" / "nettlesar-kiosk", "window": HERE / "data" / "nettlesar"}
 LAUNCHER = HERE / "data" / "launcher.json"
+WREQ = HERE / "data" / "window-request.txt"   # skriven av tenesta når føraren byter mellom kiosk og vanleg skjerm
+SYSTEM = HERE / "data" / "system.json"        # Innst. › System: kiosk ved oppstart, autostart
 URL = "http://127.0.0.1:8765"
 WIN = os.name == "nt"
 
@@ -38,6 +46,8 @@ def stopp(quiet=False):
     n = 0
     try:
         for pid in json.loads(PIDS.read_text()):
+            if pid == os.getpid():
+                continue
             try:
                 if WIN:
                     subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
@@ -71,27 +81,59 @@ def find_browser():
 
 
 def open_window(browser, url, kiosk=False):
+    """Opne førarskjermen: kiosk (heile skjermen, ingen nettlesarmeny) eller vanleg app-vindauge."""
     if browser:
-        base = [browser, f"--user-data-dir={PROFILE}", "--no-first-run", "--no-default-browser-check", "--noerrdialogs"]
-        # Alltid vanleg app-vindauge. Fullskjerm blir slått av/på med knappen i SNOWMAN (?fs=1: fullskjerm ved første trykk).
-        args = base + ["--app=" + url + ("/?fs=1" if kiosk else ""), "--start-maximized"]
+        mode = "kiosk" if kiosk else "window"
+        base = [browser, f"--user-data-dir={PROFILE[mode]}", "--no-first-run", "--no-default-browser-check", "--noerrdialogs",
+                "--disable-session-crashed-bubble", "--hide-crash-restore-bubble"]
+        if kiosk:
+            args = base + ["--kiosk", url + "/?kiosk=1", "--edge-kiosk-type=fullscreen", "--disable-infobars", "--disable-pinch"]
+        else:
+            args = base + ["--app=" + url, "--start-maximized"]
         return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     webbrowser.open(url)
     return None
 
 
+def open_checked(browser, url, kiosk):
+    """Opne vindauge og sjekk at det faktisk kom opp (prosessen lever etter 3 s). Prøv ein gong til om ikkje."""
+    for attempt in range(2):
+        p = open_window(browser, url, kiosk)
+        if p is None:
+            return None
+        for _ in range(30):
+            if p.poll() is not None:
+                break
+            time.sleep(0.1)
+        if p.poll() is None:
+            return p
+        time.sleep(1.5)  # profilen var truleg framleis i bruk av eit vindauge som held på å lukke seg
+    print("Fekk ikkje opna SNOWMAN-vindauget – opnar i vanleg nettlesar.")
+    webbrowser.open(url)
+    return None
+
+
 def close_window(p):
-    """Lukk eit nettlesarvindauge som SNOWMAN opna (heile prosesstreet på Windows)."""
+    """Lukk eit nettlesarvindauge som SNOWMAN opna (heile prosesstreet på Windows) og vent til det er heilt borte."""
     if p is None or p.poll() is not None:
         return
     if WIN:
         subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True)
     else:
         p.terminate()
-        try:
-            p.wait(5)
-        except subprocess.TimeoutExpired:
-            p.kill()
+    try:
+        p.wait(8)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.wait(3)
+    time.sleep(1.0)  # la nettlesaren sleppe profilen før eit nytt vindauge blir opna
+
+
+def system_cfg():
+    try:
+        return json.loads(SYSTEM.read_text("utf-8"))
+    except Exception:
+        return {}
 
 
 def version():
@@ -159,7 +201,7 @@ def meny():
     print("  1  Start (Leica-mottakar)")
     print("  2  Demo – simulert mottakar")
     print("  3  Test over terrengmodellane dine")
-    print("  4  Start i fullskjerm (trakkemaskin)")
+    print("  4  Start i kioskmodus (trakkemaskin)")
     print("  5  Hent siste versjon")
     print("  6  Stopp SNOWMAN")
     print("  0  Avslutt")
@@ -181,7 +223,8 @@ def meny():
 def main():
     ap = argparse.ArgumentParser(description="Start SNOWMAN")
     ap.add_argument("mode", nargs="?", default="", help="sim | simterreng | simanlegg | stopp | seriellport (COM3, /dev/ttyUSB0)")
-    ap.add_argument("--kiosk", action="store_true", help="fullskjerm (trakkemaskin)")
+    ap.add_argument("--kiosk", action="store_true", help="kioskmodus (trakkemaskin)")
+    ap.add_argument("--auto", action="store_true", help="kiosk eller vanleg etter Innst. › System (autostart)")
     ap.add_argument("--hud", action="store_true", help="opne HUD i eige vindauge")
     ap.add_argument("--lan", action="store_true", help="HUD på mobil i same nett (port 8766)")
     ap.add_argument("--no-browser", action="store_true", help="ikkje opne nettlesaren")
@@ -227,29 +270,74 @@ def main():
         extra.append("--lan")
     if port:
         extra += ["--serial", port]
-    procs.append(subprocess.Popen([py, str(HERE / "snowman_pc.py")] + extra, cwd=HERE))
-    PIDS.write_text(json.dumps([p.pid for p in procs]))
-    for _ in range(50):  # vent til tenesta svarar
+    srv_args = [py, str(HERE / "snowman_pc.py")] + extra
+    procs.append(subprocess.Popen(srv_args, cwd=HERE))
+
+    def on_term(*_):  # «stopp» frå eit anna vindauge: rydd opp som ved Ctrl + C
+        raise KeyboardInterrupt
+    try:
+        signal.signal(signal.SIGTERM, on_term)
+    except (ValueError, AttributeError):
+        pass
+    PIDS.write_text(json.dumps([os.getpid()] + [p.pid for p in procs]))  # oppstartsprogrammet først
+    for _ in range(80):  # vent til tenesta svarar
         if port_busy(8765):
             break
         time.sleep(0.1)
+    kiosk = a.kiosk or (a.auto and bool(system_cfg().get("kiosk")))
     b, win = None, None
+    WREQ.unlink(missing_ok=True)
+
+    def write_state():
+        LAUNCHER.write_text(json.dumps({"pid": os.getpid(), "mode": "kiosk" if kiosk else "window", "browser": bool(b)}))
+
     if not a.no_browser:
         b = find_browser()
+        write_state()  # før vindauget opnar: førarskjermen spør straks om kiosk er mogleg
         if a.hud:
             open_window(b, URL + "/hud")
-        win = open_window(b, URL, kiosk=a.kiosk)
-    LAUNCHER.write_text(json.dumps({"pid": os.getpid(), "kiosk": bool(a.kiosk), "browser": bool(b)}))
+        win = open_checked(b, URL, kiosk)
+    write_state()
     print(f"SNOWMAN køyrer på {URL} – trykk Ctrl + C her for å stoppe.")
-    if a.kiosk:
-        print("Fullskjerm: trykk éin gong på skjermen. Knappen «Avslutt fullskjerm» (eller Esc) går ut.")
+    if kiosk:
+        print("Kioskmodus: knappen «Vanleg skjerm» i SNOWMAN går til vanleg vindauge.")
+    restarts = []
     try:
-        while procs[-1].poll() is None:
+        while True:
             time.sleep(0.5)
+            srv = procs[-1]
+            if srv.poll() is not None:
+                # Tenesta stoppa. Avslutt SNOWMAN (kode 0) → ferdig. Krasj → start på nytt (vakthund, maks 5 gonger på 2 min).
+                if srv.returncode == 0:
+                    break
+                restarts = [t for t in restarts if time.time() - t < 120] + [time.time()]
+                if len(restarts) > 5:
+                    print("SNOWMAN-tenesta krasjar gong på gong – stoppar. Sjå meldingane over.")
+                    break
+                print("SNOWMAN-tenesta stoppa uventa – startar på nytt …")
+                procs[-1] = subprocess.Popen(srv_args, cwd=HERE)
+                PIDS.write_text(json.dumps([os.getpid()] + [p.pid for p in procs]))
+                continue
+            if WREQ.exists():  # «Vanleg skjerm» / «Kioskmodus» frå førarskjermen
+                req = WREQ.read_text().strip()
+                WREQ.unlink(missing_ok=True)
+                want = req == "kiosk"
+                if b and want != kiosk:
+                    close_window(win)
+                    kiosk = want
+                    write_state()
+                    win = open_checked(b, URL, kiosk)
+                    print("Byta til " + ("kioskmodus." if kiosk else "vanleg skjerm."))
+                continue
+            if kiosk and b and win is not None and win.poll() is not None:
+                print("Kioskvindauget vart lukka – opnar det att (vakthund).")
+                time.sleep(1.5)
+                win = open_checked(b, URL, True)
     except KeyboardInterrupt:
         pass
     finally:
         LAUNCHER.unlink(missing_ok=True)
+        WREQ.unlink(missing_ok=True)
         close_window(win)  # SNOWMAN-vindauget blir lukka saman med tenesta
         for p in procs:
             try:

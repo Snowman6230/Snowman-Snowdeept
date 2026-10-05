@@ -52,7 +52,7 @@ kunne gå ut til vanleg skjerm og tilbake til kiosk.
 | Steg | Innhald | Status |
 |---|---|---|
 | 1 | Førarinnstillingane flytta til tenesta (`data/ui-config.json`) | v1.6.17 |
-| 2 | Kioskmodus med byte begge vegar, valfri PIN, vakthund | |
+| 2 | Kioskmodus med byte begge vegar, valfri PIN, vakthund | v1.6.18 |
 | 3 | Installasjon: Kontor-PC / Maskin-PC, autostart, ingen dvale (Windows og Linux) | |
 | 4 | Innst. › System, oppdatering frå skjermen, tryggare lagring | |
 

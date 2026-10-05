@@ -14,13 +14,14 @@ Dobbeltklikk SNOWMAN på skrivebordet (eller SNOWMAN.bat). Då kjem ein meny:
   1  Start (Leica-mottakar)
   2  Demo – simulert mottakar
   3  Test over terrengmodellane dine
-  4  Start i fullskjerm (trakkemaskin)  – trykk éin gong på skjermen for fullskjerm
+  4  Start i kioskmodus (trakkemaskin)  – berre SNOWMAN på skjermen
   5  Hent siste versjon
   6  Stopp SNOWMAN
 Førarskjermen opnar seg i Edge (eller Chrome) som eit eige vindauge.
 Avslutt SNOWMAN med knappen «⏻ AVSLUTT SNOWMAN» øvst i Innstillingar – då blir alt lagra.
 (Ctrl + C i det svarte vindauget stoppar også.)
-FULLSKJERM: knappen «Fullskjerm» nede slår fullskjerm av og på, i alle visingar. Esc går også ut.
+KIOSKMODUS: knappen «Vanleg skjerm» nede går ut av kiosk, «Kioskmodus» går tilbake.
+PIN-kode for å gå ut av kiosk kan setjast under Innst. › System.
 
 LEICA-MOTTAKAR
 Kople mottakaren til med USB-RS232-kabel. Sjå kva COM-port han får i Einingshandsaming

@@ -9,6 +9,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.18 – kioskmodus med byte begge vegar, PIN og vakthund (kiosk, steg 2)
+- **Nytt:** Kioskmodus: berre SNOWMAN på skjermen (Edge/Chromium `--kiosk`). Knappen nede heiter **«Vanleg skjerm»** i kiosk og **«Kioskmodus»** i vanleg vindauge. Oppstartsprogrammet lukkar det eine vindauget, ventar til det er heilt lukka, og opnar det andre. Kontrollerer at vindauget kom opp, og prøver ein gong til om ikkje.
+- **Nytt:** Eigne nettlesarprofilar for kiosk og vanleg vindauge (`data/nettlesar-kiosk`, `data/nettlesar`), så det nye vindauget alltid blir ein eigen prosess. Innstillingane er like i begge (ligg i tenesta sidan v1.6.17).
+- **Nytt:** Valfri **PIN-kode** for å gå ut av kiosk (Innst. › System). 4–8 siffer, lagra som SHA-256-hash. Av når SNOWMAN blir levert.
+- **Nytt:** Fana **System** i Innstillingar: PIN-kode og «Start i kioskmodus (autostart)» (`data/system.json`, brukt av `--auto`).
+- **Nytt:** Vakthund i oppstartsprogrammet: blir kioskvindauget lukka (t.d. Alt + F4), kjem det opp att etter 1,5 s. Krasjar tenesta, blir ho starta på nytt (maks 5 gonger på 2 min). «Avslutt SNOWMAN» stoppar alt som før.
+- **Endra:** Ei preparering som pågår, blir stoppa og lagra før skjermen blir bytt (med spørsmål). Utan oppstartsprogrammet slår knappen nettlesaren sin fullskjerm av/på som før.
+- **Endra:** `stopp` (meny, `snowman stopp`) stoppar oppstartsprogrammet først, så vakthunden ikkje startar tenesta på nytt.
+- **Endra:** Menyval 4 heiter «Start i kioskmodus».
+- **Testa:** Ekte Chromium (virtuell skjerm): kiosk → feil PIN avvist → rett PIN → vanleg skjerm → kioskmodus att; kioskvindauget drepe → opna att; tenesta drepen → starta att; stopp → alle prosessar borte.
+
 ### PC-prototype v1.6.17 – førarinnstillingane ligg i SNOWMAN-tenesta (kiosk, steg 1)
 - **Endra:** Innstillingane i førarskjermen (perspektiv, bakgrunn, maskinmål, kartkjelde, snøintervall osv.) blir lagra i tenesta (`data/ui-config.json`) i staden for berre i nettlesaren. Same innstillingar i kioskvindauge, vanleg vindauge og alle nettlesarprofilar. Nettlesaren er reserve når tenesta manglar. Første gong blir innstillingane frå nettlesaren sende til tenesta.
 - **Nytt:** `GET/POST /api/ui-config`, og `write_atomic()` i tenesta: skriv til mellombels fil og byter ut, så straumbrot aldri gir halvskrivne filer.

@@ -22,7 +22,8 @@ VER=$(sed -n 's/^VERSION="\([^"]*\)".*/v\1/p' "$APP/snowman_pc.py" 2>/dev/null)
 [ -n "$VER" ] || VER=$(basename "$APP")
 
 stopp() {
-  PIDS=$(ps -eo pid,args | awk '/snowman_pc\.py|simuler-leica\.py/ && !/awk/ {print $1}')
+  # oppstartsprogrammet først (det ryddar sjølv), så tenesta og simulatoren
+  PIDS=$(ps -eo pid,args | awk '/start_snowman\.py|snowman_pc\.py|simuler-leica\.py/ && !/awk/ && !/ stopp/ {print $1}')
   if [ -n "$PIDS" ]; then
     kill $PIDS 2>/dev/null
     sleep 1

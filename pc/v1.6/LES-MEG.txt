@@ -33,8 +33,8 @@ START FRÅ TERMINALEN (Linux)
              snowman oppdater   – hent siste versjon frå GitHub
   Eller: Super + Space og søk etter «SNOWMAN».
   Avslutt med «⏻ AVSLUTT SNOWMAN» øvst i Innstillingar – då blir alt lagra.
-  Fullskjerm: knappen «Fullskjerm» nede slår av og på, i alle visingar (Esc går også ut).
-  Val 4 startar SNOWMAN slik at første trykk på skjermen gir fullskjerm.
+  Kioskmodus (val 4): berre SNOWMAN på skjermen. Knappen «Vanleg skjerm» nede går ut,
+  «Kioskmodus» går tilbake. PIN-kode for å gå ut kan setjast under Innst. › System.
 
 KONTROLL (v1.6.7) – Innst. › Kontroll
 - Kontrollmåling: stopp maskina, stikk snøsonda ned under antenna (eller stå på barmark
