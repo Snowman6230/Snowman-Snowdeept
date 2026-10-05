@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### Dokumentasjon – vegen vidare
+- **Nytt:** `docs/VEGEN-VIDARE.md` – moglege framtidige løysingar: maskingeometri (snødjupne ved fres og skjer ut frå antenneplassering og mål), IMU og to antenner (rygging, bratt terreng), følar for skjerhøgd, anleggspakke, opplasting av fleire terrengfiler, trasear og anleggsobjekt, fleire maskiner.
+- **Avgjerd (eigar):** Maskingeometri for fres og skjer blir ikkje laga no, men står som framtidig løysing. Antenna skal sitje midt på taket mellom førar og passasjer, om ho ikkje er i vegen for vinsjen.
+
 ### PC-prototype v1.6.21 – feltlogg for prøving i maskina
 - **Nytt:** `feltlogg.py` – lagrar alt mottakaren sender (alle NMEA-linjer, med PC-tid) og hendingar (mottakar/NTRIP tilkopla, feil) i `data/logg/<namn>.nmea`, og éi CSV-linje per posisjon med det SNOWMAN rekna ut: fix, satellittar, HDOP, posisjon, høgd, geoidehøgd, terrenghøgd og lag, snødjupne (rå og vist), status, fart, kurs, antennehøgd og høgdeoffset.
 - **Nytt:** Innst. › System › FELTLOGG: start/stopp, «Logg alltid når SNOWMAN startar», liste over loggar med **Last ned (zip)**, og slett alle. Loggen inneheld ingen passord. Mappa blir halden under 500 MB (eldste loggar blir sletta).

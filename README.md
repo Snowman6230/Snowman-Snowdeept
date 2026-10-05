@@ -19,7 +19,7 @@ Førar- og snødjupnesystem for trakkemaskiner (RTK-GNSS + LiDAR-terrengmodell).
 | `ntrip-service/v1.1/` | SNOWMAN NTRIP Service v1.1 – Python-bru mellom COM/Leica og CPOS |
 | `worker.js` | Cloudflare Worker – terrengproxy mot Kartverket (eldre test) |
 
-Sjå [ENDRINGSLOGG.md](ENDRINGSLOGG.md) for alle endringar og avgjerder, og [docs/TERRAIN-ENGINE.md](docs/TERRAIN-ENGINE.md) for spesifikasjonen av Terrain Engine.
+Sjå [docs/VEGEN-VIDARE.md](docs/VEGEN-VIDARE.md) for moglege framtidige løysingar, [ENDRINGSLOGG.md](ENDRINGSLOGG.md) for alle endringar og avgjerder, og [docs/TERRAIN-ENGINE.md](docs/TERRAIN-ENGINE.md) for spesifikasjonen av Terrain Engine.
 
 ## Viktig
 

@@ -117,4 +117,4 @@ Trasear og objekt blir lagra i anleggsprofilen og følgjer med til alle maskiner
 | Neste | Kartverket DTM 1 m for Fjellsætra. Test av UTM 32/33 og NN2000 |
 | **v1.7** | Anleggspakke, LAS/LAZ- og XYZ-import |
 | **v1.8** | Trasear og anleggsobjekt (registrering, dekningsgrad, varsel, rapport per trasé) |
-| Seinare | Målflate og snøflate, IMU (pitch/roll) |
+| Seinare | Sjå `docs/VEGEN-VIDARE.md`: maskingeometri (fres/skjer), IMU, to antenner, målflate og snøflate |
