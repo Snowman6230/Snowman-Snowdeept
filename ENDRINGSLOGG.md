@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.17 – førarinnstillingane ligg i SNOWMAN-tenesta (kiosk, steg 1)
+- **Endra:** Innstillingane i førarskjermen (perspektiv, bakgrunn, maskinmål, kartkjelde, snøintervall osv.) blir lagra i tenesta (`data/ui-config.json`) i staden for berre i nettlesaren. Same innstillingar i kioskvindauge, vanleg vindauge og alle nettlesarprofilar. Nettlesaren er reserve når tenesta manglar. Første gong blir innstillingane frå nettlesaren sende til tenesta.
+- **Nytt:** `GET/POST /api/ui-config`, og `write_atomic()` i tenesta: skriv til mellombels fil og byter ut, så straumbrot aldri gir halvskrivne filer.
+- **Nytt:** `docs/KIOSKMODUS.md` – analyse og plan for kioskmodus, autostart og installasjon som Maskin-PC. Avgjerder: valfri PIN for å gå ut av kiosk; automatisk innlogging blir ikkje sett opp automatisk.
+- **Testa:** Innstillingar endra i éin nettlesarprofil blir viste i ein annan profil.
+
 ### PC-prototype v1.6.16 – «Avslutt SNOWMAN» i skjermbiletet
 - **Nytt:** Knappen **⏻ AVSLUTT SNOWMAN** øvst i Innstillingar. Etter stadfesting: pågåande preparering blir stoppa og lagra (SNOWMAN ventar til økta er lagra i tenesta), innstillingane blir lagra, tenesta stoppar, simulatoren og vindauget blir lukka. Står vindauget att (t.d. starta utan oppstartsprogrammet), viser det «SNOWMAN er avslutta. Alt er lagra.»
 - **Nytt:** `POST /api/shutdown` (berre på denne PC-en, ikkje på mobil-porten). Tenesta lagrar innstillingane og frigjer COM-porten til Leica når ho stoppar.

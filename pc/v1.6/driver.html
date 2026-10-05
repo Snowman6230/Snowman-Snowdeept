@@ -1100,7 +1100,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.16";
+      const APP_VERSION = "1.6.17";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1166,6 +1166,20 @@
           .map((k) => localStorage.getItem(k))
           .find(Boolean);
         if (old) Object.assign(cfg, JSON.parse(old));
+      } catch (e) {}
+      // Innstillingane ligg i SNOWMAN-tenesta (data/ui-config.json), så dei er like i kiosk og vanleg vindauge,
+      // og på alle nettlesarprofilar. Nettlesaren er berre reserve når tenesta manglar.
+      let serverCfg = false;
+      try {
+        let x = new XMLHttpRequest();
+        x.open("GET", "api/ui-config", false); // synkront: innstillingane må vere klare før kartet blir laga
+        x.send();
+        if (x.status === 200) {
+          let d = JSON.parse(x.responseText || "{}");
+          serverCfg = true;
+          if (Object.keys(d).length) Object.assign(cfg, d);
+          else setTimeout(() => persistCfg(), 0); // første gong: send innstillingane frå nettlesaren til tenesta
+        }
       } catch (e) {}
       const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([62.39, 6.58], 19);
       /* ---------- Kartkjelder ----------
@@ -2147,10 +2161,17 @@
         refreshHistory();
         setFixBox();
       }
-      function persistCfg() {
+      let cfgTimer = null;
+      function persistCfg(now) {
         try {
           localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
         } catch (e) {}
+        if (!serverCfg) return Promise.resolve();
+        clearTimeout(cfgTimer);
+        let send = () => fetch("api/ui-config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg), keepalive: true }).catch(() => {});
+        if (now) return send(); // t.d. før SNOWMAN blir avslutta eller byter vindauge
+        cfgTimer = setTimeout(send, 300);
+        return Promise.resolve();
       }
       function save() {
         NUM.forEach((x) => {
@@ -2616,7 +2637,7 @@
           stopClock();
           currentSession = null;
         }
-        persistCfg();
+        saves.push(persistCfg(true));
         await Promise.all(saves);
         let ok = false;
         try {
