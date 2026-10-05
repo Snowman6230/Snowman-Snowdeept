@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.22"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.23"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -27,6 +27,11 @@ import kontroll as K
 import feltlogg as F
 LOG=F.FeltLogg(DATA/"logg")   # feltlogg: alt frå mottakaren + det SNOWMAN rekna ut (Innst. › System)
 KON=K.Kontroll(DATA/"kontroll.json",TERR if T.AVAILABLE else None,T.utm_inverse)
+try:
+    import trasear as TR   # trasear (yttergrenser), forbodne område og prosent preparert – krev numpy som Terrain Engine
+    TRA=TR.Trasear(DATA/"trasear.json",SESS)
+except ImportError as e:
+    TR=TRA=None; TRA_ERR=str(e)
 SIM_FASIT=DATA/"sim-fasit.json"   # skriven av simuler-leica.py: simulert snødjupne der maskina står (berre test)
 def sim_truth():
     """Fasit frå simulatoren, berre når mottakaren er simulert og fila er fersk."""
@@ -270,6 +275,17 @@ class API(http.server.BaseHTTPRequestHandler):
             r=KON.listing(CFG,STATE); r.update(ok=True,simTruth=sim_truth(),fix=STATE.get("fix"),depth=STATE.get("depth"),
                 raw=(STATE.get("depth_detail") or {}).get("raw"),depth_status=STATE.get("depth_status"),zOff=CFG["zOff"],calibrated=CFG["calibrated"])
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path in ("/api/trasear","/api/trasear/status"):
+            try:
+                if TRA is None: raise RuntimeError("Trasear krev numpy: "+TRA_ERR)
+                if u.path=="/api/trasear": r={"ok":True,"trasear":TRA.listing(),"levels":TR.LEVELS,"kinds":TR.KINDS,"dayStartHour":TR.DAY_START_HOUR}
+                else:
+                    q=urllib.parse.parse_qs(u.query)
+                    since=TR.prep_day_start(date=q["date"][0]) if q.get("date") else (float(q["since"][0])/1000 if q.get("since") else None)
+                    until=since+86400 if q.get("date") else None
+                    r=TRA.status(since,until); r["ok"]=True
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/terrain/patch":   # terrengutsnitt rundt maskina til 3D-visinga
             q=urllib.parse.parse_qs(u.query)
             try:
@@ -372,6 +388,23 @@ class API(http.server.BaseHTTPRequestHandler):
                 SESS.mkdir(parents=True,exist_ok=True)
                 tmp=SESS/f"{sid}.tmp"; tmp.write_text(json.dumps(d),"utf-8"); tmp.replace(SESS/f"{sid}.json")
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path.startswith("/api/trasear/"):
+            try:
+                if TRA is None: raise RuntimeError("Trasear krev numpy: "+TRA_ERR)
+                d=json.loads(body or b"{}"); a=self.path[13:]
+                if a=="save": r={"ok":True,"trase":TRA.save(d)}
+                elif a=="delete": TRA.delete(d["id"]); r={"ok":True}
+                elif a=="from-terrain":   # yttergrensa til eit terrenglag – blir ikkje lagra før føraren har sett på ho
+                    if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
+                    m=TERR.layers.get(d.get("layer"))
+                    if not m: raise ValueError("Fann ikkje terrenglaget.")
+                    poly=TR.outline_from_layer(TERR._grid(m["id"]),m,T.utm_inverse,float(d.get("tol",2.0)))
+                    r={"ok":True,"poly":poly,"area":round(TR.poly_area_m2(poly)),"name":m["name"]}
+                else: raise ValueError("Ukjend trasé-handling")
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return

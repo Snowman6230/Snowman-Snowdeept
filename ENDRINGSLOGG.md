@@ -9,6 +9,21 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.23 – trasear (yttergrense for preparering) og forbodne område
+- **Nytt:** Innst. › **Trasear**. Kvar trasé er eit omriss med namn, vanskegrad/farge (grøn, blå, raud, svart, langrenn, anna) og valfri måldjupne. **Forbodne område** (veg, bygg, bekk, parkering) blir lagra på same måte.
+- **Nytt:** Tre måtar å lage omrisset på:
+  - **Teikne på kartet:** trykk for kvart hjørne, dra hjørna for å flytte, trykk på eit hjørne for å fjerne det, ANGRE / FERDIG / AVBRYT.
+  - **Hente frå terrengmodellen:** SNOWMAN finn yttergrensa av cellene med høgd i laget (største samanhengande område, forenkla til få hjørne). Føraren justerer før lagring. Testa på Familietrekk (Topocad): 11 hjørne, 35,2 daa, 96 % av modellen innanfor.
+  - **Endre** eit lagra omriss: nye hjørne blir sette inn på næraste kant.
+- **Nytt:** Prosent preparert per trasé, rekna i SNOWMAN-tenesta frå øktene: kvar strekning maskina har køyrt med prep på, med fresbreidda, blir merkt i eit rutenett (1 m) over traseen. Hopp over 30 m eller pausar over 60 s blir ikkje rekna som køyrt. Viser òg sist preparert og snitt/minste målte snødjupne i traseen.
+- **Nytt:** Traseane blir viste på kartet med namn og prosent (namnet står rett opp sjølv når kartet er snudd). Øvst i tal-kolonnen til venstre står gjeldande trasé og prosent.
+- **Nytt:** Varsel under preparering: **UTANFOR TRASÉ**, **KANTEN AV TRASEEN** (fresen når over kanten), og raudt blinkande **FORBODE OMRÅDE** / **NÆR FORBODE OMRÅDE**.
+- **Nytt:** `trasear.py`, `data/trasear.json`, `GET /api/trasear`, `GET /api/trasear/status` (`?date=ÅÅÅÅ-MM-DD` for eit anna døgn), `POST /api/trasear/save`, `/delete`, `/from-terrain`.
+- **Avgjerd:** **Prepareringsdøgnet går frå kl. 12 til kl. 12**, slik at ei natt med preparering (t.d. 17–03) blir rekna som éin dag.
+- **Avgjerd:** Teikning er berre mogleg når prep er stoppa, og skjer alltid med kartet ovanfrå og nord opp (elles treffer trykka feil stad). Visinga blir sett tilbake etterpå.
+- **Avgjerd:** Demo og simulator tel ikkje i prosent preparert. I test blir prosenten med demo/simulator vist med **TEST** etter.
+- **Testa:** simanlegg over Familietrekk: hente omriss, flytte/legge til/angre hjørne, lagre trasé og forbode område, preparering med prosent og varsel, ingen JS-feil. Syntetisk sveip over heile traseen gir 100 %.
+
 ### PC-prototype v1.6.22 – fri vising når prepareringa er stoppa
 - **Nytt:** Når prep er stoppa, kan føraren sjå på arbeidet frå ulike vinklar:
   - **3D-terreng og frontrute:** dra for å snu kameraet rundt maskina (og vippe opp/ned), rull/knip for zoom, to fingrar, høgre museknapp eller Shift + dra for å flytte.

@@ -79,6 +79,10 @@ Merk: hoydedata.no er stengt fredag kl. 16 – måndag kl. 07.
 
 ## 6. Trasear og anleggsobjekt
 
+> **Status (v1.6.23):** trasear og forbodne område er laga – teikning, omriss frå terrengmodell, prosent preparert i
+> prepareringsdøgnet, gjeldande trasé på førarskjermen og varsel. Rapport per trasé, uprepart areal på kartet,
+> måldjupne i fargane og anleggsobjekt (punkt) står att. Sjå `pc/v1.6/trasear.py`.
+
 Anlegget kan registrere **ytterpunkt (omriss) for kvar trasé** og **punkt for faste objekt**.
 
 ### Trasear (polygon)
@@ -114,6 +118,7 @@ Trasear og objekt blir lagra i anleggsprofilen og følgjer med til alle maskiner
 | **v1.6.3** | Topocad DTM-import. Testa med parkeringsplass og lysmaster, Fjellsætra |
 | **v1.6.4–6** | Test over ekte terrengmodell (simanlegg). Visingar: kart, førar, horisont, 3D-terreng og frontrute. Estimert snødjupne framfor maskina |
 | **v1.6.7** | Kontrollmålingar (kjend snødjupne) og kontrollpunkt (kjend terrenghøgd), justering av høgdeoffset |
+| **v1.6.23** | Trasear og forbodne område: teikne, omriss frå terrengmodell, prosent preparert, varsel |
 | Neste | Kartverket DTM 1 m for Fjellsætra. Test av UTM 32/33 og NN2000 |
 | **v1.7** | Anleggspakke, LAS/LAZ- og XYZ-import |
 | **v1.8** | Trasear og anleggsobjekt (registrering, dekningsgrad, varsel, rapport per trasé) |
