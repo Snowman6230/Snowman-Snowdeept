@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.29 – frontskjeret ser ut som eit skjer
+- **Endra:** Frontskjeret i 3D-terreng og frontrute var ein kloss (eigaren: «ser ikkje ut som eit frontskjer»). No er det ei tynn, bøygd skjærplate (1,15 m høg, krummar fram i toppen) med svart kant øvst, to sidevengjer vinkla fram og to skyvearmar. Plata er halvgjennomsiktig, så føraren ser snødjupnefargane framfor skjeret gjennom ho i frontrutevisinga. Breidda følgjer framleis innstillinga for frontskjer (full / innkøyrd).
+- **Testa:** simanlegg over Familietrekk, frontrute og 3D-terreng, ingen JS-feil.
+
 ### PC-prototype v1.6.28 – store terrengfiler (Kartverket DTM1) blir klipte til anlegget
 - **Nytt:** GeoTIFF-filer over 40 millionar ruter (t.d. Kartverket DTM1 «som kildedata», 1,1 GB per fil) blir ikkje lesne heilt inn. SNOWMAN viser kva fila dekkjer, og føraren vel eit utsnitt (2×2, 3×3, 4×4 eller 6×6 km) rundt kartmidten i Innst. › Terreng. Berre rutene/stripene i fila som ligg i utsnittet blir pakka ut, så minnebruken held seg låg.
 - **Nytt:** Utsnitt av ei stor fil blir lagt **under** dei andre laga (grunnlag), så Topocad-modellar for bakkane blir brukte først der dei finst. Ligg anlegget over to filer, blir kvar fil eit eige lag – biblioteket brukar dei saman.

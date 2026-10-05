@@ -1400,7 +1400,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.28";
+      const APP_VERSION = "1.6.29";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1850,7 +1850,45 @@
           box(W - 2.4, 1.1, 4.6, 0xe23b32, 0, 1.25, 0.2); // hus
           box(2.3, 1.7, 2.1, 0xd8e4ea, 0, 2.6, -0.7); // førarhus
           box(2.0, 1.2, 1.9, 0x263943, 0, 2.7, -0.75); // vindauge (mørkt, litt inne)
-          box(blade, 0.9, 0.35, 0xc9a227, 0, 0.45, -3.4, true); // skjær
+          // Skjær: tynn, bøygd skjærplate (krummar fram i toppen) med sidevengjer og skyvearmar – ikkje ein kloss
+          // Halvgjennomsiktig plate: i frontrutevisinga ser føraren snøfargane framfor skjæret gjennom plata
+          let bladeMat = new THREE.MeshLambertMaterial({ color: 0xd49a1a, side: THREE.DoubleSide, transparent: true, opacity: 0.45, depthWrite: false }),
+            edgeMat = new THREE.MeshLambertMaterial({ color: 0x2a2f33 }),
+            BH = 1.15, // høgd på skjæret
+            N = 10;
+          // Skjærplata som flate (minimal three.js-pakke har ikkje Shape/Extrude): profil x = 0,32·t² fram, y = BH·t
+          let plate = (w, x, z, yaw) => {
+            let pos = [],
+              idx = [];
+            for (let i = 0; i <= N; i++) {
+              let t = i / N,
+                f = 0.32 * t * t,
+                y = BH * t;
+              pos.push(-w / 2, y, -f, w / 2, y, -f);
+              if (i) idx.push(2 * i - 2, 2 * i - 1, 2 * i, 2 * i - 1, 2 * i + 1, 2 * i);
+            }
+            let geo = new THREE.BufferGeometry();
+            geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pos), 3));
+            geo.setIndex(idx);
+            geo.computeVertexNormals();
+            let m = new THREE.Mesh(geo, bladeMat);
+            m.rotation.y = yaw || 0; // vengjene: ytterenden peikar fram
+            m.position.set(x, 0.05, z);
+            m.userData.keep = true;
+            g.add(m);
+            let top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, 0.1), edgeMat); // gummilist/kant i toppen
+            top.rotation.y = yaw || 0;
+            top.position.set(x - Math.sin(yaw || 0) * 0.32, 0.05 + BH, z - Math.cos(yaw || 0) * 0.32);
+            top.userData.keep = true;
+            g.add(top);
+          };
+          let wing = Math.min(0.7, blade * 0.12),
+            mid = blade - 2 * wing * 0.9;
+          plate(mid, 0, -3.25);
+          plate(wing, -(mid / 2 + wing * 0.45), -3.25 - wing * 0.22, -0.45); // venstre veng, vinkla fram
+          plate(wing, mid / 2 + wing * 0.45, -3.25 - wing * 0.22, 0.45); // høgre veng
+          box(0.16, 0.16, 1.0, 0x2a2f33, -(W / 2 - 1.0), 0.55, -2.75, true); // skyvearm venstre
+          box(0.16, 0.16, 1.0, 0x2a2f33, W / 2 - 1.0, 0.55, -2.75, true); // skyvearm høgre
           box(tiller, 0.6, 1.4, 0x3a4a55, 0, 0.35, 3.6); // fres
           box(tiller, 0.08, 1.0, 0xe9f3f8, 0, 0.05, 4.8); // finisher
           machine = g;
