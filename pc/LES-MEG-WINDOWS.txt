@@ -32,4 +32,5 @@ Første gong spør Windows om Python får bruke nettverket. Vel «Privat nettver
 NY VERSJON
 Last ned ny zip og pakk ut over den gamle mappa. Terrengmodellar, kalibrering og
 kontrollmålingar ligg i mappa v1.6\data og blir verande.
-Har du installert Git, hentar menyval 5 den nye versjonen automatisk.
+Enklast: vel 5 «Hent siste versjon» i SNOWMAN-menyen (krev nett). Då blir SNOWMAN
+oppdatert frå GitHub utan at du treng å pakke ut noko.

@@ -9,6 +9,11 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-05
 
+### PC-prototype v1.6.14 – oppdatering frå menyen også på Windows
+- **Nytt:** Menyval 5 «Hent siste versjon» fungerer no utan git: SNOWMAN lastar ned siste versjon frå GitHub (zip), skriv berre filer som er endra inn i pc-mappa og oppdaterer bibliotek ved behov. Mappene `data` (terreng, kalibrering, kontroll) og `.venv` blir aldri rørte, og gamle prototypar (v1.2–v1.5) blir ikkje lasta ned. Med git (Linux-maskina) blir `git pull` brukt som før.
+- **Testa:** Utpakka Windows-pakke v1.6.10 → menyval 5 → v1.6.13, 9 filer oppdaterte, data-mappa uendra.
+- **Kvifor:** Eigaren ville oppdatere frå terminalvindauget på Windows-PC-en i staden for å laste ned og pakke ut zip-fila kvar gong.
+
 ### PC-prototype v1.6.13 – menyen nedst blir verande i 3D-terreng og frontrute
 - **Retta:** Verktøylinja nedst forsvann hos eigaren når han bytte til 3D-terreng eller frontrute. Truleg årsak: på somme skjermkort/nettlesarar blir ei WebGL-flate som dekkjer heile vindauget teikna over resten av sida. Feilen kom ikkje fram i testmiljøet her.
 - **Endra:** 3D-flata ligg no berre mellom topplinja og verktøylinja (aldri under dei), og topplinja og verktøylinja får eigne teiknelag (`translateZ(0)`).

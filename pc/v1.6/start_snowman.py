@@ -100,17 +100,54 @@ def version():
     return m.group(1) if m else HERE.name
 
 
+ZIP_URL = "https://github.com/Snowman6230/Snowman-Snowdeept/archive/refs/heads/main.zip"
+
+
 def oppdater():
+    """Hent siste versjon. Med git: git pull. Utan git (t.d. Windows med zip): last ned zip frå GitHub og
+    skriv berre filer som er endra inn i pc-mappa. Mappene data og .venv blir aldri rørte."""
     repo = HERE.parent.parent
+    old = version()
     if (repo / ".git").exists() and shutil.which("git"):
         print("Hentar siste versjon frå GitHub …")
         r = subprocess.run(["git", "-C", str(repo), "pull", "--ff-only"])
-        print("Ferdig. Start SNOWMAN på nytt for å bruke den nye versjonen." if r.returncode == 0 else
-              "Oppdateringa feila. Sjekk nettet, eller om du har endra filer i SNOWMAN-mappa.")
+        if r.returncode != 0:
+            return print("Oppdateringa feila. Sjekk nettet, eller om du har endra filer i SNOWMAN-mappa.")
     else:
-        print("Denne SNOWMAN-mappa er ikkje kopla til GitHub (git manglar).")
-        print("Last ned ny versjon (zip) og pakk ut over den gamle mappa. Terrengmodellar, kalibrering og")
-        print("kontrollmålingar ligg i mappa «data» og blir verande.")
+        import io, urllib.request, zipfile
+        print("Lastar ned siste versjon frå GitHub …")
+        try:
+            data = urllib.request.urlopen(ZIP_URL, timeout=60).read()
+        except Exception as e:
+            return print(f"Fekk ikkje lasta ned ({e}). Sjekk at PC-en er på nett.")
+        pcdir, n = HERE.parent, 0
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            # berre versjonsmapper som kan køyrast (har start_snowman.py) – ikkje dei gamle prototypane
+            names = z.namelist()
+            apps = {n.split("/")[2] for n in names if n.count("/") == 3 and n.endswith("/start_snowman.py") and n.split("/")[1] == "pc"}
+            for m in z.infolist():
+                parts = m.filename.split("/")
+                if m.is_dir() or len(parts) < 3 or parts[1] != "pc":
+                    continue
+                rel = parts[2:]
+                if len(rel) > 1 and rel[0] not in apps:
+                    continue
+                if "data" in rel or ".venv" in rel or "__pycache__" in rel:
+                    continue
+                dst = pcdir.joinpath(*rel)
+                new_bytes = z.read(m)
+                if dst.exists() and dst.read_bytes() == new_bytes:
+                    continue  # uendra (viktig for .bat-fila som køyrer no)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_bytes(new_bytes)
+                n += 1
+        print(f"{n} filer oppdaterte.")
+        req = HERE / "requirements.txt"
+        if req.exists():
+            subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--disable-pip-version-check", "-r", str(req)])
+    new = version()
+    print(f"Ferdig: v{old} → v{new}." if new != old else f"Ferdig: du har siste versjon (v{new}).")
+    print("Start SNOWMAN på nytt for å bruke den nye versjonen.")
 
 
 def meny():
@@ -121,7 +158,7 @@ def meny():
     print("  2  Demo – simulert mottakar")
     print("  3  Test over terrengmodellane dine")
     print("  4  Start i fullskjerm (trakkemaskin)")
-    print("  5  Hent siste versjon frå GitHub")
+    print("  5  Hent siste versjon")
     print("  6  Stopp SNOWMAN")
     print("  0  Avslutt")
     print()
