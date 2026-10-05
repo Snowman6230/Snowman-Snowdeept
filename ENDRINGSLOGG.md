@@ -7,6 +7,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-06
+
+### PC-prototype v1.6.26 – retting av treg vising
+- **Retta:** Eigaren melde at v1.6.25 var tydeleg tregare enn før i alle startval (1–4). Frå v1.6.23 sette førarskjermen ein CSS-variabel på heile kartet for kvar posisjon (for at trasénamna skulle stå rett opp). Då måtte nettlesaren rekne om stilen til alle element i kartet fleire gonger i sekundet. No blir berre namne-elementa snudde, og berre når kartvinkelen er endra med minst 2°.
+- **Testa:** 90 s demo i nettlesar: tid til stilutrekning ned ca. 30 %. Treigleiken kunne ikkje framkallast fullt ut her (testmaskina har ikkje skjermkort), så eigaren må stadfeste på eigen PC.
+
 ## 2026-10-05
 
 ### PC-prototype v1.6.25 – uprepart areal og måldjupne per trasé

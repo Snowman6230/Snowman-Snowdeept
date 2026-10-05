@@ -858,7 +858,7 @@
       /* namnet står alltid rett opp, sjølv når kartet er snudd */
       .traLblIn {
         display: inline-block;
-        transform: rotate(var(--lblRot, 0deg));
+        transform: rotate(0deg);
         background: #02121bd0;
         color: #fff;
         font-weight: 800;
@@ -1380,7 +1380,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.25";
+      const APP_VERSION = "1.6.26";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -2210,7 +2210,9 @@
         let g = manualBear != null ? headCont - manualBear : cfg.northUp ? headCont : 0;
         $("groomer").style.transform = "translate(-50%, -50%)" + (cfg.view3d ? " rotateX(" + TILT + "deg)" : "") + " rotate(" + g + "deg)";
         $("needle").style.transform = "rotate(" + -bearCont + "deg)";
-        $("map").style.setProperty("--lblRot", (cfg.northUp && manualBear == null ? 0 : bearCont) + "deg");
+        try {
+          TRA.uprightLabels(cfg.northUp && manualBear == null ? 0 : bearCont);
+        } catch (e) {} // TRA er ikkje klar enno under oppstart
         $("compass").classList.toggle("locked", !!cfg.northUp);
         $("compassTxt").textContent = cfg.northUp ? "LÅST" : "ROTERER";
       }
@@ -3576,6 +3578,8 @@
           show = true,
           unprep = cfg.traUnprep !== false, // vis uprepart areal i traseane
           curT = null, // traseen maskina er i no
+          lblDeg = 0, // vinkel namna skal stå i (motsett av kartrotasjonen)
+          lblSet = null, // vinkel som sist vart sett på namna
           lastLive = 0,
           lastPoll = 0,
           D = null; // teiknemodus: {kind, poly, edit, meta, hist, prev}
@@ -3695,8 +3699,16 @@
                 className: "traLbl",
               });
             });
+          lblSet = null;
+          if (show && !D) upright(lblDeg);
           lastLive = 0;
           live(true);
+        }
+        function upright(deg) {
+          lblDeg = deg;
+          if (!show || !list.length || (lblSet != null && Math.abs(deg - lblSet) < 2)) return;
+          lblSet = deg;
+          document.querySelectorAll(".traLblIn").forEach((e) => (e.style.transform = "rotate(" + deg + "deg)"));
         }
         // Uprepart areal som bilete over traseen: oransje der fresen ikkje har gått i dag
         function unprepOverlay(m) {
@@ -3989,6 +4001,9 @@
             render();
           },
           drawing: () => !!D,
+          // Namna på traseane står rett opp: berre dei få namne-elementa blir snudde, og berre når vinkelen er endra.
+          // (Ein CSS-variabel på heile kartet gjorde at nettlesaren måtte rekne om stilen til alle element i kartet for kvar posisjon.)
+          uprightLabels: upright,
           // måldjupna i traseen maskina er i (null når traseen ikkje har eiga måldjupne)
           target: () => (curT && curT.target != null && pos ? { target: curT.target, name: curT.name } : null),
           toggleUnprep() {
