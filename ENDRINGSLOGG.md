@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.32 – tilbakeknapp på NTRIP-oppsettet, Zenith35 Pro tilkopla
+- **Retta:** NTRIP/GNSS-oppsettet (Innst. › Kart › LEICA / CPOS / NTRIP-OPPSETT) hadde ingen veg tilbake i kiosk og app-vindauge. No er det knappen **← TILBAKE TIL SNOWMAN** øvst og nedst.
+- **Testa av eigaren:** GeoMax Zenith35 Pro via Bluetooth (COM4) sender NMEA rett til SNOWMAN utan ekstra oppsett: «Serial: TILKOPLA COM4», GPS, 16 satellittar, HDOP 0,9, posisjon og høgd. Første ekte mottakar kopla til SNOWMAN.
+
 ### Utstyr – GeoMax Zenith35 Pro via Bluetooth
 - **Fakta:** GeoMax Zenith35 Pro GSM-UHF-TAG (2018) er tilgjengeleg: smartantenne med mottakar, Bluetooth, GSM-modem, UHF og hellingsmålar (Tilt&Go).
 - **Avgjerd (eigar):** Han skal koplast til SNOWMAN via Bluetooth. Det krev ingen ny kode: Bluetooth gir ein COM-port (Windows) eller `/dev/rfcomm0` (Linux), som SNOWMAN les som ein vanleg seriellport. Framgangsmåte i `docs/FELTPROVE.md`.
