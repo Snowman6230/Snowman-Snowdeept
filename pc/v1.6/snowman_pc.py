@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.34"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.35"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -128,7 +128,9 @@ _prev={"p":None,"t":0,"v":0.0,"h":None}
 def _motion(lat,lon):
     """Fart (m/s) og kurs (grader) frå to GGA-posisjonar – så tenesta kan forsyne HUD utan førarskjermen."""
     now=time.time(); pr=_prev
-    if pr["p"] is None or lat is None: pr.update(p=(lat,lon),t=now); return pr["v"],pr["h"]
+    if lat is None or lon is None:   # ingen posisjon (tunnel, NO FIX): ikkje lagre tomt punkt – då ville neste utrekning feile
+        pr["v"]=0.0; return pr["v"],pr["h"]
+    if pr["p"] is None or pr["p"][0] is None: pr.update(p=(lat,lon),t=now); return pr["v"],pr["h"]
     la0,lo0=pr["p"]; dy=(lat-la0)*111320; dx=(lon-lo0)*111320*math.cos(math.radians(lat)); d=math.hypot(dx,dy); dt=now-pr["t"]
     if d>=0.3 and dt>0:
         pr["v"]=0.6*(d/dt)+0.4*pr["v"]; pr["h"]=(math.degrees(math.atan2(dx,dy))+360)%360; pr.update(p=(lat,lon),t=now)

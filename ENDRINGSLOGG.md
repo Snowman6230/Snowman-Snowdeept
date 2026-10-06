@@ -9,6 +9,11 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.35 – retta: SNOWMAN fann ikkje att posisjonen etter tunnel
+- **Retta (alvorleg):** Når mottakaren mista posisjonen (tunnel: GGA utan breidd/lengd), lagra fart/kurs-utrekninga eit tomt punkt. Alle GGA-meldingar etterpå feila då med «GGA parse: unsupported operand type(s) for -: 'float' and 'NoneType'», og SNOWMAN stod fast på NO FIX til han vart starta på nytt – sjølv om mottakaren hadde fått posisjon att. No blir tomme punkt hoppa over, og posisjonen kjem att med éin gong.
+- **Funne av:** eigaren, som køyrde gjennom ein tunnel med GeoMax Zenith35 Pro via Bluetooth.
+- **Testa:** GPS → tunnel (2 meldingar utan posisjon) → GPS att: gammal kode feila på kvar melding etterpå, ny kode viser posisjonen att utan feil.
+
 ### PC-prototype v1.6.34 – Kartverket sin geoidemodell for NN2000
 - **Nytt:** Geoidemodellen HREF2018B (NN2000 over EUREF89) frå Kartverket ligg i `pc/v1.6/geoide/` (270 kB, frå PROJ-data). Lisens CC BY 4.0, kreditert i `geoide/LES-MEG.txt` og under Innst. «© Kartverket».
 - **Nytt:** «GNSS-høgd frå mottakaren» har valet **Ellipsoidisk – Kartverket geoidemodell (tilrådd)**: NN2000-høgd = (høgd + geoidehøgd i GGA) − N frå modellen der maskina er. Rett anten mottakaren sender ellipsoidisk høgd (geoidehøgd 0) eller høgd over sin eigen geoide.
