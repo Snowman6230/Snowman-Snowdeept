@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### Utstyr – antenna er ei Leica MNA1202 GG
+- **Fakta:** Antenna som er tilgjengeleg, er Leica MNA1202 GG (art. 753221, 2007): maskinantenne til Leica MNS1200-systemet, GPS + GLONASS L1/L2, TNC-kontakt, 4,5–18 V DC. Ho er berre ei antenne utan eigen mottakar og utan hellingsmålar. Tidlegare antaking om GS07 med Lemo-kontakt var feil.
+- **Avgjerd:** Det trengst ein GNSS-mottakar mellom antenna og PC-en (Leica-mottakaren som høyrde til, eller ein rimeleg RTK-mottakar med bias-tee). Hellingskorreksjonen brukar utrekna helling. Sjå `docs/FELTPROVE.md`.
+
 ### PC-prototype v1.6.31 – hellingskorreksjon (antenna står ikkje rett over beltet i bakke)
 - **Nytt:** `helling.py`. Antenna sit 2,8 m over beltet; når maskina står på skrå, er ho ikkje rett over beltet. Utan korreksjon blir snødjupna for høg (4 cm ved 10°, 18 cm ved 20°, 43 cm ved 30°), og punktet blir målt opptil 1,4 m ved sida av der maskina står. SNOWMAN rettar no både høgda (h·cos θ) og punktet (flytt h·sin θ opp i bakken). Berre høgdekorreksjon utan å flytte punktet ville gjort feilen større, så begge blir alltid gjorde saman.
 - **Nytt:** Kjelde for hellinga, Innst. › Kalibrering › Helling:

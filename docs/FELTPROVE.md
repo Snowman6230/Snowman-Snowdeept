@@ -3,6 +3,14 @@
 SNOWMAN by Alpindata · v1.6.21
 
 ## Før du dreg
+
+**Utstyr (2026-10-06):** antenna som er tilgjengeleg er **Leica MNA1202 GG** (maskinantenne frå 2007, GPS + GLONASS L1/L2,
+TNC-kontakt, 4,5–18 V DC frå mottakaren via kabelen). Ho er **berre ei antenne** – ho sender ingen posisjon sjølv og har ingen
+hellingsmålar. Ho må koplast til ein GNSS-mottakar som gir NMEA til PC-en:
+- Leica-mottakaren som høyrde til (t.d. MNS1200 / GX1200-serien) om han finst – sjekk at han tek imot RTCM frå CPOS.
+- eller ein rimeleg RTK-mottakar (t.d. u-blox ZED-F9P-kort over USB). Desse gir berre 3,3 V til antenna, så det trengst ein
+  **bias-tee** (straummatar) med 5–12 V mellom mottakar og antenne, og overgang TNC → SMA.
+SNOWMAN er uavhengig av mottakar, så begge vegar fungerer. Hellinga blir då rekna ut (Innst. › Kalibrering › Helling: Auto).
 - [ ] SNOWMAN er oppdatert (Innst. › System › HENT SISTE VERSJON).
 - [ ] Terrengmodell for området er lagt inn (Innst. › Terreng), med NN2000 stadfesta.
 - [ ] Leica er sett opp til å sende **NMEA GGA** (gjerne 5 Hz) på seriellporten, og høgd i **NN2000** (ikkje ellipsoidisk).
