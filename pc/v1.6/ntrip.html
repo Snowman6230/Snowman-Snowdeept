@@ -17,7 +17,9 @@ async function save(){let x={};for(let id of ['serial_port','baud','caster','cas
 async function poll(){try{let x=await(await fetch('/api/status')).json();s.textContent=`Serial: ${x.serial_connected?'TILKOPLA':'AV'}  ${x.port} @ ${x.baud}
 NTRIP: ${x.ntrip_connected?'TILKOPLA':'AV'}  ${x.caster}/${x.mountpoint}
 RTK: ${x.fix}   SAT: ${x.satellites}   HDOP: ${x.hdop??'--'}
-Høgd: ${x.altitude??'--'} m
+Høgd frå mottakar: ${x.altitude??'--'} m (geoidehøgd i meldinga: ${x.geoid_sep??'--'} m)
+Ellipsoidisk høgd: ${x.h_ell??'--'} m · Kartverket-geoide N: ${x.geoid_model??'--'} m
+NN2000-høgd (med kalibreringa): ${x.h_nn2000??'--'} m
 Posisjon: ${x.lat??'--'}, ${x.lon??'--'}
 RTCM mottatt: ${x.bytes_rtcm} byte
 Feil: ${x.last_error||'Ingen'}`;}catch(e){s.textContent='Tenesta svarar ikkje: '+e}setTimeout(poll,1000)}poll()

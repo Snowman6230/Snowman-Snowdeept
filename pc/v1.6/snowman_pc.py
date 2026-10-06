@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.33"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.34"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -148,18 +148,22 @@ def parse_gga(line):
         v,h=_motion(lat,lon); HEL.add_position(lat,lon,alt)
         # Hellingskorreksjon: finn punktet der maskina står (under midten) og høgda ned til snøflata
         cal=CFG; mlat,mlon=lat,lon; tilt={"src":"av"}
+        gN=T.GEOID.n(lat,lon) if T.AVAILABLE else None   # Kartverket-geoiden der antenna er
+        if CFG.get("heightMode")=="geoide": cal=dict(CFG,_N=gN)
         if T.AVAILABLE and lat is not None and lon is not None:
             g,tilt=HEL.gradient(lat,lon,alt,h,v,TERR,CFG)
             tilt["ant"]=sorted(HEL.sentences)   # kva hellingsmeldingar antenna har sendt
             if g is not None:
                 mlat,mlon,ant_v,shift=HL.correct(lat,lon,g,float(CFG.get("antZ",0)))
-                cal=dict(CFG,antZ=ant_v); tilt.update(shift=round(shift,2),dz=round(float(CFG.get("antZ",0))-ant_v,3))
+                cal=dict(cal,antZ=ant_v); tilt.update(shift=round(shift,2),dz=round(float(CFG.get("antZ",0))-ant_v,3))
         # Terrain Engine: terrenghøgd under maskina og snødjupne
         ter=TERR.height(mlat,mlon) if (mlat is not None and mlon is not None) else None
         depth,dstat,det=T.snow_depth(alt,sep,fix,ter,cal) if T.AVAILABLE else (None,"NO_ENGINE",{})
         update(last_gga=line.strip(), fix=fix,
                satellites=int(p[7] or 0), hdop=float(p[8]) if p[8] else None,
-               altitude=alt, geoid_sep=sep, lat=lat, lon=lon, tilt=tilt,
+               altitude=alt, geoid_sep=sep, lat=lat, lon=lon, tilt=tilt, geoid_model=None if gN is None else round(gN,3),
+               h_nn2000=None if T.nn2000_height(alt,sep,lat,lon,CFG) is None else round(T.nn2000_height(alt,sep,lat,lon,CFG),3),
+               h_ell=None if alt is None else round(alt+(sep or 0),3),
                terrain=ter, depth=None if depth is None else round(depth,3), depth_status=dstat, depth_detail=det)
         update(speed=round(v,2), course=None if h is None else round(h))
         LOG.row(STATE,CFG)

@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.34 – Kartverket sin geoidemodell for NN2000
+- **Nytt:** Geoidemodellen HREF2018B (NN2000 over EUREF89) frå Kartverket ligg i `pc/v1.6/geoide/` (270 kB, frå PROJ-data). Lisens CC BY 4.0, kreditert i `geoide/LES-MEG.txt` og under Innst. «© Kartverket».
+- **Nytt:** «GNSS-høgd frå mottakaren» har valet **Ellipsoidisk – Kartverket geoidemodell (tilrådd)**: NN2000-høgd = (høgd + geoidehøgd i GGA) − N frå modellen der maskina er. Rett anten mottakaren sender ellipsoidisk høgd (geoidehøgd 0) eller høgd over sin eigen geoide.
+- **Nytt:** NTRIP-oppsettet viser høgda frå mottakaren, geoidehøgda i meldinga, ellipsoidisk høgd, N frå Kartverket-modellen og **NN2000-høgd** – så høgda kan kontrollerast mot kartet.
+- **Retta:** Hjelpeteksten sa «geoidehøgd ca. 40 på Sunnmøre»; rett er ca. 45 m (HREF2018B: 44,8 m i Sykkylven, 45,1 m på Fjellsætra).
+- **Bakgrunn:** Eigaren såg at høgda frå GeoMax Zenith35 Pro var feil (55,6 m i Sykkylven sentrum). Det passar med ellipsoidisk høgd; med modellen blir NN2000-høgda ca. 10,9 m.
+- **Testa:** N = 39,1 m i Oslo (som venta), 44,76 m i Sykkylven; same NN2000-høgd med geoidehøgd 0 og med geoidehøgd i meldinga; utanfor Noreg gir «manglar geoide».
+
 ### PC-prototype v1.6.33 – NTRIP: rett User-Agent og betre feilmelding
 - **Retta:** NTRIP-førespurnaden hadde User-Agent «SNOWMAN-NTRIP/1.1». NTRIP 1.0 krev at han byrjar med «NTRIP », og nokre castarar avviser elles. No: `NTRIP SNOWMAN/<versjon>`, og `Host`-felt.
 - **Endra:** Mellomrom før/etter brukarnamn, passord og mountpoint blir fjerna (lett å få med ved inntasting).

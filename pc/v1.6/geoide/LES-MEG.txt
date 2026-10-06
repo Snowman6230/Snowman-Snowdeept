@@ -1,0 +1,11 @@
+Geoidemodell for NN2000 – HREF2018B_NN2000_EUREF89
+
+Kjelde: Kartverket (https://www.kartverket.no), via PROJ-data (https://github.com/OSGeo/PROJ-data, mappa no_kv).
+Opphavleg fil: HREF2018B_NN2000_EUREF89.gtx, konvertert til GeoTIFF av PROJ-prosjektet.
+Lisens: Creative Commons Attribution 4.0 (https://creativecommons.org/licenses/by/4.0/). © Kartverket.
+
+Innhald: geoidehøgd N (meter) over Noreg, rutenett 0,04° × 0,02°, EUREF89.
+NN2000-høgd = ellipsoidisk høgd (EUREF89) − N.
+
+SNOWMAN brukar fila når «GNSS-høgd frå mottakaren» er sett til «Ellipsoidisk – Kartverket geoidemodell»
+(Innst. › Kalibrering). Fila er ikkje endra.

@@ -8,3 +8,6 @@ data/
 .venv/
 *.tif
 *.dtm
+
+# Geoidemodellen frå Kartverket (CC BY 4.0) skal vere med
+!pc/v1.6/geoide/*.tif

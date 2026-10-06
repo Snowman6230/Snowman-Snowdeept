@@ -614,14 +614,74 @@ class TerrainLibrary:
         return {"lat0": lat0, "lon0": lon0, "half": half, "step": step, "n": n, "h": H, "layers": names}
 
 
+class Geoid:
+    """Kartverket sin geoidemodell HREF2018B (NN2000 over EUREF89), geoide/no_kv_HREF2018B_NN2000_EUREF89.tif.
+    N(lat, lon) i meter; NN2000-høgd = ellipsoidisk høgd − N. © Kartverket, CC BY 4.0 (sjå geoide/LES-MEG.txt)."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.g = None
+        self.err = ""
+
+    def _load(self):
+        if self.g is None and not self.err:
+            try:
+                with tifffile.TiffFile(self.path) as tf:
+                    p = tf.pages[0]
+                    tags = {t.code: t.value for t in p.tags.values()}
+                    a = p.asarray().astype(np.float64)
+                sc, tp = tags[33550], tags[33922]
+                pt = _geokeys(tags.get(34735)).get(1025) == 2  # PixelIsPoint: tiepunktet er midt i ruta
+                self.g = {"a": a, "lon0": tp[3] + (0 if pt else sc[0] / 2), "lat0": tp[4] - (0 if pt else sc[1] / 2), "dlon": sc[0], "dlat": sc[1]}
+            except Exception as e:
+                self.err = f"Geoidemodellen manglar eller kan ikkje lesast ({e})"
+        return self.g
+
+    def n(self, lat, lon):
+        g = self._load() if AVAILABLE else None
+        if not g or lat is None or lon is None:
+            return None
+        c, r = (lon - g["lon0"]) / g["dlon"], (g["lat0"] - lat) / g["dlat"]
+        c0, r0 = int(math.floor(c)), int(math.floor(r))
+        a = g["a"]
+        if r0 < 0 or c0 < 0 or r0 + 1 >= a.shape[0] or c0 + 1 >= a.shape[1]:
+            return None  # utanfor Noreg
+        fc, fr = c - c0, r - r0
+        v = (a[r0, c0] * (1 - fc) * (1 - fr) + a[r0, c0 + 1] * fc * (1 - fr) + a[r0 + 1, c0] * (1 - fc) * fr + a[r0 + 1, c0 + 1] * fc * fr)
+        return None if not math.isfinite(v) else float(v)
+
+
+GEOID = Geoid(Path(__file__).resolve().parent / "geoide" / "no_kv_HREF2018B_NN2000_EUREF89.tif")
+
+
+def nn2000_height(alt, sep, lat, lon, cal):
+    """NN2000-høgd for antenna etter innstillinga «GNSS-høgd frå mottakaren», eller None."""
+    if alt is None:
+        return None
+    mode = cal.get("heightMode")
+    if mode == "geoide":  # mottakaren gir ellipsoidisk høgd (alt + sep) – Kartverket-modellen gir N der maskina er
+        N = GEOID.n(lat, lon)
+        return None if N is None else alt + (sep or 0.0) - N
+    if mode == "ellipsoid":
+        if sep is None or cal.get("geoidN") in (None, ""):
+            return None
+        return alt + sep - float(cal["geoidN"])
+    return alt
+
+
 def snow_depth(gga_alt, gga_sep, fix, terrain, cal):
-    """Rekn ut snødjupne. cal: antZ, zOff, heightMode ('nn2000'|'ellipsoid'), geoidN, calibrated.
+    """Rekn ut snødjupne. cal: antZ, zOff, heightMode ('nn2000'|'geoide'|'ellipsoid'), geoidN, _N (geoidemodell), calibrated.
     Returnerer (djupne eller None, status, detaljar)."""
     if terrain is None:
         return None, "OUTSIDE", {}
     if gga_alt is None:
         return None, "NO_HEIGHT", {}
-    if cal.get("heightMode") == "ellipsoid":
+    if cal.get("heightMode") == "geoide":
+        N = cal.get("_N")  # geoidehøgd frå Kartverket-modellen der maskina er (sett av tenesta)
+        if N is None:
+            return None, "NO_GEOID", {}
+        H = gga_alt + (gga_sep or 0.0) - N
+    elif cal.get("heightMode") == "ellipsoid":
         if gga_sep is None or cal.get("geoidN") in (None, ""):
             return None, "NO_GEOID", {}
         H = gga_alt + gga_sep - float(cal["geoidN"])  # ellipsoidisk høgd − geoidehøgd = NN2000
