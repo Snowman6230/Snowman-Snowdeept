@@ -34,7 +34,7 @@ Med måla til maskina og køyreretninga kan SNOWMAN rekne ut kvar fres og skjer 
 | | Kvifor | Løysing |
 |---|---|---|
 | Rygging | GNSS gir retninga maskina flyttar seg, ikkje kva veg ho peikar | To GNSS-antenner (Leica har), hellings-/retningsfølar (IMU), eller gir-signal frå maskina |
-| Bratt terreng | 3 m høg antenne og 10° helling flyttar punktet ca. 0,5 m sidevegs → nokre cm høgdefeil i bratte bakkar | IMU (rimeleg, USB) |
+| Bratt terreng | 3 m høg antenne og 10° helling flyttar punktet ca. 0,5 m sidevegs → nokre cm høgdefeil i bratte bakkar | **Løyst i v1.6.31:** hellingskorreksjon frå antenna (om ho har hellingsmålar) eller utrekna frå GNSS + terrengmodell. Ein eigen IMU blir berre aktuelt for rygging. |
 | Kor djupt skjeret skjer | Skjeret blir styrt med hydraulikk – GNSS ser det ikkje | Følar på skjer/hydraulikk |
 
 **Mål som må takast i maskina:** høgd frå underkant belte til antenna; avstand frå antenna fram til skjerkanten; avstand bak til

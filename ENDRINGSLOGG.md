@@ -9,6 +9,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.31 – hellingskorreksjon (antenna står ikkje rett over beltet i bakke)
+- **Nytt:** `helling.py`. Antenna sit 2,8 m over beltet; når maskina står på skrå, er ho ikkje rett over beltet. Utan korreksjon blir snødjupna for høg (4 cm ved 10°, 18 cm ved 20°, 43 cm ved 30°), og punktet blir målt opptil 1,4 m ved sida av der maskina står. SNOWMAN rettar no både høgda (h·cos θ) og punktet (flytt h·sin θ opp i bakken). Berre høgdekorreksjon utan å flytte punktet ville gjort feilen større, så begge blir alltid gjorde saman.
+- **Nytt:** Kjelde for hellinga, Innst. › Kalibrering › Helling:
+  - **Auto (standard):** hellingsmålaren i antenna om ho sender han (NMEA `HPR`/`PSAT,HPR`, `PASHR` eller `PTNL,AVR` – t.d. Leica GS18 T / iCON gps 70 T om dei er sette opp til det), elles utrekna. Antenna blir oppdaga av seg sjølv.
+  - **Utrekna:** helling langs køyreretninga frå GNSS-høgda dei siste 4–10 m, sidehelling frå terrengmodellen der maskina står.
+  - **Av:** som før.
+  - «Snu forteikn» for stamp og krenging om antenna er montert annleis. Skjermen viser helling, stamp, krenging, kjelde, kor langt målepunktet er flytt og kor mykje høgda er retta.
+- **Nytt:** Feltloggen (CSV) har kolonnar for hellingskjelde, helling, stamp, krenging og flytting av målepunktet.
+- **Endra:** Simulatoren set antenna vinkelrett ut frå snøflata (som i ei ekte maskin på skrå), og kan sende helling som ei antenne med hellingsmålar (`--helling`, `$PASHR`). Det tynne snøfeltet har no 4 m skrå overgang i staden for loddrett kant.
+- **Endra:** `docs/FELTPROVE.md`: sjekk forteikn på hellinga i bakke, og ta kontrollmålingar der det er flatt.
+- **Avgjerd (eigar):** Programmet skal automatisk bruke hellingsmålaren i antenna om ho har det, og elles rekne ut hellinga sjølv.
+- **Merknad:** Leica GS07 og GS16 har ikkje hellingsmålar etter det Leica oppgir; GS18 T/I og iCON gps 70 T har. Om antenna sender hellinga ut til andre program, må sjekkast i feltloggen.
+- **Testa (snødjupne mot fasit):**
+  - Testterreng (jamn bakke, 14°): snittfeil 9,2 cm utan korreksjon → 0,7 cm utrekna (maks 2,4 cm).
+  - Familietrekk (Topocad, opptil 23°): snitt |feil| 5,4 cm (maks 33 cm) utan → 1,0 cm utrekna (maks 7 cm) → 0,7 cm med hellingsmålar i antenna (maks 2,8 cm).
+  - Utan simulert tidsforskyving (rekna direkte langs heile ruta, 3 800 punkt): 7,6 cm → 0,4 cm, ingen over 10 cm.
+
 ### Plan – vegplan v1.7 til v2.0
 - **Avgjerd (eigar):** v1.9 = presisjon og klar for sal (maskingeometri, lisens, driftsportal, snøvolum); v2.0 = første salsversjon. Sjå tabellen «Vegplan» i `docs/VEGEN-VIDARE.md`.
 

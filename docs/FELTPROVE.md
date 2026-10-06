@@ -15,9 +15,13 @@ SNOWMAN by Alpindata · v1.6.21
 2. **Innst. › System › START LOGG** – eller slå på «Logg alltid».
 3. Sjekk øvst til høgre: **RTK FIX**, satellittar, HDOP. Noter kor lang tid det tek frå start til RTK FIX.
 4. **Innst. › Kalibrering:** antennehøgd, høgdeoffset 0, «NN2000». LAGRE KALIBRERING.
+   **Helling:** la stå på «Auto». Sjå kva «Kjelde» seier – «antenne (…)» betyr at antenna sender helling, «utrekna» at ho ikkje gjer det.
+   Køyr rett opp ein bakke: **stamp skal vere positiv**. Stå med høgre side ned i ein sidebakke: **krenging skal vere positiv**.
+   Er forteiknet feil når kjelda er antenna, kryss av for «Snu forteikn». Noter antennemodellen (står på etiketten).
 5. **Kontrollmåling på barmark:** stå på brøyta veg/parkeringsplass innanfor terrengmodellen. Innst. › Kontroll, skriv 0, LAGRE.
    Gjenta på 2–3 stader. Avviket viser om kalibreringa og terrengmodellen stemmer.
-6. **Kontrollmåling i snø:** stopp, stikk snøsonda ned rett under antenna, skriv inn djupna, LAGRE. 3–5 stader.
+6. **Kontrollmåling i snø:** stopp der det er **flatt** (helling under 3° i Innst. › Kalibrering – i bakke blir målepunktet flytt
+   mot midten av maskina), stikk snøsonda ned rett ved sida av maskina på høgd med antenna, skriv inn djupna, LAGRE. 3–5 stader.
 7. Køyr ein vanleg tur med **Start prep**. Prøv kart, førar, 3D-terreng og frontrute. Noter om Surface-en hakkar.
 8. Prøv HUD på mobil.
 9. **STOPP LOGG** til slutt.

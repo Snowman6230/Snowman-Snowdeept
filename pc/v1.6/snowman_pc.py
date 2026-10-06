@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.30"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.31"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -24,6 +24,8 @@ VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.j
 import terrain as T
 TERR=T.TerrainLibrary(DATA/"terrain")
 import kontroll as K
+import helling as HL
+HEL=HL.Helling()   # hellingskorreksjon: antenna står ikkje rett over beltet når maskina står på skrå
 import feltlogg as F
 LOG=F.FeltLogg(DATA/"logg")   # feltlogg: alt frå mottakaren + det SNOWMAN rekna ut (Innst. › System)
 KON=K.Kontroll(DATA/"kontroll.json",TERR if T.AVAILABLE else None,T.utm_inverse)
@@ -52,7 +54,8 @@ STATE = {
 }
 CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint":"",
        "username":"","password":"","gga_interval":5,
-       "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,"hudLan":False}
+       "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,
+       "tiltMode":"auto","tiltFlipPitch":False,"tiltFlipRoll":False,"hudLan":False}
 def load_cfg():
     try: CFG.update({k:v for k,v in json.loads(CFG_FILE.read_text("utf-8")).items() if k in CFG})
     except FileNotFoundError: pass
@@ -142,14 +145,23 @@ def parse_gga(line):
         alt=float(p[9]) if p[9] else None
         sep=float(p[11]) if len(p)>11 and p[11] else None
         lat,lon=nmea_coord(p[2],p[3],True), nmea_coord(p[4],p[5],False)
+        v,h=_motion(lat,lon); HEL.add_position(lat,lon,alt)
+        # Hellingskorreksjon: finn punktet der maskina står (under midten) og høgda ned til snøflata
+        cal=CFG; mlat,mlon=lat,lon; tilt={"src":"av"}
+        if T.AVAILABLE and lat is not None and lon is not None:
+            g,tilt=HEL.gradient(lat,lon,alt,h,v,TERR,CFG)
+            tilt["ant"]=sorted(HEL.sentences)   # kva hellingsmeldingar antenna har sendt
+            if g is not None:
+                mlat,mlon,ant_v,shift=HL.correct(lat,lon,g,float(CFG.get("antZ",0)))
+                cal=dict(CFG,antZ=ant_v); tilt.update(shift=round(shift,2),dz=round(float(CFG.get("antZ",0))-ant_v,3))
         # Terrain Engine: terrenghøgd under maskina og snødjupne
-        ter=TERR.height(lat,lon) if (lat is not None and lon is not None) else None
-        depth,dstat,det=T.snow_depth(alt,sep,fix,ter,CFG) if T.AVAILABLE else (None,"NO_ENGINE",{})
+        ter=TERR.height(mlat,mlon) if (mlat is not None and mlon is not None) else None
+        depth,dstat,det=T.snow_depth(alt,sep,fix,ter,cal) if T.AVAILABLE else (None,"NO_ENGINE",{})
         update(last_gga=line.strip(), fix=fix,
                satellites=int(p[7] or 0), hdop=float(p[8]) if p[8] else None,
-               altitude=alt, geoid_sep=sep, lat=lat, lon=lon,
+               altitude=alt, geoid_sep=sep, lat=lat, lon=lon, tilt=tilt,
                terrain=ter, depth=None if depth is None else round(depth,3), depth_status=dstat, depth_detail=det)
-        v,h=_motion(lat,lon); update(speed=round(v,2), course=None if h is None else round(h))
+        update(speed=round(v,2), course=None if h is None else round(h))
         LOG.row(STATE,CFG)
     except Exception as e: update(last_error=f"GGA parse: {e}")
 
@@ -178,6 +190,7 @@ def serial_loop():
                         line=raw.decode("ascii","ignore").strip()
                         if line: LOG.raw(line)
                         if line.startswith("$") and "GGA" in line: parse_gga(line)
+                        elif line.startswith("$"): HEL.feed(line)   # hellingsmålar i antenna, om ho har
                 else: time.sleep(.02)
         except Exception as e:
             update(serial_connected=False,last_error=f"Serial: {e}")
@@ -254,7 +267,8 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/api/terrain":
             self.headers_ok(); self.wfile.write(json.dumps({"available":T.AVAILABLE,"error":T.IMPORT_ERROR,
                 "types":T.TYPES,"layers":TERR.listing() if T.AVAILABLE else [],
-                "calibration":{k:CFG[k] for k in ("antZ","zOff","heightMode","geoidN","calibrated")}}).encode()); return
+                "calibration":{k:CFG[k] for k in ("antZ","zOff","heightMode","geoidN","calibrated","tiltMode","tiltFlipPitch","tiltFlipRoll")},
+                "tiltSentences":sorted(HEL.sentences)}).encode()); return
         if u.path=="/api/log":
             r=LOG.status(); r.update(ok=True,logs=LOG.listing(),always=bool(O.system_cfg().get("logAlways")))
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
@@ -499,7 +513,7 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 d=json.loads(body or b"{}")
                 if self.path=="/api/calibration":
-                    for k in ("antZ","zOff","heightMode","geoidN","calibrated"):
+                    for k in ("antZ","zOff","heightMode","geoidN","calibrated","tiltMode","tiltFlipPitch","tiltFlipRoll"):
                         if k in d: CFG[k]=d[k]
                     save_cfg(); r={"ok":True}
                 elif not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)

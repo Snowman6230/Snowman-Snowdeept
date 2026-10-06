@@ -5,7 +5,7 @@ Kvar logg har to filer i data/logg/:
   <namn>.nmea  alle linjer frå mottakaren (NMEA), med PC-tid framfor:  2026-10-05T12:00:00.123 $GNGGA,...
                og hendingar (NTRIP tilkopla/fråkopla, feil) som linjer med # framfor
   <namn>.csv   éi linje per posisjon: tid, fix, satellittar, HDOP, breidd, lengd, høgd, geoidehøgd, terrenghøgd,
-               terrenglag, utrekna snødjupne (rå og vist), status, fart, kurs, antennehøgd, høgdeoffset
+               terrenglag, utrekna snødjupne (rå og vist), status, fart, kurs, antennehøgd, høgdeoffset, helling
 Loggane kan lastast ned frå Innst. › System og sendast til Alpindata. Dei inneheld ingen passord.
 Gamle loggar blir sletta når mappa blir større enn MAX_MB.
 """
@@ -14,7 +14,8 @@ from pathlib import Path
 
 MAX_MB = 500
 COLS = ["tid", "fix", "satellittar", "hdop", "breidd", "lengd", "hogd", "geoidehogd", "terrenghogd", "terrenglag",
-        "snodjupne_raa", "snodjupne", "status", "fart_ms", "kurs", "antZ", "zOff", "simulert"]
+        "snodjupne_raa", "snodjupne", "status", "fart_ms", "kurs", "antZ", "zOff", "simulert",
+        "helling_kjelde", "helling_grader", "stamp", "krenging", "malepunkt_flytt_m"]
 
 
 class FeltLogg:
@@ -88,6 +89,8 @@ class FeltLogg:
         r = [self._ts(), st.get("fix"), st.get("satellites"), st.get("hdop"), st.get("lat"), st.get("lon"), st.get("altitude"),
              st.get("geoid_sep"), det.get("terrain"), ter.get("name", ""), det.get("raw"), st.get("depth"), st.get("depth_status"),
              st.get("speed"), st.get("course"), cfg.get("antZ"), cfg.get("zOff"), int(bool(st.get("simulated")))]
+        tl = st.get("tilt") or {}
+        r += [tl.get("src"), tl.get("total"), tl.get("pitch"), tl.get("roll"), tl.get("shift")]
         with self.lock:
             if self.csv:
                 csv.writer(self.csv).writerow(r)

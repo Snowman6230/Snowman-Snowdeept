@@ -17,7 +17,11 @@ Snøen er SIMULERT – berre for å teste korleis SNOWMAN brukar terrengmodellen
 Utgang: virtuell seriellport (Linux/macOS), eller TCP med --tcp PORT (alle system, også Windows).
 SNOWMAN les TCP som seriellporten «socket://127.0.0.1:PORT».
 
-Bruk: python3 simuler-leica.py [fil-for-portnamn] [--terreng | --anlegg] [--antenne 2.8] [--tcp 7777]
+Helling (v1.6.31): med --terreng og --anlegg står maskina på snøflata og antenna sit --antenne meter ut frå
+maskina, vinkelrett på snøflata – som i ei ekte maskin på skrå. Fasit er snødjupna under midten av maskina.
+Med --helling sender simulatoren òg hellinga som om antenna har hellingsmålar ($PASHR: kurs, krenging, stamp).
+
+Bruk: python3 simuler-leica.py [fil-for-portnamn] [--terreng | --anlegg] [--antenne 2.8] [--helling] [--tcp 7777]
 """
 import argparse, os, socket, threading, time, math, random
 from pathlib import Path
@@ -28,6 +32,7 @@ ap.add_argument("portfil", nargs="?")
 ap.add_argument("--terreng", action="store_true", help="høgd frå testterreng + fasit-snø")
 ap.add_argument("--anlegg", action="store_true", help="køyr over øvste aktive lag i terrengbiblioteket, med simulert snø")
 ap.add_argument("--antenne", type=float, default=2.8, help="antennehøgd over snøoverflata (m)")
+ap.add_argument("--helling", action="store_true", help="send hellingsmåling frå «antenna» ($PASHR)")
 ap.add_argument("--tcp", type=int, help="send NMEA over TCP på denne porten i staden for virtuell seriellport (krevst på Windows)")
 a = ap.parse_args()
 if a.terreng:
@@ -69,6 +74,29 @@ def cs(x):
     return "%02X" % c
 
 
+def on_slope(E, N, surf, h):
+    """Maskina står på snøflata ved (E, N); antenna sit h meter ut langs normalen.
+    surf(E, N) = høgda på snøflata. Returnerer (E, N, høgd) for antenna og hellinga (gE, gN)."""
+    d = 1.5
+    try:
+        gE = (surf(E + d, N) - surf(E - d, N)) / (2 * d)
+        gN = (surf(E, N + d) - surf(E, N - d)) / (2 * d)
+    except TypeError:  # utanfor terrengmodellen
+        gE = gN = 0.0
+    k = 1 / math.sqrt(1 + gE * gE + gN * gN)
+    return E - h * gE * k, N - h * gN * k, surf(E, N) + h * k, (gE, gN)
+
+
+def pashr(heading, g):
+    """$PASHR med kurs, krenging (+ = høgre side ned) og stamp (+ = fronten opp) frå hellinga g."""
+    hr = math.radians(heading)
+    along = g[0] * math.sin(hr) + g[1] * math.cos(hr)
+    right = g[0] * math.cos(hr) - g[1] * math.sin(hr)
+    roll, pitch = -math.degrees(math.atan(right)), math.degrees(math.atan(along))
+    body = f"PASHR,{time.strftime('%H%M%S')}.00,{heading:.2f},T,{roll:+.2f},{pitch:+.2f},0.00,0.050,0.050,0.100,1,1"
+    return f"${body}*{cs(body)}\r\n".encode()
+
+
 def dm(val, deg):
     dd = int(val); return f"{dd:0{deg}d}{(val-dd)*60:010.7f}"
 
@@ -76,8 +104,10 @@ def dm(val, deg):
 def sim_snow(s_, t_):
     """Simulert snødjupne (m) langs (s_) og på tvers (t_) av køyreretninga. Jamn variasjon og eit tynt felt."""
     d = 0.8 + 0.4 * math.sin(s_ / 23.0) * math.sin(t_ / 17.0)
-    if 40 < s_ < 60 and 10 < t_ < 25:
-        d = 0.25
+    # tynt felt (0,25 m) med 4 m skrå overgang – ekte snø har ikkje loddrette kantar, og maskina skal ikkje «velte» inn i ein
+    w = min(s_ - 40, 60 - s_, t_ - 10, 25 - t_) / 4.0
+    if w > 0:
+        d += (0.25 - d) * min(1.0, w)
     return max(0.05, d)
 
 
@@ -174,6 +204,7 @@ t0 = time.time()
 while True:
     t = time.time() - t0; d = max(0, t - 8) * v
     q = 5 if 40 < t < 46 else 4
+    grad = None
     if AN:
         if time.time() - last_chk > 3:
             last_chk = time.time()
@@ -181,9 +212,20 @@ while True:
                 t0 = time.time() - 8; d = 0                     # nytt lag: start ny runde der
         if AN.route:
             lat, lon, s_, t_ = AN.pos(d)
+            la2, lo2, _, _ = AN.pos(d + 0.5)
+            heading = (math.degrees(math.atan2((lo2 - lon) * math.cos(math.radians(lat)), la2 - lat)) + 360) % 360
             h = AN.height(lat, lon)
             if h is not None:
-                last_alt = h + sim_snow(s_, t_) + a.antenne + random.gauss(0, 0.008)
+                R = AN.route; zone = R["zone"]
+                E0, N0 = utm_forward(lat, lon, zone)
+                def surf(E, N):  # snøflata: terreng + simulert snø (s langs u, t langs p)
+                    la_, lo_ = utm_inverse(E, N, zone)
+                    hh = AN.height(la_, lo_)
+                    ds = (E - E0) * R["u"][0] + (N - N0) * R["u"][1]; dt = (E - E0) * R["p"][0] + (N - N0) * R["p"][1]
+                    return None if hh is None else hh + sim_snow(s_ + ds, t_ + dt)
+                Ea, Na, za, grad = on_slope(E0, N0, surf, a.antenne)
+                lat, lon = utm_inverse(Ea, Na, zone)            # antenna, ikkje maskina, blir sendt
+                last_alt = za + random.gauss(0, 0.008)
                 fasit(sim_snow(s_, t_))
             alt = last_alt                                       # utanfor modellen: SNOWMAN viser UTANFOR TERRENGMODELL
         else:
@@ -193,12 +235,18 @@ while True:
         if r < L: y = r if lane % 2 == 0 else L - r; x = lane * W
         else: y = L if lane % 2 == 0 else 0; x = lane * W + (r - L)
         lat = lat0 + y / mlat; lon = lon0 + x / mlon
+        heading = 0.0 if (lane % 2 == 0 and r < L) else 180.0 if r < L else 90.0
         if a.terreng:
             E, N = utm_forward(lat, lon, 32)
-            alt = terrain_h(E, N) + snow_truth(E, N) + a.antenne + random.gauss(0, 0.008)  # RTK-støy ca. 1 cm
+            Ea, Na, za, grad = on_slope(E, N, lambda e, n: terrain_h(e, n) + snow_truth(e, n), a.antenne)
             fasit(snow_truth(E, N))
+            lat, lon = utm_inverse(Ea, Na, 32)
+            alt = za + random.gauss(0, 0.008)  # RTK-støy ca. 1 cm
         else:
             alt = 905.31 + 0.01 * math.sin(t)
     lat += random.gauss(0, 0.01) / mlat; lon += random.gauss(0, 0.01) / mlon
     body = f"GNGGA,{time.strftime('%H%M%S')}.00,{dm(lat,2)},N,{dm(lon,3)},E,{q},19,0.6,{alt:.3f},M,40.0,M,1.0,0001"
-    send(f"${body}*{cs(body)}\r\n".encode()); time.sleep(1 / hz)
+    send(f"${body}*{cs(body)}\r\n".encode())
+    if a.helling and grad is not None:
+        send(pashr(heading, grad))
+    time.sleep(1 / hz)

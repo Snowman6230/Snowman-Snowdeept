@@ -1165,6 +1165,27 @@
           <div id="geoidRow" class="row hide"><span>Geoidehøgd N (m), ca. 40 på Sunnmøre</span><input id="geoidN" type="number" step=".001" /></div>
           <button class="btn" onclick="saveCalibration()">LAGRE KALIBRERING (BRUKAST TIL SNØDJUPNE)</button>
           <div id="calInfo" class="history">Kalibrering ikkje lagra i SNOWMAN-tenesta.</div>
+          <h3>HELLING</h3>
+          <div class="row">
+            <span>Hellingskorreksjon</span
+            ><select id="tiltMode" style="width: 230px" onchange="saveTilt()">
+              <option value="auto">Auto (tilrådd)</option>
+              <option value="estimat">Berre utrekna</option>
+              <option value="av">Av</option>
+            </select>
+          </div>
+          <label class="chk" style="display: block"><input id="tiltFlipPitch" type="checkbox" onchange="saveTilt()" /> Snu forteikn på stamp frå antenna (fram/bak)</label>
+          <label class="chk" style="display: block"><input id="tiltFlipRoll" type="checkbox" onchange="saveTilt()" /> Snu forteikn på krenging frå antenna (side)</label>
+          <div class="history" style="font-size: 12px">Auto: hellingsmålaren i antenna om ho har og sender han, elles utrekna frå GNSS og terrengmodell.</div>
+          <div id="tiltInfo" class="history">–</div>
+          <div class="history" style="font-size: 12px">
+            Antenna sit høgt over beltet. Når maskina står på skrå, er ho ikkje rett over beltet: utan korreksjon blir snødjupna
+            for høg (ca. 4 cm ved 10°, 18 cm ved 20°, 43 cm ved 30°), og punktet blir målt ved sida av der maskina står.
+            SNOWMAN rettar både høgda og punktet. Har antenna hellingsmålar (t.d. Leica GS18 T / iCON gps 70 T) og sender han
+            (HPR, PASHR eller PTNL,AVR), blir han brukt automatisk. Elles blir hellinga rekna ut frå GNSS-høgda langs
+            køyreretninga og terrengmodellen på tvers. <b>Kontroll:</b> køyr rett opp ein bakke – stamp skal vere positiv
+            (fronten opp). Stå med høgre side ned i ein sidebakke – krenging skal vere positiv.
+          </div>
           <div class="history">
             <b>Kalibreringsrutine:</b> Plasser maskina på eit kjent, plant kontrollpunkt. Mål antenneplasseringa fysisk mot eit fast
             referansepunkt på maskina. Når RTK FIX er stabil, samanlikn GNSS-høgda med kjent høgd og legg berre inn dokumentert offset.
@@ -1485,7 +1506,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.30";
+      const APP_VERSION = "1.6.31";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1695,6 +1716,7 @@
         src = "gnss";
         lastGnssAt = Date.now();
         simGnss = !!x.simulated; // simulatoren: alt blir merka som TEST
+        if ($("panelCal").classList.contains("on") && !$("settings").classList.contains("hide")) showTilt(x);
         $("demoTag").textContent = simGnss ? "TEST – SIMULERT MOTTAKAR OG SNØ" : "DEMO – SIMULERTE DATA";
         $("demoTag").classList.toggle("hide", !simGnss);
         let p = [x.lat, x.lon],
@@ -3634,6 +3656,10 @@
         if (c) {
           ["antZ", "zOff"].forEach((k) => c[k] != null && ($(k).value = cfg[k] = c[k]));
           $("heightMode").value = c.heightMode || "nn2000";
+          $("tiltMode").value = c.tiltMode || "auto";
+          $("tiltFlipPitch").checked = !!c.tiltFlipPitch;
+          $("tiltFlipRoll").checked = !!c.tiltFlipRoll;
+          TILT_SENT = TERR.tiltSentences || [];
           $("geoidN").value = c.geoidN ?? "";
           $("geoidRow").classList.toggle("hide", $("heightMode").value !== "ellipsoid");
           $("calInfo").innerHTML = c.calibrated
@@ -4778,6 +4804,30 @@
         if (!confirm("Slette kontrollpunktet?")) return;
         await api("api/control/point/delete", { id });
         loadControl();
+      }
+      // Hellingskorreksjon (Innst. › Kalibrering › Helling): blir lagra med éin gong
+      let TILT_SENT = [];
+      async function saveTilt() {
+        try {
+          await api("api/calibration", { tiltMode: $("tiltMode").value, tiltFlipPitch: $("tiltFlipPitch").checked, tiltFlipRoll: $("tiltFlipRoll").checked });
+          toast("Hellingskorreksjon lagra");
+        } catch (e) {
+          toast("Kunne ikkje lagre: " + e.message);
+        }
+      }
+      function showTilt(x) {
+        let t = x.tilt || {},
+          f = (v) => (v == null ? "–" : (v > 0 ? "+" : "") + v.toFixed(1).replace(".", ",") + "°");
+        $("tiltInfo").innerHTML =
+          t.src === "av"
+            ? "Hellingskorreksjon er av."
+            : t.total == null
+              ? "Ventar på posisjon og terrengmodell …"
+              : "<b>Helling no: " + f(t.total).replace("+", "") + "</b> · stamp " + f(t.pitch) + " · krenging " + f(t.roll) +
+                "<br>Kjelde: <b>" + esc(t.src + (t.sentence ? " (" + t.sentence + ")" : "")) + "</b> · målepunktet flytt " +
+                (t.shift != null ? t.shift.toFixed(2).replace(".", ",") : "–") + " m · høgd retta " +
+                (t.dz != null ? Math.round(t.dz * 100) : "–") + " cm" +
+                "<br><small>" + ((t.ant || TILT_SENT).length ? "Antenna sender helling: " + esc((t.ant || TILT_SENT).join(", ")) : "Antenna har ikkje sendt hellingsmåling (vanleg for GS07/GS16).") + "</small>";
       }
       async function saveCalibration() {
         save();
