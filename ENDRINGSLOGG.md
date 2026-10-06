@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.33 – NTRIP: rett User-Agent og betre feilmelding
+- **Retta:** NTRIP-førespurnaden hadde User-Agent «SNOWMAN-NTRIP/1.1». NTRIP 1.0 krev at han byrjar med «NTRIP », og nokre castarar avviser elles. No: `NTRIP SNOWMAN/<versjon>`, og `Host`-felt.
+- **Endra:** Mellomrom før/etter brukarnamn, passord og mountpoint blir fjerna (lett å få med ved inntasting).
+- **Endra:** Feilmeldinga forklarer 401 (feil brukarnamn/passord, ingen tilgang til mountpointet eller kontoen i bruk på ei anna eining) og 404 (mountpointet finst ikkje).
+- **Bakgrunn:** Eigaren fekk «HTTP/1.1 401 Unauthorized» mot gpsbase.dyndns.org:2101, mountpoint TH. Porten er rett (casteren svarte).
+- **Testa:** mot ein lokal test-caster: rett førespurnad og feilmelding.
+
 ### PC-prototype v1.6.32 – tilbakeknapp på NTRIP-oppsettet, Zenith35 Pro tilkopla
 - **Retta:** NTRIP/GNSS-oppsettet (Innst. › Kart › LEICA / CPOS / NTRIP-OPPSETT) hadde ingen veg tilbake i kiosk og app-vindauge. No er det knappen **← TILBAKE TIL SNOWMAN** øvst og nedst.
 - **Testa av eigaren:** GeoMax Zenith35 Pro via Bluetooth (COM4) sender NMEA rett til SNOWMAN utan ekstra oppsett: «Serial: TILKOPLA COM4», GPS, 16 satellittar, HDOP 0,9, posisjon og høgd. Første ekte mottakar kopla til SNOWMAN.

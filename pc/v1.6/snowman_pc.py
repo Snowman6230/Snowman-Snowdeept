@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.32"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.33"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -205,8 +205,10 @@ def connect_ntrip():
     port=int(CFG["caster_port"])
     mp=CFG["mountpoint"].lstrip("/")
     s=socket.create_connection((host,port),timeout=10)
-    auth=base64.b64encode(f'{CFG["username"]}:{CFG["password"]}'.encode()).decode()
-    req=(f"GET /{mp} HTTP/1.0\r\nUser-Agent: SNOWMAN-NTRIP/1.1\r\n"
+    # Brukarnamn/passord utan mellomrom før og etter (lett å få med ved inntasting)
+    auth=base64.b64encode(f'{str(CFG["username"]).strip()}:{str(CFG["password"]).strip()}'.encode("utf-8")).decode()
+    # NTRIP 1.0: User-Agent må byrje med «NTRIP » – nokre castarar avviser elles førespurnaden
+    req=(f"GET /{mp.strip()} HTTP/1.0\r\nHost: {host}:{port}\r\nUser-Agent: NTRIP SNOWMAN/{VERSION}\r\n"
          f"Authorization: Basic {auth}\r\nAccept: */*\r\nConnection: close\r\n\r\n")
     s.sendall(req.encode())
     head=b""
@@ -214,7 +216,9 @@ def connect_ntrip():
         head+=s.recv(1)
     first=head.split(b"\r\n",1)[0].decode("latin1","ignore")
     if not ("200" in first or "ICY 200" in first):
-        raise RuntimeError("NTRIP svar: "+first)
+        why={"401":" – feil brukarnamn/passord, kontoen har ikkje tilgang til mountpointet, eller kontoen er i bruk på ei anna eining",
+             "404":" – mountpointet finst ikkje (sjekk stavinga, store/små bokstavar)"}
+        raise RuntimeError("NTRIP svar: "+first+next((v for k,v in why.items() if k in first),""))
     s.settimeout(1)
     return s
 
