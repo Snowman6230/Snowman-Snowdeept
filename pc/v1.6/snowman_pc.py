@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.35"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.36"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -294,6 +294,16 @@ class API(http.server.BaseHTTPRequestHandler):
             try: st=json.loads((DATA/"launcher.json").read_text())
             except Exception: st={}
             self.headers_ok(); self.wfile.write(json.dumps({"launcher":bool(st.get("browser")),"mode":st.get("mode","window"),"system":system_cfg()}).encode()); return
+        if u.path=="/api/config":   # NTRIP/GNSS-oppsettet: noverande verdiar til skjemaet (passordet blir aldri sendt)
+            c={k:CFG[k] for k in ("serial_port","baud","caster","caster_port","mountpoint","username")}
+            c["password"]="***" if CFG.get("password") else ""
+            self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"config":c,"simulert":REAL_PORT[0] is not None}).encode()); return
+        if u.path=="/api/ports":   # seriellportar på PC-en (USB, Bluetooth …) med skildring
+            try:
+                from serial.tools import list_ports
+                r=[{"port":p.device,"desc":p.description or "","hwid":p.hwid or ""} for p in sorted(list_ports.comports(),key=lambda p:p.device)]
+            except Exception: r=[]
+            self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"ports":r}).encode()); return
         if u.path=="/api/ui-config":
             try: d=json.loads(UI_CFG.read_text("utf-8"))
             except Exception: d={}

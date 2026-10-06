@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.36 – NTRIP-oppsettet viser og tek vare på det som er lagra
+- **Retta (alvorleg):** Skjemaet i LEICA / CPOS / NTRIP-OPPSETT vart aldri fylt med det som var lagra. COM-port stod alltid «COM3», og mountpoint/passord var tomme. Trykte ein LAGRE, vart den fungerande porten (COM4) og mountpointet skrivne over – og mottakaren kopla frå. No blir skjemaet fylt med det som er lagra; passordet blir aldri sendt til nettlesaren, og eit tomt passordfelt endrar ikkje passordet.
+- **Nytt:** Lista over seriellportar på PC-en (USB, Bluetooth) med skildring, som forslag i COM-port-feltet, og påminning om å bruke den **utgåande** Bluetooth-porten. `GET /api/config`, `GET /api/ports`.
+- **Funne av:** eigaren, som mista koplinga til Zenith35 Pro etter å ha lagra på nytt (COM3 og tomt mountpoint).
+- **Testa:** skjemaet viser lagra port, caster, mountpoint og brukar; lagring endrar ingenting som ikkje er endra; passordet er uendra.
+
 ### PC-prototype v1.6.35 – retta: SNOWMAN fann ikkje att posisjonen etter tunnel
 - **Retta (alvorleg):** Når mottakaren mista posisjonen (tunnel: GGA utan breidd/lengd), lagra fart/kurs-utrekninga eit tomt punkt. Alle GGA-meldingar etterpå feila då med «GGA parse: unsupported operand type(s) for -: 'float' and 'NoneType'», og SNOWMAN stod fast på NO FIX til han vart starta på nytt – sjølv om mottakaren hadde fått posisjon att. No blir tomme punkt hoppa over, og posisjonen kjem att med éin gong.
 - **Funne av:** eigaren, som køyrde gjennom ein tunnel med GeoMax Zenith35 Pro via Bluetooth.
