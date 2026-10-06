@@ -11,6 +11,18 @@ hellingsmålar. Ho må koplast til ein GNSS-mottakar som gir NMEA til PC-en:
 - eller ein rimeleg RTK-mottakar (t.d. u-blox ZED-F9P-kort over USB). Desse gir berre 3,3 V til antenna, så det trengst ein
   **bias-tee** (straummatar) med 5–12 V mellom mottakar og antenne, og overgang TNC → SMA.
 SNOWMAN er uavhengig av mottakar, så begge vegar fungerer. Hellinga blir då rekna ut (Innst. › Kalibrering › Helling: Auto).
+
+**GeoMax Zenith35 Pro (GSM-UHF-TAG, 2018)** er òg tilgjengeleg: komplett smartantenne med mottakar (GPS, GLONASS, Galileo,
+BeiDou), Bluetooth, GSM-modem, UHF-radio og Tilt&Go (hellingsmålar, opptil 15–30°). Straum 9–18 V. Kopling via **Bluetooth**:
+1. Windows: Innstillingar › Bluetooth › Legg til eining › «Zenith35 …» (PIN 0000 om han spør). Deretter «Fleire
+   Bluetooth-innstillingar» › fana **COM-portar** › noter **utgåande** COM-port (t.d. COM5).
+   Linux: `bluetoothctl` (pair/trust), så `sudo rfcomm bind 0 <adresse>` → `/dev/rfcomm0`.
+2. SNOWMAN › Innst. › Kart › LEICA / CPOS / NTRIP-OPPSETT: vel COM-porten, lagre. Start feltlogg (Innst. › System).
+3. Kjem det **$GNGGA**-linjer i loggen, er alt klart. Kjem det ingenting, må NMEA GGA (5 Hz) slåast på for Bluetooth-porten
+   i GeoMax sitt oppsettprogram (X-PAD) – send loggen til Alpindata.
+4. RTK: CPOS via SNOWMAN (RTCM over same Bluetooth-kopling) eller via SIM-kortet i Zenith-en sjølv (set opp i X-PAD).
+5. Sender Zenith-en helling i NMEA, tek SNOWMAN han i bruk automatisk; kjelda står i Innst. › Kalibrering › Helling.
+Bluetooth Class II rekk om lag 10 m – nok frå taket til førarhuset. Til fast bruk i maskina er kabel tryggare.
 - [ ] SNOWMAN er oppdatert (Innst. › System › HENT SISTE VERSJON).
 - [ ] Terrengmodell for området er lagt inn (Innst. › Terreng), med NN2000 stadfesta.
 - [ ] Leica er sett opp til å sende **NMEA GGA** (gjerne 5 Hz) på seriellporten, og høgd i **NN2000** (ikkje ellipsoidisk).

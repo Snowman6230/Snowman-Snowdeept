@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### Utstyr – GeoMax Zenith35 Pro via Bluetooth
+- **Fakta:** GeoMax Zenith35 Pro GSM-UHF-TAG (2018) er tilgjengeleg: smartantenne med mottakar, Bluetooth, GSM-modem, UHF og hellingsmålar (Tilt&Go).
+- **Avgjerd (eigar):** Han skal koplast til SNOWMAN via Bluetooth. Det krev ingen ny kode: Bluetooth gir ein COM-port (Windows) eller `/dev/rfcomm0` (Linux), som SNOWMAN les som ein vanleg seriellport. Framgangsmåte i `docs/FELTPROVE.md`.
+
 ### Utstyr – antenna er ei Leica MNA1202 GG
 - **Fakta:** Antenna som er tilgjengeleg, er Leica MNA1202 GG (art. 753221, 2007): maskinantenne til Leica MNS1200-systemet, GPS + GLONASS L1/L2, TNC-kontakt, 4,5–18 V DC. Ho er berre ei antenne utan eigen mottakar og utan hellingsmålar. Tidlegare antaking om GS07 med Lemo-kontakt var feil.
 - **Avgjerd:** Det trengst ein GNSS-mottakar mellom antenna og PC-en (Leica-mottakaren som høyrde til, eller ein rimeleg RTK-mottakar med bias-tee). Hellingskorreksjonen brukar utrekna helling. Sjå `docs/FELTPROVE.md`.
