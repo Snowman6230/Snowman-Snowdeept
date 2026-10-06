@@ -99,6 +99,13 @@ så serveren er naudsynt. Han kan vere kontor-PC-en på anlegget eller ein liten
 
 **Datamengd:** om lag eitt punkt per meter køyrt – nokre få MB per maskin per natt.
 
+**Krav frå eigaren:** vel den **beste og billigaste** løysinga når dette blir innført. Alternativ som skal samanliknast då
+(prisar må sjekkast på det tidspunktet):
+- **Kontor-PC på anlegget** som server – ingen månadskostnad, men må stå på heile natta og vere nåbar utanfrå (fast adresse
+  eller tunnel).
+- **Liten leigd server på nett** (VPS) – låg månadskostnad, alltid på, enkel å nå frå alle maskiner. Kan dele på fleire anlegg.
+- **Ein av maskin-PC-ane som server** – ingen ekstra maskin, men berre tilgjengeleg når den maskina køyrer. Truleg ikkje godt nok.
+
 ## 7. Anna
 
 - LAS/LAZ-import (punktsky) om terrengdata kjem i det formatet.
