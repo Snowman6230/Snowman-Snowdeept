@@ -76,10 +76,28 @@ Drivstoff blir no registrert for hand (v1.6.24, full tank-metoden). Seinare kan 
 
 Rapporten kan òg få ei utskriftsvennleg side (PDF) i tillegg til CSV.
 
-## 6. Fleire maskiner
+## 6. Fleire maskiner deler snødjupne (planlagt v1.8)
 
-To eller fleire trakkemaskiner ser kvarandre sine spor og snødjupner. Krev nett mellom maskinene (fungerer offline, synkroniserer
-når det er dekning).
+**Status:** bestemt av eigaren 2026-10-06, kjem etter anleggspakka (v1.7).
+
+To eller fleire maskiner med SNOWMAN deler målingane sine. Kjem ei maskin over eit område ei anna maskin har preparert dei
+**siste 12 timane**, veit systemet snødjupna der, og prosent preparert / uprepart areal gjeld heile flåten.
+
+**Korleis:** via mobildata til ein felles SNOWMAN-server for anlegget («lagre og send vidare»). Det er dekning i heile anlegget på
+Fjellsætra. Utan dekning held maskina fram som før og legg målingane i kø; dei blir sende når dekninga kjem att, og maskina hentar
+det dei andre har sendt. Maskinene kan ikkje nå kvarandre direkte over mobilnettet (operatørane blokkerer innkomande trafikk),
+så serveren er naudsynt. Han kan vere kontor-PC-en på anlegget eller ein liten server på nett.
+
+**Reglar:**
+- Kvar måling har posisjon, snødjupne, maskin og **GNSS-tid** (ikkje PC-klokka, som kan gå feil).
+- Nyaste måling på ein stad gjeld – snø blir flytt når ein preparerer. Eigne nye målingar går alltid framfor eldre frå andre.
+- Målingar eldre enn 12 timar blir ikkje viste. Alder blir vist («målt av PB 2 for 3 t sidan»).
+- Berre målingar med RTK FIX frå kalibrerte maskiner blir delte. Demo og simulator blir aldri delte.
+- Kvar maskin må vere kontrollmålt (Innst. › Kontroll) – ein høgdefeil på éi maskin blir elles delt med alle.
+- Dei andre maskinene blir viste på kartet (posisjon, sist sett).
+- Eigen nøkkel per anlegg; ingen passord i koden.
+
+**Datamengd:** om lag eitt punkt per meter køyrt – nokre få MB per maskin per natt.
 
 ## 7. Anna
 

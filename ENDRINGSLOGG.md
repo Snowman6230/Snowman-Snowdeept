@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### Plan – fleire maskiner deler snødjupne
+- **Avgjerd (eigar):** Maskiner med SNOWMAN skal dele målingane sine, slik at snødjupne og preparert areal frå dei siste 12 timane er kjent for alle maskinene. Det er mobildekning i heile anlegget; utan dekning blir målingane sende automatisk når dekninga kjem att.
+- **Avgjerd:** Løysinga blir ein felles SNOWMAN-server for anlegget med «lagre og send vidare» (maskinene kan ikkje nå kvarandre direkte over mobilnettet). Nyaste måling gjeld, GNSS-tid på kvar måling, berre RTK FIX frå kalibrerte maskiner, aldri demo. Planlagt som v1.8, etter anleggspakka (v1.7). Sjå `docs/VEGEN-VIDARE.md` kap. 6.
+
 ### PC-prototype v1.6.30 – varsel om hindringar, og rapportar lagra automatisk
 - **Nytt:** **Hindringar** under Innst. › Trasear: hydrant, snøkanon, heismast, stein, kum, bygg, gjerde/stolpe eller anna, med namn, radius og merknad. Leggjast inn ved å trykke på kartet, eller «framfor skjeret» når maskina står inntil hindringa. Vist på kartet som raudt merke med symbol og ring i rett storleik.
 - **Nytt:** **Varsel berre for hindringar maskina kan treffe:** når ei hindring ligg i køyrebana (breidda til frontskjeret + radius + 0,5 m), kjem eit stort raudt varsel **10 m før skjeret** når ho, med nedteljing i meter («⚠ HYDRANT 7 · 8 m» … «STOPP!»). Blinkar dei siste 3 m. Kort pip når varselet kjem og for kvar meter dei siste 5 m. Hindringar ved sida av køyrebana gir ikkje varsel.
