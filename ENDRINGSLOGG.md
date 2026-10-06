@@ -9,6 +9,9 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### Plan – vegplan v1.7 til v2.0
+- **Avgjerd (eigar):** v1.9 = presisjon og klar for sal (maskingeometri, lisens, driftsportal, snøvolum); v2.0 = første salsversjon. Sjå tabellen «Vegplan» i `docs/VEGEN-VIDARE.md`.
+
 ### Plan – fleire maskiner deler snødjupne
 - **Avgjerd (eigar):** Maskiner med SNOWMAN skal dele målingane sine, slik at snødjupne og preparert areal frå dei siste 12 timane er kjent for alle maskinene. Det er mobildekning i heile anlegget; utan dekning blir målingane sende automatisk når dekninga kjem att.
 - **Avgjerd:** Løysinga blir ein felles SNOWMAN-server for anlegget med «lagre og send vidare» (maskinene kan ikkje nå kvarandre direkte over mobilnettet). Nyaste måling gjeld, GNSS-tid på kvar måling, berre RTK FIX frå kalibrerte maskiner, aldri demo. Planlagt som v1.8, etter anleggspakka (v1.7). Sjå `docs/VEGEN-VIDARE.md` kap. 6.

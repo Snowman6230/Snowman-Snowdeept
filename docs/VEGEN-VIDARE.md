@@ -120,6 +120,19 @@ køyrer likt på NAS, kontor-PC og leigd server, så valet kan takast seinare. A
   alle maskiner. Éin server kan dekkje alle kundane til Alpindata – truleg best ved sal til andre anlegg.
 - **Ein av maskin-PC-ane som server** – ingen ekstra maskin, men berre tilgjengeleg når den maskina køyrer. Truleg ikkje godt nok.
 
+## Vegplan (bestemt av eigaren 2026-10-06)
+
+| Versjon | Innhald |
+|---|---|
+| **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
+| **v1.7** | Anleggspakke, fleire terrengfiler på ein gong, LAS/LAZ/XYZ, trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
+| **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). |
+| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate. |
+| **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
+| Seinare | CAN-bus (drivstoff, motordata, vinsj – ulikt for PistenBully og Prinoth), LiDAR for snødjupne framfor maskina. |
+
+Maskingeometrien blir flytt fram til v1.7 om feltprøva viser at målinga ved antenna er for upresis.
+
 ## 7. Anna
 
 - LAS/LAZ-import (punktsky) om terrengdata kjem i det formatet.
