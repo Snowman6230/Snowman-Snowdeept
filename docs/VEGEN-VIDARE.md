@@ -109,11 +109,15 @@ maskinene. Endringar blir gjorde éin stad (kontor-PC eller nettside på servere
 - Store filer (terreng, kartfliser) helst over wifi i garasjen; små endringar over mobildata. Berre endringar blir sende.
 - Versjon på anleggsdataa: kontoret ser kva versjon kvar maskin har.
 
-**Krav frå eigaren:** vel den **beste og billigaste** løysinga når dette blir innført. Alternativ som skal samanliknast då
+**Krav frå eigaren:** vel den **beste og billigaste** løysinga når dette blir innført. Serverprogrammet blir laga slik at det
+køyrer likt på NAS, kontor-PC og leigd server, så valet kan takast seinare. Alternativ som skal samanliknast då
 (prisar må sjekkast på det tidspunktet):
+- **NAS på anlegget** (Synology/QNAP med Container Manager/Docker) – ingen månadskostnad, står alltid på. Maskinene når han
+  via **Tailscale** (gratis for små oppsett, ingen opne portar). Truleg best for Fjellsætra om NAS-en kan køyre program.
 - **Kontor-PC på anlegget** som server – ingen månadskostnad, men må stå på heile natta og vere nåbar utanfrå (fast adresse
   eller tunnel).
-- **Liten leigd server på nett** (VPS) – låg månadskostnad, alltid på, enkel å nå frå alle maskiner. Kan dele på fleire anlegg.
+- **Liten leigd server på nett** (VPS) – låg månadskostnad (Hetzner ca. 6,50 €/mnd i august 2026), alltid på, enkel å nå frå
+  alle maskiner. Éin server kan dekkje alle kundane til Alpindata – truleg best ved sal til andre anlegg.
 - **Ein av maskin-PC-ane som server** – ingen ekstra maskin, men berre tilgjengeleg når den maskina køyrer. Truleg ikkje godt nok.
 
 ## 7. Anna
