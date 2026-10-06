@@ -49,3 +49,51 @@ Bluetooth Class II rekk om lag 10 m – nok frå taket til førarhuset. Til fast
 ## Etterpå
 - Last ned loggen (Innst. › System › Last ned (zip)) og send han til Alpindata saman med notata dine.
 - Noter: kva fungerte, kva var tregt, kva var feil. Bilete av skjermen er gull verdt.
+
+---
+
+## Resultat: første feltprøve 2026-10-06 (bil, Sykkylven → Fjellsætra)
+
+Utstyr: GeoMax Zenith35 Pro (Z35180902059) over Bluetooth (COM4, utgåande), NTRIP gpsbase.dyndns.org:2101, mountpoint TH
+(basen står om lag 4 km frå heimen). SNOWMAN PC v1.6.38. Testen vart køyrd i **bil**, ikkje trakkemaskin.
+
+**Fungerte**
+- Bluetooth-sambandet heldt, også i fart (50–60 km/t) og gjennom tunnel (etter rettinga i v1.6.35).
+- NTRIP tilkopla, RTCM vidaresendt til mottakaren (239 116 byte på éi økt).
+- NN2000-høgd med Kartverket-geoiden rett: ellipsoidisk 416,28 m − N 45,13 m = 371,15 m.
+- Spor, økter og rapport lagra automatisk; demo-økter haldne utanfor summen.
+- Snødjupne vart ikkje vist utan RTK FIX («IKKJE MÅLT – KREV RTK FIX»), slik det skal vere.
+
+**Fungerte ikkje: RTK FIX** – mottakaren stod på SBAS (GGA-kvalitet 9) heile kvelden. Truleg årsaker:
+1. Zenith-en stod i **RTK Base**-modus i starten (retta til RTK Rover). Ikkje trykk «Start» på Working Mode – det startar basestasjon.
+2. **RTK Quality Mode = Extra Safe RTK** – ventar lenge før FIX blir godteke.
+3. Berre **GPS**-satellittar (9–12) blei følgde, sjølv om alle system skulle vere på.
+4. Truleg dårleg sikt mot himmelen (innandørs/vindauge), og PC-en var tidvis utan internett (globus-ikon i Windows).
+5. Mottakaren svarte `@GNSS,LANTENNA,ERROR,1*61`: Zenith-en brukar eige **@GNSS**-kommandospråk (ikkje NovAtel),
+   og tolka innkomande data på Bluetooth som kommandoar medan han stod i feil modus. `INTERFACEMODE`-tipset gjeld ikkje.
+
+**Rette Zenith-innstillingar** (nettsida 192.168.10.1 via Zenith-wifien › Settings › Sensor Settings):
+Working Mode **RTK Rover** · RTK Data Source **Bluetooth** · Antenna Height to ARP **0** (SNOWMAN brukar antZ) ·
+RTK Quality Mode **Normal** under testing · Satellite Settings: **GPS, GLONASS, Galileo, BeiDou** på · Save Settings.
+PC-en kan ikkje vere på Zenith-wifien og internett samstundes – bruk mobilen til Zenith-sida, eller **USB-deling** frå mobilen.
+
+### Sjekkliste til neste forsøk (dagslys, open himmel)
+1. Zenith-en **ute** med fri sikt rundt (biltak/stolpe). Bluetooth rekk 10–20 m.
+2. Kontroller innstillingane over (Rover, Bluetooth, Normal, alle fire satellittsystem).
+3. PC-en på internett (ikkje Zenith-wifien).
+4. SNOWMAN › NTRIP-sida: NTRIP **TILKOPLA**, «RTCM mottatt» aukar, **ingen** `@GNSS…ERROR`.
+5. Vent 3–5 min → FLOAT → **FIX**. Noter tida.
+6. **Står han framleis på SBAS:** set RTK Data Source = **GSM/GPRS** og legg same NTRIP-konto inn i Zenith-en sjølv (eige SIM).
+   - FIX då → basen og kontoen er i orden; feilen er at Zenith-en ikkje tek imot RTCM over Bluetooth. SNOWMAN berre les posisjon.
+   - Ikkje FIX → feilen ligg i basen eller mountpointen TH.
+7. Ved FIX: kontrollmåling på barmark (venta 0,00 m) – antZ = målt høgd til ARP, høgdeoffset 0, høgdemodus «geoide».
+
+### Notert til v1.6.39
+- **Fartsgrense for preparering:** strekningar over ca. 25 km/t (justerbart under Maskin) blir «transport» – ikkje areal,
+  prep-tid eller trasédekning. Økter under 50 m køyring utan areal. (Biltesten gav 93,9 daa «preparert».)
+- **Retta tipstekst på NTRIP-sida:** Zenith35 Pro brukar @GNSS-kommandoar, ikkje NovAtel `INTERFACEMODE` – la feltet stå tomt.
+
+### Antenne til seriepakke (v2.0) – vurdering 2026-10-06
+Zenith35 Pro er god nok til RTK FIX; problemet i kveld var oppsett, ikkje antenne. Tilråding til seriepakke:
+u-blox ZED-F9P / ZED-X20P (t.d. ArduSimple simpleRTK3B/4) med **to antenner** (retning ved stillstand), fleirbandsantenne
+på hyttetaket med jordplan ≥ 15 cm. Septentrio mosaic-X5 som robust mellomval; Leica/Trimble/GeoMax framleis støtta.

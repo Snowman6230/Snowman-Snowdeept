@@ -7,6 +7,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-07
+
+### Dokumentasjon – resultat frå første feltprøve (Zenith35 Pro, bil til Fjellsætra)
+- **Nytt:** `docs/FELTPROVE.md` har fått resultatet frå feltprøva 2026-10-06: kva som fungerte (Bluetooth, NTRIP, NN2000-høgd,
+  rapportar, tunnel), kvifor det ikkje vart RTK FIX (Base-modus, Extra Safe RTK, berre GPS, dårleg sikt), rette Zenith-innstillingar
+  og ei sjekkliste til neste forsøk, med GSM-testen som skil mellom feil i Bluetooth-korreksjonar og feil i basen.
+- **Avgjerd:** til v1.6.39 – fartsgrense (ca. 25 km/t) så transport ikkje blir rekna som preparert areal, og retta tipstekst på
+  NTRIP-sida (Zenith35 Pro brukar @GNSS-kommandoar, ikkje NovAtel `INTERFACEMODE`).
+- **Avgjerd:** tilrådd mottakar til seriepakka (v2.0) er u-blox ZED-F9P/X20P med to antenner; Leica/GeoMax framleis støtta.
+- **Kvifor:** så resultatet og neste steg ligg klart til neste feltprøve.
+
 ## 2026-10-06
 
 ### PC-prototype v1.6.38 – oppstartskommandoar til mottakaren, og ny tilkopling når oppsettet blir endra
