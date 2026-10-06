@@ -99,6 +99,16 @@ så serveren er naudsynt. Han kan vere kontor-PC-en på anlegget eller ein liten
 
 **Datamengd:** om lag eitt punkt per meter køyrt – nokre få MB per maskin per natt.
 
+**Utsending av anleggsdata til maskinene (bestemt av eigaren 2026-10-06):** same server sender anleggspakka (v1.7) ut til alle
+maskinene. Endringar blir gjorde éin stad (kontor-PC eller nettside på serveren) og når alle maskinene.
+- Innhald: terrengmodellar, trasear og forbodne område, hindringar, kontrollpunkt, kartfliser for offline drift – seinare
+  beskjedar og oppgåver frå driftsleiar.
+- Maskinene hentar sjølve når dei har dekning; ei maskin som har vore avslått, får alt nytt ved neste oppstart.
+- Trasear og hindringar blir tekne i bruk med éin gong. Nytt terreng blir **ikkje** skifta under preparering (endrar
+  snødjupna): føraren får «Nytt terreng tilgjengeleg – ta i bruk», og det skjer når prep er stoppa.
+- Store filer (terreng, kartfliser) helst over wifi i garasjen; små endringar over mobildata. Berre endringar blir sende.
+- Versjon på anleggsdataa: kontoret ser kva versjon kvar maskin har.
+
 **Krav frå eigaren:** vel den **beste og billigaste** løysinga når dette blir innført. Alternativ som skal samanliknast då
 (prisar må sjekkast på det tidspunktet):
 - **Kontor-PC på anlegget** som server – ingen månadskostnad, men må stå på heile natta og vere nåbar utanfrå (fast adresse
