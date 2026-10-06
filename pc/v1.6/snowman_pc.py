@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.37"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.38"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -55,7 +55,9 @@ STATE = {
 CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint":"",
        "username":"","password":"","gga_interval":5,
        "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,
-       "tiltMode":"auto","tiltFlipPitch":False,"tiltFlipRoll":False,"hudLan":False}
+       "tiltMode":"auto","tiltFlipPitch":False,"tiltFlipRoll":False,
+       "initCmds":"",   # oppstartskommandoar til mottakaren (éin per linje), sende når seriellporten blir opna
+       "hudLan":False}
 def load_cfg():
     try: CFG.update({k:v for k,v in json.loads(CFG_FILE.read_text("utf-8")).items() if k in CFG})
     except FileNotFoundError: pass
@@ -187,8 +189,14 @@ def serial_loop():
             serial_obj=serial.serial_for_url(CFG["serial_port"], baudrate=int(CFG["baud"]), timeout=.2)
             update(serial_connected=True, port=CFG["serial_port"], baud=int(CFG["baud"]), last_error="")
             LOG.event(f"Mottakar tilkopla: {CFG['serial_port']} @ {CFG['baud']}")
-            buf=b""
+            # Oppstartskommandoar (t.d. NovAtel: «INTERFACEMODE THISPORT AUTO NOVATEL ON» for å ta imot RTCM på porten)
+            for cmd in str(CFG.get("initCmds") or "").splitlines():
+                if cmd.strip():
+                    serial_obj.write((cmd.strip()+"\r\n").encode("ascii","ignore")); LOG.event("Sendt til mottakar: "+cmd.strip()); time.sleep(0.3)
+            buf=b""; opened=(CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"))
             while not STOP.is_set() and serial_obj.is_open:
+                if (CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"))!=opened:   # endra i oppsettet: opne på nytt
+                    LOG.event("Mottakaroppsett endra – opnar porten på nytt"); serial_obj.close(); break
                 b=serial_obj.read(4096)
                 if b:
                     buf+=b
@@ -198,6 +206,7 @@ def serial_loop():
                         if line: LOG.raw(line)
                         if line.startswith("$") and "GGA" in line: parse_gga(line)
                         elif line.startswith("$"): HEL.feed(line)   # hellingsmålar i antenna, om ho har
+                        elif line and line.isprintable(): update(rx_text=line[:120])   # svar på kommandoar o.l. (t.d. «<OK»)
                 else: time.sleep(.02)
         except Exception as e:
             update(serial_connected=False,last_error=f"Serial: {e}")
@@ -239,7 +248,9 @@ def ntrip_loop():
             ntrip_sock=connect_ntrip()
             update(ntrip_connected=True,caster=CFG["caster"],mountpoint=CFG["mountpoint"],last_error="")
             LOG.event(f"NTRIP tilkopla: {CFG['caster']} / {CFG['mountpoint']}")
+            nkey=lambda:(CFG["caster"],CFG["caster_port"],CFG["mountpoint"],CFG["username"],CFG["password"]); opened=nkey()
             while not STOP.is_set():
+                if nkey()!=opened: raise ConnectionError("NTRIP-oppsettet er endra – koplar til på nytt")
                 now=time.time()
                 gga=STATE.get("last_gga","")
                 if gga and now-last_gga_sent>=float(CFG["gga_interval"]):
@@ -296,7 +307,7 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception: st={}
             self.headers_ok(); self.wfile.write(json.dumps({"launcher":bool(st.get("browser")),"mode":st.get("mode","window"),"system":system_cfg()}).encode()); return
         if u.path=="/api/config":   # NTRIP/GNSS-oppsettet: noverande verdiar til skjemaet (passordet blir aldri sendt)
-            c={k:CFG[k] for k in ("serial_port","baud","caster","caster_port","mountpoint","username")}
+            c={k:CFG[k] for k in ("serial_port","baud","caster","caster_port","mountpoint","username","initCmds")}
             c["password"]="***" if CFG.get("password") else ""
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"config":c,"simulert":REAL_PORT[0] is not None}).encode()); return
         if u.path=="/api/ports":   # seriellportar på PC-en (USB, Bluetooth …) med skildring

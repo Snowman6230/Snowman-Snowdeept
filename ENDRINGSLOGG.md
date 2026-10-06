@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.38 – oppstartskommandoar til mottakaren, og ny tilkopling når oppsettet blir endra
+- **Nytt:** «Oppstartskommandoar til mottakaren» i NTRIP-oppsettet: tekstlinjer som blir sende kvar gong porten blir opna. For GeoMax Zenith35 Pro (NovAtel OEM7) kan `INTERFACEMODE THISPORT AUTO NOVATEL ON` få mottakaren til å ta imot RTCM-korreksjonane på Bluetooth-porten. Svaret frå mottakaren (t.d. «<OK») blir vist som «Svar frå mottakar» og lagra i feltloggen.
+- **Retta:** Endra COM-port, baud eller oppstartskommandoar vart ikkje tekne i bruk før SNOWMAN vart starta på nytt; no blir porten opna på nytt med éin gong. Same for NTRIP: ny caster, mountpoint, brukar eller passord gir ny tilkopling.
+- **Bakgrunn:** Zenith35 Pro får korreksjonane (NTRIP tilkopla, RTCM mottatt) men står på SBAS (kvalitet 9). GeoMax tek normalt berre imot korreksjonar via eige modem, UHF eller «nettverk via kontroller», så RTCM på Bluetooth må slåast på.
+- **Testa:** test-mottakar over TCP: kommandoen blir send når oppsettet blir lagra, porten blir opna på nytt, svaret «<OK» blir vist.
+
 ### PC-prototype v1.6.37 – «FIX 9» blir vist som SBAS
 - **Endra:** GGA-kvalitet 9 (SBAS/EGNOS – brukt av NovAtel-baserte mottakarar som GeoMax Zenith) blir vist som **SBAS**, ikkje «FIX 9». Også 3 (PPS), 7 (manuell) og 8 (simulert) har namn. Snødjupne krev framleis RTK FIX.
 
