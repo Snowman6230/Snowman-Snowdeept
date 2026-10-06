@@ -9,6 +9,9 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-06
 
+### PC-prototype v1.6.37 – «FIX 9» blir vist som SBAS
+- **Endra:** GGA-kvalitet 9 (SBAS/EGNOS – brukt av NovAtel-baserte mottakarar som GeoMax Zenith) blir vist som **SBAS**, ikkje «FIX 9». Også 3 (PPS), 7 (manuell) og 8 (simulert) har namn. Snødjupne krev framleis RTK FIX.
+
 ### PC-prototype v1.6.36 – NTRIP-oppsettet viser og tek vare på det som er lagra
 - **Retta (alvorleg):** Skjemaet i LEICA / CPOS / NTRIP-OPPSETT vart aldri fylt med det som var lagra. COM-port stod alltid «COM3», og mountpoint/passord var tomme. Trykte ein LAGRE, vart den fungerande porten (COM4) og mountpointet skrivne over – og mottakaren kopla frå. No blir skjemaet fylt med det som er lagra; passordet blir aldri sendt til nettlesaren, og eit tomt passordfelt endrar ikkje passordet.
 - **Nytt:** Lista over seriellportar på PC-en (USB, Bluetooth) med skildring, som forslag i COM-port-feltet, og påminning om å bruke den **utgåande** Bluetooth-porten. `GET /api/config`, `GET /api/ports`.

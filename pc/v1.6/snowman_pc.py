@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.36"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.37"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -142,7 +142,8 @@ def parse_gga(line):
         p=line.strip().split(",")
         if len(p)<10 or not p[0].endswith("GGA"): return
         q=int(p[6] or 0)
-        names={0:"NO FIX",1:"GPS",2:"DGPS",4:"RTK FIX",5:"RTK FLOAT",6:"DR"}
+        # GGA-kvalitet: 9 = SBAS/EGNOS (NovAtel-baserte mottakarar, t.d. GeoMax Zenith) – betre enn GPS, men ikkje RTK
+        names={0:"NO FIX",1:"GPS",2:"DGPS",3:"PPS",4:"RTK FIX",5:"RTK FLOAT",6:"DR",7:"MANUELL",8:"SIMULERT",9:"SBAS"}
         fix=names.get(q,f"FIX {q}")
         alt=float(p[9]) if p[9] else None
         sep=float(p[11]) if len(p)>11 and p[11] else None
