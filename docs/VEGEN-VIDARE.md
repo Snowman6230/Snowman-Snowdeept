@@ -146,9 +146,10 @@ Den fulle testen kjem saman med installasjonsrettleiinga, når SNOWMAN skal på 
 - Resultatet blir vist (skjermkort, bilete i sekundet per nivå) og kan sendast med i feltloggen/support.
 - Grunnlag for å kunne slå på større 3D-område og bakgrunnskart i 3D (kap. 8) berre der skjermkortet taklar det.
 
-## 10. Førarar, innlogging, personvern og oppsummering (planlagt v1.9/v2.0)
+## 10. Førarar, innlogging, personvern og oppsummering (planlagt v1.9.1 eller v2.0.1)
 
-Analysert 2026-10-07. Eigaren bestemte å leggje dette i ein seinare versjon (v1.9 eller v2.0).
+Analysert 2026-10-07. Eigaren bestemte å leggje dette i ein seinare versjon – mest aktuelt som oppfølgingsversjon
+**v1.9.1 eller v2.0.1**, etter hovudversjonen.
 
 **Førarinnlogging og roller**
 - Startskjerm med store namneknappar; føraren trykkjer på namnet sitt eller skriv inn eit nytt, og skriv PIN.
@@ -159,7 +160,8 @@ Analysert 2026-10-07. Eigaren bestemte å leggje dette i ein seinare versjon (v1
 - PIN-kodar blir lagra **hasha** berre på PC-en (data/), aldri i repoet.
 - **Avgjerd/tilråding:** administrator-PIN skal **ikkje** stå i koden (repoet er offentleg, og alle kundar ville fått same
   kode). Han blir laga ved første oppstart på kvar maskin; nullstilling krev ei eiga fil lagt inn lokalt på PC-en.
-- Ope spørsmål: kan førarar leggje seg til sjølv på startskjermen, eller berre administrator?
+- **Avgjerd (eigaren 2026-10-07):** begge delar – førarar kan leggje seg til sjølv på startskjermen (med 1234 som må
+  endrast), og administrator kan leggje til, endre og fjerne førarar.
 
 **Førar knytt til økter, loggar og rapportar**
 - Kvar økt, feltlogg og drivstoffylling får førarnamn. Rapport kan filtrerast per førar og per maskin.
@@ -190,7 +192,7 @@ Analysert 2026-10-07. Eigaren bestemte å leggje dette i ein seinare versjon (v1
 | **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
 | **v1.7** | Anleggspakke, fleire terrengfiler på ein gong, LAS/LAZ/XYZ, trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). |
-| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – kan flyttast til v2.0). |
+| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
 | Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
 | Seinare | CAN-bus (drivstoff, motordata, vinsj – ulikt for PistenBully og Prinoth), LiDAR for snødjupne framfor maskina. |

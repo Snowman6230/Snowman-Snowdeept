@@ -14,7 +14,8 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
   roller førar/administrator), førar knytt til økter/loggar/rapportar, personvern (arbeidsmiljølova kap. 9, slettefrist,
   modus utan namn), oppsummering av preparering med kart og PDF (drivstoff tydeleg merka estimert), og kompakt
   feltlogg-liste (A–D).
-- **Avgjerd (eigaren):** blir lagt i v1.9 eller v2.0, ikkje no.
+- **Avgjerd (eigaren):** blir lagt i ein seinare versjon, mest aktuelt v1.9.1 eller v2.0.1 – ikkje no. Førarar kan både
+  leggje seg til sjølv på startskjermen og bli lagde til av administrator.
 - **Avgjerd/tilråding:** administrator-PIN blir ikkje skriven i koden eller dokumentasjonen (repoet er offentleg); han
   blir laga ved første oppstart på kvar maskin.
 
