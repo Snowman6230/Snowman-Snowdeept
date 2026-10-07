@@ -9,6 +9,24 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.41 – NTRIP: vakthund, NTRIP 2 og liste over mountpoints
+- **Nytt – vakthund:** kjem det ingen korreksjonar på 20 sekund (justerbart på NTRIP-sida, minst 5), koplar SNOWMAN opp på
+  nytt av seg sjølv. Før kunne SNOWMAN vise «TILKOPLA» i det uendelege når mobilnettet hang utan at sambandet vart lukka,
+  og maskina mista RTK FIX utan forklaring. Statusen viser «ingen korreksjonar på N s» medan det står på.
+- **Nytt – NTRIP 2:** val av NTRIP-versjon (Auto / 1 / 2). **Auto** prøver NTRIP 1 først, akkurat som før, og NTRIP 2 berre
+  når casteren avviser NTRIP 1. Feil passord og ukjent mountpoint blir ikkje prøvde på nytt med NTRIP 2. NTRIP 2-straumar
+  med «chunked» overføring blir pakka ut før korreksjonane går til mottakaren. Statusen viser kva versjon som er i bruk.
+- **Nytt – HENT MOUNTPOINTS:** hentar kjeldetabellen frå casteren og viser mountpoints med stad, format, satellittsystem,
+  avstand frå maskina og type (enkeltbase/nettverk, «krev posisjon»). Klikk for å velje. Nærmaste base øvst.
+  Brukarnamn/passord blir berre sende med til casteren dei er lagra for.
+- **Endra:** NTRIP-koden er flytta til eigen modul (`ntripklient.py`). Ventetid før ny oppkopling er 10 s ved feil passord
+  eller mountpoint (3 s elles), så kontoen ikkje blir sperra av mange forsøk. Caster kan no skrivast som «adresse:port».
+- **Avgjerd:** NTRIP 1 er framleis standard (Auto) – gpsbase/TH og CPOS verkar som før. Kryptert samband (TLS) og
+  reservecaster ventar til seriepakka (v2.0).
+- **Testa:** einingstestar (chunked-utpakking med tilfeldige oppdelingar, kjeldetabell med avstand), falsk caster i tre
+  modusar: NTRIP 1, berre NTRIP 2 (Auto går over til 2) og «stille» straum (vakthunden koplar opp på nytt), kjeldetabell
+  over NTRIP 1 og 2, val av mountpoint på NTRIP-sida i nettlesar, og at passordet aldri blir sendt til nettlesaren.
+
 ### PC-prototype v1.6.40 – klarare tekstar i Innst. › Kalibrering
 - **Endra:** Alle felt og hjelpetekstar i Kalibrering er skrivne om så det går fram kva som skal målast og kvifor:
   - «Antennehøgd: frå botnen av antennefestet ned til underkanten av belta», med hjelpetekst om å måle loddrett på flat mark og

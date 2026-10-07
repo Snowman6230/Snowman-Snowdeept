@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.40"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.41"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -54,6 +54,7 @@ STATE = {
 }
 CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint":"",
        "username":"","password":"","gga_interval":5,
+       "ntrip_version":"auto","ntrip_timeout":20,   # NTRIP 1/2/auto, og vakthund: sekund utan korreksjonar før ny oppkopling
        "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,
        "tiltMode":"auto","tiltFlipPitch":False,"tiltFlipRoll":False,
        "initCmds":"",   # oppstartskommandoar til mottakaren (éin per linje), sende når seriellporten blir opna
@@ -109,6 +110,7 @@ def write_atomic(path,text):
     os.replace(tmp,path)
 import oppstart as O
 from rtcm import RtcmMonitor
+import ntripklient as NK
 RTCM=RtcmMonitor()   # kontroll av korreksjonane (gyldige rammer, meldingstypar, basestasjon)
 def system_cfg():
     d=O.system_cfg(); d["autostart"]=O.autostart_status(); return d
@@ -218,89 +220,51 @@ def serial_loop():
             except: pass
             serial_obj=None; time.sleep(2)
 
-def connect_ntrip():
-    host=CFG["caster"].replace("http://","").replace("https://","").split("/")[0]
-    port=int(CFG["caster_port"])
-    mp=CFG["mountpoint"].lstrip("/")
-    s=socket.create_connection((host,port),timeout=10)
-    # Brukarnamn/passord utan mellomrom før og etter (lett å få med ved inntasting)
-    auth=base64.b64encode(f'{str(CFG["username"]).strip()}:{str(CFG["password"]).strip()}'.encode("utf-8")).decode()
-    # NTRIP 1.0: User-Agent må byrje med «NTRIP » – nokre castarar avviser elles førespurnaden
-    req=(f"GET /{mp.strip()} HTTP/1.0\r\nHost: {host}:{port}\r\nUser-Agent: NTRIP SNOWMAN/{VERSION}\r\n"
-         f"Authorization: Basic {auth}\r\nAccept: */*\r\nConnection: close\r\n\r\n")
-    s.sendall(req.encode())
-    def line():
-        l=b""
-        while not l.endswith(b"\r\n") and len(l)<4096:
-            c=s.recv(1)
-            if not c: break
-            l+=c
-        return l
-    first=line().decode("latin1","ignore").strip()
-    # «SOURCETABLE 200 OK» er IKKJE korreksjonar: casteren sender kjeldetabellen (tekst) fordi mountpointet ikkje finst.
-    # Før v1.6.39 vart det godteke (inneheld «200») og teksten sendt vidare til mottakaren som om det var RTCM.
-    if first.upper().startswith("SOURCETABLE"):
-        raise RuntimeError(f"Mountpointet «{mp}» finst ikkje på casteren (casteren sende kjeldetabellen i staden for korreksjonar)")
-    if not ("200" in first):
-        why={"401":" – feil brukarnamn/passord, kontoen har ikkje tilgang til mountpointet, eller kontoen er i bruk på ei anna eining",
-             "404":" – mountpointet finst ikkje (sjekk stavinga, store/små bokstavar)"}
-        raise RuntimeError("NTRIP svar: "+first+next((v for k,v in why.items() if k in first),""))
-    rest=b""
-    if first.upper().startswith("ICY"):
-        # NTRIP 1: «ICY 200 OK\r\n» – nokre castarar sender ei tom linje etter, andre startar RTCM med éin gong.
-        # (Før v1.6.39 vart det lese fram til «\r\n\r\n», som kunne ete opptil 16 kB korreksjonar.)
-        s.settimeout(2)
-        try: rest=s.recv(2)
-        except socket.timeout: rest=b""
-        if rest==b"\r\n": rest=b""
-    else:   # HTTP-svar: les resten av hovudet
-        hdr=b""
-        while True:
-            l=line()
-            if l in (b"\r\n",b""): break
-            hdr+=l
-        if b"chunked" in hdr.lower():
-            raise RuntimeError("Casteren svarar med NTRIP 2 (chunked) – ikkje støtta enno. Meld frå til Alpindata.")
-    s.settimeout(1)
-    return s,rest
-
 def ntrip_loop():
+    """Hentar korreksjonar frå casteren og sender dei uendra vidare til mottakaren.
+    Vakthund (v1.6.41): kjem det ingen data på CFG["ntrip_timeout"] sekund, blir sambandet kopla opp på nytt
+    (mobilnettet kan «henge» utan at sambandet blir lukka – då ville SNOWMAN elles vente i det uendelege)."""
     global ntrip_sock
-    last_gga_sent=0; last_rtcm_log=0
+    last_rtcm_log=0
     while not STOP.is_set():
+        stream=None
         try:
             if not (CFG["caster"] and CFG["mountpoint"]):
                 time.sleep(1); continue
-            ntrip_sock,first_data=connect_ntrip(); RTCM.reset()
-            update(ntrip_connected=True,caster=CFG["caster"],mountpoint=CFG["mountpoint"],last_error="")
-            LOG.event(f"NTRIP tilkopla: {CFG['caster']} / {CFG['mountpoint']}")
-            nkey=lambda:(CFG["caster"],CFG["caster_port"],CFG["mountpoint"],CFG["username"],CFG["password"]); opened=nkey()
+            gga=STATE.get("last_gga") or None
+            stream=NK.open_stream(CFG["caster"],CFG["caster_port"],CFG["mountpoint"],CFG["username"],CFG["password"],
+                                  str(CFG.get("ntrip_version") or "auto"),VERSION,gga)
+            ntrip_sock=stream; RTCM.reset()
+            update(ntrip_connected=True,ntrip_proto=stream.proto,ntrip_wait=0,caster=CFG["caster"],mountpoint=CFG["mountpoint"],last_error="")
+            LOG.event(f"NTRIP tilkopla ({stream.proto}): {CFG['caster']} / {CFG['mountpoint']}")
+            nkey=lambda:(CFG["caster"],CFG["caster_port"],CFG["mountpoint"],CFG["username"],CFG["password"],CFG.get("ntrip_version")); opened=nkey()
+            last_data=time.time(); last_gga_sent=0
             while not STOP.is_set():
                 if nkey()!=opened: raise ConnectionError("NTRIP-oppsettet er endra – koplar til på nytt")
                 now=time.time()
                 gga=STATE.get("last_gga","")
                 if gga and now-last_gga_sent>=float(CFG["gga_interval"]):
-                    ntrip_sock.sendall((gga+"\r\n").encode("ascii","ignore")); last_gga_sent=now
-                if first_data: data,first_data=first_data,b""
-                else:
-                    try: data=ntrip_sock.recv(4096)
-                    except socket.timeout:
-                        update(rtcm=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"])); continue
-                if not data: raise ConnectionError("Caster lukka sambandet")
+                    stream.send_gga(gga); last_gga_sent=now
+                data=stream.read(4096)
+                if not data:
+                    wait=now-last_data; tmo=max(5.0,float(CFG.get("ntrip_timeout") or 20))
+                    update(ntrip_wait=round(wait),rtcm=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]))
+                    if wait>tmo: raise ConnectionError(f"Ingen korreksjonar på {wait:.0f} s – koplar til på nytt")
+                    continue
+                last_data=now
                 if serial_obj and getattr(serial_obj,"is_open",False):
                     serial_obj.write(data)
                 RTCM.feed(data)   # berre kontroll – dataa blir sende uendra til mottakaren
                 if now-last_rtcm_log>=60 and RTCM.frames:
                     st=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]); last_rtcm_log=now
                     LOG.event(f"RTCM: {st['frames']} rammer, {st['crcErr']} CRC-feil, typar {','.join(st['types'])}, base {st['station']} {st.get('baseKm','?')} km – {st['verdict']}")
-                update(bytes_rtcm=STATE["bytes_rtcm"]+len(data),rtcm=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]+len(data)))
+                update(bytes_rtcm=STATE["bytes_rtcm"]+len(data),ntrip_wait=0,rtcm=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]+len(data)))
         except Exception as e:
             update(ntrip_connected=False,last_error=f"NTRIP: {e}")
             LOG.event(f"NTRIP-feil: {e}")
-            try:
-                if ntrip_sock: ntrip_sock.close()
-            except: pass
-            ntrip_sock=None; time.sleep(3)
+            if stream: stream.close()
+            ntrip_sock=None
+            time.sleep(10 if isinstance(e,NK.NtripError) and e.code in ("auth","mount") else 3)
 
 class API(http.server.BaseHTTPRequestHandler):
     def log_message(self,*a): pass
@@ -340,9 +304,19 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception: st={}
             self.headers_ok(); self.wfile.write(json.dumps({"launcher":bool(st.get("browser")),"mode":st.get("mode","window"),"system":system_cfg()}).encode()); return
         if u.path=="/api/config":   # NTRIP/GNSS-oppsettet: noverande verdiar til skjemaet (passordet blir aldri sendt)
-            c={k:CFG[k] for k in ("serial_port","baud","caster","caster_port","mountpoint","username","initCmds")}
+            c={k:CFG[k] for k in ("serial_port","baud","caster","caster_port","mountpoint","username","initCmds","ntrip_version","ntrip_timeout")}
             c["password"]="***" if CFG.get("password") else ""
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"config":c,"simulert":REAL_PORT[0] is not None}).encode()); return
+        if u.path=="/api/ntrip/sourcetable":   # lista over mountpoints på casteren (HENT MOUNTPOINTS på NTRIP-sida)
+            q=urllib.parse.parse_qs(u.query)
+            caster=(q.get("caster",[""])[0] or CFG["caster"]).strip(); port=q.get("port",[""])[0] or CFG["caster_port"]
+            same=caster==CFG["caster"]   # brukarnamn/passord blir berre sende til casteren dei er lagra for
+            try:
+                if not caster: raise ValueError("Skriv inn caster først")
+                r=NK.fetch_sourcetable(caster,int(port),CFG["username"] if same else "",CFG["password"] if same else "",VERSION,STATE.get("lat"),STATE.get("lon"))
+                r["ok"]=True
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/ports":   # seriellportar på PC-en (USB, Bluetooth …) med skildring
             try:
                 from serial.tools import list_ports

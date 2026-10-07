@@ -1,5 +1,5 @@
-<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. --><meta charset="utf-8"><title>SNOWMAN NTRIP v1.1</title>
-<style>body{font:16px Arial;background:#07141c;color:#eef;margin:25px;max-width:900px}input{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:230px}button{padding:11px 18px;margin:8px;background:#1687bd;color:white;border:0;border-radius:7px}.g{display:grid;grid-template-columns:180px 1fr;gap:4px}.card{background:#0b202b;padding:18px;border-radius:12px;margin:12px 0}.ok{color:#4f6}.bad{color:#f86}</style>
+<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. --><meta charset="utf-8"><title>SNOWMAN NTRIP v1.2</title>
+<style>body{font:16px Arial;background:#07141c;color:#eef;margin:25px;max-width:900px}input{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:230px}button{padding:11px 18px;margin:8px;background:#1687bd;color:white;border:0;border-radius:7px}.g{display:grid;grid-template-columns:180px 1fr;gap:4px}.card{background:#0b202b;padding:18px;border-radius:12px;margin:12px 0}.ok{color:#4f6}.bad{color:#f86}select{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:252px}#mtab{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}#mtab td,#mtab th{border-bottom:1px solid #294452;padding:6px;text-align:left}#mtab tr.m:hover{background:#163a4c;cursor:pointer}#mtab tr.sel{background:#1b4a60}</style>
 <h1>SNOWMAN NTRIP / GNSS <button onclick="location.href='/'" style="background:#2e4b5c;font-size:15px;vertical-align:middle">← TILBAKE TIL SNOWMAN</button></h1>
 <div class=card><h3>GNSS / Leica</h3><div class=g>
 <label>COM-port</label><input id=serial_port list=ports placeholder="t.d. COM4"><datalist id=ports></datalist>
@@ -7,9 +7,12 @@
 <h3>CPOS / NTRIP</h3><div class=g>
 <label>Caster</label><input id=caster placeholder="caster-adresse">
 <label>Port</label><input id=caster_port value="2101">
-<label>Mountpoint</label><input id=mountpoint>
+<label>Mountpoint</label><div><input id=mountpoint><button type=button onclick=mounts() style="margin:4px;padding:9px 14px">HENT MOUNTPOINTS</button></div>
 <label>Brukarnamn</label><input id=username>
-<label>Passord</label><input id=password type=password placeholder="(uendra)"></div>
+<label>Passord</label><input id=password type=password placeholder="(uendra)">
+<label>NTRIP-versjon</label><select id=ntrip_version><option value=auto>Auto (tilrådd)</option><option value=1>NTRIP 1</option><option value=2>NTRIP 2</option></select>
+<label>Ny oppkopling etter</label><div><input id=ntrip_timeout type=number min=5 max=120 style="width:80px"> sekund utan korreksjonar</div></div>
+<div id=mlist></div>
 <h3>Oppstartskommandoar til mottakaren (valfritt)</h3>
 <textarea id=initCmds rows=3 style="width:100%;max-width:640px;background:#102733;color:#fff;border:1px solid #456;padding:8px;font-family:monospace" placeholder="Éin kommando per linje. Blir sende kvar gong porten blir opna."></textarea>
 <p style="font-size:13px;color:#9ab3c1;margin:4px">Vanlegvis tomt. GeoMax Zenith35 Pro treng ingen kommandoar her: set Working Mode = RTK Rover og RTK Data Source = Bluetooth på nettsida til Zenith-en (192.168.10.1). Svaret frå mottakaren blir vist under «Svar frå mottakar».</p>
@@ -21,7 +24,7 @@
 async function load(){try{let r=await(await fetch('/api/config')).json(),c=r.config;for(let k in c){let e=document.getElementById(k);if(e&&c[k]!=null)e.value=c[k]}
 let p=(await(await fetch('/api/ports')).json()).ports||[];document.getElementById('ports').innerHTML=p.map(x=>`<option value="${x.port}">${x.desc}</option>`).join('');
 document.getElementById('portinfo').textContent=p.length?'Portar på PC-en: '+p.map(x=>x.port+' ('+x.desc+')').join(' · ')+'. Bluetooth: bruk den UTGÅANDE porten (Windows › Bluetooth › COM-portar).':''}catch(e){}}load();
-async function save(){let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password','initCmds'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;if(!x.password)delete x.password;await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x)})}
+async function save(){let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password','initCmds','ntrip_version','ntrip_timeout'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;x.ntrip_timeout=Math.max(5,+x.ntrip_timeout||20);if(!x.password)delete x.password;await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x)})}
 // Kontroll av korreksjonane (v1.6.39): er dei gyldige RTCM 3, kva sender basen, kor langt unna er han?
 function rtcmTxt(x){let r=x.rtcm;if(!r)return 'Korreksjonar: --';
 let t=Object.keys(r.types||{}).join(', ')||'--';
@@ -29,9 +32,20 @@ return `Korreksjonar: ${r.frames} gyldige RTCM-rammer · ${r.crcErr} CRC-feil ·
 Meldingstypar: ${t}
 Satellittsystem frå basen: ${(r.systems||[]).join(', ')||'--'}
 Basestasjon: ${r.station??'--'}${r.baseKm!=null?' · '+r.baseKm+' km unna':''}${r.age!=null?' · siste for '+r.age+' s sidan':''}
-Vurdering: ${r.verdict||'--'}`}
+Vurdering: ${(/^OK/.test(r.verdict||'')&&/RTK/.test(x.fix||''))?'OK: gyldige RTCM-korreksjonar, og mottakaren brukar dei ('+x.fix+').':(r.verdict||'--')}`}
+// Kjeldetabellen: lista over mountpoints på casteren – klikk på ei linje for å velje
+function h(t){return String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function mounts(){let el=document.getElementById('mlist');el.innerHTML='<p>Hentar lista frå casteren …</p>';
+try{let c=encodeURIComponent(document.getElementById('caster').value),p=encodeURIComponent(document.getElementById('caster_port').value);
+let r=await(await fetch('/api/ntrip/sourcetable?caster='+c+'&port='+p)).json();
+if(!r.ok){el.innerHTML='<p class=bad>'+h(r.error)+'</p>';return}
+let cur=document.getElementById('mountpoint').value;
+el.innerHTML=`<p>${r.mounts.length} mountpoints på ${h(r.caster)} (${h(r.proto)}). Klikk for å velje, så LAGRE / KOPLE TIL.</p><table id=mtab><tr><th>Mountpoint</th><th>Stad</th><th>Format</th><th>Satellittsystem</th><th>Avstand</th><th>Type</th></tr>`+
+r.mounts.map(m=>`<tr class="m${m.mountpoint==cur?' sel':''}" data-m="${h(m.mountpoint)}"><td><b>${h(m.mountpoint)}</b></td><td>${h(m.name)}</td><td>${h(m.format)}</td><td>${h(m.systems)}</td><td>${m.km!=null?m.km+' km':'–'}</td><td>${m.network_rtk?'nettverk':'enkeltbase'}${m.nmea?' · krev posisjon':''}</td></tr>`).join('')+'</table>';
+el.querySelectorAll('tr.m').forEach(tr=>tr.onclick=()=>{document.getElementById('mountpoint').value=tr.dataset.m;el.querySelectorAll('tr.m').forEach(x=>x.classList.toggle('sel',x==tr))})
+}catch(e){el.innerHTML='<p class=bad>Feil: '+h(e)+'</p>'}}
 async function poll(){try{let x=await(await fetch('/api/status')).json();s.textContent=`Serial: ${x.serial_connected?'TILKOPLA':'AV'}  ${x.port} @ ${x.baud}
-NTRIP: ${x.ntrip_connected?'TILKOPLA':'AV'}  ${x.caster}/${x.mountpoint}
+NTRIP: ${x.ntrip_connected?'TILKOPLA':'AV'}  ${x.caster}/${x.mountpoint}${x.ntrip_proto?'  ('+x.ntrip_proto+')':''}${x.ntrip_connected&&x.ntrip_wait>=3?'  – ingen korreksjonar på '+x.ntrip_wait+' s':''}
 RTK: ${x.fix}   SAT: ${x.satellites}   HDOP: ${x.hdop??'--'}
 Høgd frå mottakar: ${x.altitude??'--'} m (geoidehøgd i meldinga: ${x.geoid_sep??'--'} m)
 Ellipsoidisk høgd: ${x.h_ell??'--'} m · Kartverket-geoide N: ${x.geoid_model??'--'} m
