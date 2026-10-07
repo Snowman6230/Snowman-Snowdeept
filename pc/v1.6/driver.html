@@ -1430,7 +1430,7 @@
           ><button class="btn" onclick="hideCoverage()">SKJUL TRAKKA OMRÅDE</button>
           <div id="covInfo" class="history">
             Viser alt som er køyrt i perioden i den fresbreidda maskina hadde – fargen viser kor lenge sidan det vart køyrt.
-            Overlapp blir rekna éin gong. Transport (over 25 km/t) er ikkje med.
+            Overlapp blir rekna éin gong. Transport (over 40 km/t) er ikkje med.
           </div>
           <button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
@@ -1545,7 +1545,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.43";
+      const APP_VERSION = "1.6.44";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3580,7 +3580,7 @@
           i = 0;
         map.setView(route[0], Math.max(map.getZoom(), 18), { animate: false }); // nær nok til å sjå fresbreidda
         // Sporet blir teikna i fresbreidda økta vart køyrd med (meter, følgjer zoomen) – ikkje som ei tynn strek.
-        // Transport (over 25 km/t) og hopp i sporet blir vist som tynn stipla linje.
+        // Transport (over 40 km/t) og hopp i sporet blir vist som tynn stipla linje.
         let w = s.width || (toolsFull ? cfg.tiller : cfg.tillerN),
           sw = { renderer: replayRenderer, stroke: false, fill: true, fillColor: "#ffec3d", fillOpacity: 1, interactive: false },
           thin = { renderer: replayRenderer, weight: 2, color: "#ffec3d", opacity: 0.8, dashArray: "4 6", interactive: false };
@@ -3599,7 +3599,7 @@
             let q = s.points[i - 1],
               d = map.distance(route[i - 1], route[i]),
               dt = Math.max(0.2, ((p.t || 0) - (q.t || 0)) / 1000),
-              prep = d <= 30 && dt <= 60 && d / dt <= 25 / 3.6;
+              prep = d <= 30 && dt <= 60 && d / dt <= 40 / 3.6;
             if (prep) {
               let strip = stripPolygon(route[i - 1], route[i], w);
               if (strip) L.polygon(strip, sw).addTo(replayGroup);

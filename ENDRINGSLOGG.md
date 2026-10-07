@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.44 – fartsgrensa for preparering er 40 km/t
+- **Endra:** Grensa for kva som blir rekna som transport, er heva frå 25 til **40 km/t** (trakka område, prosent per trasé,
+  areal og prep-tid i rapporten, og avspeling i fresbreidd).
+- **Avgjerd (eigaren):** Ei trakkemaskin kan av og til gå fort, så 25 km/t kunne ta bort ekte preparering. 40 km/t held
+  framleis bilkøyring (som feltprøva 2026-10-06, 50–60 km/t) utanfor.
+- **Testa:** syntetiske økter – biltur i 54 km/t er framleis ikkje med, arealet er uendra.
+
 ### PC-prototype v1.6.43 – trakka område i Historikk, avspeling i fresbreidd, transport blir ikkje preparert areal
 - **Nytt – TRAKKA OMRÅDE (Innst. › Historikk):** vel periode (dette prepareringsdøgnet, siste 24 t, 3, 7 eller 30 døgn,
   eller alt) og trykk VIS TRAKKA OMRÅDE. Alt som er køyrt blir vist som flate i **den fresbreidda kvar økt vart køyrd med**,

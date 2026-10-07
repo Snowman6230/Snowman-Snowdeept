@@ -29,7 +29,7 @@ def track_stats(pts, width):
     x, y = L.xy(pts[:, 0], pts[:, 1])
     d, dt = np.hypot(np.diff(x), np.diff(y)), np.diff(pts[:, 2])
     ok = (d <= MAX_GAP_M) & (dt <= MAX_GAP_S) & (dt >= 0)
-    prep = ok & (d <= np.maximum(dt, 0.2) * MAX_PREP_SPEED)   # transport (> 25 km/t) gir ikkje areal eller prep-tid
+    prep = ok & (d <= np.maximum(dt, 0.2) * MAX_PREP_SPEED)   # transport (> 40 km/t) gir ikkje areal eller prep-tid
     dist = float(d[ok].sum())
     dep = pts[:, 3]
     return {"dist": dist, "secs": float(dt[prep].sum()), "area": float(d[prep].sum()) * width,

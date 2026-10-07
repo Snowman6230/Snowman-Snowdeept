@@ -21,7 +21,7 @@ KINDS = {"trase": "Trasé", "forbode": "Forbode område"}
 LEVELS = {"gron": "#27d84d", "bla": "#2f7bff", "raud": "#ed2024", "svart": "#202020", "langrenn": "#08cbea", "anna": "#ffd33f"}
 MAX_GAP_M = 30.0              # lengre hopp mellom to punkt blir ikkje rekna som køyrt (GNSS-hopp, pause)
 MAX_GAP_S = 60.0
-MAX_PREP_SPEED = 25 / 3.6     # m/s: fortare enn 25 km/t er transport (vegkøyring, bil) – ikkje preparert areal
+MAX_PREP_SPEED = 40 / 3.6     # m/s: fortare enn 40 km/t er transport (vegkøyring, bil) – ikkje preparert areal
 
 
 def prep_day_start(t=None, date=None):
@@ -325,7 +325,7 @@ class Trasear:
         dx, dy, dt = np.diff(x), np.diff(y), np.diff(t)
         seglen = np.hypot(dx, dy)
         ok = (seglen <= MAX_GAP_M) & (dt <= MAX_GAP_S)
-        ok &= seglen <= np.maximum(dt, 0.2) * MAX_PREP_SPEED   # transport (> 25 km/t) blir ikkje merkt som preparert
+        ok &= seglen <= np.maximum(dt, 0.2) * MAX_PREP_SPEED   # transport (> 40 km/t) blir ikkje merkt som preparert
         if not ok.any():
             return
         step = min(0.5, g["cell"] / 2)
@@ -362,7 +362,7 @@ class Trasear:
     def coverage(self, since_s=0, until_s=None, ids=None, include_test=False, max_cells=6_000_000):
         """Trakka område i perioden (eller for utvalde økter) som rutenett i fresbreidda til kvar økt.
         Kvar rute får tidspunktet ho sist vart køyrd og kor mange økter som har køyrt der.
-        Overlapp tel éin gong i arealet. Transport (> 25 km/t) og hopp i sporet blir ikkje teikna."""
+        Overlapp tel éin gong i arealet. Transport (> 40 km/t) og hopp i sporet blir ikkje teikna."""
         with self.lock:
             ses = self._sessions(since_s or 0, until_s)
         if ids:
@@ -388,7 +388,7 @@ class Trasear:
                 use[:-1] |= ok
                 segs.append((x, px, py, use))
         if not segs:
-            return {"empty": True, "sessions": len(ses), "note": "Berre transport (over 25 km/t) i perioden"}
+            return {"empty": True, "sessions": len(ses), "note": "Berre transport (over 40 km/t) i perioden"}
         allx = np.concatenate([sx[u] for _, sx, _, u in segs])
         ally = np.concatenate([sy[u] for _, _, sy, u in segs])
         x0, y0 = float(np.nanmin(allx)) - wmax, float(np.nanmin(ally)) - wmax
