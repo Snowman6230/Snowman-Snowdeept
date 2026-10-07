@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.50"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.51"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -157,6 +157,7 @@ def _motion(lat,lon):
     elif dt>3: pr["v"]=0.0; pr.update(t=now)
     return pr["v"],pr["h"]
 
+LOGRATE={}   # siste tid ei hending av same slag vart skriven i feltloggen (unngår tusenvis av like linjer)
 def parse_gga(line):
     try:
         p=line.strip().split(",")
@@ -165,6 +166,9 @@ def parse_gga(line):
         # GGA-kvalitet: 9 = SBAS/EGNOS (NovAtel-baserte mottakarar, t.d. GeoMax Zenith) – betre enn GPS, men ikkje RTK
         names={0:"NO FIX",1:"GPS",2:"DGPS",3:"PPS",4:"RTK FIX",5:"RTK FLOAT",6:"DR",7:"MANUELL",8:"SIMULERT",9:"SBAS"}
         fix=names.get(q,f"FIX {q}")
+        prev=STATE.get("fix")
+        if prev!=fix and prev not in (None,"NO DATA"):   # endring i fix-type til feltloggen (RTK FIX → FLOAT er ein feil)
+            LOG.event(f"Fix: {prev} → {fix} ({p[7] or '?'} satellittar)",err=(prev=="RTK FIX"))
         alt=float(p[9]) if p[9] else None
         sep=float(p[11]) if len(p)>11 and p[11] else None
         lat,lon=nmea_coord(p[2],p[3],True), nmea_coord(p[4],p[5],False)
@@ -190,7 +194,9 @@ def parse_gga(line):
                terrain=ter, depth=None if depth is None else round(depth,3), depth_status=dstat, depth_detail=det)
         update(speed=round(v,2), course=None if h is None else round(h))
         LOG.row(STATE,CFG)
-    except Exception as e: update(last_error=f"GGA parse: {e}")
+    except Exception as e:
+        update(last_error=f"GGA parse: {e}")
+        if time.time()-LOGRATE.get("gga",0)>60: LOGRATE["gga"]=time.time(); LOG.event(f"Kunne ikkje tolke GGA: {e}",err=True)
 
 def serial_loop():
     global serial_obj
@@ -213,12 +219,17 @@ def serial_loop():
             for cmd in str(CFG.get("initCmds") or "").splitlines():
                 if cmd.strip():
                     serial_obj.write((cmd.strip()+"\r\n").encode("ascii","ignore")); LOG.event("Sendt til mottakar: "+cmd.strip()); time.sleep(0.3)
-            buf=b""; opened=(CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"))
+            buf=b""; opened=(CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds")); bad_n=0; gnss_lost=False
             while not STOP.is_set() and serial_obj.is_open:
                 if (CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"))!=opened:   # endra i oppsettet: opne på nytt
                     LOG.event("Mottakaroppsett endra – opnar porten på nytt"); serial_obj.close()
                     update(serial_connected=False); serial_obj=None; break
                 b=serial_obj.read(4096)
+                ga=time.time()-(STATE.get("gga_time") or time.time())
+                if ga>5 and not gnss_lost:
+                    gnss_lost=True; LOG.event(f"Mottakaren har slutta å sende posisjon (ingen GGA på {ga:.0f} s)",err=True)
+                elif gnss_lost and ga<1:
+                    gnss_lost=False; LOG.event("Posisjon frå mottakaren er tilbake")
                 if b:
                     buf+=b
                     while b"\n" in buf:
@@ -230,7 +241,10 @@ def serial_loop():
                             # Feil sjekksum = bitfeil i overføringa: linja blir forkasta (ingen feil høgd inn i snødjupna,
                             # ingen øydelagd GGA til casteren). Linjer utan sjekksum (nokre eldre mottakarar) blir godtekne og talde.
                             if ok is False:
-                                update(nmea_bad=STATE.get("nmea_bad",0)+1); continue
+                                update(nmea_bad=STATE.get("nmea_bad",0)+1); bad_n+=1
+                                if time.time()-LOGRATE.get("cs",0)>60:
+                                    LOGRATE["cs"]=time.time(); LOG.event(f"NMEA med feil sjekksum forkasta: {bad_n} sidan sist",err=True); bad_n=0
+                                continue
                             if ok is None: update(nmea_nock=STATE.get("nmea_nock",0)+1)
                         if line.startswith("$") and "GGA" in line: parse_gga(line)
                         elif line.startswith("$"): HEL.feed(line)   # hellingsmålar i antenna, om ho har
@@ -239,7 +253,7 @@ def serial_loop():
             update(serial_connected=False)   # løkka slutta (port lukka/endra) – aldri «TILKOPLA» utan open port
         except Exception as e:
             update(serial_connected=False,last_error=f"Serial: {e}")
-            LOG.event(f"Mottakar-feil: {e}")
+            LOG.event(f"Mottakar-feil: {e}",err=True)
             try:
                 if serial_obj: serial_obj.close()
             except: pass
@@ -285,7 +299,7 @@ def ntrip_loop():
                     except Exception as e:
                         if now-last_wfail>=10:
                             last_wfail=now; update(last_error=f"Serial: klarte ikkje å sende korreksjonar til mottakaren ({e})")
-                            LOG.event(f"Mottakar-feil ved sending av RTCM: {e}")
+                            LOG.event(f"Mottakar-feil ved sending av RTCM: {e}",err=True)
                 RTCM.feed(data)   # berre kontroll – dataa blir sende uendra til mottakaren
                 if now-last_rtcm_log>=60 and RTCM.frames:
                     st=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]); last_rtcm_log=now
@@ -293,7 +307,7 @@ def ntrip_loop():
                 update(bytes_rtcm=STATE["bytes_rtcm"]+len(data),ntrip_wait=0,rtcm=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]+len(data)))
         except Exception as e:
             update(ntrip_connected=False,last_error=f"NTRIP: {e}")
-            LOG.event(f"NTRIP-feil: {e}")
+            LOG.event(f"NTRIP-feil: {e}",err=True)
             if stream: stream.close()
             ntrip_sock=None
             time.sleep(10 if isinstance(e,NK.NtripError) and e.code in ("auth","mount") else 3)
@@ -334,6 +348,18 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/api/log":
             r=LOG.status(); r.update(ok=True,logs=LOG.listing(),always=bool(O.system_cfg().get("logAlways")))
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/log/events":   # hendingar og feil i ein logg (Innst. › System › Feltlogg › Hendingar)
+            try: r={"ok":True,"events":LOG.events_of(urllib.parse.parse_qs(u.query)["name"][0])}
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/log/download-day":   # alle loggane frå éin dag i éi zip
+            try:
+                day=urllib.parse.parse_qs(u.query)["day"][0]; data=LOG.zip_day(day)
+                self.send_response(200); self.send_header("Content-Type","application/zip")
+                self.send_header("Content-Disposition",f'attachment; filename="snowman-loggar-{day}.zip"'); self.end_headers(); self.wfile.write(data)
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if u.path=="/api/log/download":   # zip med begge filene i ein logg
             try:
                 name=urllib.parse.parse_qs(u.query)["name"][0]; data=LOG.zip(name)
@@ -484,7 +510,7 @@ class API(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         global CFG
         if not self.origin_ok():
-            LOG.event(f"Avvist endring frå framand nettside: {self.headers.get('Origin')} {self.path}")
+            LOG.event(f"Avvist endring frå framand nettside: {self.headers.get('Origin')} {self.path}",err=True)
             self.headers_ok(403); self.wfile.write(json.dumps({"ok":False,"error":"Endringar er berre tillatne frå SNOWMAN sjølv"}).encode()); return
         n=int(self.headers.get("Content-Length","0"))
         u=urllib.parse.urlparse(self.path)

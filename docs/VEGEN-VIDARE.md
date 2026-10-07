@@ -180,7 +180,7 @@ Analysert 2026-10-07. Eigaren bestemte å leggje dette i ein seinare versjon –
 - Drivstoff per økt og per daa – **estimert** frå fyllingar og timar (l/t), tydeleg merka. Målt forbruk krev CAN-bus (seinare).
 - Førar og maskin.
 
-**Feltlogg-lista** (kan takast tidlegare om ønskt – lite arbeid)
+**Feltlogg-lista** – A–D er laga i v1.6.51 (utan førarnamn); førarnamn på kvar logg kjem med førarinnlogginga
 - A: kompakte linjer (`07.10 21:30 · førar · 1,2 MB ⬇`), B: samanfalda liste («Loggar: 23 stk · 145 MB ▸»), C: gruppert
   per dag med nedlasting av heile dagen, D: skjul og slett nesten tomme loggar (< ca. 10 kB) etter 7 dagar.
 - Moglegheit: automatisk opprydding (behald 30 dagar / maks 500 MB).

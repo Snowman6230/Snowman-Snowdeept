@@ -9,6 +9,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.51 – feltloggane: kompakt liste, feil og hendingar
+- **Endra – lista i Innst. › System › Feltlogg** tek mykje mindre plass:
+  - **Samanfalda (B):** éi linje «Loggar: N stk · X MB · ⚠ N feil ▸ Vis» til ho blir opna.
+  - **Per dag (C):** «07.10.2026 · 3 loggar · 12 MB · ⚠ 3» – nyaste dagen open, dei tre siste dagane synlege, «Vis alle»
+    for resten, og **⬇ dag** lastar ned alle loggane frå dagen i éi zip.
+  - **Éi tynn linje per logg (A):** `21:30–22:05 · 35 min · 1,2 MB · 97 % FIX · ⚠ 3 · Hendingar · ⬇`.
+  - **Nesten tomme loggar (D)** (under 10 kB, t.d. oppstart utan mottakar) blir skjulte og sletta etter 7 dagar –
+    men aldri om dei har feil.
+- **Nytt – Hendingar:** knappen viser hendingar og feil i loggen rett i SNOWMAN (feil i raudt), utan å laste ned.
+- **Nytt – fleire hendingar i loggen:** endring i fix-type (t.d. «RTK FIX → RTK FLOAT», feil når FIX blir mista),
+  «Mottakaren har slutta å sende posisjon» og «Posisjon er tilbake», NMEA med feil sjekksum (maks éi linje per minutt),
+  GGA som ikkje kunne tolkast. Feil blir merkte «FEIL:» og talde (NTRIP-feil, mottakarfeil, avviste endringar m.m.).
+- **Nytt – samandrag per logg** (`.json` ved sida av loggen, òg med i zip-fila): start, slutt, linjer, posisjonar,
+  hendingar, feil og del av tida med kvar fix-type.
+- **Testa:** falsk mottakar (FIX → FLOAT → FIX, feil sjekksum, 6,5 s utan GGA): alle hendingane kom i loggen med rett
+  merking; gammal tom logg sletta, ny tom skjult; dag-zip; lista i nettlesar (lukka/open, hendingar) utan JavaScript-feil.
+
 ### Dokumentasjon – førarinnlogging, personvern, oppsummering og loggliste ført inn i vegplanen
 - **Nytt:** `docs/VEGEN-VIDARE.md` kap. 10: førarinnlogging (namneknappar, førar-PIN 1234 som må endrast første gong,
   roller førar/administrator), førar knytt til økter/loggar/rapportar, personvern (arbeidsmiljølova kap. 9, slettefrist,

@@ -734,6 +734,73 @@
         opacity: 0.85;
       }
       /* Terreng-fane */
+      /* Feltlogg-lista (v1.6.51): samanfalda, gruppert per dag, éi tynn linje per logg */
+      .logHead,
+      .logDay {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+        background: #0a222d;
+        border: 1px solid #294452;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin: 6px 0 2px;
+        font-size: 13px;
+      }
+      .logDay {
+        background: transparent;
+        border-color: #1d3542;
+        padding: 5px 8px;
+        font-size: 12px;
+      }
+      .logRow {
+        display: grid;
+        grid-template-columns: 88px 52px 56px 1fr auto auto auto;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 8px;
+        font-size: 12px;
+        border-bottom: 1px solid #14303d;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .logRow .err {
+        color: #ff8b6e;
+        font-weight: 800;
+      }
+      .logRow .dim,
+      .logDay .dim,
+      .logHead .dim {
+        color: #8aa3b1;
+      }
+      .logRow a,
+      .logRow button,
+      .logDay a {
+        background: #12394a;
+        color: #fff;
+        border: 0;
+        border-radius: 5px;
+        padding: 3px 7px;
+        font-size: 12px;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .logEv {
+        margin: 2px 8px 6px;
+        padding: 6px 8px;
+        background: #05141b;
+        border-radius: 6px;
+        font: 11px/1.45 monospace;
+        max-height: 220px;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+      .logEv .e {
+        color: #ff8b6e;
+      }
       .tlayer {
         background: #0a222d;
         border: 1px solid #294452;
@@ -1549,7 +1616,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.50";
+      const APP_VERSION = "1.6.51";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -2857,16 +2924,91 @@
         $("logBtn").classList.toggle("on", l.active);
         $("logAlways").classList.toggle("on", l.always);
         $("logAlways").textContent = "LOGG ALLTID NÅR SNOWMAN STARTAR: " + (l.always ? "PÅ" : "AV");
-        $("logList").innerHTML =
-          l.logs
-            .slice(0, 15)
-            .map(
-              (g) =>
-                '<div class="tlayer"><b>' + esc(g.name.replace("snowman-", "")) + "</b> · " + (g.bytes / 1e6).toFixed(1).replace(".", ",") + " MB" +
-                (g.name === l.name ? " · <i>pågår</i>" : "") +
-                '<div class="acts"><a class="mini" style="padding:6px 10px;text-decoration:none" href="api/log/download?name=' + encodeURIComponent(g.name) + '" download>Last ned (zip)</a></div></div>',
-            )
-            .join("") + (l.logs.length ? '<button class="btn" onclick="deleteLogs()">SLETT ALLE LOGGAR</button>' : "");
+        renderLogList(l);
+      }
+      // Feltlogg-lista: samanfalda (B), gruppert per dag (C), éi tynn linje per logg (A), nesten tomme skjulte (D).
+      // Kvar linje: tid, varigheit, storleik, del av tida med RTK FIX, tal på feil, hendingar og nedlasting.
+      const LOGUI = { open: false, all: false, days: {}, ev: {} };
+      function logTime(name) {
+        let m = /snowman-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/.exec(name);
+        return m ? { day: m[1] + m[2] + m[3], date: m[3] + "." + m[2] + "." + m[1], hm: m[4] + ":" + m[5] } : { day: "?", date: "?", hm: "?" };
+      }
+      function hm(ms) {
+        let d = new Date(ms);
+        return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+      }
+      function mb(b) {
+        return (b / 1e6).toFixed(b < 1e5 ? 2 : 1).replace(".", ",") + " MB";
+      }
+      function renderLogList(l) {
+        let all = l.logs || [],
+          shown = all.filter((g) => !g.tiny),
+          tiny = all.length - shown.length,
+          bytes = all.reduce((a, g) => a + g.bytes, 0),
+          errs = shown.reduce((a, g) => a + ((g.meta && g.meta.errors) || 0), 0),
+          h = "";
+        if (!all.length) return ($("logList").innerHTML = "");
+        h +=
+          '<div class="logHead" onclick="LOGUI.open=!LOGUI.open;renderLog()"><span><b>Loggar: ' + shown.length + " stk</b> · " + mb(bytes) +
+          (errs ? ' · <span style="color:#ff8b6e">⚠ ' + errs + " feil</span>" : "") + '</span><span class="dim">' + (LOGUI.open ? "▾ Skjul" : "▸ Vis") + "</span></div>";
+        if (LOGUI.open) {
+          let days = [];
+          shown.forEach((g) => {
+            let t = logTime(g.name),
+              d = days.find((x) => x.day === t.day);
+            if (!d) days.push((d = { day: t.day, date: t.date, logs: [], bytes: 0, errs: 0 }));
+            d.logs.push(g);
+            d.bytes += g.bytes;
+            d.errs += (g.meta && g.meta.errors) || 0;
+          });
+          (LOGUI.all ? days : days.slice(0, 3)).forEach((d, i) => {
+            let open = LOGUI.days[d.day] != null ? LOGUI.days[d.day] : i === 0; // nyaste dagen er open
+            h +=
+              '<div class="logDay" onclick="LOGUI.days[\'' + d.day + "']=" + !open + ';renderLog()"><span>' + (open ? "▾ " : "▸ ") + "<b>" + d.date + "</b> · " +
+              d.logs.length + " logg" + (d.logs.length > 1 ? "ar" : "") + " · " + mb(d.bytes) + (d.errs ? ' · <span style="color:#ff8b6e">⚠ ' + d.errs + "</span>" : "") +
+              '</span><a href="api/log/download-day?day=' + d.day + '" download onclick="event.stopPropagation()" title="Last ned alle loggane frå dagen">⬇ dag</a></div>';
+            if (!open) return;
+            d.logs.forEach((g) => {
+              let t = logTime(g.name),
+                m = g.meta || {},
+                live = g.name === l.name,
+                dur = m.start && m.end ? Math.round((m.end - m.start) / 60000) : null,
+                fix = m.fix && m.fix["RTK FIX"] != null ? m.fix["RTK FIX"] : null;
+              h +=
+                '<div class="logRow"><span>' + t.hm + (m.end && !live ? "–" + hm(m.end) : live ? " · <i>pågår</i>" : "") + '</span><span class="dim">' +
+                (dur != null ? dur + " min" : "") + '</span><span class="dim">' + mb(g.bytes) + '</span><span class="dim">' +
+                (fix != null ? Math.round(fix) + " % FIX" : m.rows === 0 ? "ingen posisjon" : "") + "</span>" +
+                (m.errors ? '<span class="err" title="Feil i loggen">⚠ ' + m.errors + "</span>" : "<span></span>") +
+                '<button onclick="logEvents(\'' + g.name + "')\" title=\"Vis hendingar og feil\">" + (LOGUI.ev[g.name] ? "Skjul" : "Hendingar") + "</button>" +
+                '<a href="api/log/download?name=' + encodeURIComponent(g.name) + '" download title="Last ned (zip)">⬇</a></div>';
+              if (LOGUI.ev[g.name])
+                h +=
+                  '<div class="logEv">' +
+                  (LOGUI.ev[g.name].length
+                    ? LOGUI.ev[g.name].map((x) => '<div class="' + (/ FEIL: /.test(x) ? "e" : "") + '">' + esc(x) + "</div>").join("")
+                    : "Ingen hendingar.") +
+                  "</div>";
+            });
+          });
+          if (days.length > 3)
+            h +=
+              '<div class="logDay" onclick="LOGUI.all=!LOGUI.all;renderLog()"><span class="dim">' + (LOGUI.all ? "▴ Vis færre" : "▾ Vis alle (" + days.length + " dagar)") + "</span></div>";
+          if (tiny) h += '<div class="history" style="font-size:11px">' + tiny + " nesten tomme loggar (under 10 kB) er skjulte og blir sletta etter 7 dagar.</div>";
+          h += '<button class="btn" onclick="deleteLogs()">SLETT ALLE LOGGAR</button>';
+        }
+        $("logList").innerHTML = h;
+      }
+      async function logEvents(name) {
+        if (LOGUI.ev[name]) {
+          delete LOGUI.ev[name];
+          return renderLog();
+        }
+        try {
+          LOGUI.ev[name] = (await api("api/log/events?name=" + encodeURIComponent(name))).events;
+        } catch (e) {
+          return toast("Kunne ikkje lese hendingane: " + e.message);
+        }
+        renderLog();
       }
       async function toggleLog() {
         try {
