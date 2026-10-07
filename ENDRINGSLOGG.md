@@ -9,6 +9,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.50 – «Framfor · estimert» på HUD
+- **Nytt:** HUD-en viser no snødjupna framfor maskina (6–30 m) saman med målt snødjupne: «FRAMFOR · ESTIMERT ≈0,51 m,
+  minst 0,47 m» i stipla gul ramme nedst, mellom fart og kurs. I demo står det «(DEMO)». Same estimat som på
+  førarskjermen; blir berre vist når maskina preparerer (eller demo går) og det finst målingar i nærleiken, og forsvinn
+  når «Snødjupne framfor» er slått av.
+- **Avgjerd:** estimatet er tydeleg mindre enn den målte snødjupna og alltid merka ESTIMERT med ≈ og stipla ramme, så det
+  aldri kan forvekslast med måling (CLAUDE.md).
+- **Testa:** demo i 25 s: HUD fekk estimatet (≈1,00 m, minst 0,91) og viste det merka; borte etter stopp; ingen
+  JavaScript-feil. Skjermbilete av HUD (spegla) kontrollert.
+
 ### PC-prototype v1.6.49 – låst kart (nord opp) øydela 3D og frontrute
 - **Retta:** Når kartet vart låst (kompasset «LÅST» / Kartretning nord opp) i 3D-terreng eller frontrute, vart 2D-kartet
   og 2D-sporet teikna **oppå** 3D-biletet: grøne strekar/felt framfor maskina i 3D, og i frontrute kunne heile

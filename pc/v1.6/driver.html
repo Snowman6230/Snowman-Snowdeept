@@ -1549,7 +1549,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.49";
+      const APP_VERSION = "1.6.50";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3502,7 +3502,8 @@
         TRA.live();
         TRA.objCheck();
       }
-      let estLast = 0;
+      let estLast = 0,
+        aheadEst = null; // siste estimat framfor maskina {mean, min} – blir vist på HUD (alltid merka ESTIMERT)
       function updateAhead(force) {
         if (!force && Date.now() - estLast < 1000) return;
         estLast = Date.now();
@@ -3518,6 +3519,7 @@
         $("aheadBox").classList.toggle("hide", !on || !(preparing || src === "demo"));
         $("aheadLabel").textContent = src === "demo" ? "FRAMFOR · ESTIMERT (DEMO)" : "FRAMFOR · ESTIMERT";
         $("aheadD").textContent = r ? "≈" + r.mean.toFixed(2).replace(".", ",") + " m" : "--";
+        aheadEst = r && (preparing || src === "demo") ? { mean: +r.mean.toFixed(2), min: +r.min.toFixed(2) } : null;
         $("aheadNote").textContent = r ? "minst " + r.min.toFixed(2).replace(".", ",") + " m · 6–30 m" : "ingen målingar i nærleiken";
       }
       function addCoverage(p) {
@@ -5280,6 +5282,7 @@
             distance: Math.round(total),
             area: Math.round(total * (toolsFull ? cfg.tiller : cfg.tillerN)),
             elapsed: $("elapsed").textContent,
+            ahead: preparing || demo ? aheadEst : null, // estimat framfor maskina (null = ingen målingar i nærleiken eller ikkje i arbeid)
           };
           fetch("api/hud", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(st) }).catch(() => {});
         }

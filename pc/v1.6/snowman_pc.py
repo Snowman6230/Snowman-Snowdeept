@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.49"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.50"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -83,7 +83,7 @@ def hud_state():
     if fresh_drv and drv.get("demo"):
         out=drv; age=drv_age
     elif gnss_ok:
-        out={k:drv.get(k) for k in ("preparing","elapsed","distance","area","target","tol","bounds","trase","warn","warnLevel")} if fresh_drv else {"target":0.8,"tol":0.1}
+        out={k:drv.get(k) for k in ("preparing","elapsed","distance","area","target","tol","bounds","trase","warn","warnLevel","ahead")} if fresh_drv else {"target":0.8,"tol":0.1}
         d=STATE.get("depth"); ter=STATE.get("terrain") or {}
         out.update(src="gnss",demo=bool(STATE.get("simulated")),fix=STATE.get("fix"),sats=STATE.get("satellites"),
                    speed=round((STATE.get("speed") or 0)*3.6,1),heading=STATE.get("course"),

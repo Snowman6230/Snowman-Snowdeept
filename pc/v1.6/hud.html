@@ -105,6 +105,23 @@
         color: var(--dim);
         margin-left: 0.6vw;
       }
+      /* Snødjupne framfor maskina: ESTIMAT – stipla ramme, ≈ og eige namn, så det aldri ser ut som ei måling */
+      #ahead {
+        font-size: 5vh;
+        color: var(--warn);
+        border: 0.45vh dashed var(--warn);
+        border-radius: 1.2vh;
+        padding: 0.4vh 1.6vw;
+        text-align: center;
+        line-height: 1.05;
+      }
+      #bottom #ahead small {
+        display: block;
+        font-size: 2.6vh;
+        margin-left: 0;
+        color: var(--warn);
+        letter-spacing: 0.08em;
+      }
       #demo {
         font-size: 3.6vh;
         color: var(--warn);
@@ -202,6 +219,7 @@
       </div>
       <div class="row" id="bottom">
         <span id="speed">0,0<small>km/t</small></span>
+        <span id="ahead" class="hide"></span>
         <span id="course" class="dim">--°</span>
       </div>
     </div>
@@ -320,6 +338,10 @@
           $("dev").style.color = !within && diff > 0 ? "var(--hi)" : "";
         }
         $("speed").innerHTML = fmt(h.speed || 0, 1) + "<small>km/t</small>";
+        // Framfor maskina (6–30 m): estimat frå målingar i nærleiken – aldri vist som måling
+        let a = h.ahead;
+        $("ahead").classList.toggle("hide", !a);
+        if (a) $("ahead").innerHTML = "<small>FRAMFOR · ESTIMERT" + (h.demo ? " (DEMO)" : "") + "</small>≈" + fmt(a.mean) + " m<small>minst " + fmt(a.min) + " m</small>";
         $("warn").textContent = h.warn || "";
         $("warn").classList.toggle("hide", !h.warn);
         $("warn").classList.toggle("near", h.warnLevel === "near");
