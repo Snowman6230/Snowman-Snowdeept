@@ -7,6 +7,21 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-08
+
+### Dokumentasjon – forundersøking PB600 SCR CAN/J1939 (ingen kode)
+- **Nytt:** `docs/PB600-CAN.md` – kva som er kjent om maskindata frå PistenBully 600 SCR (ca. 2012–2018): motor
+  (OM 460 LA Tier 4i), CAN-overvaking og lengdemåling i fresedjupn- og løftesylinder (frå eldre instruksjonsbok),
+  standard J1939-meldingar som truleg kan brukast, metode for å finne proprietære signal, val av USB-CAN-adapter,
+  tryggleiksreglar og plan for ein `maskindata`-modul. Eigaren si liste med 15 punkt står som open-punkt-tabell.
+- **Avgjerd:** alt blir merkt **[D]** dokumentert / **[S]** standard J1939 / **[O]** må observerast / **[H]** hypotese /
+  **[E]** eigaren sine funn. Pinout, CAN-ID-ar og signal blir aldri gjetta.
+- **Avgjerd:** SNOWMAN skal berre lytte på CAN (lyttemodus, ingen sendekode). Tilrådd adapter: PEAK PCAN-USB
+  opto-decoupled (IPEH-002022). Kvaser Leaf Light HS v2 er utelukka (manglar lyttemodus); ELM327 blir ikkje brukt.
+- **Avgjerd:** ingen programmering før Planbuch/diagnosekontakt for rett chassisnummer er funne.
+- **Kvifor:** eigaren vil ha maskindata (fres, drivstoff, motor) inn i SNOWMAN utan ekstra sensorar, og første
+  prioritet var å finne rett dokumentasjon.
+
 ## 2026-10-07
 
 ### PC-prototype v1.6.53 – Rapport, Drivstoff, Kontroll og Historikk tek mindre plass
