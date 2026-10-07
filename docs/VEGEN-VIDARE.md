@@ -146,6 +146,43 @@ Den fulle testen kjem saman med installasjonsrettleiinga, når SNOWMAN skal på 
 - Resultatet blir vist (skjermkort, bilete i sekundet per nivå) og kan sendast med i feltloggen/support.
 - Grunnlag for å kunne slå på større 3D-område og bakgrunnskart i 3D (kap. 8) berre der skjermkortet taklar det.
 
+## 10. Førarar, innlogging, personvern og oppsummering (planlagt v1.9/v2.0)
+
+Analysert 2026-10-07. Eigaren bestemte å leggje dette i ein seinare versjon (v1.9 eller v2.0).
+
+**Førarinnlogging og roller**
+- Startskjerm med store namneknappar; føraren trykkjer på namnet sitt eller skriv inn eit nytt, og skriv PIN.
+  Standard førar-PIN første gong er 1234, og han **må** endrast ved første innlogging. «Byt førar» midt i vakta.
+  Førarnamnet blir vist øvst og på HUD.
+- Roller: **førar** (prep, visingar, HUD, drivstoff, eigne økter/rapportar) og **administrator** (kalibrering, terreng,
+  trasear, NTRIP, kiosk, førarar, nullstille PIN, slette loggar, alle rapportar). Kiosk-PIN går inn i administratortilgangen.
+- PIN-kodar blir lagra **hasha** berre på PC-en (data/), aldri i repoet.
+- **Avgjerd/tilråding:** administrator-PIN skal **ikkje** stå i koden (repoet er offentleg, og alle kundar ville fått same
+  kode). Han blir laga ved første oppstart på kvar maskin; nullstilling krev ei eiga fil lagt inn lokalt på PC-en.
+- Ope spørsmål: kan førarar leggje seg til sjølv på startskjermen, eller berre administrator?
+
+**Førar knytt til økter, loggar og rapportar**
+- Kvar økt, feltlogg og drivstoffylling får førarnamn. Rapport kan filtrerast per førar og per maskin.
+- Seinare (v1.8-serveren): førarlista blir delt mellom maskinene.
+
+**Personvern** (ikkje juridisk råd – sjekk før sal)
+- Posisjonslogg knytt til namngitt tilsett er personopplysningar og ofte eit kontrolltiltak etter arbeidsmiljølova kap. 9:
+  klart formål (dokumentasjon av preparering/sikkerheit), drøfting med tillitsvalde, informasjon til førarane på førehand,
+  og slettefrist.
+- Innstillingar: slettefrist for namn i loggar (t.d. 90 dagar) og modus utan namn for anlegg som ikkje vil ha det.
+
+**Oppsummering av preparering** (per økt, døgn eller førar, kan lagrast som PDF)
+- Kart: trakka område i fresbreidd (finst frå v1.6.43), farga etter tid eller snødjupne, med trasear og prosent preparert.
+- Nøkkeltal: prep-tid, km, unikt areal (daa), transport-km, snødjupne snitt/minst; per trasé: prosent, sist preparert,
+  snødjupne mot måldjupne.
+- Drivstoff per økt og per daa – **estimert** frå fyllingar og timar (l/t), tydeleg merka. Målt forbruk krev CAN-bus (seinare).
+- Førar og maskin.
+
+**Feltlogg-lista** (kan takast tidlegare om ønskt – lite arbeid)
+- A: kompakte linjer (`07.10 21:30 · førar · 1,2 MB ⬇`), B: samanfalda liste («Loggar: 23 stk · 145 MB ▸»), C: gruppert
+  per dag med nedlasting av heile dagen, D: skjul og slett nesten tomme loggar (< ca. 10 kB) etter 7 dagar.
+- Moglegheit: automatisk opprydding (behald 30 dagar / maks 500 MB).
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
@@ -153,7 +190,7 @@ Den fulle testen kjem saman med installasjonsrettleiinga, når SNOWMAN skal på 
 | **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
 | **v1.7** | Anleggspakke, fleire terrengfiler på ein gong, LAS/LAZ/XYZ, trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). |
-| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9). |
+| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – kan flyttast til v2.0). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
 | Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
 | Seinare | CAN-bus (drivstoff, motordata, vinsj – ulikt for PistenBully og Prinoth), LiDAR for snødjupne framfor maskina. |

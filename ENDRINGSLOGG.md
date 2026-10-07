@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### Dokumentasjon – førarinnlogging, personvern, oppsummering og loggliste ført inn i vegplanen
+- **Nytt:** `docs/VEGEN-VIDARE.md` kap. 10: førarinnlogging (namneknappar, førar-PIN 1234 som må endrast første gong,
+  roller førar/administrator), førar knytt til økter/loggar/rapportar, personvern (arbeidsmiljølova kap. 9, slettefrist,
+  modus utan namn), oppsummering av preparering med kart og PDF (drivstoff tydeleg merka estimert), og kompakt
+  feltlogg-liste (A–D).
+- **Avgjerd (eigaren):** blir lagt i v1.9 eller v2.0, ikkje no.
+- **Avgjerd/tilråding:** administrator-PIN blir ikkje skriven i koden eller dokumentasjonen (repoet er offentleg); han
+  blir laga ved første oppstart på kvar maskin.
+
 ### PC-prototype v1.6.50 – «Framfor · estimert» på HUD
 - **Nytt:** HUD-en viser no snødjupna framfor maskina (6–30 m) saman med målt snødjupne: «FRAMFOR · ESTIMERT ≈0,51 m,
   minst 0,47 m» i stipla gul ramme nedst, mellom fart og kurs. I demo står det «(DEMO)». Same estimat som på
