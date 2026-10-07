@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### Dokumentasjon – PB600: maskina er truleg frå ca. 2020
+- **Endra:** `docs/PB600-CAN.md` fekk kap. 1b. Eigaren meiner maskina er frå rundt 2020. Den nye PB600 med
+  **Cummins X12 / Stage V** og iTerminal kom i oktober 2018, så maskina er truleg av den generasjonen og ikkje
+  OM 460-generasjonen som instruksjonsboka i kap. 2 gjeld. Nytt open punkt 0: stadfest generasjonen (motor, skjerm,
+  typeskilt).
+- **Kvifor:** generasjonen avgjer kva Planbuch, motorstyring og J1939-meldingar som gjeld.
+
 ### Dokumentasjon – forundersøking PB600 SCR CAN/J1939 (ingen kode)
 - **Nytt:** `docs/PB600-CAN.md` – kva som er kjent om maskindata frå PistenBully 600 SCR (ca. 2012–2018): motor
   (OM 460 LA Tier 4i), CAN-overvaking og lengdemåling i fresedjupn- og løftesylinder (frå eldre instruksjonsbok),

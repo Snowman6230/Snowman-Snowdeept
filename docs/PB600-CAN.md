@@ -2,6 +2,7 @@
 
 Status 2026-10-08: **forundersøking – ingen kode, inga tilkopling.** Første mål er å finne rett CAN-/diagnosedokumentasjon
 for PB600 SCR og avgjere kva maskindata SNOWMAN kan hente utan ekstra sensorar.
+Oppdatert 2026-10-08: maskina er truleg frå ca. 2020 – sjå kap. 1b (truleg Cummins X12-generasjonen).
 
 **Merking i dette dokumentet** (vi gjettar aldri pinout, CAN-ID-ar eller signaldefinisjonar):
 
@@ -28,6 +29,32 @@ for PB600 SCR og avgjere kva maskindata SNOWMAN kan hente utan ekstra sensorar.
 
 **Konsekvens:** Kva motorstyring (ECU) OM 460 LA Tier 4i har, og kva J1939-meldingar ho sender, er **[H]** til vi har
 chassisnummer/årsmodell og ein CAN-logg. Eksakt WKU/chassisnummer trengst for å bestille rett *Planbuch/Schaltplan*.
+
+### 1b. Oppdatering 2026-10-08: maskina er truleg frå ca. 2020 [E]
+
+Eigaren meiner no at maskina mest truleg er frå rundt 2020. Då er ho truleg av **den nye PB600-generasjonen**, ikkje
+OM 460-generasjonen:
+
+| Opplysning | Merke | Kjelde |
+|---|---|---|
+| Kässbohrer lanserte «den nye PistenBully 600» med **Cummins X12** og **EU Stage V** i oktober 2018 (nyheit datert 25.10.2018); partikkelfilter (DPF) som standard | [D] | [PistenBully: «Keiner ist sauberer» (2018)](https://www.pistenbully.com/en/news/2018/keiner-ist-sauberer) |
+| Cummins X12, 11,8 l, 382 kW, Tier 4f / Stage V, AdBlue-tank 38 l, 24 V/180 A generator, **iTerminal** med 10" touchskjerm, SNOWsat (V1/V3) som tillegg | [D] | [Datablad 600 Polar](https://www.pistenbully.com/_Resources/Persistent/7/7/1/7/7717940ef3ff72d02d9662034d0c782232008343/Datenblatt_600Polar_EN.pdf), [Prospekt PB600](https://www.pistenbully.com/_Resources/Persistent/8/3/e/2/83e26474be2719dcdc9dfff552669b47bae197e5/PB_600_Prospekt_EN.pdf) |
+| Automatisk nivåregulering i sidehelling og SlopeTracer → maskina har truleg helnings-/posisjonsgivarar | [D] funksjonane / [H] givarane | Prospekt PB600 |
+| Fjorårsmodellar seld i 2019–2020 kan framleis ha Mercedes-motor | [H] | – |
+
+**Slik avgjer du generasjonen på maskina (utan verktøy):**
+- Motoren: står det **Cummins** (X12) eller **Mercedes-Benz** (OM 460/OM 471) på motoren/typeskiltet?
+- Skjermen: **iTerminal** (ny generasjon) eller eldre TCC-terminal?
+- Chassisnummer/WKU og byggjeår på typeskiltet.
+
+**Kva det endrar (om det er Cummins X12):**
+- Instruksjonsboka i kap. 2 gjeld ein eldre generasjon. Feilkodane der er berre ein peikepinn; vi treng
+  dokumentasjon for den nye generasjonen.
+- Cummins X12 er ein vanleg lastebil-/anleggsmotor, og slike motorstyringar sender normalt standard J1939
+  (turtal, last, temperatur, forbruk, DEF/AdBlue, DPF, DM1-feilkodar) **[H]** – sannsynleg, men må stadfestast **[O]**.
+- I tillegg kjem truleg data frå eksosreinsinga (DPF-sot/regenerering, AdBlue-kvalitet) som standard J1939-meldingar **[S]/[O]**.
+- Fres-, ramme- og skjerdata er framleis proprietære **[O]** – men nyare maskin gjer det meir sannsynleg at dei finst
+  elektronisk **[H]**.
 
 ## 2. Kva veit vi om CAN og sensorar på PB600 (eldre generasjon)?
 
@@ -132,7 +159,8 @@ Eige lag `maskindata` (ny modul) som:
 
 | # | Punkt | Status |
 |---|---|---|
-| 1 | Planbuch/Schaltplan PB600 SCR 2012–2018 | Trengst chassisnummer; be Kässbohrer/forhandlar |
+| 0 | Generasjon: Cummins X12 (2019→) eller Mercedes (–2018)? | Sjå motor, skjerm og typeskilt (kap. 1b) |
+| 1 | Planbuch/Schaltplan for rett generasjon (truleg ca. 2020) | Trengst chassisnummer; be Kässbohrer/forhandlar |
 | 2–4 | Diagnosekontakt, plassering, kontakttype, pinout, CAN-H/CAN-L/jord | Ukjend – Planbuch eller sjå på maskina |
 | 5 | Bussfart | [O] – lyttemodus 250/500 |
 | 6–7 | Kva buss motor og fres ligg på | Planbuch / [O] |
