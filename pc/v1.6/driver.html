@@ -28,6 +28,9 @@
         inset: -22%;
         transform-origin: center center;
         transition: transform 0.4s ease-out;
+        /* Eige teiknelag alltid: utan dette (låst kart = transform: none) kom kartlaga til Leaflet (z-index 200–700)
+           over 3D-flata, og 2D-spor/kart vart teikna oppå 3D og frontrute (v1.6.49) */
+        isolation: isolate;
       }
       .leaflet-control-container {
         display: none;
@@ -1546,7 +1549,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.48";
+      const APP_VERSION = "1.6.49";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));

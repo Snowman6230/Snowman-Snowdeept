@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.49 – låst kart (nord opp) øydela 3D og frontrute
+- **Retta:** Når kartet vart låst (kompasset «LÅST» / Kartretning nord opp) i 3D-terreng eller frontrute, vart 2D-kartet
+  og 2D-sporet teikna **oppå** 3D-biletet: grøne strekar/felt framfor maskina i 3D, og i frontrute kunne heile
+  biletet bli eit flatt 2D-kart der maskina ikkje synest. Årsak: låst kart har `transform: none`, og då mista
+  kartflata sitt eige teiknelag, så kartlaga til Leaflet (z-index 200–700) kom over 3D-flata. Kartflata har no alltid
+  eige teiknelag (`isolation: isolate`). Feilen har truleg vore der sidan 3D kom; han synte seg no med detaljflata.
+- **Testa:** demo på testterreng, 3D og frontrute med låst kart før/etter (skjermbilete): ingen 2D-lag over 3D etter
+  rettinga. Kart- og førarvising med låst kart som før. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.48 – sju feil i GNSS/NTRIP-delen retta (frå kodegjennomgang)
 Eigaren fekk ein kodegjennomgang av `snowman_pc.py`, `ntripklient.py` og `rtcm.py` i ei anna Claude-økt. Alle sju
 funna vart kontrollerte mot koden, stadfesta og retta her. Ingen endring i førargrensesnittet.
