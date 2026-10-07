@@ -9,6 +9,35 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.48 – sju feil i GNSS/NTRIP-delen retta (frå kodegjennomgang)
+Eigaren fekk ein kodegjennomgang av `snowman_pc.py`, `ntripklient.py` og `rtcm.py` i ei anna Claude-økt. Alle sju
+funna vart kontrollerte mot koden, stadfesta og retta her. Ingen endring i førargrensesnittet.
+- **Retta (1) – HUD viste gamle GNSS-data som ferske:** alderen vart rekna frå siste oppdatering av *noko* i statusen
+  (også NTRIP kvart sekund). Sluttar mottakaren å sende medan Bluetooth-porten står open, viste HUD «RTK FIX» og siste
+  snødjupne utan stans. No blir alderen rekna frå siste tolka GGA (`gga_time`); etter 5 s går HUD bort frå GNSS med
+  årsaka «Mottakaren har slutta å sende posisjon». Førarskjermen tømmer òg snødjupna («GNSS HAR STOPPA»), og NTRIP-sida
+  viser «INGEN NY POSISJON PÅ N s».
+- **Retta (2) – NMEA-sjekksum:** linjer med feil sjekksum blir forkasta før dei går inn i snødjupna eller blir sende til
+  casteren, og blir talde på NTRIP-sida. **Avgjerd:** linjer *utan* sjekksum blir godtekne (nokre eldre mottakarar sender
+  ingen) men talde, så SNOWMAN ikkje sluttar å verke med slike mottakarar.
+- **Retta (3) – skriving til mottakaren kunne henge NTRIP:** `write_timeout=1` på porten, eigen feilhandtering for
+  skrivinga, og feilen blir meld som mottakarfeil («Serial: …») utan at NTRIP-sambandet blir rive ned.
+- **Retta (4) – «Serial: TILKOPLA» vart ståande** etter at porten var lukka eller sett til tom.
+- **Retta (5) – falske FEIL i RTCM-vurderinga:** «Ventar på posisjonen til basen» dei første 30 s før 1005/1006 (FEIL
+  først etter det), og byte blir talde per oppkopling, så «ikkje RTCM 3» ikkje blinkar etter kvar ny oppkopling.
+  (Feilane kom med v1.6.39.)
+- **Retta (6) – NTRIP Auto:** prøver no NTRIP 2 også når casteren tek imot sambandet men aldri svarar på NTRIP 1, og
+  lukkar sambandet ved feil.
+- **Retta (8) – tryggleik:** endringar (POST) blir berre godtekne frå SNOWMAN sine eigne sider (127.0.0.1/localhost på
+  same port). Før kunne ei anna nettside i nettlesaren på PC-en byte caster medan passordet stod lagra, slik at
+  innlogginga vart send til ein annan server. Avviste forsøk blir loggførte.
+- **Testa:** einingstestar (sjekksum rett/feil/utan, RTCM-vurdering før/etter 1005 og etter nullstilling); falsk caster
+  og falsk mottakar: feil NMEA forkasta, ingen FEIL over fleire ned-/oppkoplingar, HUD går frå GNSS 6 s etter at GGA
+  stoppar og tilbake når ho kjem att, mottakar som ikkje les → «Serial: … Write timeout» medan NTRIP held fram,
+  POST frå framand side 403 / frå SNOWMAN 200, tom port → AV, stille NTRIP 1 → tilkopla med NTRIP 2 etter 11 s;
+  førarskjerm og NTRIP-side lagrar som før (både 127.0.0.1 og localhost); `simuler-leica.py --terreng` mot fasit med
+  alle tre høgdeval (snitt innan ±1 cm).
+
 ### PC-prototype v1.6.47 – simulatoren viser snødjupne også med Kartverket-geoiden
 - **Retta:** Testmodus (oppstartsval 3, simulert mottakar) viste ikkje snødjupne, berre «FEIL – SJEKK HØGDESYSTEM/
   KALIBRERING». Simulatoren sende NN2000-høgd med fast geoidehøgd 40,0 m. Med høgdevalet «Rå GPS-høgd → Kartverket-modellen»

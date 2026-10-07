@@ -94,8 +94,11 @@ class RtcmMonitor:
         self.station = None
         self.base = None  # (lat, lon)
         self.last = 0.0
+        self.first = 0.0  # tida for første gyldige ramme etter oppkoplinga
+        self.nbytes = 0   # byte motteke på DENNE oppkoplinga (ikkje samla for heile økta)
 
     def feed(self, data):
+        self.nbytes += len(data)
         self.buf += data
         b = self.buf
         while True:
@@ -131,6 +134,8 @@ class RtcmMonitor:
     def _frame(self, p):
         self.frames += 1
         self.last = time.time()
+        if not self.first:
+            self.first = self.last
         if len(p) < 2:
             return
         t = _bits(p, 0, 12)
@@ -143,7 +148,8 @@ class RtcmMonitor:
             if abs(x) + abs(y) + abs(z) > 1e6:
                 self.base = ecef_to_geo(x, y, z)
 
-    def status(self, lat=None, lon=None, bytes_in=0):
+    def status(self, lat=None, lon=None, bytes_in=None):
+        """bytes_in blir ikkje lenger brukt (v1.6.48): vurderinga byggjer på byte motteke på denne oppkoplinga."""
         systems = sorted({s for t in self.types for s in [system_of(t)] if s})
         obs = any(system_of(t) for t in self.types)
         r = {"frames": self.frames, "crcErr": self.crc_err, "junk": self.junk,
@@ -154,14 +160,19 @@ class RtcmMonitor:
             if lat is not None and lon is not None:
                 r["baseKm"] = round(dist_km(lat, lon, *self.base), 2)
         # Kort vurdering på nynorsk – vist på NTRIP-sida
-        if bytes_in < 200:
+        since = time.time() - self.first if self.first else 0.0
+        if self.nbytes < 200:
             msg = "Ventar på data frå casteren."
         elif self.frames == 0:
-            msg = "FEIL: dataa frå casteren er ikkje RTCM 3 (feil mountpoint eller format)."
+            msg = ("Ventar på første gyldige RTCM-melding …" if self.nbytes < 2000
+                   else "FEIL: dataa frå casteren er ikkje RTCM 3 (feil mountpoint eller format).")
         elif not obs:
-            msg = "FEIL: basen sender ingen observasjonar – RTK er ikkje mogleg."
+            msg = ("Ventar på observasjonar frå basen …" if since < 10
+                   else "FEIL: basen sender ingen observasjonar – RTK er ikkje mogleg.")
         elif self.station is None:
-            msg = "FEIL: basen sender ikkje posisjonen sin (1005/1006) – RTK er ikkje mogleg."
+            # 1005/1006 kjem typisk kvart 5.–30. sekund – ikkje FEIL før det har gått 30 s
+            msg = (f"Ventar på posisjonen til basen (1005/1006) – kan ta opptil 30 s ({since:.0f} s)." if since < 30
+                   else "FEIL: basen sender ikkje posisjonen sin (1005/1006) – RTK er ikkje mogleg.")
         elif r.get("age") is not None and r["age"] > 10:
             msg = f"FEIL: ingen nye korreksjonar på {r['age']:.0f} s."
         elif r.get("baseKm") is not None and r["baseKm"] > 35:

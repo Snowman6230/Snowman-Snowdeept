@@ -65,7 +65,7 @@ RTK: ${x.fix}   SAT: ${x.satellites}   HDOP: ${x.hdop??'--'}
 Høgd frå mottakar: ${x.altitude??'--'} m (geoidehøgd i meldinga: ${x.geoid_sep??'--'} m)
 Ellipsoidisk høgd: ${x.h_ell??'--'} m · Kartverket-geoide N: ${x.geoid_model??'--'} m
 NN2000-høgd (med kalibreringa): ${x.h_nn2000??'--'} m
-Posisjon: ${x.lat??'--'}, ${x.lon??'--'}
+Posisjon: ${x.lat??'--'}, ${x.lon??'--'}${x.serial_connected&&x.gga_age!=null&&x.gga_age>=3?'  – INGEN NY POSISJON PÅ '+Math.round(x.gga_age)+' s':''}${x.nmea_bad?'\nNMEA med feil sjekksum (forkasta): '+x.nmea_bad:''}${x.nmea_nock?'\nNMEA utan sjekksum: '+x.nmea_nock:''}
 RTCM mottatt: ${x.bytes_rtcm} byte
 ${rtcmTxt(x)}
 Svar frå mottakar: ${x.rx_text||'--'}

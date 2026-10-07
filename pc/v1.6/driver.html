@@ -1546,7 +1546,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.47";
+      const APP_VERSION = "1.6.48";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1748,6 +1748,8 @@
             $("fix").textContent = "INGEN DATA";
             $("acc").textContent = "GNSS har stoppa";
             document.querySelector(".rtk").classList.add("bad");
+            realDepth = null; // gammal snødjupne skal aldri stå som om ho var målt no
+            showDepth(null, "GNSS HAR STOPPA");
           }
         } catch (e) {
           backendOK = false;

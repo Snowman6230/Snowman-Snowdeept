@@ -116,8 +116,12 @@ def _request(host, port, path, user, pw, version, ver, gga=None, timeout=10):
     else:  # NTRIP 1: User-Agent må byrje med «NTRIP » – nokre castarar avviser elles førespurnaden
         req = (f"GET {path} HTTP/1.0\r\nHost: {host}:{port}\r\nUser-Agent: {UA.format(ver=ver)}\r\n"
                f"{_auth(user, pw)}Accept: */*\r\nConnection: close\r\n\r\n")
-    s.sendall(req.encode())
-    first = _readline(s).decode("latin1", "ignore").strip()
+    try:
+        s.sendall(req.encode())
+        first = _readline(s).decode("latin1", "ignore").strip()
+    except Exception:
+        s.close()  # ikkje lat sambandet liggje ope når casteren ikkje svarar
+        raise
     return s, first
 
 
@@ -204,13 +208,18 @@ def open_stream(caster, port, mp, user, pw, version="auto", ver="", gga=None):
         return _open(host, port, mp, user, pw, 2, ver, gga)
     try:
         return _open(host, port, mp, user, pw, 1, ver, None)
-    except NtripError as e:
-        if e.code in ("auth", "mount"):
+    except (ConnectionRefusedError, socket.gaierror):
+        raise  # casteren er ikkje å nå i det heile – NTRIP 2 hjelper ikkje
+    except (NtripError, OSError) as e:
+        # Også når casteren tek imot sambandet men aldri svarar på NTRIP 1 (tidsavbrot), blir NTRIP 2 prøvd
+        if isinstance(e, NtripError) and e.code in ("auth", "mount"):
             raise
         try:  # casteren godtok ikkje NTRIP 1 – prøv NTRIP 2
             return _open(host, port, mp, user, pw, 2, ver, gga)
         except NtripError as e2:
             raise NtripError(f"{e2} (prøvde NTRIP 1 og 2)", e2.code)
+        except OSError as e2:
+            raise NtripError(f"Casteren svarar ikkje ({e2}) – prøvde NTRIP 1 og 2")
 
 
 # ---------- kjeldetabellen ----------

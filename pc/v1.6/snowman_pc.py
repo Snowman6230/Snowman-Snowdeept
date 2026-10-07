@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.47"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.48"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -78,7 +78,8 @@ def hud_state():
     """HUD-data sett saman i tenesta: GNSS og snødjupne direkte frå mottakaren (alltid ferske),
     prepareringsstatus frå førarskjermen. Då stoppar ikkje HUD sjølv om førarskjermen ligg i bakgrunnen."""
     now=time.time(); drv=dict(HUD); drv_age=now-drv.get("t",0); fresh_drv=drv_age<15
-    gnss_age=now-STATE.get("last_update",0); gnss_ok=STATE.get("serial_connected") and STATE.get("lat") is not None and gnss_age<5
+    # Alderen på GNSS-data er tida sidan siste tolka GGA – ikkje siste oppdatering av noko i STATE (NTRIP o.l.)
+    gnss_age=now-STATE.get("gga_time",0); gnss_ok=STATE.get("serial_connected") and STATE.get("lat") is not None and gnss_age<5
     if fresh_drv and drv.get("demo"):
         out=drv; age=drv_age
     elif gnss_ok:
@@ -93,7 +94,8 @@ def hud_state():
     else:
         out={"fix":"AV"}; age=min(drv_age,gnss_age)
     out["age"]=age; out["t"]=now-age
-    out["reason"]="" if age<5 else ("Ingen GNSS-data og førarskjermen er ikkje open" if not gnss_ok else "")
+    out["reason"]="" if age<5 else ("Mottakaren har slutta å sende posisjon" if STATE.get("serial_connected") and STATE.get("gga_time")
+                                      else "Ingen GNSS-data og førarskjermen er ikkje open")
     return out
 LOCK=threading.Lock()
 STOP=threading.Event()
@@ -120,8 +122,20 @@ HUD_TICK=threading.Condition()   # varslar HUD-straumane kvar gong ny GNSS-posis
 def update(**kw):
     with LOCK:
         STATE.update(kw); STATE["last_update"]=time.time()
+        if "last_gga" in kw: STATE["gga_time"]=STATE["last_update"]   # berre ein tolka posisjon gjer GNSS-data «ferske»
     if "last_gga" in kw:
         with HUD_TICK: HUD_TICK.notify_all()
+
+def nmea_check(line):
+    """NMEA-sjekksum: XOR av teikna mellom «$» og «*» skal vere lik dei to hex-sifra etter «*».
+    Returnerer True (rett), False (feil) eller None (linja har ingen sjekksum)."""
+    if "*" not in line: return None
+    body,_,ck=line[1:].partition("*")
+    try: want=int(ck.strip()[:2],16)
+    except ValueError: return False
+    x=0
+    for ch in body: x^=ord(ch)
+    return x==want
 
 def nmea_coord(v, hemi, is_lat):
     if not v: return None
@@ -183,6 +197,7 @@ def serial_loop():
     while not STOP.is_set():
         try:
             if not CFG["serial_port"]:
+                if STATE.get("serial_connected"): update(serial_connected=False)
                 time.sleep(1); continue
             try:
                 import serial
@@ -190,7 +205,8 @@ def serial_loop():
                 update(last_error="pyserial manglar. Køyr INSTALLER-WINDOWS.bat (Windows) eller start-snowman.sh (Linux).")
                 time.sleep(3); continue
             # serial_for_url: vanleg port (COM3, /dev/ttyUSB0) eller simulator over TCP (socket://127.0.0.1:7777)
-            serial_obj=serial.serial_for_url(CFG["serial_port"], baudrate=int(CFG["baud"]), timeout=.2)
+            # write_timeout: skriving til ein Bluetooth-port som har mista sambandet skal ikkje kunne henge for alltid
+            serial_obj=serial.serial_for_url(CFG["serial_port"], baudrate=int(CFG["baud"]), timeout=.2, write_timeout=1)
             update(serial_connected=True, port=CFG["serial_port"], baud=int(CFG["baud"]), last_error="")
             LOG.event(f"Mottakar tilkopla: {CFG['serial_port']} @ {CFG['baud']}")
             # Oppstartskommandoar til mottakaren (valfritt, avhengig av merke – GeoMax Zenith35 Pro treng ingen)
@@ -200,7 +216,8 @@ def serial_loop():
             buf=b""; opened=(CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"))
             while not STOP.is_set() and serial_obj.is_open:
                 if (CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"))!=opened:   # endra i oppsettet: opne på nytt
-                    LOG.event("Mottakaroppsett endra – opnar porten på nytt"); serial_obj.close(); break
+                    LOG.event("Mottakaroppsett endra – opnar porten på nytt"); serial_obj.close()
+                    update(serial_connected=False); serial_obj=None; break
                 b=serial_obj.read(4096)
                 if b:
                     buf+=b
@@ -208,10 +225,18 @@ def serial_loop():
                         raw,buf=buf.split(b"\n",1)
                         line=raw.decode("ascii","ignore").strip()
                         if line: LOG.raw(line)
+                        if line.startswith("$"):
+                            ok=nmea_check(line)
+                            # Feil sjekksum = bitfeil i overføringa: linja blir forkasta (ingen feil høgd inn i snødjupna,
+                            # ingen øydelagd GGA til casteren). Linjer utan sjekksum (nokre eldre mottakarar) blir godtekne og talde.
+                            if ok is False:
+                                update(nmea_bad=STATE.get("nmea_bad",0)+1); continue
+                            if ok is None: update(nmea_nock=STATE.get("nmea_nock",0)+1)
                         if line.startswith("$") and "GGA" in line: parse_gga(line)
                         elif line.startswith("$"): HEL.feed(line)   # hellingsmålar i antenna, om ho har
                         elif line and line.isprintable(): update(rx_text=line[:120])   # svar på kommandoar o.l. (t.d. «<OK»)
                 else: time.sleep(.02)
+            update(serial_connected=False)   # løkka slutta (port lukka/endra) – aldri «TILKOPLA» utan open port
         except Exception as e:
             update(serial_connected=False,last_error=f"Serial: {e}")
             LOG.event(f"Mottakar-feil: {e}")
@@ -225,7 +250,7 @@ def ntrip_loop():
     Vakthund (v1.6.41): kjem det ingen data på CFG["ntrip_timeout"] sekund, blir sambandet kopla opp på nytt
     (mobilnettet kan «henge» utan at sambandet blir lukka – då ville SNOWMAN elles vente i det uendelege)."""
     global ntrip_sock
-    last_rtcm_log=0
+    last_rtcm_log=0; last_wfail=0
     while not STOP.is_set():
         stream=None
         try:
@@ -252,8 +277,15 @@ def ntrip_loop():
                     if wait>tmo: raise ConnectionError(f"Ingen korreksjonar på {wait:.0f} s – koplar til på nytt")
                     continue
                 last_data=now
-                if serial_obj and getattr(serial_obj,"is_open",False):
-                    serial_obj.write(data)
+                so=serial_obj   # lokal referanse: serial_loop kan setje serial_obj til None når som helst
+                if so is not None and getattr(so,"is_open",False):
+                    # Feil ved skriving til mottakaren er ein MOTTAKARFEIL: NTRIP-sambandet skal halde fram.
+                    # (write_timeout=1 hindrar at eit dødt Bluetooth-samband held tråden fast.)
+                    try: so.write(data)
+                    except Exception as e:
+                        if now-last_wfail>=10:
+                            last_wfail=now; update(last_error=f"Serial: klarte ikkje å sende korreksjonar til mottakaren ({e})")
+                            LOG.event(f"Mottakar-feil ved sending av RTCM: {e}")
                 RTCM.feed(data)   # berre kontroll – dataa blir sende uendra til mottakaren
                 if now-last_rtcm_log>=60 and RTCM.frames:
                     st=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]); last_rtcm_log=now
@@ -276,10 +308,21 @@ class API(http.server.BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers","Content-Type")
         self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS"); self.end_headers()
     def do_OPTIONS(self): self.headers_ok(204)
+    def origin_ok(self):
+        """Endringar (POST) blir berre godtekne frå SNOWMAN sine eigne sider på denne PC-en.
+        Utan dette kunne ei anna nettside i nettlesaren på PC-en endre t.d. caster medan passordet står lagra,
+        slik at innlogginga vart send til ein annan server. Førespurnader utan Origin (ikkje frå nettlesar) er OK."""
+        o=self.headers.get("Origin")
+        if not o: return True
+        try:
+            u=urllib.parse.urlparse(o); port=self.server.server_address[1]
+            return u.scheme=="http" and u.hostname in ("127.0.0.1","localhost","::1") and (u.port or 80)==port
+        except Exception: return False
     def do_GET(self):
         u=urllib.parse.urlparse(self.path)
         if u.path=="/api/status":
-            self.headers_ok(); self.wfile.write(json.dumps(STATE).encode()); return
+            st=dict(STATE); gt=st.get("gga_time"); st["gga_age"]=None if not gt else round(time.time()-gt,1)
+            self.headers_ok(); self.wfile.write(json.dumps(st).encode()); return
         if u.path=="/":
             p=Path(__file__).with_name("driver.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
@@ -440,6 +483,9 @@ class API(http.server.BaseHTTPRequestHandler):
         self.headers_ok(404); self.wfile.write(b'{"error":"not found"}')
     def do_POST(self):
         global CFG
+        if not self.origin_ok():
+            LOG.event(f"Avvist endring frå framand nettside: {self.headers.get('Origin')} {self.path}")
+            self.headers_ok(403); self.wfile.write(json.dumps({"ok":False,"error":"Endringar er berre tillatne frå SNOWMAN sjølv"}).encode()); return
         n=int(self.headers.get("Content-Length","0"))
         u=urllib.parse.urlparse(self.path)
         if u.path=="/api/terrain/analyse":  # filopplasting blir straumd til disk
