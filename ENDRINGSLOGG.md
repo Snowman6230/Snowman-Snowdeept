@@ -9,6 +9,21 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.45 – skarpare spor og terreng i 3D og frontrute
+- **Endra (steg 1):** teksturane i 3D blir filtrerte med det høgaste skjermkortet klarer (anisotropi, vanlegvis 16 i staden
+  for 4), så spor og kurver held seg skarpe når ein ser langs bakken. «Snødjupne framfor»-estimatet blir teikna i full
+  oppløysing (25 cm i staden for 50 cm) – **skraveringa er uendra**, så estimatet ser framleis aldri ut som måling.
+- **Nytt (steg 2):** eiga **detaljflate ±40 m rundt maskina** med skarp tekstur (12 eller 16 pikslar per meter mot 4 elles):
+  sporkantar og høgdekurver framfor skjeret er knivskarpe i 3D og frontrute. Flata følgjer maskina og blir teikna på nytt
+  kvar ca. 14 m (ca. 5 ms). Teksturen blir sendt til skjermkortet maks 5 gonger i sekundet.
+- **Nytt:** knapp i Innst. › Kart: **3D-DETALJ NÆR MASKINA: HØG / NORMAL / AV** (standard NORMAL). Blir 3D tregt på
+  maskina, vel NORMAL eller AV.
+- **Avgjerd (eigaren):** steg 1 + 2 med moglegheit for å justere/slå av. Testa i testkopi først (bilete før/etter vist og
+  godkjent).
+- **Testa:** simulert GNSS (`simuler-leica.py --terreng`) med testterreng, prep i gang, 3D og frontrute, alle tre nivå
+  vekselvis utan JavaScript-feil; skjermbilete samanlikna. Biletfrekvens på Surface-en er ikkje målt (testmaskina har
+  ikkje skjermkort).
+
 ### Dokumentasjon – 3D-test lagra som mogleg framtidig versjon (ingen endring i SNOWMAN)
 - **Nytt:** `docs/VEGEN-VIDARE.md` kap. 8 med testresultat for trakka område i 3D, bakgrunnskart drapert på 3D-terrenget
   og større 3D-område. Prototypen er lagra i `docs/prototypar/3d-trakka-og-kart.py` (blir ikkje brukt av SNOWMAN).

@@ -1121,6 +1121,7 @@
           </div>
           <button id="bgSet" class="btn toggle on" onclick="toggleBg()">BAKGRUNN (KART/TERRENG): PÅ</button
           ><button id="estSet" class="btn toggle on" onclick="toggleEst()">SNØDJUPNE FRAMFOR (ESTIMAT): PÅ</button>
+          <button id="detailSet" class="btn" onclick="cycleDetail3d()">3D-DETALJ NÆR MASKINA: NORMAL</button>
           <button id="fsSet" class="btn toggle" onclick="toggleFullscreen()">FULLSKJERM: AV</button>
           <button id="northSet" class="btn" onclick="toggleNorth()">KARTRETNING: KØYRERETNING OPP</button>
           <button id="snowSet" class="btn toggle on" onclick="toggleSnow()">SNØDJUPNE: PÅ</button
@@ -1545,7 +1546,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.44";
+      const APP_VERSION = "1.6.45";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1572,6 +1573,7 @@
           antZ: 2.8,
           zOff: 0,
           northUp: false,
+          detail3d: "normal", // 3D-detalj nær maskina: hog | normal | av
           terrain: null,
         },
         pos = null,
@@ -1917,7 +1919,19 @@
           sm = null, // utjamna maskinposisjon {x, y, h}
           free = null, // fri kamera når prep er stoppa: {yaw, pitch, dist, x, y, h} (snu og zoome rundt maskina)
           raf = null,
-          lastFrame = 0;
+          lastFrame = 0,
+          // Detaljflate nær maskina (v1.6.45): eiga skarp tekstur ±DR m rundt maskina oppå terrenget.
+          // Nivå (Innst. › Kart): høg 16 px/m, normal 12 px/m, av. Resten av utsnittet har 4 px/m.
+          DR = 40,
+          dMesh = null,
+          dCv = null,
+          dCx = null,
+          dTex = null,
+          dC = null,
+          dPx = 0,
+          dDirty = false,
+          dLast = 0;
+        const DETAIL_PX = { hog: 16, normal: 12, av: 0 };
         const mLon = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
         function local(p) {
           return [(p[1] - patch.lon0) * mLon(patch.lat0), (p[0] - patch.lat0) * M_LAT]; // x mot aust, y mot nord
@@ -1962,12 +1976,13 @@
           texCx = texCv.getContext("2d");
           tex = new THREE.CanvasTexture(texCv);
           tex.colorSpace = THREE.SRGBColorSpace;
-          tex.anisotropy = 4;
+          tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // skarp tekstur også når ein ser langs bakken
           estCv = document.createElement("canvas");
-          estCv.width = estCv.height = HALF * PX; // halv oppløysing held for estimatet
+          estCv.width = estCv.height = 2 * HALF * PX; // full oppløysing (skraveringa held estimatet tydeleg merka)
           estCx = estCv.getContext("2d");
           estTex = new THREE.CanvasTexture(estCv);
           estTex.colorSpace = THREE.SRGBColorSpace;
+          estTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
           // skravering: estimat skal aldri sjå ut som måling
           let hc = document.createElement("canvas");
           hc.width = hc.height = 12;
@@ -2162,8 +2177,167 @@
           texCx.stroke();
           texCx.globalAlpha = 1;
         }
+        // ---- Detaljflate nær maskina ----
+        function dLevel() {
+          return DETAIL_PX[cfg.detail3d] != null ? DETAIL_PX[cfg.detail3d] : DETAIL_PX.normal;
+        }
+        function dPaint() {
+          if (!dCx || !dC) return;
+          let s = dPx,
+            ox = dC[0] - DR,
+            oy = dC[1] + DR,
+            n = patch.n,
+            X = (x) => (x - ox) * s,
+            Y = (y) => (oy - y) * s,
+            bg = cfg.bgOn !== false;
+          dCx.fillStyle = bg ? "#eef4f9" : "#2a3b46";
+          dCx.fillRect(0, 0, dCv.width, dCv.height);
+          if (bg) {
+            // same høgdekurver som i paintBase, men berre for rutene i detaljflata og i høg oppløysing
+            let minor = new Path2D(),
+              major = new Path2D(),
+              j0 = Math.max(0, Math.floor((ox + HALF) / STEP) - 1),
+              j1 = Math.min(n - 2, Math.ceil((ox + 2 * DR + HALF) / STEP) + 1),
+              i0 = Math.max(0, Math.floor((HALF - oy) / STEP) - 1),
+              i1 = Math.min(n - 2, Math.ceil((HALF - oy + 2 * DR) / STEP) + 1);
+            for (let i = i0; i <= i1; i++)
+              for (let j = j0; j <= j1; j++) {
+                let a = H[i * n + j],
+                  b = H[i * n + j + 1],
+                  c = H[(i + 1) * n + j + 1],
+                  d = H[(i + 1) * n + j];
+                if (isNaN(a) || isNaN(b) || isNaN(c) || isNaN(d)) continue;
+                let lo = Math.ceil(Math.min(a, b, c, d)),
+                  hi = Math.floor(Math.max(a, b, c, d));
+                for (let L = lo; L <= hi; L++) {
+                  let q = [],
+                    e = (h1, h2, x1, y1, x2, y2) => {
+                      if ((h1 - L) * (h2 - L) < 0) {
+                        let f = (L - h1) / (h2 - h1);
+                        q.push([X(-HALF + (x1 + (x2 - x1) * f) * STEP), Y(HALF - (y1 + (y2 - y1) * f) * STEP)]);
+                      }
+                    };
+                  e(a, b, j, i, j + 1, i);
+                  e(b, c, j + 1, i, j + 1, i + 1);
+                  e(c, d, j + 1, i + 1, j, i + 1);
+                  e(d, a, j, i + 1, j, i);
+                  let P = L % 5 === 0 ? major : minor;
+                  for (let m = 0; m + 1 < q.length; m += 2) {
+                    P.moveTo(q[m][0], q[m][1]);
+                    P.lineTo(q[m + 1][0], q[m + 1][1]);
+                  }
+                }
+              }
+            dCx.lineCap = "round";
+            dCx.strokeStyle = "#c3d3e0";
+            dCx.lineWidth = (1.2 * s) / PX;
+            dCx.stroke(minor);
+            dCx.strokeStyle = "#7f9cb3";
+            dCx.lineWidth = (2.4 * s) / PX;
+            dCx.stroke(major);
+          }
+          segs.forEach(dSeg);
+          dDirty = true;
+        }
+        function dSeg(sg) {
+          if (!dCx || !dC) return;
+          let a = local(sg.a),
+            b = local(sg.b),
+            ox = dC[0] - DR,
+            oy = dC[1] + DR;
+          if (Math.abs(a[0] - dC[0]) > DR + 10 || Math.abs(a[1] - dC[1]) > DR + 10) return;
+          dCx.strokeStyle = sg.color;
+          dCx.lineWidth = sg.w * dPx;
+          dCx.lineCap = "round";
+          dCx.globalAlpha = 0.9;
+          dCx.beginPath();
+          dCx.moveTo((a[0] - ox) * dPx, (oy - a[1]) * dPx);
+          dCx.lineTo((b[0] - ox) * dPx, (oy - b[1]) * dPx);
+          dCx.stroke();
+          dCx.globalAlpha = 1;
+        }
+        function dRemove() {
+          if (dMesh) {
+            scene.remove(dMesh);
+            dMesh.geometry.dispose();
+            dMesh.material.dispose();
+          }
+          if (dTex) dTex.dispose();
+          dMesh = dCv = dCx = dTex = dC = null;
+          dPx = 0;
+        }
+        // Eigen indeks over rutene rundt maskina, same hjørnepunkt som terrenget, eigne UV-ar mot detaljteksturen
+        function dBuild(cx, cy) {
+          let px = dLevel();
+          if (!terrain || !px) return dRemove();
+          if (px !== dPx) dRemove();
+          if (!dCv) {
+            dPx = px;
+            dCv = document.createElement("canvas");
+            dCv.width = dCv.height = 2 * DR * dPx;
+            dCx = dCv.getContext("2d");
+            dTex = new THREE.CanvasTexture(dCv);
+            dTex.colorSpace = THREE.SRGBColorSpace;
+            dTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          }
+          dC = [cx, cy];
+          let n = patch.n,
+            src = terrain.geometry,
+            uv = new Float32Array(n * n * 2),
+            idx = [],
+            ox = cx - DR,
+            oy = cy + DR;
+          for (let i = 0; i < n; i++)
+            for (let j = 0; j < n; j++) {
+              let k = i * n + j;
+              uv[2 * k] = (-HALF + j * STEP - ox) / (2 * DR);
+              uv[2 * k + 1] = 1 - (oy - (HALF - i * STEP)) / (2 * DR);
+            }
+          let j0 = Math.max(0, Math.floor((ox + HALF) / STEP)),
+            j1 = Math.min(n - 2, Math.ceil((ox + 2 * DR + HALF) / STEP) - 1),
+            i0 = Math.max(0, Math.floor((HALF - oy) / STEP)),
+            i1 = Math.min(n - 2, Math.ceil((HALF - oy + 2 * DR) / STEP) - 1);
+          for (let i = i0; i <= i1; i++)
+            for (let j = j0; j <= j1; j++) {
+              let a = i * n + j,
+                b = a + 1,
+                c = a + n,
+                d = c + 1;
+              if (isNaN(H[a]) || isNaN(H[b]) || isNaN(H[c]) || isNaN(H[d])) continue;
+              idx.push(a, c, b, b, c, d);
+            }
+          let geo = new THREE.BufferGeometry();
+          geo.setAttribute("position", src.getAttribute("position"));
+          geo.setAttribute("normal", src.getAttribute("normal"));
+          geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+          geo.setIndex(idx);
+          if (dMesh) {
+            dMesh.geometry.dispose();
+            dMesh.geometry = geo;
+          } else {
+            dMesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: dTex, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+            scene.add(dMesh);
+          }
+          dPaint();
+        }
+        function dCheck() {
+          if (!sm || !terrain) return;
+          let px = dLevel();
+          if (!px) {
+            if (dMesh) dRemove();
+            return;
+          }
+          if (!dC || px !== dPx || Math.hypot(sm.x - dC[0], sm.y - dC[1]) > DR * 0.35) dBuild(Math.round(sm.x), Math.round(sm.y));
+          // send detaljteksturen til skjermkortet maks 5 gonger i sekundet (kvar sending er 2–6 MB)
+          if (dDirty && dTex && performance.now() - dLast > 200) {
+            dTex.needsUpdate = true;
+            dDirty = false;
+            dLast = performance.now();
+          }
+        }
         function repaint() {
           if (!patch) return;
+          if (dC) dPaint();
           paintBase();
           segs.forEach(paintSeg);
           tex.needsUpdate = true;
@@ -2171,7 +2345,7 @@
         }
         function paintEst() {
           if (!estCx || !patch) return;
-          let k = PX / 2;
+          let k = PX;
           estCx.clearRect(0, 0, estCv.width, estCv.height);
           estCells.forEach((c) => {
             estCx.beginPath();
@@ -2203,6 +2377,7 @@
               H = new Float32Array(u8.buffer);
               if (init()) {
                 buildTerrain();
+                dC = null; // nytt utsnitt: detaljflata blir bygd på nytt med dei nye hjørnepunkta
                 repaint();
               }
             } else if (!patch || isNaN(hAt(...local(p)))) patch = null;
@@ -2312,12 +2487,16 @@
             scene.fog.near = 60 + camDist * 2;
             scene.fog.far = 200 + camDist * 2.5;
           }
+          dCheck();
           $("t3dInfo").textContent = "3D-TERRENG · " + patch.layers.join(", ") + " · " + Math.round(sm.h) + " moh.";
           renderer.render(scene, camera);
         }
         return {
           ready,
           request,
+          detailChanged() {
+            if (renderer && patch) dC = null; // byggjast på nytt i neste bilete med nytt nivå
+          },
           show(on) {
             visible = on && init();
             if (visible && !raf) raf = requestAnimationFrame(frame);
@@ -2337,6 +2516,8 @@
             if (patch && renderer) {
               paintSeg(sg);
               tex.needsUpdate = true;
+              dSeg(sg);
+              dDirty = true;
             }
           },
           clear() {
@@ -2733,6 +2914,26 @@
         $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn ? "PÅ" : "AV");
         updateAhead(true);
       }
+      // Skarp detaljflate ±40 m rundt maskina i 3D og frontrute. Blir Surface-en/skjermkortet treg: vel NORMAL eller AV.
+      const DETAIL_TXT = { hog: "HØG", normal: "NORMAL", av: "AV" };
+      function detailLabel() {
+        let v = DETAIL_TXT[cfg.detail3d] ? cfg.detail3d : "normal";
+        $("detailSet").textContent = "3D-DETALJ NÆR MASKINA: " + DETAIL_TXT[v];
+        $("detailSet").classList.toggle("on", v !== "av");
+      }
+      function cycleDetail3d() {
+        let order = ["hog", "normal", "av"],
+          v = DETAIL_TXT[cfg.detail3d] ? cfg.detail3d : "normal";
+        cfg.detail3d = order[(order.indexOf(v) + 1) % order.length];
+        persistCfg();
+        detailLabel();
+        T3D.detailChanged();
+        toast(
+          { hog: "3D-detalj HØG – skarpast (16 pikslar per meter nær maskina)", normal: "3D-detalj NORMAL (12 pikslar per meter nær maskina)", av: "3D-detalj AV – lettast for skjermkortet" }[
+            cfg.detail3d
+          ],
+        );
+      }
       function toggleNorth() {
         cfg.northUp = !cfg.northUp;
         persistCfg();
@@ -2883,6 +3084,7 @@
           .join("");
         cfg.bounds.forEach((v, i) => ($("b" + i).onchange = save));
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
+        detailLabel();
         applyView();
         applyBg();
         updateFsButtons();
