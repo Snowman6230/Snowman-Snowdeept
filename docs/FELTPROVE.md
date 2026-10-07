@@ -91,7 +91,7 @@ PC-en kan ikkje vere på Zenith-wifien og internett samstundes – bruk mobilen 
 7. Ved FIX: kontrollmåling på barmark (venta 0,00 m) – antennehøgd = målt frå antennefestet (ARP) til underkanten av belta, høgdekorreksjon 0, «rå GPS-høgd – Kartverket-modellen».
 
 ### Notert til v1.6.39
-- **Fartsgrense for preparering:** strekningar over ca. 25 km/t (justerbart under Maskin) blir «transport» – ikkje areal,
+- ~~Fartsgrense for preparering~~ – gjort i v1.6.43 (25 km/t).
   prep-tid eller trasédekning. Økter under 50 m køyring utan areal. (Biltesten gav 93,9 daa «preparert».)
 - ~~Retta tipstekst på NTRIP-sida~~ – gjort i v1.6.39, saman med kontroll av RTCM-korreksjonane.
 

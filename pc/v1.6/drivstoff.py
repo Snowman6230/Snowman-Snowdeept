@@ -18,20 +18,22 @@ from pathlib import Path
 
 import numpy as np
 
-from trasear import Local, MAX_GAP_M, MAX_GAP_S, prep_day_start
+from trasear import Local, MAX_GAP_M, MAX_GAP_S, MAX_PREP_SPEED, prep_day_start
 
 
 def track_stats(pts, width):
     """Køyrd lengd (m), tid med prep (s), areal (m², overlapp tel fleire gonger) og snødjupner for ei økt."""
     if len(pts) < 2:
-        return {"dist": 0.0, "secs": 0.0, "area": 0.0, "depths": pts[:, 3][np.isfinite(pts[:, 3])] if len(pts) else np.array([])}
+        return {"dist": 0.0, "secs": 0.0, "area": 0.0, "transport": 0.0, "depths": pts[:, 3][np.isfinite(pts[:, 3])] if len(pts) else np.array([])}
     L = Local(float(np.nanmean(pts[:, 0])), float(np.nanmean(pts[:, 1])))
     x, y = L.xy(pts[:, 0], pts[:, 1])
     d, dt = np.hypot(np.diff(x), np.diff(y)), np.diff(pts[:, 2])
     ok = (d <= MAX_GAP_M) & (dt <= MAX_GAP_S) & (dt >= 0)
+    prep = ok & (d <= np.maximum(dt, 0.2) * MAX_PREP_SPEED)   # transport (> 25 km/t) gir ikkje areal eller prep-tid
     dist = float(d[ok].sum())
     dep = pts[:, 3]
-    return {"dist": dist, "secs": float(dt[ok].sum()), "area": dist * width, "depths": dep[np.isfinite(dep)]}
+    return {"dist": dist, "secs": float(dt[prep].sum()), "area": float(d[prep].sum()) * width,
+            "transport": float(d[ok & ~prep].sum()), "depths": dep[np.isfinite(dep)]}
 
 
 class Drivstoff:

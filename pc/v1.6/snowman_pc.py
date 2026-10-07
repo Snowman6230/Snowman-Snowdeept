@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.42"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.43"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -354,6 +354,18 @@ class API(http.server.BaseHTTPRequestHandler):
             return
         if u.path=="/api/objekt":
             r={"ok":True,"objekt":OBJ.listing(),"types":{k:{"name":v[0],"radius":v[1],"sym":v[2]} for k,v in TR.OBJ_TYPES.items()}} if OBJ else {"ok":False,"error":TRA_ERR}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/history/coverage":   # trakka område i ein periode eller for éi økt (Historikk › TRAKKA OMRÅDE)
+            q=urllib.parse.parse_qs(u.query); per=q.get("period",["day"])[0]; now=time.time()
+            try:
+                if TRA is None: raise RuntimeError("Trakka område krev numpy: "+TRA_ERR)
+                ids=None; since=0
+                if per=="session": ids={q.get("id",[""])[0]}
+                elif per=="day": since=TR.prep_day_start()
+                elif per=="all": since=0
+                else: since=now-{"24h":1,"3d":3,"7d":7,"30d":30}.get(per,1)*86400
+                r=TRA.coverage(since,None,ids,q.get("test",["0"])[0]=="1"); r["ok"]=True
+            except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path in ("/api/trasear","/api/trasear/status"):
             try:

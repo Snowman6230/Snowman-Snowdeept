@@ -21,6 +21,7 @@ KINDS = {"trase": "Trasé", "forbode": "Forbode område"}
 LEVELS = {"gron": "#27d84d", "bla": "#2f7bff", "raud": "#ed2024", "svart": "#202020", "langrenn": "#08cbea", "anna": "#ffd33f"}
 MAX_GAP_M = 30.0              # lengre hopp mellom to punkt blir ikkje rekna som køyrt (GNSS-hopp, pause)
 MAX_GAP_S = 60.0
+MAX_PREP_SPEED = 25 / 3.6     # m/s: fortare enn 25 km/t er transport (vegkøyring, bil) – ikkje preparert areal
 
 
 def prep_day_start(t=None, date=None):
@@ -316,13 +317,15 @@ class Trasear:
         return out
 
     @staticmethod
-    def _stamp(cov, g, x, y, t, width):
-        """Merk rutene innanfor halve breidda frå køyrelinja (x, y i meter)."""
+    def _stamp(cov, g, x, y, t, width, pad=0.5):
+        """Merk rutene innanfor halve breidda frå køyrelinja (x, y i meter).
+        pad: ekstra margin i ruter (0,5 = romsleg for trasé-prosent; 0 = rett areal for trakka område)."""
         if len(x) < 2:
             return
         dx, dy, dt = np.diff(x), np.diff(y), np.diff(t)
         seglen = np.hypot(dx, dy)
         ok = (seglen <= MAX_GAP_M) & (dt <= MAX_GAP_S)
+        ok &= seglen <= np.maximum(dt, 0.2) * MAX_PREP_SPEED   # transport (> 25 km/t) blir ikkje merkt som preparert
         if not ok.any():
             return
         step = min(0.5, g["cell"] / 2)
@@ -334,7 +337,7 @@ class Trasear:
         r = width / 2.0
         rc = int(math.ceil(r / g["cell"]))
         oy, ox = np.mgrid[-rc:rc + 1, -rc:rc + 1]
-        disk = (np.hypot(ox, oy) * g["cell"] <= r + g["cell"] * 0.5)
+        disk = (np.hypot(ox, oy) * g["cell"] <= r + g["cell"] * pad)
         ox, oy = ox[disk], oy[disk]
         ci = np.floor((sx - g["x0"]) / g["cell"]).astype(int)
         ri = np.floor((sy - g["y0"]) / g["cell"]).astype(int)
@@ -355,6 +358,63 @@ class Trasear:
         if with_map:
             return r
         return dict(r, status={k: {a: b for a, b in v.items() if a != "map"} for k, v in r["status"].items()})
+
+    def coverage(self, since_s=0, until_s=None, ids=None, include_test=False, max_cells=6_000_000):
+        """Trakka område i perioden (eller for utvalde økter) som rutenett i fresbreidda til kvar økt.
+        Kvar rute får tidspunktet ho sist vart køyrd og kor mange økter som har køyrt der.
+        Overlapp tel éin gong i arealet. Transport (> 25 km/t) og hopp i sporet blir ikkje teikna."""
+        with self.lock:
+            ses = self._sessions(since_s or 0, until_s)
+        if ids:
+            ses = [x for x in ses if x["id"] in ids]
+        elif not include_test:
+            ses = [x for x in ses if not x["test"]]
+        ses = [x for x in ses if len(x["pts"]) >= 2]
+        if not ses:
+            return {"empty": True, "sessions": 0}
+        P = np.vstack([x["pts"][:, :2] for x in ses])
+        P = P[np.isfinite(P).all(axis=1)]
+        L = Local(float(np.median(P[:, 0])), float(np.median(P[:, 1])))
+        wmax = max(x["width"] for x in ses)
+        segs = []
+        for x in ses:  # berre punkt som høyrer til preparering (ikkje transport) avgjer kor stort kartet blir
+            q = x["pts"]
+            px, py = L.xy(q[:, 0], q[:, 1])
+            d, dt = np.hypot(np.diff(px), np.diff(py)), np.diff(q[:, 2])
+            ok = (d <= MAX_GAP_M) & (dt <= MAX_GAP_S) & (d <= np.maximum(dt, 0.2) * MAX_PREP_SPEED)
+            if ok.any():
+                use = np.zeros(len(q), bool)
+                use[1:] |= ok
+                use[:-1] |= ok
+                segs.append((x, px, py, use))
+        if not segs:
+            return {"empty": True, "sessions": len(ses), "note": "Berre transport (over 25 km/t) i perioden"}
+        allx = np.concatenate([sx[u] for _, sx, _, u in segs])
+        ally = np.concatenate([sy[u] for _, _, sy, u in segs])
+        x0, y0 = float(np.nanmin(allx)) - wmax, float(np.nanmin(ally)) - wmax
+        ex, ey = float(np.nanmax(allx)) + wmax - x0, float(np.nanmax(ally)) + wmax - y0
+        cell = max(1.0, math.sqrt(ex * ey / max_cells))
+        W, H = int(math.ceil(ex / cell)) + 1, int(math.ceil(ey / cell)) + 1
+        g = {"x0": x0, "y0": y0, "cell": cell, "W": W, "H": H}
+        last = np.zeros((H, W), np.float64)
+        passes = np.zeros((H, W), np.uint16)
+        for x, px, py, _ in segs:
+            q = x["pts"]
+            tmp = np.zeros((H, W), bool)
+            self._stamp(tmp, g, px, py, q[:, 2], x["width"], pad=0.0)
+            passes += tmp
+            last[tmp] = np.maximum(last[tmp], float(np.nanmax(q[:, 2])))
+        cov = passes > 0
+        now = time.time()
+        age = np.full((H, W), 255, np.uint8)  # timar sidan sist køyrd, 254 = eldre, 255 = aldri
+        age[cov] = np.clip(np.floor((now - last[cov]) / 3600.0), 0, 254).astype(np.uint8)
+        return {"empty": False, "lat0": L.lat0, "lon0": L.lon0, "mx": L.mx, "my": L.my, "x0": x0, "y0": y0,
+                "cell": cell, "W": W, "H": H, "area": round(float(cov.sum()) * cell * cell),
+                "sessions": len(segs), "test": any(x["test"] for x, *_ in segs),
+                "first": int(min(float(np.nanmin(x["pts"][:, 2])) for x, *_ in segs) * 1000),
+                "last": int(max(float(np.nanmax(x["pts"][:, 2])) for x, *_ in segs) * 1000),
+                "age": base64.b64encode(age.tobytes()).decode(),
+                "passes": base64.b64encode(np.minimum(passes, 255).astype(np.uint8).tobytes()).decode()}
 
     def _status_all(self, since_s=None, until_s=None, cache_s=4.0):
         since_s = prep_day_start() if since_s is None else since_s

@@ -9,6 +9,22 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.43 – trakka område i Historikk, avspeling i fresbreidd, transport blir ikkje preparert areal
+- **Nytt – TRAKKA OMRÅDE (Innst. › Historikk):** vel periode (dette prepareringsdøgnet, siste 24 t, 3, 7 eller 30 døgn,
+  eller alt) og trykk VIS TRAKKA OMRÅDE. Alt som er køyrt blir vist som flate i **den fresbreidda kvar økt vart køyrd med**,
+  farga etter kor lenge sidan det sist vart køyrt (under 6 t, 6–24 t, 1–3 døgn, eldre), med forklaring. Under står trakka
+  areal i daa (overlapp tel éin gong), tal på økter og tidsrommet. Demo/test er berre med når ein kryssar av for det, og blir
+  då merka TEST. Rekna ut i SNOWMAN-tenesta som eitt bilete, så kartet ikkje blir tregt sjølv med mange økter.
+- **Nytt – VIS VALD ØKT SAMLA:** heile den valde økta på ein gong, i fresbreidd.
+- **Endra – avspeling:** sporet blir teikna i fresbreidda (meter, følgjer zoomen), ikkje som ei tynn strek. Overlapp blir
+  ikkje mørkare. Transport og hopp i sporet blir vist som tynn stipla linje. Avspelinga startar nær nok til å sjå breidda.
+- **Endra – transport:** strekningar køyrde fortare enn 25 km/t blir ikkje rekna som preparert – verken i trakka område,
+  prosent preparert per trasé eller areal og prep-tid i rapporten. Køyrde km tek framleis med alt.
+  (Avgjerd frå feltprøva 2026-10-06, der ein biltur gav 93,9 daa «preparert».)
+- **Testa:** syntetiske økter (fire økter med ulik alder og breidd, ei med 1,8 km biltur): areal innanfor 4 % av fasit,
+  biltur ikkje med, rett tal på økter per periode, demo berre med når valt; Historikk-fana i nettlesar utan JavaScript-feil,
+  skjermbilete av trakka område og avspeling i fresbreidd kontrollert.
+
 ### PC-prototype v1.6.42 – NTRIP-sida viser at det er lagra
 - **Endra:** Når ein trykkjer LAGRE / KOPLE TIL, skiftar knappen til «LAGRAR …» og så grøn «✓ LAGRA», og under knappen
   står «✓ Lagra kl. 11:38. Koplar til …». SNOWMAN følgjer så med på oppkoplinga i inntil 20 s og skriv anten

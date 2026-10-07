@@ -1410,9 +1410,29 @@
             ><select id="historyDate" onchange="showHistoryInfo()"></select>
           </div>
           <div id="historyInfo" class="history">Ingen lagra økter.</div>
-          <button class="btn" onclick="playHistory()">▶ SPEL AV VALD ØKT</button
-          ><button class="btn" onclick="stopPlayback()">■ STOPP AVSPELING</button
-          ><button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
+          <button class="btn" onclick="playHistory()">▶ SPEL AV VALD ØKT (I FRESBREIDD)</button
+          ><button class="btn" onclick="showCoverage('session')">▦ VIS VALD ØKT SAMLA</button
+          ><button class="btn" onclick="stopPlayback()">■ STOPP AVSPELING</button>
+          <h3>TRAKKA OMRÅDE</h3>
+          <div class="row">
+            <span>Periode</span
+            ><select id="covPeriod" style="width: 190px">
+              <option value="day">Dette prepareringsdøgnet (frå kl. 12)</option>
+              <option value="24h">Siste 24 timar</option>
+              <option value="3d">Siste 3 døgn</option>
+              <option value="7d">Siste 7 døgn</option>
+              <option value="30d">Siste 30 døgn</option>
+              <option value="all">Alt som er lagra</option>
+            </select>
+          </div>
+          <label class="chk" style="display: block"><input id="covTest" type="checkbox" /> Ta med demo/test (blir merka TEST)</label>
+          <button class="btn" onclick="showCoverage()">▦ VIS TRAKKA OMRÅDE</button
+          ><button class="btn" onclick="hideCoverage()">SKJUL TRAKKA OMRÅDE</button>
+          <div id="covInfo" class="history">
+            Viser alt som er køyrt i perioden i den fresbreidda maskina hadde – fargen viser kor lenge sidan det vart køyrt.
+            Overlapp blir rekna éin gong. Transport (over 25 km/t) er ikkje med.
+          </div>
+          <button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
           <b>Snowman by Alpindata</b><br />SnowDepth Driver <b class="appVer">PC v1.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon <span class="appVer">1.6</span> – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart og geoidemodell (HREF2018B, CC BY 4.0): © Kartverket
@@ -1525,7 +1545,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.42";
+      const APP_VERSION = "1.6.43";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1573,6 +1593,7 @@
         clockTimer = null,
         arrowGroup = null,
         replayGroup = null,
+        covGroup = null,
         lastCoverage = null,
         preparing = false,
         mapBearing = 0,
@@ -1652,6 +1673,12 @@
       estPane.style.opacity = 0.3;
       arrowGroup = L.layerGroup().addTo(map);
       replayGroup = L.layerGroup().addTo(map);
+      covGroup = L.layerGroup().addTo(map);
+      // Avspeling i fresbreidd: tett farge i eige lag med felles gjennomsikt, så overlapp ikkje blir mørkare «perler»
+      const replayPane = map.createPane("replayPane");
+      replayPane.style.zIndex = 396;
+      replayPane.style.opacity = 0.6;
+      const replayRenderer = L.canvas({ pane: "replayPane", padding: 0.5 });
 
       /* ---------- GNSS-status ---------- */
       function fixText() {
@@ -3551,8 +3578,12 @@
         replayGroup.clearLayers();
         let route = s.points.map((p) => [p.lat, p.lng]),
           i = 0;
-        map.fitBounds(L.latLngBounds(route).pad(0.15));
-        let replay = L.polyline([], { weight: 5, color: "#ffec3d", opacity: 0.9 }).addTo(replayGroup);
+        map.setView(route[0], Math.max(map.getZoom(), 18), { animate: false }); // nær nok til å sjå fresbreidda
+        // Sporet blir teikna i fresbreidda økta vart køyrd med (meter, følgjer zoomen) – ikkje som ei tynn strek.
+        // Transport (over 25 km/t) og hopp i sporet blir vist som tynn stipla linje.
+        let w = s.width || (toolsFull ? cfg.tiller : cfg.tillerN),
+          sw = { renderer: replayRenderer, stroke: false, fill: true, fillColor: "#ffec3d", fillOpacity: 1, interactive: false },
+          thin = { renderer: replayRenderer, weight: 2, color: "#ffec3d", opacity: 0.8, dashArray: "4 6", interactive: false };
         playMarker = L.circleMarker(route[0], { radius: 8, color: "#fff", fillColor: "#e33", fillOpacity: 1 }).addTo(replayGroup);
         $("elapsed").textContent = "00:00:00";
         playTimer = setInterval(() => {
@@ -3564,8 +3595,19 @@
           }
           let p = s.points[i];
           playMarker.setLatLng(route[i]);
-          replay.addLatLng(route[i]);
-          if (i > 0 && i % 5 === 0) addArrow(route[i - 1], route[i], p.heading || bearing(route[i - 1], route[i]), replayGroup, "replay-icon", "➤");
+          if (i > 0) {
+            let q = s.points[i - 1],
+              d = map.distance(route[i - 1], route[i]),
+              dt = Math.max(0.2, ((p.t || 0) - (q.t || 0)) / 1000),
+              prep = d <= 30 && dt <= 60 && d / dt <= 25 / 3.6;
+            if (prep) {
+              let strip = stripPolygon(route[i - 1], route[i], w);
+              if (strip) L.polygon(strip, sw).addTo(replayGroup);
+              L.circle(route[i], Object.assign({ radius: w / 2 }, sw)).addTo(replayGroup);
+            } else L.polyline([route[i - 1], route[i]], thin).addTo(replayGroup);
+            playMarker.bringToFront();
+          }
+          if (i > 0 && i % 15 === 0) addArrow(route[i - 1], route[i], p.heading || bearing(route[i - 1], route[i]), replayGroup, "replay-icon", "➤");
           $("elapsed").textContent = fmtTime((p.t || s.start) - s.start);
           $("course").textContent = Math.round(p.heading || 0) + "°";
           $("speed").textContent = ((p.speed || 0) * 3.6).toFixed(1).replace(".", ",") + " km/t";
@@ -3579,6 +3621,75 @@
         playTimer = null;
         replayGroup.clearLayers();
         playMarker = null;
+      }
+      /* ---------- Trakka område: alt som er køyrt i ein periode (eller ei økt), i fresbreidd, farga etter alder ---------- */
+      const COV_AGE = [
+        [6, [31, 209, 107], "under 6 t"],
+        [24, [47, 168, 255], "6–24 t"],
+        [72, [140, 110, 255], "1–3 døgn"],
+        [254, [150, 165, 176], "eldre"],
+      ];
+      async function showCoverage(mode) {
+        let per = mode === "session" ? "session" : $("covPeriod").value,
+          s = selectedSession(),
+          q = "period=" + per + ($("covTest").checked ? "&test=1" : "");
+        if (per === "session") {
+          if (!s) return toast("Vel ei økt først");
+          q += "&id=" + encodeURIComponent(s.id);
+        }
+        $("covInfo").textContent = "Reknar ut trakka område …";
+        let m;
+        try {
+          m = await api("api/history/coverage?" + q);
+        } catch (e) {
+          $("covInfo").textContent = "Fann ikkje trakka område: " + (e.message || e);
+          return;
+        }
+        covGroup.clearLayers();
+        if (m.empty) {
+          $("covInfo").textContent = m.note || "Ingen køyring i perioden.";
+          return;
+        }
+        let ages = atob(m.age),
+          cv = document.createElement("canvas");
+        cv.width = m.W;
+        cv.height = m.H;
+        let cx = cv.getContext("2d"),
+          img = cx.createImageData(m.W, m.H),
+          px = img.data,
+          used = new Set();
+        for (let r = 0; r < m.H; r++)
+          for (let c = 0; c < m.W; c++) {
+            let a = ages.charCodeAt(r * m.W + c);
+            if (a === 255) continue;
+            let k = COV_AGE.findIndex((x) => a < x[0] || x[0] === 254),
+              col = COV_AGE[k][1],
+              o = ((m.H - 1 - r) * m.W + c) * 4; // rad 0 i rutenettet er sør, i biletet nord
+            used.add(k);
+            px[o] = col[0];
+            px[o + 1] = col[1];
+            px[o + 2] = col[2];
+            px[o + 3] = 150;
+          }
+        cx.putImageData(img, 0, 0);
+        let b = [
+          [m.lat0 + m.y0 / m.my, m.lon0 + m.x0 / m.mx],
+          [m.lat0 + (m.y0 + m.H * m.cell) / m.my, m.lon0 + (m.x0 + m.W * m.cell) / m.mx],
+        ];
+        L.imageOverlay(cv.toDataURL(), b, { interactive: false, className: "traUnprepImg" }).addTo(covGroup);
+        map.fitBounds(L.latLngBounds(b).pad(0.1));
+        let d = (t) => new Date(t).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+          leg = COV_AGE.filter((x, k) => used.has(k))
+            .map((x) => '<span style="display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:middle;background:rgb(' + x[1].join(",") + ')"></span> ' + x[2])
+            .join(" &nbsp; ");
+        $("covInfo").innerHTML =
+          (m.test ? '<b style="color:#ffb020">TEST/DEMO er med – ikkje ekte preparering.</b><br>' : "") +
+          "Trakka areal: <b>" + (m.area / 1000).toFixed(1).replace(".", ",") + " daa</b> (overlapp tel éin gong) · " +
+          m.sessions + " økt" + (m.sessions === 1 ? "" : "er") + "<br>" + d(m.first) + " – " + d(m.last) +
+          "<br>Sist køyrd: " + leg + (m.cell > 1.05 ? "<br><small>Rutestorleik " + m.cell.toFixed(1).replace(".", ",") + " m (stort område)</small>" : "");
+      }
+      function hideCoverage() {
+        covGroup.clearLayers();
       }
       async function clearHistory() {
         if (!confirm("Slette ALL lagra køyrehistorikk på denne maskina? Dette kan ikkje angrast.")) return;
