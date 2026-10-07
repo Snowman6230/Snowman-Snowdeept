@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.38"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.39"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -108,6 +108,8 @@ def write_atomic(path,text):
         f.write(text); f.flush(); os.fsync(f.fileno())
     os.replace(tmp,path)
 import oppstart as O
+from rtcm import RtcmMonitor
+RTCM=RtcmMonitor()   # kontroll av korreksjonane (gyldige rammer, meldingstypar, basestasjon)
 def system_cfg():
     d=O.system_cfg(); d["autostart"]=O.autostart_status(); return d
 RESTART=[False]   # «Start SNOWMAN på nytt» etter oppdatering: tenesta avsluttar med kode 3
@@ -189,7 +191,7 @@ def serial_loop():
             serial_obj=serial.serial_for_url(CFG["serial_port"], baudrate=int(CFG["baud"]), timeout=.2)
             update(serial_connected=True, port=CFG["serial_port"], baud=int(CFG["baud"]), last_error="")
             LOG.event(f"Mottakar tilkopla: {CFG['serial_port']} @ {CFG['baud']}")
-            # Oppstartskommandoar (t.d. NovAtel: «INTERFACEMODE THISPORT AUTO NOVATEL ON» for å ta imot RTCM på porten)
+            # Oppstartskommandoar til mottakaren (valfritt, avhengig av merke – GeoMax Zenith35 Pro treng ingen)
             for cmd in str(CFG.get("initCmds") or "").splitlines():
                 if cmd.strip():
                     serial_obj.write((cmd.strip()+"\r\n").encode("ascii","ignore")); LOG.event("Sendt til mottakar: "+cmd.strip()); time.sleep(0.3)
@@ -227,25 +229,49 @@ def connect_ntrip():
     req=(f"GET /{mp.strip()} HTTP/1.0\r\nHost: {host}:{port}\r\nUser-Agent: NTRIP SNOWMAN/{VERSION}\r\n"
          f"Authorization: Basic {auth}\r\nAccept: */*\r\nConnection: close\r\n\r\n")
     s.sendall(req.encode())
-    head=b""
-    while b"\r\n\r\n" not in head and len(head)<16384:
-        head+=s.recv(1)
-    first=head.split(b"\r\n",1)[0].decode("latin1","ignore")
-    if not ("200" in first or "ICY 200" in first):
+    def line():
+        l=b""
+        while not l.endswith(b"\r\n") and len(l)<4096:
+            c=s.recv(1)
+            if not c: break
+            l+=c
+        return l
+    first=line().decode("latin1","ignore").strip()
+    # «SOURCETABLE 200 OK» er IKKJE korreksjonar: casteren sender kjeldetabellen (tekst) fordi mountpointet ikkje finst.
+    # Før v1.6.39 vart det godteke (inneheld «200») og teksten sendt vidare til mottakaren som om det var RTCM.
+    if first.upper().startswith("SOURCETABLE"):
+        raise RuntimeError(f"Mountpointet «{mp}» finst ikkje på casteren (casteren sende kjeldetabellen i staden for korreksjonar)")
+    if not ("200" in first):
         why={"401":" – feil brukarnamn/passord, kontoen har ikkje tilgang til mountpointet, eller kontoen er i bruk på ei anna eining",
              "404":" – mountpointet finst ikkje (sjekk stavinga, store/små bokstavar)"}
         raise RuntimeError("NTRIP svar: "+first+next((v for k,v in why.items() if k in first),""))
+    rest=b""
+    if first.upper().startswith("ICY"):
+        # NTRIP 1: «ICY 200 OK\r\n» – nokre castarar sender ei tom linje etter, andre startar RTCM med éin gong.
+        # (Før v1.6.39 vart det lese fram til «\r\n\r\n», som kunne ete opptil 16 kB korreksjonar.)
+        s.settimeout(2)
+        try: rest=s.recv(2)
+        except socket.timeout: rest=b""
+        if rest==b"\r\n": rest=b""
+    else:   # HTTP-svar: les resten av hovudet
+        hdr=b""
+        while True:
+            l=line()
+            if l in (b"\r\n",b""): break
+            hdr+=l
+        if b"chunked" in hdr.lower():
+            raise RuntimeError("Casteren svarar med NTRIP 2 (chunked) – ikkje støtta enno. Meld frå til Alpindata.")
     s.settimeout(1)
-    return s
+    return s,rest
 
 def ntrip_loop():
     global ntrip_sock
-    last_gga_sent=0
+    last_gga_sent=0; last_rtcm_log=0
     while not STOP.is_set():
         try:
             if not (CFG["caster"] and CFG["mountpoint"]):
                 time.sleep(1); continue
-            ntrip_sock=connect_ntrip()
+            ntrip_sock,first_data=connect_ntrip(); RTCM.reset()
             update(ntrip_connected=True,caster=CFG["caster"],mountpoint=CFG["mountpoint"],last_error="")
             LOG.event(f"NTRIP tilkopla: {CFG['caster']} / {CFG['mountpoint']}")
             nkey=lambda:(CFG["caster"],CFG["caster_port"],CFG["mountpoint"],CFG["username"],CFG["password"]); opened=nkey()
@@ -255,12 +281,19 @@ def ntrip_loop():
                 gga=STATE.get("last_gga","")
                 if gga and now-last_gga_sent>=float(CFG["gga_interval"]):
                     ntrip_sock.sendall((gga+"\r\n").encode("ascii","ignore")); last_gga_sent=now
-                try: data=ntrip_sock.recv(4096)
-                except socket.timeout: continue
+                if first_data: data,first_data=first_data,b""
+                else:
+                    try: data=ntrip_sock.recv(4096)
+                    except socket.timeout:
+                        update(rtcm=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"])); continue
                 if not data: raise ConnectionError("Caster lukka sambandet")
                 if serial_obj and getattr(serial_obj,"is_open",False):
                     serial_obj.write(data)
-                update(bytes_rtcm=STATE["bytes_rtcm"]+len(data))
+                RTCM.feed(data)   # berre kontroll – dataa blir sende uendra til mottakaren
+                if now-last_rtcm_log>=60 and RTCM.frames:
+                    st=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]); last_rtcm_log=now
+                    LOG.event(f"RTCM: {st['frames']} rammer, {st['crcErr']} CRC-feil, typar {','.join(st['types'])}, base {st['station']} {st.get('baseKm','?')} km – {st['verdict']}")
+                update(bytes_rtcm=STATE["bytes_rtcm"]+len(data),rtcm=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]+len(data)))
         except Exception as e:
             update(ntrip_connected=False,last_error=f"NTRIP: {e}")
             LOG.event(f"NTRIP-feil: {e}")

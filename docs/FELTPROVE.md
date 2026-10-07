@@ -81,7 +81,9 @@ PC-en kan ikkje vere på Zenith-wifien og internett samstundes – bruk mobilen 
 1. Zenith-en **ute** med fri sikt rundt (biltak/stolpe). Bluetooth rekk 10–20 m.
 2. Kontroller innstillingane over (Rover, Bluetooth, Normal, alle fire satellittsystem).
 3. PC-en på internett (ikkje Zenith-wifien).
-4. SNOWMAN › NTRIP-sida: NTRIP **TILKOPLA**, «RTCM mottatt» aukar, **ingen** `@GNSS…ERROR`.
+4. SNOWMAN › NTRIP-sida (v1.6.39 eller nyare): NTRIP **TILKOPLA**, «RTCM mottatt» aukar, **ingen** `@GNSS…ERROR`.
+   Les **«Vurdering»**: «OK: gyldige RTCM-korreksjonar» betyr at basen er i orden. Noter meldingstypar, satellittsystem og
+   avstand til basen. Står det FEIL, ligg problemet i basen/mountpointet, ikkje i Zenith-en.
 5. Vent 3–5 min → FLOAT → **FIX**. Noter tida.
 6. **Står han framleis på SBAS:** set RTK Data Source = **GSM/GPRS** og legg same NTRIP-konto inn i Zenith-en sjølv (eige SIM).
    - FIX då → basen og kontoen er i orden; feilen er at Zenith-en ikkje tek imot RTCM over Bluetooth. SNOWMAN berre les posisjon.
@@ -91,7 +93,7 @@ PC-en kan ikkje vere på Zenith-wifien og internett samstundes – bruk mobilen 
 ### Notert til v1.6.39
 - **Fartsgrense for preparering:** strekningar over ca. 25 km/t (justerbart under Maskin) blir «transport» – ikkje areal,
   prep-tid eller trasédekning. Økter under 50 m køyring utan areal. (Biltesten gav 93,9 daa «preparert».)
-- **Retta tipstekst på NTRIP-sida:** Zenith35 Pro brukar @GNSS-kommandoar, ikkje NovAtel `INTERFACEMODE` – la feltet stå tomt.
+- ~~Retta tipstekst på NTRIP-sida~~ – gjort i v1.6.39, saman med kontroll av RTCM-korreksjonane.
 
 ### Antenne til seriepakke (v2.0) – vurdering 2026-10-06
 Zenith35 Pro er god nok til RTK FIX; problemet i kveld var oppsett, ikkje antenne. Tilråding til seriepakke:

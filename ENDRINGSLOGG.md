@@ -9,6 +9,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.39 – kontroll av RTCM-korreksjonane, og to feil i NTRIP-tilkoplinga retta
+- **Nytt:** NTRIP-sida viser no om korreksjonane faktisk er gyldige: tal på gyldige RTCM 3-rammer (CRC-24Q-kontroll), CRC-feil,
+  meldingstypar, kva satellittsystem basen sender, basestasjonen (ID frå 1005/1006) og **avstanden til basen**, og ei kort
+  vurdering («OK: gyldige korreksjonar … ligg feilen i mottakaren», «FEIL: ikkje RTCM 3», «basen sender ikkje posisjonen sin» o.l.).
+  Ei samanfatning blir skriven i feltloggen kvart minutt. Dataa til mottakaren blir ikkje endra.
+- **Retta:** «SOURCETABLE 200 OK» (casteren sender kjeldetabellen fordi mountpointet ikkje finst) vart godteke som tilkopla,
+  og teksten vart send vidare til mottakaren som om det var korreksjonar. No: tydeleg feilmelding om at mountpointet ikkje finst.
+- **Retta:** Etter «ICY 200 OK» las SNOWMAN fram til ei tom linje. Castarar som startar RTCM med éin gong, kunne då miste opptil
+  16 kB korreksjonar ved kvar tilkopling. No blir berre statuslinja (og ei eventuell tom linje) lesen.
+- **Endra:** Tipset om `INTERFACEMODE` (NovAtel) på NTRIP-sida er fjerna – Zenith35 Pro brukar @GNSS-kommandoar og treng ingen
+  oppstartskommandoar. Sida forklarer no innstillingane på Zenith-en i staden.
+- **Kvifor:** Feltprøva 2026-10-06 gav ikkje RTK FIX sjølv om RTCM kom fram. Med kontrollen kan neste feltprøve avgjere med éin
+  gong om feilen ligg i basen/mountpointet eller i mottakaren.
+- **Testa:** einingstest (rammer delte over fleire pakkar, søppel, CRC-feil, 1005-posisjon → avstand), falsk caster med og utan tom
+  linje etter ICY, feil mountpoint (kjeldetabell), og simulert GNSS (`simuler-leica.py --terreng`).
+- **Står att:** fartsgrense for preparering (transport skal ikkje gi areal) – kjem i ein seinare versjon.
+
 ### Dokumentasjon – resultat frå første feltprøve (Zenith35 Pro, bil til Fjellsætra)
 - **Nytt:** `docs/FELTPROVE.md` har fått resultatet frå feltprøva 2026-10-06: kva som fungerte (Bluetooth, NTRIP, NN2000-høgd,
   rapportar, tunnel), kvifor det ikkje vart RTK FIX (Base-modus, Extra Safe RTK, berre GPS, dårleg sikt), rette Zenith-innstillingar
