@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### Dokumentasjon – 3D-test lagra som mogleg framtidig versjon (ingen endring i SNOWMAN)
+- **Nytt:** `docs/VEGEN-VIDARE.md` kap. 8 med testresultat for trakka område i 3D, bakgrunnskart drapert på 3D-terrenget
+  og større 3D-område. Prototypen er lagra i `docs/prototypar/3d-trakka-og-kart.py` (blir ikkje brukt av SNOWMAN).
+- **Avgjerd (eigaren):** test først, så spørsmål – og etter testen: *ikkje gjer endringar no*, ta vare på det som mogleg
+  framtidig versjon. PC-versjonen er framleis v1.6.44.
+
 ### PC-prototype v1.6.44 – fartsgrensa for preparering er 40 km/t
 - **Endra:** Grensa for kva som blir rekna som transport, er heva frå 25 til **40 km/t** (trakka område, prosent per trasé,
   areal og prep-tid i rapporten, og avspeling i fresbreidd).

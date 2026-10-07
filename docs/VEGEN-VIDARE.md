@@ -120,6 +120,20 @@ køyrer likt på NAS, kontor-PC og leigd server, så valet kan takast seinare. A
   alle maskiner. Éin server kan dekkje alle kundane til Alpindata – truleg best ved sal til andre anlegg.
 - **Ein av maskin-PC-ane som server** – ingen ekstra maskin, men berre tilgjengeleg når den maskina køyrer. Truleg ikkje godt nok.
 
+## 8. 3D: trakka område, bakgrunnskart og større område (testa, ikkje bestemt)
+
+Eigaren ønskte å kunne «vri og vende» på trakka område i 3D etter preparering, med bakgrunnskart. Det vart **testa i ei
+eiga testkopi 2026-10-07 (mot v1.6.44)** og lagt til side etter ønske frå eigaren: *ikkje gjer endringar no, men ta vare
+på det som mogleg framtidig versjon.* Prototypen ligg i `docs/prototypar/3d-trakka-og-kart.py`.
+
+| Funksjon | Testresultat | Før det kan takast i bruk |
+|---|---|---|
+| Trakka område frå Historikk i 3D | Fungerte. Låg nøyaktig der det skal (kontrollert mot ein «veg» i testkartet, same som 2D). Oppdatering 4–7 ms. | Mjukare kantar (i dag 1 m ruter), skjule når ein trykkjer SKJUL. |
+| Bakgrunnskart drapert på 3D-terrenget | Fungerte med lokale kartfliser (data/tiles). | Prøve Kartverket-kartet på PC-en (kan bli stoppa av nettlesaren, CORS). Om det blir stoppa: SNOWMAN hentar og lagrar flisene sjølv – gir òg kart utan nett. |
+| Større 3D-område | I dag 300 × 300 m, 1 m rute. Opptil ca. 800 × 800 m, 2 m rute, er lett å hente (0,9 MB, under 0,1 s). | Måle biletfrekvens på Surface-en (testmaskina hadde ikkje skjermkort). Grovare terreng og lågare teksturoppløysing. |
+
+Ope spørsmål til eigaren: høgdekurver oppå kartet i 3D – svakare (forslag), som no, eller ingen når kartet er på.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
@@ -129,6 +143,7 @@ køyrer likt på NAS, kontor-PC og leigd server, så valet kan takast seinare. A
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). |
 | **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate. |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
+| Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
 | Seinare | CAN-bus (drivstoff, motordata, vinsj – ulikt for PistenBully og Prinoth), LiDAR for snødjupne framfor maskina. |
 
 Maskingeometrien blir flytt fram til v1.7 om feltprøva viser at målinga ved antenna er for upresis.
