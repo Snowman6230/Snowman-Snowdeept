@@ -9,6 +9,22 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.53 – Rapport, Drivstoff, Kontroll og Historikk tek mindre plass
+- **Endra:** same prinsipp som feltlogg-lista (v1.6.51) i resten av innstillingane – lister og lange forklaringar ligg i
+  samanfaldbare boksar med ei kort samandragslinje, og blir opna ved behov (opne/lukka blir hugsa medan SNOWMAN er open):
+  - **Rapport:** «Samla» står framme; **Trasear** (tal · snitt % preparert), **Økter** (tal · tid · daa) og **Drivstoff**
+    (tal fyllingar · liter) er samanfalda. **Automatisk lagring** er ein boks med status i overskrifta («PÅ · sist …»),
+    og dei to forklaringane er samla i «ℹ Om rapporten og automatisk lagring».
+  - **Drivstoff:** «Fyllingar (N)» med éi linje per fylling (`07.10 21:30 · 180 l · 16,7 l/t · 0,85 l/daa · ✕`);
+    forklaringa i «ℹ Slik blir forbruket rekna».
+  - **Kontroll:** «Kontrollmålingar (N)» og «Kontrollpunkt (N)» med éi linje kvar (avvik i farge, ✕ slett, ⌖ vis på kart);
+    skjemaet for nytt kontrollpunkt ligg i «＋ Legg til kontrollpunkt»; forklaringa i «ℹ Slik gjer du ei kontrollmåling».
+  - **Historikk:** økta på to linjer, knappane SPEL AV / SAMLA / STOPP og VIS TRAKKA OMRÅDE / SKJUL side om side,
+    forklaringa i «ℹ Om trakka område».
+- **Kvifor:** eigaren ønskte at rapportar og lister ikkje skal ta for stor plass. Panela er no 40–55 % lågare
+  (Rapport 1068 → 453 px, Drivstoff 817 → 467, Kontroll 979 → 439, Historikk 776 → 482 med testdata).
+- **Testa:** testdata (3 økter, 3 fyllingar) – alle fire panela før/etter i nettlesar, ingen JavaScript-feil.
+
 ### PC-prototype v1.6.52 – meir i feltloggen for feilsøking
 - **Nytt (1) – snødjupnestatus:** kvar gong statusen endrar seg (t.d. «OK → NEGATIVE – sjekk høgdesystem», «OK →
   Utanfor terrengmodell») blir det skrive i loggen med høgd, overflate, terrenghøgd, råverdi og terrenglag i augneblinken.

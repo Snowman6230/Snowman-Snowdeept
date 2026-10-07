@@ -734,6 +734,93 @@
         opacity: 0.85;
       }
       /* Terreng-fane */
+      /* Samanfaldbare boksar (v1.6.53): lister og hjelpetekstar i Rapport, Drivstoff, Kontroll og Historikk */
+      details.fold {
+        background: #0a222d;
+        border: 1px solid #294452;
+        border-radius: 8px;
+        margin: 6px 0;
+      }
+      details.fold > summary {
+        list-style: none;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        font-size: 13px;
+      }
+      details.fold > summary::-webkit-details-marker {
+        display: none;
+      }
+      details.fold > summary::after {
+        content: "▸ Vis";
+        color: #8aa3b1;
+        white-space: nowrap;
+      }
+      details.fold[open] > summary::after {
+        content: "▾ Skjul";
+      }
+      details.fold > .fbody {
+        padding: 0 8px 8px;
+      }
+      details.fold.info {
+        background: transparent;
+        border-color: #1d3542;
+      }
+      details.fold.info > summary {
+        font-size: 12px;
+        color: #9ab3c1;
+        padding: 6px 10px;
+      }
+      details.fold.info > .fbody {
+        font-size: 12px;
+        line-height: 1.5;
+        color: #cfe0ea;
+      }
+      details.fold .history {
+        margin: 4px 0;
+      }
+      .crow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 6px;
+        font-size: 12px;
+        border-bottom: 1px solid #14303d;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .crow .grow {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .crow .dim {
+        color: #8aa3b1;
+      }
+      .crow button {
+        background: #12394a;
+        color: #fff;
+        border: 0;
+        border-radius: 5px;
+        padding: 3px 7px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .btnRow {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        gap: 6px;
+      }
+      .btnRow .btn {
+        margin: 4px 0;
+        padding: 10px 4px;
+        font-size: 12px;
+      }
       /* Feltlogg-lista (v1.6.51): samanfalda, gruppert per dag, éi tynn linje per logg */
       .logHead,
       .logDay {
@@ -1291,8 +1378,21 @@
           <div id="ctlStats" class="history"></div>
           <button id="ctlApply" class="btn hide" onclick="applyOffset()">JUSTER HØGDEOFFSET</button>
           <div id="ctlChecks"></div>
+          <details class="fold info">
+            <summary>ℹ Slik gjer du ei kontrollmåling</summary>
+            <div class="fbody">
+              Stopp maskina der du veit snødjupna – stikk snøsonda ned rett under antenna, eller stå på barmark (brøyta veg,
+              parkeringsplass) og skriv 0. Vent på RTK FIX og trykk LAGRE. Ta minst 3 målingar på ulike stader. Er avviket likt
+              overalt, er det ein feil i kalibreringa, og SNOWMAN kan justere høgdekorreksjonen. Sprikar avvika, er det terrengmodellen
+              eller snøsonderinga som er usikker.
+            </div>
+          </details>
           <h3>KONTROLLPUNKT (KJEND KOORDINAT)</h3>
-          <div class="history">
+          <div id="ctlPoints"></div>
+          <details class="fold" ontoggle="FOLD.cpAdd = this.open">
+            <summary><b>＋ Legg til kontrollpunkt</b></summary>
+            <div class="fbody">
+          <div class="history" style="font-size: 12px">
             Punkt med kjend terrenghøgd frå landmålar (t.d. bolt, kum, hjørne av fundament). SNOWMAN samanliknar terrengmodellen med punktet
             – utan GNSS. Avslører forskyving, feil høgdesystem og gammal modell.
           </div>
@@ -1309,13 +1409,8 @@
           </div>
           <div class="row"><span>Terrenghøgd NN2000 (m)</span><input id="cpH" type="number" step=".001" /></div>
           <button class="btn" onclick="addPoint()">LEGG TIL KONTROLLPUNKT</button>
-          <div id="ctlPoints"></div>
-          <div class="history">
-            <b>Slik gjer du ei kontrollmåling:</b> Stopp maskina der du veit snødjupna – stikk snøsonda ned rett under antenna, eller stå på
-            barmark (brøyta veg, parkeringsplass) og skriv 0. Vent på RTK FIX og trykk LAGRE. Ta minst 3 målingar på ulike stader. Er
-            avviket likt overalt, er det ein feil i kalibreringa, og SNOWMAN kan justere høgdekorreksjonen. Sprikar avvika, er det terrengmodellen
-            eller snøsonderinga som er usikker.
-          </div>
+            </div>
+          </details>
         </section>
         <section id="panelTerrain" class="panel">
           <h3>TERRENGBIBLIOTEK</h3>
@@ -1441,11 +1536,14 @@
           <div class="row"><span>Merknad (valfri)</span><input id="fuelNote" type="text" maxlength="120" /></div>
           <button id="fuelFull" class="btn toggle on" onclick="RAP.toggleFull()">FYLT HEILT OPP: JA</button>
           <button class="btn" onclick="RAP.addFuel()">LAGRE FYLLING</button>
-          <div class="history" style="font-size: 12px">
-            Fyll tanken <b>heilt opp</b> kvar gong og skriv inn literane. Då er literane det maskina har brukt sidan førre fylling, og
-            SNOWMAN reknar <b>liter per time</b> og <b>liter per daa</b> preparert (frå øktene). Med timeteljaren blir det rekna mot
-            motortimar, elles mot tida med prep på. Første fylling er startpunktet.
-          </div>
+          <details class="fold info">
+            <summary>ℹ Slik blir forbruket rekna</summary>
+            <div class="fbody">
+              Fyll tanken <b>heilt opp</b> kvar gong og skriv inn literane. Då er literane det maskina har brukt sidan førre fylling, og
+              SNOWMAN reknar <b>liter per time</b> og <b>liter per daa</b> preparert (frå øktene). Med timeteljaren blir det rekna mot
+              motortimar, elles mot tida med prep på. Første fylling er startpunktet.
+            </div>
+          </details>
           <h3>FORBRUK</h3>
           <div id="fuelSum" class="history">–</div>
           <div id="fuelList"></div>
@@ -1458,21 +1556,28 @@
           </div>
           <div id="repOut"></div>
           <button class="btn" onclick="RAP.csv()">LAST NED RAPPORT (CSV / EXCEL)</button>
-          <h3>AUTOMATISK LAGRING</h3>
-          <button id="expOn" class="btn toggle on" onclick="RAP.expToggle()">LAGRE RAPPORTANE AUTOMATISK: PÅ</button>
-          <div class="row"><span>Mappe</span><input id="expDir" type="text" style="width: 230px" /></div>
-          <button class="btn" onclick="RAP.expSave()">BRUK DENNE MAPPA</button>
-          <button class="btn" onclick="RAP.expNow()">LAGRE RAPPORTANE NO</button>
-          <div id="expState" class="history">–</div>
-          <div class="history" style="font-size: 12px">
+          <details class="fold" ontoggle="FOLD.exp = this.open">
+            <summary><span><b>Automatisk lagring</b> <span id="expSum" class="dim" style="color: #8aa3b1"></span></span></summary>
+            <div class="fbody">
+              <button id="expOn" class="btn toggle on" onclick="RAP.expToggle()">LAGRE RAPPORTANE AUTOMATISK: PÅ</button>
+              <div class="row"><span>Mappe</span><input id="expDir" type="text" style="width: 230px" /></div>
+              <div class="btnRow">
+                <button class="btn" onclick="RAP.expSave()">BRUK DENNE MAPPA</button><button class="btn" onclick="RAP.expNow()">LAGRE NO</button>
+              </div>
+              <div id="expState" class="history">–</div>
+            </div>
+          </details>
+          <details class="fold info">
+            <summary>ℹ Om rapporten og automatisk lagring</summary>
+            <div class="fbody">
             SNOWMAN lagrar rapporten for dei to siste prepareringsdøgna i mappa kvart 5. minutt og når prep blir stoppa – også
             utan nett. Ligg mappa i <b>OneDrive</b>, <b>Google Drive</b> eller <b>Dropbox</b> på PC-en, blir filene lasta opp av seg
             sjølv når PC-en har nett (wifi eller mobildata). På Windows ligg «Dokument» ofte allereie i OneDrive.
-          </div>
-          <div class="history" style="font-size: 12px">
-            Rapporten gjeld eitt prepareringsdøgn (kl. 12 til kl. 12 neste dag): tid med prep, køyrd lengd og areal, prosent preparert
-            og snødjupne per trasé, og drivstoff. Demo og simulator er merka TEST og er ikkje med i summane.
-          </div>
+              <br /><br />
+              Rapporten gjeld eitt prepareringsdøgn (kl. 12 til kl. 12 neste dag): tid med prep, køyrd lengd og areal, prosent preparert
+              og snødjupne per trasé, og drivstoff. Demo og simulator er merka TEST og er ikkje med i summane.
+            </div>
+          </details>
         </section>
         <section id="panelHistory" class="panel">
           <h3>KØYREHISTORIKK</h3>
@@ -1481,9 +1586,11 @@
             ><select id="historyDate" onchange="showHistoryInfo()"></select>
           </div>
           <div id="historyInfo" class="history">Ingen lagra økter.</div>
-          <button class="btn" onclick="playHistory()">▶ SPEL AV VALD ØKT (I FRESBREIDD)</button
-          ><button class="btn" onclick="showCoverage('session')">▦ VIS VALD ØKT SAMLA</button
-          ><button class="btn" onclick="stopPlayback()">■ STOPP AVSPELING</button>
+          <div class="btnRow">
+            <button class="btn" onclick="playHistory()" title="Spel av vald økt i fresbreidd">▶ SPEL AV</button
+            ><button class="btn" onclick="showCoverage('session')" title="Vis heile økta samla i fresbreidd">▦ SAMLA</button
+            ><button class="btn" onclick="stopPlayback()">■ STOPP</button>
+          </div>
           <h3>TRAKKA OMRÅDE</h3>
           <div class="row">
             <span>Periode</span
@@ -1497,12 +1604,18 @@
             </select>
           </div>
           <label class="chk" style="display: block"><input id="covTest" type="checkbox" /> Ta med demo/test (blir merka TEST)</label>
-          <button class="btn" onclick="showCoverage()">▦ VIS TRAKKA OMRÅDE</button
-          ><button class="btn" onclick="hideCoverage()">SKJUL TRAKKA OMRÅDE</button>
-          <div id="covInfo" class="history">
-            Viser alt som er køyrt i perioden i den fresbreidda maskina hadde – fargen viser kor lenge sidan det vart køyrt.
-            Overlapp blir rekna éin gong. Transport (over 40 km/t) er ikkje med.
+          <div class="btnRow">
+            <button class="btn" onclick="showCoverage()">▦ VIS TRAKKA OMRÅDE</button
+            ><button class="btn" onclick="hideCoverage()">SKJUL</button>
           </div>
+          <div id="covInfo" class="history hide"></div>
+          <details class="fold info">
+            <summary>ℹ Om trakka område</summary>
+            <div class="fbody">
+              Viser alt som er køyrt i perioden i den fresbreidda maskina hadde – fargen viser kor lenge sidan det vart køyrt.
+              Overlapp blir rekna éin gong. Transport (over 40 km/t) er ikkje med.
+            </div>
+          </details>
           <button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
@@ -1616,7 +1729,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.52";
+      const APP_VERSION = "1.6.53";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3936,19 +4049,11 @@
         let dist = s.distance || 0,
           w = s.width || (toolsFull ? cfg.tiller : cfg.tillerN);
         $("historyInfo").innerHTML =
-          "<b>" +
-          s.date +
-          "</b><br>" +
-          (s.demo ? "Demokøyring (simulert)" : "Registrert køyring") +
-          (s.machine ? " · " + s.machine : "") +
-          "<br>Tidsbruk: <b>" +
-          fmtTime(s.durationMs || 0) +
-          "</b><br>Distanse: <b>" +
-          Math.round(dist) +
-          " m</b><br>Estimert preparert areal: <b>" +
-          Math.round(dist * w) +
-          " m²</b><br>GPS-punkt: " +
-          s.n;
+          "<b>" + s.date + " " + new Date(s.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) + "</b> · " +
+          (s.demo ? "<span style='color:#ffb24d'>DEMO</span>" : "køyring") + (s.machine ? " · " + esc(s.machine) : "") +
+          "<br>" + fmtTime(s.durationMs || 0) + " · " + (dist >= 1000 ? (dist / 1000).toFixed(2).replace(".", ",") + " km" : Math.round(dist) + " m") +
+          " · ca. " + (dist * w >= 10000 ? ((dist * w) / 1000).toFixed(1).replace(".", ",") + " daa" : Math.round(dist * w) + " m²") +
+          " <span style='color:#8aa3b1'>· " + s.n + " punkt</span>";
       }
       async function playHistory() {
         let s = selectedSession();
@@ -4028,6 +4133,7 @@
           if (!s) return toast("Vel ei økt først");
           q += "&id=" + encodeURIComponent(s.id);
         }
+        $("covInfo").classList.remove("hide");
         $("covInfo").textContent = "Reknar ut trakka område …";
         let m;
         try {
@@ -4081,6 +4187,7 @@
       }
       function hideCoverage() {
         covGroup.clearLayers();
+        $("covInfo").classList.add("hide");
       }
       async function clearHistory() {
         if (!confirm("Slette ALL lagra køyrehistorikk på denne maskina? Dette kan ikkje angrast.")) return;
@@ -4982,20 +5089,25 @@
             (s.lph != null ? "<b>" + n(s.lph, 1) + " l/time</b>" : "l/time: –") + " · " +
             (s.lpdaa != null ? "<b>" + n(s.lpdaa, 2) + " l/daa</b>" : "l/daa: –") +
             ((r.fuel || []).length < 2 ? "<br><small>Forbruket blir rekna frå og med andre fylling.</small>" : "");
-          $("fuelList").innerHTML = (r.fuel || [])
-            .slice(0, 30)
-            .map(
-              (f) =>
-                '<div class="tlayer"><b>' + dm(f.t) + " · " + n(f.litres, 1) + " l</b>" + (f.full ? "" : " (ikkje full tank)") +
-                (f.hours != null ? " · timeteljar " + n(f.hours, 1) : "") + (f.machine ? " · " + esc(f.machine) : "") +
-                (f.lph != null || f.lpdaa != null
-                  ? "<br>" + (f.lph != null ? n(f.lph, 1) + " l/time (" + (f.hourSource === "motor" ? "timeteljar" : "prep-tid") + ")" : "") +
-                    (f.lpdaa != null ? " · " + n(f.lpdaa, 2) + " l/daa (" + n(f.areaDaa, 1) + " daa køyrt)" : "")
-                  : f.litresInterval == null ? "<br><small>Startpunkt</small>" : "<br><small>For lite køyring eller ingen timeteljar til å rekne forbruk</small>") +
-                (f.note ? "<br><small>" + esc(f.note) + "</small>" : "") +
-                '<div class="acts"><button onclick="RAP.delFuel(\'' + f.id + "')\">SLETT</button></div></div>",
-            )
-            .join("");
+          let fl = r.fuel || [];
+          $("fuelList").innerHTML = fl.length
+            ? fold(
+                "fuelList",
+                "<b>Fyllingar</b> (" + fl.length + ")",
+                fl
+                  .slice(0, 60)
+                  .map(
+                    (f) =>
+                      '<div class="crow"><span>' + dm(f.t) + "</span><b>" + n(f.litres, 0) + " l</b>" + (f.full ? "" : '<span class="dim">ikkje full</span>') +
+                      '<span class="grow dim" title="' + esc((f.note || "") + (f.machine ? " · " + f.machine : "")) + '">' +
+                      (f.lph != null ? n(f.lph, 1) + " l/t" : "") + (f.lpdaa != null ? " · " + n(f.lpdaa, 2) + " l/daa" : "") +
+                      (f.lph == null && f.lpdaa == null ? (f.litresInterval == null ? "startpunkt" : "for lite grunnlag") : "") +
+                      (f.hours != null ? " · tt " + n(f.hours, 1) : "") + (f.note ? " · " + esc(f.note) : "") +
+                      '</span><button onclick="RAP.delFuel(\'' + f.id + "')\" title=\"Slett fyllinga\">✕</button></div>",
+                  )
+                  .join(""),
+              )
+            : "";
         }
         async function loadFuel() {
           try {
@@ -5031,6 +5143,7 @@
         function renderExp(r) {
           $("expOn").classList.toggle("on", !!r.on);
           $("expOn").textContent = "LAGRE RAPPORTANE AUTOMATISK: " + (r.on ? "PÅ" : "AV");
+          $("expSum").innerHTML = !r.on ? "· AV" : r.error ? "· <span style='color:#ff8b6e'>⛔ feil</span>" : "· PÅ" + (r.last ? " · sist " + esc(r.last) : "");
           if (document.activeElement !== $("expDir")) $("expDir").value = r.dir || "";
           $("expState").innerHTML = !r.on
             ? "Automatisk lagring er av."
@@ -5093,7 +5206,8 @@
           );
           if (r.trasear.length)
             h.push(
-              "<h3>TRASEAR</h3><table class='fmt'><tr><td><b>Trasé</b></td><td><b>Preparert</b></td><td><b>Sist</b></td><td><b>Snødjupne</b></td></tr>" +
+              fold("rapTra", "<b>Trasear</b> (" + r.trasear.length + ") · snitt " + n(r.trasear.reduce((a, t) => a + (t.pct || 0), 0) / r.trasear.length, 0) + " % preparert",
+              "<table class='fmt'><tr><td><b>Trasé</b></td><td><b>Preparert</b></td><td><b>Sist</b></td><td><b>Snødjupne</b></td></tr>" +
                 r.trasear
                   .map(
                     (t) =>
@@ -5103,10 +5217,10 @@
                       (t.depthAvg != null ? "snitt " + n(t.depthAvg, 2) + " m<br>minst " + n(t.depthMin, 2) + " m" : "–") +
                       (t.target != null ? "<br><small>mål " + n(t.target, 2) + " m</small>" : "") + "</td></tr>",
                   )
-                  .join("") + "</table>",
+                  .join("") + "</table>"),
             );
           h.push(
-            "<h3>ØKTER</h3>" +
+            fold("rapSes", "<b>Økter</b> (" + r.sessions.length + ")" + (r.sessions.length ? " · " + mins(T.prepMin) + " · " + n(T.areaDaa, 1) + " daa" : ""),
               (r.sessions.length
                 ? "<table class='fmt'><tr><td><b>Tid</b></td><td><b>Prep</b></td><td><b>Areal</b></td><td><b>Snødjupne</b></td></tr>" +
                   r.sessions
@@ -5117,10 +5231,10 @@
                         n(s.areaDaa, 1) + " daa</td><td>" + (s.depthAvg != null ? "snitt " + n(s.depthAvg, 2) + " m<br>minst " + n(s.depthMin, 2) + " m" : "–") + "</td></tr>",
                     )
                     .join("") + "</table>"
-                : '<div class="history">Ingen økter.</div>'),
+                : '<div class="history">Ingen økter.</div>')),
           );
           h.push(
-            "<h3>DRIVSTOFF</h3>" +
+            fold("rapFuel", "<b>Drivstoff</b> (" + r.fuel.length + " fylling" + (r.fuel.length === 1 ? "" : "ar") + (r.fuel.length ? " · " + n(T.litres, 0) + " l" : "") + ")",
               (r.fuel.length
                 ? "<table class='fmt'>" +
                   r.fuel
@@ -5130,7 +5244,7 @@
                         (f.lpdaa != null ? n(f.lpdaa, 2) + " l/daa" : "–") + "</td></tr>",
                     )
                     .join("") + "</table>"
-                : '<div class="history">Ingen fyllingar registrerte dette døgnet.</div>'),
+                : '<div class="history">Ingen fyllingar registrerte dette døgnet.</div>')),
           );
           $("repOut").innerHTML = h.join("");
         }
@@ -5246,26 +5360,36 @@
         if (s.suggest)
           $("ctlApply").textContent =
             "JUSTER HØGDEKORREKSJON: " + c.zOff.toFixed(3).replace(".", ",") + " → " + (c.zOff + s.mean).toFixed(3).replace(".", ",") + " m";
-        $("ctlChecks").innerHTML = c.checks
-          .map(
-            (k) =>
-              '<div class="tlayer"><b>' + esc(k.t) + "</b> · kjend " + m2(k.known) + " · SNOWMAN " + m2(k.known + k.diff) +
-              ' · avvik <b style="color:' + (Math.abs(k.diff) <= 0.05 ? "#31ef55" : Math.abs(k.diff) <= 0.15 ? "#ffcf5b" : "#ff6b5a") + '">' + cm(k.diff, 1) + "</b>" +
-              (k.simulated ? ' <span style="color:#ffcf5b">(TEST)</span>' : "") +
-              "<br><small>" + esc(k.layerName || "") + (k.note ? " · " + esc(k.note) : "") + "</small>" +
-              '<div class="acts"><button onclick="delCheck(\'' + k.id + "')\">Slett</button></div></div>",
-          )
-          .join("");
-        $("ctlPoints").innerHTML = c.points
-          .map(
-            (p) =>
-              '<div class="tlayer"><b>' + esc(p.name) + "</b> · UTM " + p.zone + " " + p.E.toFixed(2) + " / " + p.N.toFixed(2) +
-              "<br>Kjend " + p.h.toFixed(2).replace(".", ",") + " m · modell " + (p.model == null ? "<i>utanfor terrengmodell</i>" : p.model.toFixed(2).replace(".", ",") + " m") +
-              (p.diff == null ? "" : ' · avvik <b style="color:' + (Math.abs(p.diff) <= 0.1 ? "#31ef55" : Math.abs(p.diff) <= 0.3 ? "#ffcf5b" : "#ff6b5a") + '">' + cm(p.diff, 1) + "</b>") +
-              "<br><small>" + esc(p.layerName || "") + (p.dist != null ? " · " + (p.dist < 1000 ? Math.round(p.dist) + " m" : (p.dist / 1000).toFixed(1) + " km") + " frå maskina" : "") + "</small>" +
-              '<div class="acts"><button onclick="map.panTo([' + p.lat + "," + p.lon + '])">Vis på kart</button><button onclick="delPoint(\'' + p.id + "')\">Slett</button></div></div>",
-          )
-          .join("");
+        $("ctlChecks").innerHTML = c.checks.length
+          ? fold(
+              "ctlChecks",
+              "<b>Kontrollmålingar</b> (" + c.checks.length + ")",
+              c.checks
+                .map(
+                  (k) =>
+                    '<div class="crow"><span>' + esc(k.t.slice(5)) + "</span><span>kjend " + m2(k.known) + '</span><b style="color:' +
+                    (Math.abs(k.diff) <= 0.05 ? "#31ef55" : Math.abs(k.diff) <= 0.15 ? "#ffcf5b" : "#ff6b5a") + '">' + cm(k.diff, 1) + "</b>" +
+                    (k.simulated ? '<span style="color:#ffcf5b">TEST</span>' : "") + '<span class="grow dim">' + esc(k.layerName || "") + (k.note ? " · " + esc(k.note) : "") +
+                    '</span><button onclick="delCheck(\'' + k.id + "')\" title=\"Slett\">✕</button></div>",
+                )
+                .join(""),
+            )
+          : "";
+        $("ctlPoints").innerHTML = c.points.length
+          ? fold(
+              "ctlPoints",
+              "<b>Kontrollpunkt</b> (" + c.points.length + ")",
+              c.points
+                .map(
+                  (p) =>
+                    '<div class="crow"><span class="grow"><b>' + esc(p.name) + "</b> " + p.h.toFixed(2).replace(".", ",") + " m</span>" +
+                    (p.diff == null ? '<span class="dim">utanfor modell</span>' : '<b style="color:' + (Math.abs(p.diff) <= 0.1 ? "#31ef55" : Math.abs(p.diff) <= 0.3 ? "#ffcf5b" : "#ff6b5a") + '">' + cm(p.diff, 1) + "</b>") +
+                    (p.dist != null ? '<span class="dim">' + (p.dist < 1000 ? Math.round(p.dist) + " m" : (p.dist / 1000).toFixed(1) + " km") + "</span>" : "") +
+                    '<button onclick="map.panTo([' + p.lat + "," + p.lon + '])" title="Vis på kart">⌖</button><button onclick="delPoint(\'' + p.id + "')\" title=\"Slett\">✕</button></div>",
+                )
+                .join(""),
+            )
+          : "";
         ctlGroup.clearLayers();
         c.points.forEach((p) =>
           L.circleMarker([p.lat, p.lon], { radius: 7, color: "#ffffff", weight: 2, fillColor: "#b05cff", fillOpacity: 0.9 })
@@ -5433,6 +5557,12 @@
           fetch("api/hud", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(st) }).catch(() => {});
         }
         setTimeout(publishHUD, 200);
+      }
+      /* ---------- Samanfaldbare lister (v1.6.53): opne/lukka blir hugsa medan SNOWMAN er open ---------- */
+      const FOLD = {};
+      function fold(id, summary, body, open) {
+        let o = FOLD[id] != null ? FOLD[id] : !!open;
+        return '<details class="fold"' + (o ? " open" : "") + ' ontoggle="FOLD[\'' + id + '\']=this.open"><summary><span>' + summary + '</span></summary><div class="fbody">' + body + "</div></details>";
       }
       /* ---------- Feltlogg frå førarskjermen (v1.6.52): JavaScript-feil, handlingar og skjerm/3D-info ---------- */
       let logErrN = 0,
