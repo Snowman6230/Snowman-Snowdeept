@@ -195,6 +195,35 @@ oppstartsblokk). Desse står att til seinare:
 - Yting kvart minutt: minne og CPU i tenesta, biletfart i 3D, ledig diskplass.
 - Kan vente: HUD tilkopla/fråkopla, batteri/straum på Surface-en.
 
+## 12. Maskindata frå PistenBully 600 via CAN/J1939 (forundersøking 2026-10-08, ikkje plassert)
+
+Full dokumentasjon: [`PB600-CAN.md`](PB600-CAN.md). Ingen kode før punkta under er avklarte.
+
+**Kvar vi står**
+- Maskina er ein PB600 med AdBlue, **truleg frå ca. 2020** (eigaren). Då er ho truleg av generasjonen med
+  **Cummins X12 / Stage V** og iTerminal (lansert oktober 2018), ikkje Mercedes OM 460-generasjonen. Må stadfestast.
+- SNOWMAN skal **berre lytte** på CAN (lyttemodus, ingen sendekode). Galvanisk isolert USB-CAN til Windows-PC-en.
+- Tilrådd adapter: **PEAK PCAN-USB opto-decoupled (IPEH-002022)**. Ikkje ELM327. Kvaser Leaf Light HS v2 er utelukka
+  (manglar lyttemodus).
+- Alt blir merkt **[D]** dokumentert / **[S]** standard J1939 / **[O]** observert i logg / **[H]** hypotese / **[E]** eigaren.
+  Pinout, CAN-ID-ar og signal blir aldri gjetta.
+
+**Truleg tilgjengeleg utan ekstra sensorar** (standard J1939 – må stadfestast i logg): motorturtal, last/moment,
+kjølevasstemperatur, oljetrykk, driftstimar, forbruk (l/t), drivstoffnivå, AdBlue-nivå, feilkodar (DM1), og truleg
+data frå partikkelfilteret. Fres-, ramme- og skjerdata er proprietære: må finnast i logg eller fåast frå Kässbohrer.
+Frontskjeret har truleg ikkje absolutte posisjonsgivarar.
+
+**Neste steg (eigaren)**
+1. Sjå på maskina: Cummins eller Mercedes på motoren, iTerminal eller eldre skjerm, chassisnummer (WKU) og byggjeår.
+2. Be Kässbohrer/forhandlar om Planbuch/Schaltplan og diagnosekontakt for det chassisnummeret, og spør om dei har
+   eit grensesnitt for maskindata (dei leverer SNOWsat).
+3. Avklar garanti/serviceavtale før fysisk tilkopling.
+4. Skaff adapteren og ta første CAN-logg i lyttemodus (metoden i PB600-CAN.md kap. 5).
+
+**Når det er avklart:** ny modul `maskindata` (rå CAN-logg i feltloggen → J1939-dekoding → stadfesta PB600-signal),
+og koplingar i SNOWMAN: fres aktiv avgjer preparert areal, målt drivstoff i rapporten, fresposisjon i kartet,
+feilkodar og temperaturar i feltloggen.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
@@ -205,7 +234,7 @@ oppstartsblokk). Desse står att til seinare:
 | **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
 | Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
-| Seinare | CAN-bus (drivstoff, motordata, vinsj – ulikt for PistenBully og Prinoth), LiDAR for snødjupne framfor maskina. |
+| Seinare | CAN-bus (drivstoff, motordata, vinsj – ulikt for PistenBully og Prinoth) – forundersøking for PB600 i kap. 12 og `PB600-CAN.md`. LiDAR for snødjupne framfor maskina. |
 
 Maskingeometrien blir flytt fram til v1.7 om feltprøva viser at målinga ved antenna er for upresis.
 

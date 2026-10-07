@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### Dokumentasjon – PB600-sporet lagra i vegplanen
+- **Nytt:** `docs/VEGEN-VIDARE.md` kap. 12 samlar CAN/J1939-sporet for PB600: kvar vi står, kva data som truleg finst
+  utan ekstra sensorar, neste steg for eigaren og plan for `maskindata`-modulen. Vegplan-lina «Seinare – CAN-bus»
+  peikar no hit. Detaljane står framleis i `docs/PB600-CAN.md`.
+- **Avgjerd:** sporet er ikkje plassert i nokon versjon enno – det ventar på generasjon, chassisnummer og Planbuch.
+- **Kvifor:** eigaren bad om at sporet blir lagra i dokumentasjonen.
+
 ### Dokumentasjon – PB600: maskina er truleg frå ca. 2020
 - **Endra:** `docs/PB600-CAN.md` fekk kap. 1b. Eigaren meiner maskina er frå rundt 2020. Den nye PB600 med
   **Cummins X12 / Stage V** og iTerminal kom i oktober 2018, så maskina er truleg av den generasjonen og ikkje
