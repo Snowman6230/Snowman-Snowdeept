@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.47 – simulatoren viser snødjupne også med Kartverket-geoiden
+- **Retta:** Testmodus (oppstartsval 3, simulert mottakar) viste ikkje snødjupne, berre «FEIL – SJEKK HØGDESYSTEM/
+  KALIBRERING». Simulatoren sende NN2000-høgd med fast geoidehøgd 40,0 m. Med høgdevalet «Rå GPS-høgd → Kartverket-modellen»
+  (som er rett for Zenith-en og var lagra frå feltprøva) vart høgda då ca. 5 m for låg, og SNOWMAN meinte maskina stod
+  under terrenget. No sender simulatoren geoidehøgda frå Kartverket-modellen der maskina er, som ein ekte mottakar.
+- **Kvifor:** testmodus skal fungere med same kalibrering som feltoppsettet, så ein slepp å endre innstillingar for å teste.
+- **Testa:** `simuler-leica.py --terreng` mot fasit med alle tre høgdevala: NN2000 −0,2 cm, Kartverket-modellen +0,1 cm,
+  fast tal (44,77) −1,0 cm i snitt (maks 3 cm).
+
 ### PC-prototype v1.6.46 – automatisk vern for svake skjermkort i 3D
 - **Nytt:** Dei første 10 sekunda i 3D/frontrute (etter 2 s oppvarming) måler SNOWMAN tida per bilete. Klarer skjermkortet
   under ca. 15 bilete i sekundet, blir **3D-detalj nær maskina sett eitt steg ned** (HØG → NORMAL → AV), og føraren får

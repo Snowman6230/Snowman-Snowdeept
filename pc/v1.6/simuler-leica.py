@@ -27,6 +27,16 @@ import argparse, os, socket, threading, time, math, random
 from pathlib import Path
 from terrain import utm_forward, utm_inverse
 
+
+def geoid_n(lat, lon):
+    """Geoidehøgd (m) frå Kartverket-modellen i SNOWMAN, eller 45 m (Sunnmøre) om modellen ikkje kan lesast."""
+    try:
+        import terrain as _T
+        n = _T.GEOID.n(lat, lon) if _T.AVAILABLE else None
+        return float(n) if n is not None else 45.0
+    except Exception:
+        return 45.0
+
 ap = argparse.ArgumentParser()
 ap.add_argument("portfil", nargs="?")
 ap.add_argument("--terreng", action="store_true", help="høgd frå testterreng + fasit-snø")
@@ -245,7 +255,11 @@ while True:
         else:
             alt = 905.31 + 0.01 * math.sin(t)
     lat += random.gauss(0, 0.01) / mlat; lon += random.gauss(0, 0.01) / mlon
-    body = f"GNGGA,{time.strftime('%H%M%S')}.00,{dm(lat,2)},N,{dm(lon,3)},E,{q},19,0.6,{alt:.3f},M,40.0,M,1.0,0001"
+    # Som ein ekte mottakar med geoide: høgda i GGA er NN2000, og geoidehøgda er Kartverket-modellen der maskina er.
+    # Då gir alle tre høgdevala i Innst. › Kalibrering same svar (før v1.6.47 stod det fast 40,0 m, og valet
+    # «Kartverket geoidemodell» – som Zenith-oppsettet brukar – gav 5 m feil og «FEIL – SJEKK HØGDESYSTEM»).
+    sep = geoid_n(lat, lon)
+    body = f"GNGGA,{time.strftime('%H%M%S')}.00,{dm(lat,2)},N,{dm(lon,3)},E,{q},19,0.6,{alt:.3f},M,{sep:.3f},M,1.0,0001"
     send(f"${body}*{cs(body)}\r\n".encode())
     if a.helling and grad is not None:
         send(pashr(heading, grad))
