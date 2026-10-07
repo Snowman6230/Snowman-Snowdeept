@@ -27,14 +27,14 @@ Bluetooth Class II rekk om lag 10 m – nok frå taket til førarhuset. Til fast
 - [ ] Terrengmodell for området er lagt inn (Innst. › Terreng), med NN2000 stadfesta.
 - [ ] Leica er sett opp til å sende **NMEA GGA** (gjerne 5 Hz) på seriellporten, og høgd i **NN2000** (ikkje ellipsoidisk).
 - [ ] CPOS-brukar og mountpoint er klare (Innst. › Kart › LEICA / CPOS / NTRIP-OPPSETT).
-- [ ] Mål antennehøgda over referansepunktet på maskina (bakkenivå under belta), og kor langt fram/bak og til sida antenna sit.
+- [ ] Mål antennehøgda frå botnen av antennefestet ned til underkanten av belta, og kor langt fram/bak og til sida antenna sit.
 - [ ] Ta med snøsonde og meterstokk.
 
 ## I maskina
 1. Kople til Leica (USB-RS232). Start SNOWMAN med val 1 (eller kiosk).
 2. **Innst. › System › START LOGG** – eller slå på «Logg alltid».
 3. Sjekk øvst til høgre: **RTK FIX**, satellittar, HDOP. Noter kor lang tid det tek frå start til RTK FIX.
-4. **Innst. › Kalibrering:** antennehøgd, høgdeoffset 0, «NN2000». LAGRE KALIBRERING.
+4. **Innst. › Kalibrering:** antennehøgd, høgdekorreksjon 0, og kva høgd mottakaren sender (Zenith: «rå GPS-høgd – Kartverket-modellen»). LAGRE KALIBRERING.
    **Helling:** la stå på «Auto». Sjå kva «Kjelde» seier – «antenne (…)» betyr at antenna sender helling, «utrekna» at ho ikkje gjer det.
    Køyr rett opp ein bakke: **stamp skal vere positiv**. Stå med høgre side ned i ein sidebakke: **krenging skal vere positiv**.
    Er forteiknet feil når kjelda er antenna, kryss av for «Snu forteikn». Noter antennemodellen (står på etiketten).
@@ -88,7 +88,7 @@ PC-en kan ikkje vere på Zenith-wifien og internett samstundes – bruk mobilen 
 6. **Står han framleis på SBAS:** set RTK Data Source = **GSM/GPRS** og legg same NTRIP-konto inn i Zenith-en sjølv (eige SIM).
    - FIX då → basen og kontoen er i orden; feilen er at Zenith-en ikkje tek imot RTCM over Bluetooth. SNOWMAN berre les posisjon.
    - Ikkje FIX → feilen ligg i basen eller mountpointen TH.
-7. Ved FIX: kontrollmåling på barmark (venta 0,00 m) – antZ = målt høgd til ARP, høgdeoffset 0, høgdemodus «geoide».
+7. Ved FIX: kontrollmåling på barmark (venta 0,00 m) – antennehøgd = målt frå antennefestet (ARP) til underkanten av belta, høgdekorreksjon 0, «rå GPS-høgd – Kartverket-modellen».
 
 ### Notert til v1.6.39
 - **Fartsgrense for preparering:** strekningar over ca. 25 km/t (justerbart under Maskin) blir «transport» – ikkje areal,

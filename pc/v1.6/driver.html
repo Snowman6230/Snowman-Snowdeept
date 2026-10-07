@@ -347,7 +347,8 @@
         gap: 8px;
       }
       .row input,
-      .row select {
+      .row select,
+      .rowWide select {
         width: 110px;
         background: #102b39;
         color: #fff;
@@ -356,6 +357,16 @@
         padding: 8px;
         text-align: center;
         font-weight: 800;
+      }
+      .rowWide {
+        border-top: 1px solid #294452;
+        padding: 10px 0;
+      }
+      .rowWide > div {
+        margin-bottom: 6px;
+      }
+      .rowWide select {
+        text-align: left;
       }
       .btn {
         width: 100%;
@@ -1150,51 +1161,54 @@
         </section>
         <section id="panelCal" class="panel">
           <h3>MASKINKALIBRERING</h3>
-          <div class="row"><span>Maskinnamn</span><input id="mname" type="text" style="width: 170px" /></div>
-          <div class="row"><span>Antenne fram/bak frå referansepunkt (m)</span><input id="antX" type="number" step=".001" /></div>
-          <div class="row"><span>Antenne venstre/høgre (m)</span><input id="antY" type="number" step=".001" /></div>
-          <div class="row"><span>Antennehøgd over referansepunkt (m)</span><input id="antZ" type="number" step=".001" /></div>
-          <div class="row"><span>Fast høgdeoffset (m)</span><input id="zOff" type="number" step=".001" /></div>
-          <div class="row">
-            <span>GNSS-høgd frå mottakaren</span
-            ><select id="heightMode" style="width: 170px" onchange="$('geoidRow').classList.toggle('hide', this.value !== 'ellipsoid')">
-              <option value="nn2000">NN2000 – mottakaren reknar sjølv</option>
-              <option value="geoide">Ellipsoidisk – Kartverket geoidemodell (tilrådd)</option>
-              <option value="ellipsoid">Ellipsoidisk + fast geoidehøgd</option>
+          <div class="row"><span>Maskinnamn (blir vist i rapportane)</span><input id="mname" type="text" style="width: 170px" /></div>
+          <div class="row"><span>Antenne framfor midten av beltet (m, + = fram, − = bak) – førebels berre til informasjon</span><input id="antX" type="number" step=".001" /></div>
+          <div class="row"><span>Antenne til sida for midtlinja (m, + = høgre, − = venstre) – førebels berre til informasjon</span><input id="antY" type="number" step=".001" /></div>
+          <div class="row"><span>Antennehøgd: frå botnen av antennefestet ned til underkanten av belta (m)</span><input id="antZ" type="number" step=".001" /></div>
+          <div class="history" style="font-size: 12px">Mål loddrett med maskina på flat mark. Antennehøgda i sjølve mottakaren (t.d. Zenith) skal då vere 0.</div>
+          <div class="row"><span>Høgdekorreksjon frå kontrollmåling (m) – normalt 0</span><input id="zOff" type="number" step=".001" /></div>
+          <div class="history" style="font-size: 12px">Blir sett automatisk med JUSTER HØGDEKORREKSJON under Kontroll. Positivt tal gjer snødjupna mindre. Ikkje gjett.</div>
+          <div class="rowWide">
+            <div>Kva høgd sender mottakaren?</div
+            ><select id="heightMode" style="width: 100%" onchange="$('geoidRow').classList.toggle('hide', this.value !== 'ellipsoid')">
+              <option value="nn2000">Høgd over havet (NN2000) frå mottakaren</option>
+              <option value="geoide">Rå GPS-høgd → Kartverket-modellen (tilrådd)</option>
+              <option value="ellipsoid">Rå GPS-høgd → fast tal (berre om modellen manglar)</option>
             </select>
           </div>
           <div class="history" style="font-size: 12px">
-            Sender mottakaren ellipsoidisk høgd (t.d. GeoMax Zenith utan geoide), vel <b>Kartverket geoidemodell</b>. Kontroller i
-            LEICA / CPOS / NTRIP-OPPSETT: «NN2000-høgd» skal stemme med høgda på kartet der du står.
+            Usikker? Vel <b>Kartverket-modellen</b>. Kontroller så på NTRIP-sida (LEICA / CPOS / NTRIP-OPPSETT) at <b>NN2000-høgd</b>
+            stemmer med høgda på kartet der du står (innanfor nokre få dm).
           </div>
-          <div id="geoidRow" class="row hide"><span>Geoidehøgd N (m), ca. 45 på Sunnmøre</span><input id="geoidN" type="number" step=".001" /></div>
+          <div id="geoidRow" class="row hide"><span>Skilnad mellom rå GPS-høgd og havnivå (m) – ca. 45 på Sunnmøre</span><input id="geoidN" type="number" step=".001" /></div>
           <button class="btn" onclick="saveCalibration()">LAGRE KALIBRERING (BRUKAST TIL SNØDJUPNE)</button>
           <div id="calInfo" class="history">Kalibrering ikkje lagra i SNOWMAN-tenesta.</div>
           <h3>HELLING</h3>
-          <div class="row">
-            <span>Hellingskorreksjon</span
-            ><select id="tiltMode" style="width: 230px" onchange="saveTilt()">
-              <option value="auto">Auto (tilrådd)</option>
-              <option value="estimat">Berre utrekna</option>
-              <option value="av">Av</option>
+          <div class="rowWide">
+            <div>Hellingskorreksjon</div
+            ><select id="tiltMode" style="width: 100%" onchange="saveTilt()">
+              <option value="auto">Auto (tilrådd) – hellingsmålar i antenna om ho har</option>
+              <option value="estimat">Berre utrekna frå GPS og terreng</option>
+              <option value="av">Av – ingen hellingskorreksjon</option>
             </select>
           </div>
-          <label class="chk" style="display: block"><input id="tiltFlipPitch" type="checkbox" onchange="saveTilt()" /> Snu forteikn på stamp frå antenna (fram/bak)</label>
-          <label class="chk" style="display: block"><input id="tiltFlipRoll" type="checkbox" onchange="saveTilt()" /> Snu forteikn på krenging frå antenna (side)</label>
-          <div class="history" style="font-size: 12px">Auto: hellingsmålaren i antenna om ho har og sender han, elles utrekna frå GNSS og terrengmodell.</div>
-          <div id="tiltInfo" class="history">–</div>
+          <label class="chk" style="display: block"><input id="tiltFlipPitch" type="checkbox" onchange="saveTilt()" /> Snu fram/bak-helling (berre om kontrollen under viser feil retning)</label>
+          <label class="chk" style="display: block"><input id="tiltFlipRoll" type="checkbox" onchange="saveTilt()" /> Snu side-helling (berre om kontrollen under viser feil retning)</label>
+                    <div id="tiltInfo" class="history">–</div>
           <div class="history" style="font-size: 12px">
-            Antenna sit høgt over beltet. Når maskina står på skrå, er ho ikkje rett over beltet: utan korreksjon blir snødjupna
-            for høg (ca. 4 cm ved 10°, 18 cm ved 20°, 43 cm ved 30°), og punktet blir målt ved sida av der maskina står.
-            SNOWMAN rettar både høgda og punktet. Har antenna hellingsmålar (t.d. Leica GS18 T / iCON gps 70 T) og sender han
-            (HPR, PASHR eller PTNL,AVR), blir han brukt automatisk. Elles blir hellinga rekna ut frå GNSS-høgda langs
-            køyreretninga og terrengmodellen på tvers. <b>Kontroll:</b> køyr rett opp ein bakke – stamp skal vere positiv
-            (fronten opp). Stå med høgre side ned i ein sidebakke – krenging skal vere positiv.
+            Antenna sit høgt. I bakke står ho ikkje rett over belta, og snødjupna blir for høg utan korreksjon (ca. 4 cm ved 10°,
+            18 cm ved 20°). SNOWMAN rettar dette sjølv. <b>Kontroll:</b> køyr rett opp ein bakke, og fram/bak skal vise <b>+</b>.
+            Stå med høgre side ned, og side skal vise <b>+</b>.
           </div>
           <div class="history">
-            <b>Kalibreringsrutine:</b> Plasser maskina på eit kjent, plant kontrollpunkt. Mål antenneplasseringa fysisk mot eit fast
-            referansepunkt på maskina. Når RTK FIX er stabil, samanlikn GNSS-høgda med kjent høgd og legg berre inn dokumentert offset.
-            Snødjupne = GNSS-høgd − antennehøgd − høgdeoffset − terrenghøgd. Snødjupne blir berre vist når kalibreringa er lagra.
+            <b>Kalibreringsrutine:</b>
+            <ol style="margin: 4px 0 4px 18px; padding: 0">
+              <li>Stå på <b>flat barmark</b> innanfor terrengmodellen, med RTK FIX.</li>
+              <li>Mål antennehøgda (sjå over) og lagre.</li>
+              <li>Gå til <b>Kontroll</b>, skriv <b>0</b> og lagre. Gjenta på 2–3 stader.</li>
+              <li>Trykk <b>JUSTER HØGDEKORREKSJON</b> om avviket er det same alle stadene.</li>
+            </ol>
+            Snødjupne = GPS-høgd − antennehøgd − høgdekorreksjon − bakkehøgd frå terrengmodellen. Snødjupne blir berre vist når kalibreringa er lagra.
           </div>
         </section>
         <section id="panelCtl" class="panel">
@@ -1228,7 +1242,7 @@
           <div class="history">
             <b>Slik gjer du ei kontrollmåling:</b> Stopp maskina der du veit snødjupna – stikk snøsonda ned rett under antenna, eller stå på
             barmark (brøyta veg, parkeringsplass) og skriv 0. Vent på RTK FIX og trykk LAGRE. Ta minst 3 målingar på ulike stader. Er
-            avviket likt overalt, er det ein feil i kalibreringa, og SNOWMAN kan justere høgdeoffset. Sprikar avvika, er det terrengmodellen
+            avviket likt overalt, er det ein feil i kalibreringa, og SNOWMAN kan justere høgdekorreksjonen. Sprikar avvika, er det terrengmodellen
             eller snøsonderinga som er usikker.
           </div>
         </section>
@@ -1511,7 +1525,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.39";
+      const APP_VERSION = "1.6.40";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3668,7 +3682,7 @@
           $("geoidN").value = c.geoidN ?? "";
           $("geoidRow").classList.toggle("hide", $("heightMode").value !== "ellipsoid");
           $("calInfo").innerHTML = c.calibrated
-            ? "✅ Kalibrering lagra: antenne " + c.antZ + " m, offset " + c.zOff + " m, høgd " + (c.heightMode === "ellipsoid" ? "ellipsoidisk − N " + c.geoidN + " m" : c.heightMode === "geoide" ? "ellipsoidisk − Kartverket geoidemodell (HREF2018B)" : "NN2000 frå mottakaren")
+            ? "✅ Kalibrering lagra: antennehøgd " + c.antZ + " m, høgdekorreksjon " + c.zOff + " m, høgd " + (c.heightMode === "ellipsoid" ? "rå GPS-høgd − fast tal " + c.geoidN + " m" : c.heightMode === "geoide" ? "rå GPS-høgd − Kartverket-modellen (HREF2018B)" : "høgd over havet (NN2000) frå mottakaren")
             : "⚠️ Kalibrering ikkje lagra – snødjupne blir ikkje vist før ho er lagra.";
         }
         renderTerrain();
@@ -4729,7 +4743,7 @@
         $("ctlApply").classList.toggle("hide", !s.suggest);
         if (s.suggest)
           $("ctlApply").textContent =
-            "JUSTER HØGDEOFFSET: " + c.zOff.toFixed(3).replace(".", ",") + " → " + (c.zOff + s.mean).toFixed(3).replace(".", ",") + " m";
+            "JUSTER HØGDEKORREKSJON: " + c.zOff.toFixed(3).replace(".", ",") + " → " + (c.zOff + s.mean).toFixed(3).replace(".", ",") + " m";
         $("ctlChecks").innerHTML = c.checks
           .map(
             (k) =>
@@ -4777,13 +4791,13 @@
       }
       async function applyOffset() {
         let s = CTL.stats;
-        if (!confirm("Endre høgdeoffset med " + cm(s.mean, 1) + " basert på " + s.n + " kontrollmålingar?\n\nSnødjupna blir rekna på nytt med den nye kalibreringa.")) return;
+        if (!confirm("Endre høgdekorreksjonen med " + cm(s.mean, 1) + " basert på " + s.n + " kontrollmålingar?\n\nSnødjupna blir rekna på nytt med den nye kalibreringa.")) return;
         try {
           let r = await api("api/control/apply-offset", {});
           cfg.zOff = r.zOff;
           $("zOff").value = r.zOff;
           persistCfg();
-          toast("Høgdeoffset er no " + r.zOff.toFixed(3).replace(".", ",") + " m");
+          toast("Høgdekorreksjonen er no " + r.zOff.toFixed(3).replace(".", ",") + " m");
           loadControl();
         } catch (e) {
           toast(e.message);
@@ -4828,7 +4842,7 @@
             ? "Hellingskorreksjon er av."
             : t.total == null
               ? "Ventar på posisjon og terrengmodell …"
-              : "<b>Helling no: " + f(t.total).replace("+", "") + "</b> · stamp " + f(t.pitch) + " · krenging " + f(t.roll) +
+              : "<b>Helling no: " + f(t.total).replace("+", "") + "</b> · fram/bak " + f(t.pitch) + " · side " + f(t.roll) +
                 "<br>Kjelde: <b>" + esc(t.src + (t.sentence ? " (" + t.sentence + ")" : "")) + "</b> · målepunktet flytt " +
                 (t.shift != null ? t.shift.toFixed(2).replace(".", ",") : "–") + " m · høgd retta " +
                 (t.dz != null ? Math.round(t.dz * 100) : "–") + " cm" +

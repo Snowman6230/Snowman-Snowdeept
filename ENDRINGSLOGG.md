@@ -9,6 +9,24 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.40 – klarare tekstar i Innst. › Kalibrering
+- **Endra:** Alle felt og hjelpetekstar i Kalibrering er skrivne om så det går fram kva som skal målast og kvifor:
+  - «Antennehøgd: frå botnen av antennefestet ned til underkanten av belta», med hjelpetekst om å måle loddrett på flat mark og
+    at antennehøgda i sjølve mottakaren (t.d. Zenith) då skal vere 0.
+  - «Fast høgdeoffset» heiter no **«Høgdekorreksjon frå kontrollmåling – normalt 0»**, med forklaring på forteiknet. Same ord i
+    Kontroll-fana (knappen JUSTER HØGDEKORREKSJON, stadfesting og melding), i statuslinja og i LES-MEG/FELTPROVE.
+  - Høgdeval: spørsmålet «Kva høgd sender mottakaren?» med vala «Høgd over havet (NN2000) frå mottakaren»,
+    «Rå GPS-høgd → Kartverket-modellen (tilrådd)» og «Rå GPS-høgd → fast tal (berre om modellen manglar)».
+  - Helling: «Auto (tilrådd) – hellingsmålar i antenna om ho har», «Berre utrekna frå GPS og terreng», «Av»; «stamp/krenging»
+    heiter no «fram/bak» og «side», òg i visinga av hellinga. Kortare forklaring.
+  - Kalibreringsrutinen er ei nummerert liste (flat barmark → mål antennehøgd → kontrollmåling 0 på 2–3 stader → juster).
+  - Ordet «referansepunkt» er bytt ut med «underkanten av belta» / «midten av beltet».
+- **Endra:** Felta for antenne fram/bak og til sida er merka **«førebels berre til informasjon»** – dei blir lagra, men er
+  ikkje med i utrekninga av snødjupne enno.
+- **Endra:** Nedtrekksmenyane for høgd og helling går over heile breidda, så heile valet er synleg.
+- **Kvifor:** Eigaren opplevde tekstane som uklare under feltprøva. Ingen utrekningar er endra.
+- **Testa:** Kalibrering-fana opna i nettlesar (ingen JavaScript-feil), skjermbilete kontrollert.
+
 ### PC-prototype v1.6.39 – kontroll av RTCM-korreksjonane, og to feil i NTRIP-tilkoplinga retta
 - **Nytt:** NTRIP-sida viser no om korreksjonane faktisk er gyldige: tal på gyldige RTCM 3-rammer (CRC-24Q-kontroll), CRC-feil,
   meldingstypar, kva satellittsystem basen sender, basestasjonen (ID frå 1005/1006) og **avstanden til basen**, og ei kort
