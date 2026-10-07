@@ -9,6 +9,32 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.52 – meir i feltloggen for feilsøking
+- **Nytt (1) – snødjupnestatus:** kvar gong statusen endrar seg (t.d. «OK → NEGATIVE – sjekk høgdesystem», «OK →
+  Utanfor terrengmodell») blir det skrive i loggen med høgd, overflate, terrenghøgd, råverdi og terrenglag i augneblinken.
+  Statusar som tyder på feil oppsett blir merkte FEIL.
+- **Nytt (2) – korreksjonane i mottakaren:** CSV-fila har tre nye kolonnar: `korr_alder_s` og `base_id` frå GGA (viser om
+  mottakaren faktisk brukar korreksjonane, og frå kva base) og `ntrip` (tilkopla 1/0).
+- **Nytt (3) – endra innstillingar:** «Innstilling endra (kalibrering): antZ 2.8 → 10.0», tilsvarande for NTRIP/mottakar
+  og førarskjermen (breidder, mål, visingar, 3D-detalj …). **Passord og brukarnamn blir aldri skrivne** – berre «endra».
+- **Nytt (4) – programfeil:** JavaScript-feil i førarskjermen (med fil, linje og dei første linjene av kallstakken, maks
+  10 per minutt) og ubehandla feil i trådane i tenesta, med kvar i koden feilen oppstod.
+- **Nytt (5) – handlingar:** Start/Stopp prep (med distanse og tid), Demo starta/stoppa, Reset spor (knappen),
+  kontrollmåling med avvik, justert høgdekorreksjon, drivstoff registrert, og når skjermkortvernet set ned 3D-detaljen.
+- **Nytt (6) – oppstartsblokk** når loggen startar: versjon, operativsystem, Python, heile kalibreringa, helling,
+  mottakarport, NTRIP-oppsett **utan passord**, aktive terrenglag med oppløysing, maskin- og fresbreidder, og skjerm/
+  skjermkort/nettlesar frå førarskjermen.
+- **Avgjerd (eigaren):** punkt 7–10 vart arkiverte til seinare (sjå under).
+- **Arkivert til seinare (ikkje laga):**
+  7. Terreng: maskina køyrer inn i/ut av eit terrenglag, eller byter lag.
+  8. Nett: internett borte/tilbake, feil ved eksport av rapportar.
+  9. Klokke: skilnad mellom PC-klokka og GNSS-tida (feil klokke gir feil prepareringsdøgn).
+  10. Yting kvart minutt: minne og CPU i tenesta, biletfart i 3D, ledig diskplass.
+  Òg ført opp som «kan vente»: HUD tilkopla/fråkopla, batteri/straum på Surface-en.
+- **Testa:** simulator med testterreng: oppstartsblokka, antZ 2,8 → 10 → 2,8 gav NEGATIVE og tilbake til OK med tal,
+  NTRIP-endring utan passord i loggen (sjekka at passordet ikkje finst i nokon loggfil), Start/Stopp prep frå skjermen,
+  JavaScript-feil og ubehandla feil kom i loggen, CSV med korreksjonsalder 1.0 og base 0001.
+
 ### PC-prototype v1.6.51 – feltloggane: kompakt liste, feil og hendingar
 - **Endra – lista i Innst. › System › Feltlogg** tek mykje mindre plass:
   - **Samanfalda (B):** éi linje «Loggar: N stk · X MB · ⚠ N feil ▸ Vis» til ho blir opna.

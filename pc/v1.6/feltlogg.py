@@ -19,7 +19,8 @@ TINY_BYTES = 10_000
 TINY_DAYS = 7
 COLS = ["tid", "fix", "satellittar", "hdop", "breidd", "lengd", "hogd", "geoidehogd", "terrenghogd", "terrenglag",
         "snodjupne_raa", "snodjupne", "status", "fart_ms", "kurs", "antZ", "zOff", "simulert",
-        "helling_kjelde", "helling_grader", "stamp", "krenging", "malepunkt_flytt_m"]
+        "helling_kjelde", "helling_grader", "stamp", "krenging", "malepunkt_flytt_m",
+        "korr_alder_s", "base_id", "ntrip"]   # v1.6.52: alder på korreksjonane og basestasjon frå GGA, NTRIP tilkopla
 
 
 class FeltLogg:
@@ -119,6 +120,7 @@ class FeltLogg:
              st.get("speed"), st.get("course"), cfg.get("antZ"), cfg.get("zOff"), int(bool(st.get("simulated")))]
         tl = st.get("tilt") or {}
         r += [tl.get("src"), tl.get("total"), tl.get("pitch"), tl.get("roll"), tl.get("shift")]
+        r += [st.get("corr_age"), st.get("base_id"), int(bool(st.get("ntrip_connected")))]
         with self.lock:
             if self.csv:
                 csv.writer(self.csv).writerow(r)

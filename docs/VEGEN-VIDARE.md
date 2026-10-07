@@ -185,6 +185,16 @@ Analysert 2026-10-07. Eigaren bestemte å leggje dette i ein seinare versjon –
   per dag med nedlasting av heile dagen, D: skjul og slett nesten tomme loggar (< ca. 10 kB) etter 7 dagar.
 - Moglegheit: automatisk opprydding (behald 30 dagar / maks 500 MB).
 
+## 11. Meir i feltloggen (arkivert 2026-10-07)
+
+Punkt 1–6 vart laga i v1.6.52 (snødjupnestatus, korreksjonsalder/base, endra innstillingar, programfeil, handlingar,
+oppstartsblokk). Desse står att til seinare:
+- Terreng: inn i/ut av terrenglag, byte av lag.
+- Nett: internett borte/tilbake, feil ved eksport av rapportar.
+- Klokke: skilnad mellom PC-klokka og GNSS-tida.
+- Yting kvart minutt: minne og CPU i tenesta, biletfart i 3D, ledig diskplass.
+- Kan vente: HUD tilkopla/fråkopla, batteri/straum på Surface-en.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |

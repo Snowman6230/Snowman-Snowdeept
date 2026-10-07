@@ -1528,7 +1528,7 @@
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
-        ><button class="tool" onclick="resetWork()"><i>↺</i>Reset spor</button
+        ><button class="tool" onclick="logClient('action', 'Reset spor (knapp)');resetWork()"><i>↺</i>Reset spor</button
         ><button id="demoBtn" class="tool" onclick="toggleDemo()"><i>▶</i>Demo</button
         ><button id="fsBtn" class="tool" onclick="toggleFullscreen()"><i>⛶</i>Fullskjerm</button>
       </div>
@@ -1616,7 +1616,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.51";
+      const APP_VERSION = "1.6.52";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3115,6 +3115,7 @@
         persistCfg();
         detailLabel();
         T3D.detailChanged(false);
+        logClient("action", "Skjermkortvern: 3D-detalj sett ned til " + DETAIL_TXT[nv] + " (ca. " + fps + " bilete/s)");
         toast("3D-detalj sett ned til " + DETAIL_TXT[nv] + " – skjermkortet klarte berre ca. " + fps + " bilete i sekundet. Kan endrast i Innst. › Kart.");
       }
       function toggleNorth() {
@@ -3186,6 +3187,7 @@
       });
       function togglePreparing() {
         if (demo) stopDemo();
+        logClient("action", preparing ? "Stopp prep – " + Math.round(total) + " m køyrt, tid " + $("elapsed").textContent : "Start prep (" + (src === "gnss" && gnss ? gnss.fix : src) + ")");
         if (preparing) {
           let n = currentSession ? currentSession.points.length : 0;
           saveCurrentSession(true);
@@ -3761,6 +3763,7 @@
           return;
         }
         if (preparing) togglePreparing(); // avslutt ekte økt før demo
+        logClient("action", "Demo starta");
         stopPlayback();
         srcBeforeDemo = src;
         demo = true;
@@ -3803,6 +3806,7 @@
         if (demoTimer) clearInterval(demoTimer);
         demoTimer = null;
         if (demo) {
+          logClient("action", "Demo stoppa");
           saveCurrentSession(true);
           demo = false;
           src = srcBeforeDemo === "demo" ? "none" : srcBeforeDemo;
@@ -5430,6 +5434,40 @@
         }
         setTimeout(publishHUD, 200);
       }
+      /* ---------- Feltlogg frå førarskjermen (v1.6.52): JavaScript-feil, handlingar og skjerm/3D-info ---------- */
+      let logErrN = 0,
+        logErrT = 0;
+      function logClient(kind, text) {
+        if (!backendOK && kind !== "error") return;
+        try {
+          fetch("api/log/client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, text: String(text).slice(0, 600) }), keepalive: true }).catch(() => {});
+        } catch (e) {}
+      }
+      function logJsError(msg) {
+        if (Date.now() - logErrT > 60000) {
+          logErrT = Date.now();
+          logErrN = 0;
+        }
+        if (++logErrN <= 10) logClient("error", msg); // maks 10 per minutt frå skjermen
+      }
+      window.addEventListener("error", (e) =>
+        logJsError((e.message || "Ukjend feil") + " [" + String(e.filename || "").split("/").pop() + ":" + e.lineno + ":" + e.colno + "]" + (e.error && e.error.stack ? " | " + e.error.stack.split("\n").slice(0, 3).join(" | ") : "")),
+      );
+      window.addEventListener("unhandledrejection", (e) => logJsError("Ubehandla feil: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
+      // Skjermkort og skjerm til oppstartsblokka i loggen
+      setTimeout(() => {
+        let info = "skjerm " + screen.width + "×" + screen.height + " @" + (window.devicePixelRatio || 1) + ", vindauge " + innerWidth + "×" + innerHeight;
+        try {
+          let gl = document.createElement("canvas").getContext("webgl"),
+            dbg = gl && gl.getExtension("WEBGL_debug_renderer_info"),
+            ani = gl && gl.getExtension("EXT_texture_filter_anisotropic");
+          info += gl
+            ? ", skjermkort " + (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) + ", maks anisotropi " + (ani ? gl.getParameter(ani.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : "-")
+            : ", WebGL manglar";
+        } catch (e) {}
+        info += ", nettlesar " + (navigator.userAgent.match(/(Edg|Chrome|Firefox)\/[\d.]+/) || ["?"])[0];
+        logClient("info", info);
+      }, 4000);
       load();
       fillMapForm();
       pollGNSS();

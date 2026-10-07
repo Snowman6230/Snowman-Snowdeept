@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.51"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.52"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -28,6 +28,52 @@ import helling as HL
 HEL=HL.Helling()   # hellingskorreksjon: antenna står ikkje rett over beltet når maskina står på skrå
 import feltlogg as F
 LOG=F.FeltLogg(DATA/"logg")   # feltlogg: alt frå mottakaren + det SNOWMAN rekna ut (Innst. › System)
+
+import traceback, platform
+def where(e):
+    """Kvar i koden ein feil oppstod (fil:linje i funksjon) – til feltloggen."""
+    tb=traceback.extract_tb(e.__traceback__) if e is not None and e.__traceback__ else []
+    return f" [{Path(tb[-1].filename).name}:{tb[-1].lineno} i {tb[-1].name}]" if tb else ""
+def _thread_err(a):
+    LOG.event(f"Programfeil i tråd {a.thread.name if a.thread else '?'}: {a.exc_type.__name__}: {a.exc_value}{where(a.exc_value)}",err=True)
+threading.excepthook=_thread_err
+_old_hook=sys.excepthook
+def _main_err(t,v,tb):
+    try: LOG.event(f"Programfeil: {t.__name__}: {v}{where(v)}",err=True)
+    except Exception: pass
+    _old_hook(t,v,tb)
+sys.excepthook=_main_err
+
+def log_changes(what,before,after,keys):
+    """Endra innstillingar til feltloggen (passord og brukarnamn blir aldri skrivne – berre at dei er endra)."""
+    ch=[]
+    for k in keys:
+        a,b=before.get(k),after.get(k)
+        if a!=b: ch.append(f"{k}: endra" if k in ("password","username") else f"{k}: {a} → {b}")
+    if ch: LOG.event(f"Innstilling endra ({what}): "+"; ".join(ch))
+
+def start_log(note):
+    """Start feltloggen og skriv ei oppstartsblokk med alt som trengst for å forstå loggen (aldri passord)."""
+    if LOG.active(): return LOG.name
+    name=LOG.start(note)
+    try:
+        LOG.event(f"Oppstart: SNOWMAN v{VERSION} · {platform.platform()} · Python {platform.python_version()}")
+        LOG.event(f"Kalibrering: antennehøgd {CFG['antZ']} m, høgdekorreksjon {CFG['zOff']} m, høgdeval {CFG['heightMode']}"
+                  f"{', fast geoidehøgd '+str(CFG['geoidN']) if CFG.get('heightMode')=='ellipsoid' else ''}, lagra {bool(CFG.get('calibrated'))}")
+        LOG.event(f"Helling: {CFG.get('tiltMode')}, snu fram/bak {bool(CFG.get('tiltFlipPitch'))}, snu side {bool(CFG.get('tiltFlipRoll'))}")
+        LOG.event(f"Mottakar: port {CFG['serial_port'] or '-'} @ {CFG['baud']}, oppstartskommandoar {'ja' if (CFG.get('initCmds') or '').strip() else 'nei'}")
+        LOG.event(f"NTRIP: {CFG['caster'] or '-'}:{CFG['caster_port']}/{CFG['mountpoint'] or '-'}, versjon {CFG.get('ntrip_version')}, "
+                  f"vakthund {CFG.get('ntrip_timeout')} s, GGA kvart {CFG['gga_interval']} s, brukar sett {'ja' if CFG['username'] else 'nei'}")
+        if T.AVAILABLE:
+            ls=[f"{m.get('name')} ({m.get('type')}, {m.get('res')} m, {'aktiv' if m.get('active') else 'av'})" for m in TERR.listing()]
+            LOG.event("Terrenglag: "+("; ".join(ls) if ls else "ingen"))
+        try:
+            u=json.loads(UI_CFG.read_text("utf-8")); c=u.get("cfg",u) if isinstance(u,dict) else {}
+            LOG.event("Maskin: "+", ".join(f"{k} {c.get(k)}" for k in ("mname","machine","blade","bladeN","tiller","tillerN","target","tol","detail3d") if k in c))
+        except Exception: pass
+        if STATE.get("client_info"): LOG.event("Skjerm/3D: "+STATE["client_info"])
+    except Exception as e: LOG.event(f"Kunne ikkje skrive oppstartsblokka: {e}{where(e)}",err=True)
+    return name
 KON=K.Kontroll(DATA/"kontroll.json",TERR if T.AVAILABLE else None,T.utm_inverse)
 try:
     import trasear as TR   # trasear (yttergrenser), forbodne område og prosent preparert – krev numpy som Terrain Engine
@@ -171,6 +217,11 @@ def parse_gga(line):
             LOG.event(f"Fix: {prev} → {fix} ({p[7] or '?'} satellittar)",err=(prev=="RTK FIX"))
         alt=float(p[9]) if p[9] else None
         sep=float(p[11]) if len(p)>11 and p[11] else None
+        # Alder på korreksjonane (s) og ID til basestasjonen som mottakaren brukar (GGA-felt 13 og 14): viser om
+        # mottakaren faktisk brukar korreksjonane. Tomt = mottakaren brukar ingen.
+        try: corr_age=float(p[13]) if len(p)>13 and p[13] else None
+        except ValueError: corr_age=None
+        base_id=(p[14].split("*")[0].strip() or None) if len(p)>14 else None
         lat,lon=nmea_coord(p[2],p[3],True), nmea_coord(p[4],p[5],False)
         v,h=_motion(lat,lon); HEL.add_position(lat,lon,alt)
         # Hellingskorreksjon: finn punktet der maskina står (under midten) og høgda ned til snøflata
@@ -186,17 +237,22 @@ def parse_gga(line):
         # Terrain Engine: terrenghøgd under maskina og snødjupne
         ter=TERR.height(mlat,mlon) if (mlat is not None and mlon is not None) else None
         depth,dstat,det=T.snow_depth(alt,sep,fix,ter,cal) if T.AVAILABLE else (None,"NO_ENGINE",{})
+        pst=STATE.get("depth_status")
+        if pst is not None and pst!=dstat:   # kvifor forsvann (eller kom) snødjupna – med tala i augneblinken
+            LOG.event(f"Snødjupne-status: {pst} → {dstat} ({DEPTH_TXT.get(dstat,'OK') if dstat!='OK' else 'snødjupne blir vist'}); "
+                      f"høgd {det.get('H')}, overflate {det.get('surface')}, terreng {det.get('terrain')}, rå {det.get('raw')}, "
+                      f"lag {(ter or {}).get('name','-')}",err=dstat in ("NEGATIVE","NO_GEOID","NO_HEIGHT","NO_ENGINE"))
         update(last_gga=line.strip(), fix=fix,
                satellites=int(p[7] or 0), hdop=float(p[8]) if p[8] else None,
                altitude=alt, geoid_sep=sep, lat=lat, lon=lon, tilt=tilt, geoid_model=None if gN is None else round(gN,3),
                h_nn2000=None if T.nn2000_height(alt,sep,lat,lon,CFG) is None else round(T.nn2000_height(alt,sep,lat,lon,CFG),3),
-               h_ell=None if alt is None else round(alt+(sep or 0),3),
+               h_ell=None if alt is None else round(alt+(sep or 0),3), corr_age=corr_age, base_id=base_id,
                terrain=ter, depth=None if depth is None else round(depth,3), depth_status=dstat, depth_detail=det)
         update(speed=round(v,2), course=None if h is None else round(h))
         LOG.row(STATE,CFG)
     except Exception as e:
         update(last_error=f"GGA parse: {e}")
-        if time.time()-LOGRATE.get("gga",0)>60: LOGRATE["gga"]=time.time(); LOG.event(f"Kunne ikkje tolke GGA: {e}",err=True)
+        if time.time()-LOGRATE.get("gga",0)>60: LOGRATE["gga"]=time.time(); LOG.event(f"Kunne ikkje tolke GGA: {e}{where(e)}",err=True)
 
 def serial_loop():
     global serial_obj
@@ -253,7 +309,7 @@ def serial_loop():
             update(serial_connected=False)   # løkka slutta (port lukka/endra) – aldri «TILKOPLA» utan open port
         except Exception as e:
             update(serial_connected=False,last_error=f"Serial: {e}")
-            LOG.event(f"Mottakar-feil: {e}",err=True)
+            LOG.event(f"Mottakar-feil: {e}{'' if isinstance(e,OSError) else where(e)}",err=True)
             try:
                 if serial_obj: serial_obj.close()
             except: pass
@@ -307,7 +363,7 @@ def ntrip_loop():
                 update(bytes_rtcm=STATE["bytes_rtcm"]+len(data),ntrip_wait=0,rtcm=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]+len(data)))
         except Exception as e:
             update(ntrip_connected=False,last_error=f"NTRIP: {e}")
-            LOG.event(f"NTRIP-feil: {e}",err=True)
+            LOG.event(f"NTRIP-feil: {e}{'' if isinstance(e,(OSError,NK.NtripError)) else where(e)}",err=True)
             if stream: stream.close()
             ntrip_sock=None
             time.sleep(10 if isinstance(e,NK.NtripError) and e.code in ("auth","mount") else 3)
@@ -537,9 +593,11 @@ class API(http.server.BaseHTTPRequestHandler):
         body=self.rfile.read(n)
         if self.path=="/api/config":
             try:
-                d=json.loads(body or b"{}")
+                d=json.loads(body or b"{}"); before=dict(CFG)
                 for k in CFG:
                     if k in d and not (k=="password" and d[k] in ("***",)): CFG[k]=d[k]
+                log_changes("NTRIP/mottakar",before,CFG,("serial_port","baud","caster","caster_port","mountpoint","username","password",
+                            "ntrip_version","ntrip_timeout","gga_interval","initCmds"))
                 save_cfg(); update(last_error="")
                 self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"config":{**CFG,"password":"***" if CFG["password"] else ""}}).encode())
             except Exception as e:
@@ -585,7 +643,8 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 if FUEL is None: raise RuntimeError("Drivstoff krev numpy: "+TRA_ERR)
                 d=json.loads(body or b"{}")
-                if self.path=="/api/fuel/add": r={"ok":True,"fill":FUEL.add(d)}
+                if self.path=="/api/fuel/add":
+                    r={"ok":True,"fill":FUEL.add(d)}; LOG.event(f"Førar: drivstoff registrert – {d.get('litres')} l, timeteljar {d.get('hours') or '-'}")
                 else: FUEL.delete(d["id"]); r={"ok":True}
                 r.update(fuel=FUEL.computed(),summary=FUEL.summary())
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
@@ -612,12 +671,16 @@ class API(http.server.BaseHTTPRequestHandler):
         if self.path.startswith("/api/control/"):
             try:
                 d=json.loads(body or b"{}"); a=self.path[13:]
-                if a=="check": r={"ok":True,"check":KON.add_check(STATE,CFG,d.get("known"),d.get("note",""),sim_truth())}
+                if a=="check":
+                    c=KON.add_check(STATE,CFG,d.get("known"),d.get("note",""),sim_truth()); r={"ok":True,"check":c}
+                    LOG.event(f"Førar: kontrollmåling – kjend {c.get('known')} m, SNOWMAN rå {c.get('raw')} m, avvik "
+                              f"{None if c.get('raw') is None else round(c['raw']-float(c['known']),3)} m ({c.get('layerName') or '-'})")
                 elif a=="check/delete": KON.delete_check(d["id"]); r={"ok":True}
                 elif a=="point": r={"ok":True,"point":KON.add_point(d.get("name"),d.get("E"),d.get("N"),d.get("zone",32),d.get("h"))}
                 elif a=="point/delete": KON.delete_point(d["id"]); r={"ok":True}
                 elif a=="apply-offset":
                     z,m=KON.apply_offset(CFG); save_cfg(); r={"ok":True,"zOff":z,"change":m}
+                    LOG.event(f"Førar: høgdekorreksjon justert til {z} m (endring {m} m) frå kontrollmålingar")
                 else: raise ValueError("Ukjend kontroll-handling")
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
@@ -636,8 +699,10 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 d=json.loads(body or b"{}")
                 if self.path=="/api/calibration":
-                    for k in ("antZ","zOff","heightMode","geoidN","calibrated","tiltMode","tiltFlipPitch","tiltFlipRoll"):
+                    before=dict(CFG); ks=("antZ","zOff","heightMode","geoidN","calibrated","tiltMode","tiltFlipPitch","tiltFlipRoll")
+                    for k in ks:
                         if k in d: CFG[k]=d[k]
+                    log_changes("kalibrering",before,CFG,ks)
                     save_cfg(); r={"ok":True}
                 elif not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
                 elif self.path=="/api/terrain/import":
@@ -651,10 +716,27 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/log/client":   # frå førarskjermen: JavaScript-feil, handlingar og skjerm/3D-info
+            try:
+                d=json.loads(body or b"{}"); kind=d.get("kind"); txt=str(d.get("text",""))[:600]
+                if kind=="error":
+                    n=LOGRATE.get("js_n",0) if time.time()-LOGRATE.get("js_t",0)<60 else 0
+                    if n==0: LOGRATE["js_t"]=time.time()
+                    LOGRATE["js_n"]=n+1
+                    if n<20: LOG.event("Førarskjerm-feil: "+txt,err=True)   # maks 20 per minutt
+                elif kind=="action": LOG.event("Førar: "+txt)
+                elif kind=="info":
+                    if txt!=STATE.get("client_info"):
+                        update(client_info=txt)
+                        if LOG.active(): LOG.event("Skjerm/3D: "+txt)
+                self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if self.path=="/api/log":
             try:
                 d=json.loads(body or b"{}"); a=d.get("action")
-                if a=="start": LOG.start(f"SNOWMAN v{VERSION}, port {CFG['serial_port'] or '-'}, antZ {CFG['antZ']}, zOff {CFG['zOff']}, høgd {CFG['heightMode']}")
+                if a=="start": start_log(f"SNOWMAN v{VERSION}, port {CFG['serial_port'] or '-'}, antZ {CFG['antZ']}, zOff {CFG['zOff']}, høgd {CFG['heightMode']}")
                 elif a=="stop": LOG.stop()
                 elif a=="delete": LOG.delete_all()
                 if "always" in d: O.save_system(logAlways=bool(d["always"]))
@@ -688,6 +770,11 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 d=json.loads(body or b"{}")
                 if not isinstance(d,dict) or len(body)>300000: raise ValueError("Ugyldige innstillingar")
+                try:
+                    old=json.loads(UI_CFG.read_text("utf-8")); oc=old.get("cfg",old); nc=d.get("cfg",d)
+                    log_changes("førarskjerm",oc,nc,("mname","machine","blade","bladeN","tiller","tillerN","target","tol","bounds","northUp",
+                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY"))
+                except Exception: pass
                 write_atomic(UI_CFG,json.dumps(d,ensure_ascii=False,indent=1))
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
             except Exception as e:
@@ -808,7 +895,7 @@ def main():
     print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}")
     if a.lan or CFG.get("hudLan"): set_hud_lan(True)
     # Hovudtenesta (styring, innstillingar) er berre tilgjengeleg på denne PC-en.
-    if O.system_cfg().get("logAlways"): LOG.start(f"Starta automatisk. SNOWMAN v{VERSION}")
+    if O.system_cfg().get("logAlways"): start_log(f"Starta automatisk. SNOWMAN v{VERSION}")
     SERVER[0]=http.server.ThreadingHTTPServer(("127.0.0.1",a.http_port),API)
     try: SERVER[0].serve_forever()
     except KeyboardInterrupt: pass
