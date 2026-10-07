@@ -9,6 +9,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.46 – automatisk vern for svake skjermkort i 3D
+- **Nytt:** Dei første 10 sekunda i 3D/frontrute (etter 2 s oppvarming) måler SNOWMAN tida per bilete. Klarer skjermkortet
+  under ca. 15 bilete i sekundet, blir **3D-detalj nær maskina sett eitt steg ned** (HØG → NORMAL → AV), og føraren får
+  melding: «3D-detalj sett ned til … – skjermkortet klarte berre ca. N bilete i sekundet. Kan endrast i Innst. › Kart.»
+  Etter nedtrapping blir det målt på nytt, til farta held eller detaljen er AV.
+- **Avgjerd:** vernet går berre ned, aldri opp. Vel føraren nivå sjølv med knappen, gjeld valet resten av økta (ingen
+  automatikk overstyrer føraren). Held farta, blir det ikkje målt meir den økta.
+- **Avgjerd (eigaren):** full skjermkorttest per maskin blir lagd i v1.9/v2.0 saman med installasjonsrettleiinga
+  (docs/VEGEN-VIDARE.md kap. 9).
+- **Testa:** treg programvare-GPU (ca. 1 bilete/s): NORMAL → AV med melding etter ca. 14 s; når føraren har valt sjølv,
+  blir nivået verande. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.45 – skarpare spor og terreng i 3D og frontrute
 - **Endra (steg 1):** teksturane i 3D blir filtrerte med det høgaste skjermkortet klarer (anisotropi, vanlegvis 16 i staden
   for 4), så spor og kurver held seg skarpe når ein ser langs bakken. «Snødjupne framfor»-estimatet blir teikna i full

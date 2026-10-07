@@ -134,6 +134,18 @@ på det som mogleg framtidig versjon.* Prototypen ligg i `docs/prototypar/3d-tra
 
 Ope spørsmål til eigaren: høgdekurver oppå kartet i 3D – svakare (forslag), som no, eller ingen når kartet er på.
 
+## 9. Skjermkorttest per maskin (planlagt v1.9/v2.0)
+
+Bestemt av eigaren 2026-10-07. Eit **automatisk vern** finst frå v1.6.46: dei første 10 s i 3D blir biletfarten målt, og
+3D-detalj blir sett eitt steg ned (HØG → NORMAL → AV) om skjermkortet ikkje klarer ca. 15 bilete i sekundet.
+
+Den fulle testen kjem saman med installasjonsrettleiinga, når SNOWMAN skal på mange ulike maskiner:
+- Eigen test under Innst. › System (ca. 30 s, maskina i ro) som prøver detaljnivå (høg/normal/av), skjermoppløysing
+  (1,5 × / 2 ×) og storleiken på 3D-området (300 m / 800 m, sjå kap. 8).
+- Vel det beste oppsettet som held flyt (mål: minst 25 bilete i sekundet i frontrute), og lagrar det per maskin.
+- Resultatet blir vist (skjermkort, bilete i sekundet per nivå) og kan sendast med i feltloggen/support.
+- Grunnlag for å kunne slå på større 3D-område og bakgrunnskart i 3D (kap. 8) berre der skjermkortet taklar det.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
@@ -141,7 +153,7 @@ Ope spørsmål til eigaren: høgdekurver oppå kartet i 3D – svakare (forslag)
 | **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
 | **v1.7** | Anleggspakke, fleire terrengfiler på ein gong, LAS/LAZ/XYZ, trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). |
-| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate. |
+| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
 | Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
 | Seinare | CAN-bus (drivstoff, motordata, vinsj – ulikt for PistenBully og Prinoth), LiDAR for snødjupne framfor maskina. |

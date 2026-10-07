@@ -1546,7 +1546,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.45";
+      const APP_VERSION = "1.6.46";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1930,7 +1930,10 @@
           dC = null,
           dPx = 0,
           dDirty = false,
-          dLast = 0;
+          dLast = 0,
+          // Automatisk vern (v1.6.46): dei første 10 s i 3D blir tida per bilete målt. Går det tregare enn ca. 15 bilete/s,
+          // blir 3D-detalj sett eitt steg ned (berre ned, aldri opp). Vel føraren nivå sjølv, gjeld valet resten av økta.
+          guard = { on: true, t0: 0, n: 0, sum: 0, prev: 0 };
         const DETAIL_PX = { hog: 16, normal: 12, av: 0 };
         const mLon = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
         function local(p) {
@@ -2402,10 +2405,30 @@
             if (VIEWS[viewMode()].gl) applyView();
           }
         }
+        function guardFrame(t) {
+          if (!guard.on || !dLevel() || !patch) return (guard.prev = 0);
+          if (!guard.prev) {
+            guard.prev = t;
+            guard.t0 = t;
+            guard.n = guard.sum = 0;
+            return;
+          }
+          let dt = t - guard.prev;
+          guard.prev = t;
+          if (t - guard.t0 < 2000 || dt > 2000) return; // 2 s oppvarming; lange pausar (fana skjult) tel ikkje
+          guard.n++;
+          guard.sum += dt;
+          if (t - guard.t0 < 12000) return;
+          let avg = guard.sum / guard.n;
+          guard.prev = 0;
+          if (avg > 66) lowerDetail3d(Math.round(1000 / avg)); // under ca. 15 bilete i sekundet
+          else guard.on = false; // held farta: ingen fleire målingar denne økta
+        }
         function frame(t) {
           raf = requestAnimationFrame(frame);
           if (t - lastFrame < 33) return; // ca. 30 bilete i sekundet
           lastFrame = t;
+          guardFrame(t);
           let cv = $("t3d"),
             w = cv.clientWidth,
             h = cv.clientHeight;
@@ -2494,8 +2517,10 @@
         return {
           ready,
           request,
-          detailChanged() {
+          detailChanged(manual) {
             if (renderer && patch) dC = null; // byggjast på nytt i neste bilete med nytt nivå
+            if (manual) guard.on = false; // føraren har valt sjølv
+            guard.prev = 0; // ny måling med nytt nivå
           },
           show(on) {
             visible = on && init();
@@ -2927,12 +2952,23 @@
         cfg.detail3d = order[(order.indexOf(v) + 1) % order.length];
         persistCfg();
         detailLabel();
-        T3D.detailChanged();
+        T3D.detailChanged(true);
         toast(
           { hog: "3D-detalj HØG – skarpast (16 pikslar per meter nær maskina)", normal: "3D-detalj NORMAL (12 pikslar per meter nær maskina)", av: "3D-detalj AV – lettast for skjermkortet" }[
             cfg.detail3d
           ],
         );
+      }
+      // Kalla av det automatiske vernet i 3D når skjermkortet ikkje held farta: eitt steg ned (HØG → NORMAL → AV)
+      function lowerDetail3d(fps) {
+        let v = DETAIL_TXT[cfg.detail3d] ? cfg.detail3d : "normal",
+          nv = v === "hog" ? "normal" : "av";
+        if (v === "av") return;
+        cfg.detail3d = nv;
+        persistCfg();
+        detailLabel();
+        T3D.detailChanged(false);
+        toast("3D-detalj sett ned til " + DETAIL_TXT[nv] + " – skjermkortet klarte berre ca. " + fps + " bilete i sekundet. Kan endrast i Innst. › Kart.");
       }
       function toggleNorth() {
         cfg.northUp = !cfg.northUp;
