@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-07
 
+### PC-prototype v1.6.42 – NTRIP-sida viser at det er lagra
+- **Endra:** Når ein trykkjer LAGRE / KOPLE TIL, skiftar knappen til «LAGRAR …» og så grøn «✓ LAGRA», og under knappen
+  står «✓ Lagra kl. 11:38. Koplar til …». SNOWMAN følgjer så med på oppkoplinga i inntil 20 s og skriv anten
+  «NTRIP tilkopla (NTRIP 1)» eller feilen (t.d. feil passord) i raudt. Lagring som feilar, blir vist som «LAGRING FEILA».
+- **Endra:** Knappen er sperra i 2,5 s etter trykk, så fleire trykk ikkje sender fleire lagringar. Passordfeltet blir tømt
+  etter lagring (passordet er lagra og står som «(uendra)»).
+- **Kvifor:** Før kom det inga tilbakemelding, så det var lett å trykke fleire gonger utan å vite om det var lagra.
+- **Testa:** i nettlesar mot simulert caster: tekst rett etter trykk, melding om tilkopla etter 3,5 s, ingen JavaScript-feil.
+
 ### PC-prototype v1.6.41 – NTRIP: vakthund, NTRIP 2 og liste over mountpoints
 - **Nytt – vakthund:** kjem det ingen korreksjonar på 20 sekund (justerbart på NTRIP-sida, minst 5), koplar SNOWMAN opp på
   nytt av seg sjølv. Før kunne SNOWMAN vise «TILKOPLA» i det uendelege når mobilnettet hang utan at sambandet vart lukka,

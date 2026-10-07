@@ -17,14 +17,29 @@
 <textarea id=initCmds rows=3 style="width:100%;max-width:640px;background:#102733;color:#fff;border:1px solid #456;padding:8px;font-family:monospace" placeholder="Éin kommando per linje. Blir sende kvar gong porten blir opna."></textarea>
 <p style="font-size:13px;color:#9ab3c1;margin:4px">Vanlegvis tomt. GeoMax Zenith35 Pro treng ingen kommandoar her: set Working Mode = RTK Rover og RTK Data Source = Bluetooth på nettsida til Zenith-en (192.168.10.1). Svaret frå mottakaren blir vist under «Svar frå mottakar».</p>
 <p id=portinfo style="font-size:13px;color:#9ab3c1;margin:4px"></p>
-<button onclick=save()>LAGRE / KOPLE TIL</button><button onclick="location.href='/'" style="background:#2e4b5c">← TILBAKE TIL SNOWMAN</button></div>
+<button id=saveBtn onclick=save()>LAGRE / KOPLE TIL</button><button onclick="location.href='/'" style="background:#2e4b5c">← TILBAKE TIL SNOWMAN</button><div id=saveMsg aria-live=polite style="margin:4px 8px;font-weight:bold;min-height:1.3em"></div></div>
 <div class=card><h3>Status</h3><pre id=s>Vent...</pre></div>
 <script>
 // Fyll skjemaet med det som er lagra – elles blir tomme felt / feil port lagra over det som verkar
 async function load(){try{let r=await(await fetch('/api/config')).json(),c=r.config;for(let k in c){let e=document.getElementById(k);if(e&&c[k]!=null)e.value=c[k]}
 let p=(await(await fetch('/api/ports')).json()).ports||[];document.getElementById('ports').innerHTML=p.map(x=>`<option value="${x.port}">${x.desc}</option>`).join('');
 document.getElementById('portinfo').textContent=p.length?'Portar på PC-en: '+p.map(x=>x.port+' ('+x.desc+')').join(' · ')+'. Bluetooth: bruk den UTGÅANDE porten (Windows › Bluetooth › COM-portar).':''}catch(e){}}load();
-async function save(){let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password','initCmds','ntrip_version','ntrip_timeout'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;x.ntrip_timeout=Math.max(5,+x.ntrip_timeout||20);if(!x.password)delete x.password;await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x)})}
+// Lagre: knappen og meldinga under viser tydeleg at det er lagra (og om oppkoplinga lukkast) – så ingen treng å trykke fleire gonger
+let saving=false;
+async function save(){if(saving)return;saving=true;let btn=document.getElementById('saveBtn'),msg=document.getElementById('saveMsg');
+btn.disabled=true;btn.textContent='LAGRAR …';btn.style.background='#4a6878';msg.className='';msg.textContent='';
+let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password','initCmds','ntrip_version','ntrip_timeout'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;x.ntrip_timeout=Math.max(5,+x.ntrip_timeout||20);if(!x.password)delete x.password;
+try{let r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x)}),j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+let d=new Date(),kl=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+btn.textContent='✓ LAGRA';btn.style.background='#1f8a4c';msg.className='ok';msg.textContent='✓ Lagra kl. '+kl+'. Koplar til mottakar og caster …';
+document.getElementById('password').value='';
+// Følg med på oppkoplinga i inntil 20 s og fortel korleis det gjekk
+let t0=Date.now();(async function chk(){try{let st=await(await fetch('/api/status')).json();
+if(x.caster&&x.mountpoint&&st.ntrip_connected&&Date.now()-t0>1500){msg.className='ok';msg.textContent='✓ Lagra kl. '+kl+' – NTRIP tilkopla'+(st.ntrip_proto?' ('+st.ntrip_proto+')':'')+'.';return}
+if(st.last_error&&Date.now()-t0>2500){msg.className='bad';msg.textContent='Lagra kl. '+kl+', men: '+st.last_error;return}}catch(e){}
+if(Date.now()-t0<20000)setTimeout(chk,1000);else{msg.className='';msg.textContent='Lagra kl. '+kl+'. Sjå status under.'}})();
+}catch(e){btn.textContent='LAGRING FEILA';btn.style.background='#b23b2b';msg.className='bad';msg.textContent='Klarte ikkje å lagre: '+e.message+' – prøv igjen.'}
+setTimeout(()=>{btn.disabled=false;btn.textContent='LAGRE / KOPLE TIL';btn.style.background='';saving=false},2500)}
 // Kontroll av korreksjonane (v1.6.39): er dei gyldige RTCM 3, kva sender basen, kor langt unna er han?
 function rtcmTxt(x){let r=x.rtcm;if(!r)return 'Korreksjonar: --';
 let t=Object.keys(r.types||{}).join(', ')||'--';
