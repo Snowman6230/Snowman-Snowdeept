@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.61 – SNOWMAN-logoen slik eigaren har han
+- **Endra:** logoen i toppfeltet er no eigaren sin: kvite fjelltoppar over «SNOWMAN» (rett, feit skrift) og
+  «by Alpindata» i lyseblått under, teikna som SVG (skarp i alle storleikar). App-ikonet frå v1.6.60 er teke ut av
+  toppfeltet igjen. Versjonen står etter «by Alpindata». Logoen er 72 px høg som før og blir mindre på smal skjerm.
+- **Kvifor:** eigaren viste logoen slik han skal vere, og bad om å justere storleiken om han tok for mykje plass.
+
 ### PC-prototype v1.6.60 – SNOWMAN-logoen i toppen og meir luft til snødjupna
 - **Endra:** toppfeltet på førarskjermen viser SNOWMAN-ikonet (tråkkemaskina framfor fjella, same som app-ikonet i
   `ikon/`) til venstre for «SNOWMAN by Alpindata», og det er meir luft (30 px) mellom namnet og snødjupneboksen.
