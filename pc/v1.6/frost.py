@@ -108,6 +108,55 @@ class Frost:
             self._save()
         return data, time.time()
 
+    def history(self, lat, lon, alt, hours=72, fixed=None, demo=False, now=None):
+        """Vêret time for time dei siste `hours` timane (til snøkartet: nedbør og vind sidan sist målt).
+        Returnerer {"ok", "hours": [...], "stations": {...}, "missing": {...}} – timane er omrekna til høgda alt."""
+        now = now or time.time()
+        end = int(now // 3600 * 3600)
+        t0 = end - hours * 3600
+        if demo:
+            return {"ok": True, "demo": True, "hours": demo_history(alt, now, hours), "stations": {"alle": "DEMO"}, "missing": {}}
+        key = f"{lat:.2f},{lon:.2f},{hours},{fixed}"
+        c = self.cache.get("hist", {})
+        series = None
+        err = None
+        if c.get("key") == key and time.time() - c.get("t", 0) < HIST_TTL:
+            series, src = {k: {int(t): v for t, v in ser.items()} for k, ser in c["series"].items()}, c["src"]
+        else:
+            try:
+                src = self.sources(lat, lon, fixed)[:4]
+                rt = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)) + "/" + time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(end + 3600))
+                data = self._get("/observations/v0.jsonld", {"sources": ",".join(x["id"] for x in src), "referencetime": rt,
+                                                            "elements": ",".join(HIST_EL)}).get("data", [])
+                series = {}
+                for d in data:
+                    sid = d.get("sourceId", "").split(":")[0]
+                    t = _iso(d["referenceTime"]) if d.get("referenceTime") else None
+                    if t is None:
+                        continue
+                    hb = int(t // 3600 * 3600)   # timen målinga høyrer til (siste verdi i timen vinn)
+                    for o in d.get("observations", []):
+                        k = KEYS.get(o.get("elementId"))
+                        if k and o.get("value") is not None:
+                            series.setdefault(sid, {}).setdefault(hb, {})[k] = o["value"]
+                with self.lock:
+                    self.cache["hist"] = {"key": key, "t": time.time(), "src": src,
+                                          "series": {k: {str(t): v for t, v in ser.items()} for k, ser in series.items()}}
+                    self._save()
+            except Exception as e:
+                err = str(e)
+                if c.get("series"):        # offline: bruk siste lagra historikk
+                    series, src = {k: {int(t): v for t, v in ser.items()} for k, ser in c["series"].items()}, c["src"]
+        if series is None:
+            return {"ok": False, "error": "Ingen vêrhistorikk frå Frost (" + (err or "ukjend feil") + ")", "hours": []}
+        for s in src:
+            s["km"] = round(dist_km(lat, lon, s["lat"], s["lon"]), 1) if s.get("lat") is not None else None
+        out, used, miss = _compose(series, src, alt, t0, hours)
+        r = {"ok": bool(out), "hours": out, "stations": used, "missing": miss, "offline": err is not None}
+        if not out:
+            r["error"] = "Stasjonane har ikkje temperatur for perioden."
+        return r
+
     def observations(self, lat, lon, alt=None, fixed=None, demo=False, now=None):
         now = now or time.time()
         res = {"ok": True, "demo": bool(demo), "attr": "Data frå MET Norway (CC BY 4.0) · Frost", "stations": []}
@@ -155,6 +204,67 @@ class Frost:
         if err:
             res["error"] = err
         return res
+
+
+HIST_EL = ["air_temperature", "relative_humidity", "wind_speed", "wind_from_direction", "sum(precipitation_amount PT1H)"]
+HIST_TTL = 1800
+ORO = 0.07   # same nedbørauke per 100 m som snøkartet
+
+
+def _compose(series, src, alt, t0, n):
+    """Lag éi timeserie for staden (høgd alt) frå fleire stasjonar:
+    temperatur frå stasjonen nærast i høgd (omrekna −0,65 °C/100 m), vind frå stasjonen nærast i høgd,
+    nedbør frå næraste stasjon med nedbør (omrekna til høgda: +7 %/100 m), luftfukt frå kven som helst.
+    Manglande timar for temperatur og vind blir fylte frå næraste time med data (maks 3 t)."""
+    by = {s["id"]: s for s in src}
+    def pick(key, order):
+        for sid in order:
+            ser = series.get(sid, {})
+            if any(key in v for v in ser.values()):
+                return sid
+        return None
+    hgt = sorted(by, key=lambda i: abs((by[i].get("masl") or 0) - (alt or 0)))
+    near = sorted(by, key=lambda i: by[i].get("km") if by[i].get("km") is not None else 999)
+    st = {k: pick(k, hgt if k in ("temp", "wind", "dir") else near) for k in ("temp", "wind", "dir", "precip", "rh")}
+    out, miss = [], {"temp": 0, "wind": 0, "precip": 0}
+    for i in range(n):
+        t = t0 + i * 3600
+        h = {"t": t * 1000, "hist": True}
+        for k in ("temp", "wind", "dir", "rh", "precip"):
+            sid = st[k]
+            v = None
+            if sid:
+                ser = series[sid]
+                v = ser.get(t, {}).get(k)
+                if v is None and k != "precip":
+                    for d in (1, -1, 2, -2, 3, -3):
+                        v = ser.get(t + d * 3600, {}).get(k)
+                        if v is not None:
+                            break
+            if v is not None and k == "temp" and alt is not None and by[sid].get("masl") is not None:
+                v = v - LAPSE * (alt - by[sid]["masl"])
+            if v is not None and k == "precip" and alt is not None and by[sid].get("masl") is not None:
+                v = v * min(2.0, max(0.5, 1 + ORO * (alt - by[sid]["masl"]) / 100.0))
+            h[k] = v
+            if v is None and k in miss:
+                miss[k] += 1
+        if h["temp"] is None:
+            continue                       # utan temperatur kan ikkje timen brukast
+        if h["precip"] is None:
+            h["precip"] = 0.0
+        if h["rh"] is None:
+            h["rh"] = 90.0
+        if h["wind"] is None:
+            h["wind"] = 0.0
+        out.append(h)
+    used = {k: (by[v]["name"] if v else None) for k, v in st.items()}
+    return out, used, miss
+
+
+def demo_history(alt, now, hours):
+    """Oppdikta vêr bakover i tid (DEMO), same mønster som demo-varselet i ver.py."""
+    import ver
+    return [dict(h, hist=True) for h in ver.demo_hours(alt, now, k0=-hours, n=hours)]
 
 
 def demo_stations(alt, now):

@@ -141,6 +141,13 @@ class SnowSurface:
             return {"cells": 0}
         return {"cells": len(v), "newest": max(c[1] for c in v), "oldest": min(c[1] for c in v)}
 
+    def samples(self, test=False, since=None):
+        """Alle lagra ruter (til snøkartet): liste av (sone, E, N, overflate, tid, førre_overflate, førre_tid).
+        E/N er midten av 1 m-ruta. førre_* er None når ruta berre er køyrd éin gong."""
+        with self.lock:
+            return [(k[0], k[1] + 0.5, k[2] + 0.5, v[0], v[1], v[4], v[5]) for k, v in self.cells.items()
+                    if v[2] == bool(test) and (since is None or v[1] >= since)]
+
     def clear(self, test=None):
         with self.lock:
             self.cells = {k: v for k, v in self.cells.items() if test is not None and v[2] != bool(test)}

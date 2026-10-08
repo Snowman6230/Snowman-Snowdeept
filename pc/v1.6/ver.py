@@ -92,12 +92,13 @@ def _parse_met(js):
     return hours
 
 
-def demo_hours(alt, now=None):
-    """Oppdikta varsel (72 t) for demo og skjermbilete: kalde netter, mildare dagar, ein front med nedbør."""
+def demo_hours(alt, now=None, k0=0, n=72):
+    """Oppdikta varsel for demo og skjermbilete: kalde netter, mildare dagar, snøbyer med vestaversvind.
+    k0 < 0 gir timar bakover i tid (demo-historikk til snøkartet)."""
     now = now or time.time()
     t0 = int(now // 3600 * 3600)
     out = []
-    for k in range(72):
+    for k in range(k0, k0 + n):
         t = t0 + k * 3600
         lh = time.localtime(t).tm_hour
         temp = -1.2 + 3.6 * math.cos(2 * math.pi * (lh - 15) / 24) - 2.2 * math.sin(k / 20.0) - max(-300, min(300, alt - 700)) * LAPSE
@@ -107,6 +108,10 @@ def demo_hours(alt, now=None):
         if 4 <= k <= 16:      # snøbye med vestaversvind dei første timane (gir noko å sjå i snøkartet)
             pr = round(1.2 * math.sin((k - 3) / 14 * math.pi), 1)
             temp -= 1.5
+        if -40 <= k <= -26:   # snøbye i går (demo-historikk)
+            pr = round(1.4 * math.sin((k + 41) / 16 * math.pi), 1)
+            wind += 6 * math.sin((k + 41) / 16 * math.pi)
+            temp -= 2.0
         out.append({"t": t * 1000, "temp": round(temp, 1), "rh": round(min(99, rh), 0), "wind": round(wind, 1),
                     "dir": round(215 + 70 * math.sin(k / 12.0)) % 360, "cloud": 80 if pr else 30, "precip": pr, "precip6": None,
                     "sym": _demo_sym(pr, temp, 7 <= lh < 18, k)})

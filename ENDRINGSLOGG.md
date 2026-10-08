@@ -9,6 +9,31 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.73 – Snøkart steg 3–4: totaldjupne, vêr bakover, treffsikkerheit og læring
+- **Nytt (steg 3):** setjing av laus snø, smelting av både ny og eldre snø (graddøgn og regn), og **totaldjupne** =
+  sist målt med RTK (snøflate-minnet, fylt mellom spor innan 12 m) + modellendringa sidan. Bleikare farge jo eldre
+  målinga er. Same fargeintervall som målt snødjupne, men skravert og merkt ESTIMAT.
+- **Nytt (steg 4):** **vêr bakover 72 t frå MET Frost** (temperatur og vind frå stasjonen nærast i høgd, nedbør frå
+  næraste stasjon, omrekna til høgda) – så endringa sidan sist målt kan reknast. **Tidsglidar:** «No (sidan sist
+  målt)», +6, +12, +24, +48 t. Nye visingar: «Total djupne», «Endring», «Utan vind», «Vindeffekt» og «Lært».
+- **Nytt:** **treffsikkerheit mot RTK** – ruter køyrde to gonger blir samanlikna med modellen (snittfeil, skeivheit),
+  og ein **nedbørsfaktor** blir rekna ut. «Juster etter RTK: På/Av».
+- **Nytt:** **SNOWMAN lærer kvar det kjem meir eller mindre snø** enn modellen ventar, i faste 10 × 10 m-ruter over
+  sesongen (data/snokart-laering.json, ikkje i git). Visinga «Lært» viser mønsteret, «Bruk lært: På/Av» brukar det.
+  **Snøproduksjon blir halden utanfor:** ruter innan 60 m frå snøkanon eller hydrant (anleggsobjekt, stipla sirkel
+  i kartet) og hendingar som ser ut som produksjon eller skjerarbeid blir ikkje lærte.
+- **Endra:** snø som blir flytt av vinden blir **pakka** – tettleiken på fokksnø følgjer vindstyrken (200–400 kg/m³),
+  og eldre, tettare laus snø krev meir vind før han flyttar seg.
+- **Avgjerd:** kalibreringa samanliknar med snø pakka under beltet (450 kg/m³), fordi maskina måler overflata ho
+  står på. Læringa viser mønsteret (delt på medianen); nivået blir teke av nedbørsfaktoren.
+- **Kvifor:** eigaren bad om steg 3 og 4, og påpeika at flytt snø blir meir kompakt og at SNOWMAN bør lære kvar det
+  kjem mest snø – med atterhald om snøproduksjon.
+- **Testa:** `python3 snokart.py` (vind, setjing 14,8 → 13,1 cm på 24 t, smelting, kalibrering ×1,3, læring aust/vest),
+  `testsnoflate.py`, og i ein isolert kopi med DTM1-utsnitt, `simuler-leica.py --anlegg`, oppdikta TEST-målingar
+  (to besøk, 101 645 ruter) og TEST-læring, demo-vêr bakover og framover, og utan vêrhistorikk. Treffsikkerheit i
+  testen ±0,9 cm, faktor ×1,2. Ingen JavaScript-feil. Skjermbilete i `docs/prototypar/snokart/`. Frost-historikken
+  er testa med demo og ved feil, ikkje mot ekte Frost (ikkje nåbar frå testmaskina).
+
 ### PC-prototype v1.6.72 – Snøkart: estimert snøendring i terrengmodellen (Vêr › Snøkart, steg 1–2)
 - **Nytt:** knappen **«🗺 Snøkart (estimat)»** i Vêr opnar eit nytt overlay over Vêr med eit kart over estimert
   snøendring i den gjeldande terrengmodellen: periode 6 / 12 / 24 / 48 t frå varselet, visingane «Med vind»,

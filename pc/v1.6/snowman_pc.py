@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.72"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.73"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -976,43 +976,178 @@ def terrain_centre():
     if not ms: return None
     m=ms[0]
     return T.utm_inverse(m["x0"]+m["nx"]*m["dx"]/2,m["y0"]-m["ny"]*m["dy"]/2,m["zone"])
+SNOW_LEARN={}   # test/ekte → snokart.Learn (lærer kvar det kjem meir eller mindre snø)
+def snow_learn(test):
+    if test not in SNOW_LEARN: SNOW_LEARN[test]=SK.Learn(DATA/("snokart-laering-test.json" if test else "snokart-laering.json"))
+    return SNOW_LEARN[test]
+def _grid_utm(P,lat0,lon0,z):
+    """UTM-koordinatane (sone z) til midten av kvar rute i snøkartet – same lineære tilnærming som TerrainLibrary.patch."""
+    np=SK.np
+    n,step,half=P["n"],P["step"],P["half"]
+    xs=-half+np.arange(n)*step; X,Y=np.meshgrid(xs,-xs)
+    mlat,mlon=111320.0,111320.0*math.cos(math.radians(lat0))
+    E0,N0=T.utm_forward(lat0,lon0,z); Ex,Nx=T.utm_forward(lat0,lon0+10/mlon,z); Ey,Ny=T.utm_forward(lat0+10/mlat,lon0,z)
+    return E0+(Ex-E0)/10*X+(Ey-E0)/10*Y, N0+(Nx-N0)/10*X+(Ny-N0)/10*Y, X, Y
+def _production(P,lat0,lon0,X,Y,R=60.0):
+    """Ruter innan R m frå snøkanon eller hydrant (anleggsobjekt): her kan det vere produsert snø."""
+    np=SK.np
+    m=np.zeros(X.shape,dtype=bool); pts=[]
+    if not OBJ: return m,pts
+    mlat,mlon=111320.0,111320.0*math.cos(math.radians(lat0))
+    for o in OBJ.listing():
+        if o.get("type") not in ("snokanon","hydrant"): continue
+        x,y=(float(o["lng"])-lon0)*mlon,(float(o["lat"])-lat0)*mlat
+        if abs(x)>P["half"]+R or abs(y)>P["half"]+R: continue
+        m|=(X-x)**2+(Y-y)**2<=R*R; pts.append([round(x,1),round(y,1),o.get("type")])
+    return m,pts
+SNOW_HIST_H=72   # timar vêrhistorikk (Frost) i snøkartet – målingar eldre enn dette får berre endringa sidan då
+SNOW_STOPS=(0,6,12,24,48)
+def _snow_measured(P,lat0,lon0,test):
+    """Målt snødjupne frå snøflate-minnet på rutenettet til snøkartet: djupne (m), tid (s), endring sidan førre besøk (m)
+    og tida for førre besøk – snitt per rute. Berre målingar av same slag (test/ekte) som SNOWMAN køyrer no."""
+    np=SK.np
+    n,step,half=P["n"],P["step"],P["half"]
+    sm=SURF.samples(test=test)
+    out={"n":0}
+    if not sm: return out
+    A=np.array([(z,e,nn,S,t,ps if ps is not None else np.nan,pt if pt is not None else np.nan) for z,e,nn,S,t,ps,pt in sm],dtype=np.float64)
+    X=np.full(len(A),np.nan); Y=np.full(len(A),np.nan)
+    mlat,mlon=111320.0,111320.0*math.cos(math.radians(lat0))
+    for z in set(A[:,0].astype(int)):
+        E0,N0=T.utm_forward(lat0,lon0,z); Ex,Nx=T.utm_forward(lat0,lon0+10/mlon,z); Ey,Ny=T.utm_forward(lat0+10/mlat,lon0,z)
+        J=np.array([[(Ex-E0)/10,(Ey-E0)/10],[(Nx-N0)/10,(Ny-N0)/10]]); Ji=np.linalg.inv(J)
+        m=A[:,0]==z; dE,dN=A[m,1]-E0,A[m,2]-N0
+        X[m]=Ji[0,0]*dE+Ji[0,1]*dN; Y[m]=Ji[1,0]*dE+Ji[1,1]*dN
+    c=(X+half)/step; r=(half-Y)/step
+    ins=np.isfinite(c)&(c>=0)&(r>=0)&(c<=n-1)&(r<=n-1)
+    if not ins.any(): return out
+    A,c,r=A[ins],c[ins],r[ins]
+    H=P["h"]; c0=np.clip(np.floor(c).astype(int),0,n-2); r0=np.clip(np.floor(r).astype(int),0,n-2); fc=c-c0; fr=r-r0
+    ter=(H[r0,c0]*(1-fc)*(1-fr)+H[r0,c0+1]*fc*(1-fr)+H[r0+1,c0]*(1-fc)*fr+H[r0+1,c0+1]*fc*fr)   # terreng der målinga er
+    dep=A[:,3]-ter
+    ok=np.isfinite(dep)
+    ci=np.clip(np.round(c).astype(int),0,n-1)[ok]; ri=np.clip(np.round(r).astype(int),0,n-1)[ok]; A,dep=A[ok],dep[ok]
+    lin=ri*n+ci
+    cnt=np.bincount(lin,minlength=n*n).astype(float)
+    D=np.bincount(lin,dep,minlength=n*n)/np.maximum(cnt,1)
+    Tm=np.zeros(n*n); np.maximum.at(Tm,lin,A[:,4])
+    hp=np.isfinite(A[:,5])
+    cp=np.bincount(lin[hp],minlength=n*n).astype(float)
+    dS=np.bincount(lin[hp],(A[hp,3]-A[hp,5]),minlength=n*n)/np.maximum(cp,1)
+    Tp=np.bincount(lin[hp],A[hp,6],minlength=n*n)/np.maximum(cp,1)
+    has=cnt>0
+    # fyll mellom spora: snitt av målte ruter innan ca. 12 m (som snøflate-minnet gjer framfor maskina)
+    k=max(1,int(round(12.0/step)))
+    hm=has.reshape(n,n).astype(float); Dg=np.where(has,D,0.0).reshape(n,n); Tg=np.where(has,Tm,0.0).reshape(n,n)
+    cntb=SK._box(hm,k); fill=(cntb>0)&~has.reshape(n,n)
+    Dg=np.where(has.reshape(n,n),Dg,np.where(fill,SK._box(Dg,k)/np.maximum(cntb,1e-9),0.0))
+    Tg=np.where(has.reshape(n,n),Tg,np.where(fill,SK._box(Tg,k)/np.maximum(cntb,1e-9),0.0))
+    has2=has.reshape(n,n)|fill
+    D=Dg.reshape(-1); Tm=Tg.reshape(-1); has=has2.reshape(-1)
+    out.update(n=int(has.sum()),D=np.where(has,D,np.nan).reshape(n,n),T=np.where(has,Tm,np.nan).reshape(n,n),
+               dS=np.where(cp>0,dS,np.nan).reshape(n,n),Tp=np.where(cp>0,Tp,np.nan).reshape(n,n),
+               newest=float(A[:,4].max()),oldest=float(A[:,4].min()))
+    return out
 def snowmap_response(q):
     f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
     if not T.AVAILABLE or SK is None: return {"ok":False,"error":"Terrengmotoren er ikkje tilgjengeleg (numpy manglar)."}
     np=SK.np
-    half=min(1500.0,max(150.0,f("half",600.0))); hours=int(min(48,max(1,f("hours",24)))); loose=min(50.0,max(0.0,f("loose",0.0)))
-    demo=q.get("demo",["0"])[0]=="1"
+    half=min(1500.0,max(150.0,f("half",600.0))); stop=int(f("stop",0)); stop=stop if stop in SNOW_STOPS else 0
+    loose=min(50.0,max(0.0,f("loose",0.0))); demo=q.get("demo",["0"])[0]=="1"; usecal=q.get("cal",["0"])[0]=="1"; uselearn=q.get("learn",["0"])[0]=="1"
+    test=bool(STATE.get("simulated")) or demo
     lat,lon=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")); centred="maskina"
     if lat is None or TERR.height(lat,lon) is None:
         c=terrain_centre()
         if c is None: return {"ok":False,"error":"Ingen aktiv terrengmodell (barmark). Snøkartet byggjer på den gjeldande terrengmodellen – legg inn eller slå på eit lag under Innst. › Terreng."}
         lat,lon=c; centred="terrengmodellen"
-    g=50.0   # fest midten til eit 50 m-rutenett, så lé-tala kan gjenbrukast medan maskina køyrer
+    g=50.0   # fest midten til eit 50 m-rutenett, så utrekninga kan gjenbrukast medan maskina køyrer
     lat=round(lat*111320/g)*g/111320; mx=111320*math.cos(math.radians(lat)); lon=round(lon*mx/g)*g/mx
     step=max(1.0,round(half/150.0,1))
     z0,altsrc=terrain_alt(lat,lon)
     if z0 is None: return {"ok":False,"error":"Fann ikkje høgda i terrengmodellen."}
     W=WX.forecast(lat,lon,z0,demo=demo)
     if not W.get("ok"): return {"ok":False,"error":W.get("error","Ingen vêrdata"),"detail":W.get("detail")}
-    now=time.time()*1000; hrs=[h for h in W["hours"] if h["t"]>=now-3600000][:hours]
-    ck=(round(lat,6),round(lon,6),half,hours,loose,demo,W.get("updated") or W.get("age_min"),hrs[0]["t"] if hrs else 0,tuple(m["id"]+str(m.get("priority")) for m in TERR.listing() if m.get("active")))
-    c=SNOWMAP_CACHE.get("r")
-    if c and c[0]==ck and time.time()-c[1]<600: return c[2]
-    P=TERR.patch(lat,lon,half,step)
-    if P is None: return {"ok":False,"error":"Terrengmodellen dekkjer ikkje området."}
-    res=SNOWMAP.run(P,hrs,z0,loose,key=(ck[0],ck[1],half,step,ck[-1]))
-    enc=lambda a: base64.b64encode(np.where(np.isfinite(a),np.clip(np.round(a*10),-32000,32000),-32768).astype("<i2").tobytes()).decode()
+    now=time.time()
+    fc=[h for h in W["hours"] if h["t"]>=now*1000-3600000][:48]
+    if not fc: return {"ok":False,"error":"Varselet har ingen timar framover."}
+    try:
+        FROST.cid=(CFG.get("frost_client_id") or "").strip() or FR.CLIENT_ID
+        fixed=re.sub(r"[^A-Za-z0-9,]","",CFG.get("frost_stations") or "") or None
+        HI=FROST.history(lat,lon,z0,SNOW_HIST_H,fixed,demo=demo,now=now)
+    except Exception as e: HI={"ok":False,"error":str(e),"hours":[]}
+    hist=[h for h in HI.get("hours",[]) if h["t"]<fc[0]["t"]]
+    for h in hist: h["tw"]=round(VER.wetbulb(h["temp"],h.get("rh") or 90.0),1)
+    line=hist+fc; know=len(hist); t_line0=line[0]["t"]/1000
+    stops={s:min(len(line),know+s) for s in SNOW_STOPS}
+    layers=tuple(m["id"]+str(m.get("priority")) for m in TERR.listing() if m.get("active"))
+    ck=(round(lat,6),round(lon,6),half,loose,demo,test,usecal,uselearn,W.get("updated") or W.get("age_min"),fc[0]["t"],len(hist),layers,int((SURF.stats(test).get("newest") or 0)//600))
+    c=SNOWMAP_CACHE.get("run")
+    if c and c[0]==ck and time.time()-c[1]<600: R=c[2]
+    else:
+        P=TERR.patch(lat,lon,half,step)
+        if P is None: return {"ok":False,"error":"Terrengmodellen dekkjer ikkje området."}
+        M=_snow_measured(P,lat,lon,test)
+        n=P["n"]
+        it=np.full((n,n),-1,dtype=int); ip=np.full((n,n),-1,dtype=int)
+        if M["n"]:
+            tt=M["T"]; okm=np.isfinite(tt)
+            it[okm]=np.clip(np.floor((tt[okm]-t_line0)/3600).astype(int)+1,0,know)        # tilstanden like etter målinga
+            tp=M["Tp"]; okp=np.isfinite(tp)&(tp>=t_line0)
+            ip[okp]=np.clip(np.floor((tp[okp]-t_line0)/3600).astype(int)+1,0,know)
+            ip[it<=ip]=-1
+        key=(round(lat,6),round(lon,6),half,step,layers)
+        run=SNOWMAP.run(P,line,z0,loose,key=key,stops=list(stops.values())+[0],capture={"t":it,"p":ip})
+        z=SF.zone_of(lon); GE,GN,GX,GY=_grid_utm(P,lat,lon,z)
+        prod,prodpts=_production(P,lat,lon,GX,GY)
+        cal={"n":0}; lr={"added":0,"rejected":0}
+        if M["n"] and (ip>=0).any():
+            ds=run["caps"]["t"]["s"]-run["caps"]["p"]["s"]
+            cal=SK.calibration(ds,M["dS"]*100.0,(ip>=0)&~prod)
+            a_,r_=snow_learn(test).update(z,GE,GN,100.0*ds/SK.RHO_GROOMED,M["dS"]*100.0,M["T"],(ip>=0)&~prod)   # lær kvar det kjem snø
+            lr={"added":a_,"rejected":r_}
+        spat=snow_learn(test).factor(z,GE,GN)
+        used=1.0
+        if (usecal and cal.get("factor")) or (uselearn and np.isfinite(spat).any()):
+            used=cal["factor"] if usecal and cal.get("factor") else 1.0
+            run=SNOWMAP.run(P,line,z0,loose,key=key,pfac=used,stops=list(stops.values())+[0],capture={"t":it,"p":ip},
+                            spatial=spat if uselearn else None)
+        lr.update(snow_learn(test).stats()); lr["cells"]=int(np.isfinite(spat).sum()); lr["prodCells"]=int(prod.sum()); lr["prodPts"]=prodpts
+        R={"P":P,"M":M,"run":run,"cal":cal,"pfac":used,"it":it,"learn":lr,"spat":spat}
+        SNOWMAP_CACHE["run"]=(ck,time.time(),R)
+    P,M,run,ok=R["P"],R["M"],R["run"],R["run"]["ok"]
+    S=run["snaps"]; ks=stops[stop]; kn=stops[0]
+    if stop==0:   # sidan sist målt (eller sidan starten på historikken der det ikkje er målt)
+        cap=run["caps"]["t"]; has=np.isfinite(cap["w"])
+        rw=np.where(has,cap["w"],S[0]["w"]); rn=np.where(has,cap["n"],S[0]["n"])
+        a,b=0,know
+    else:
+        rw,rn=S[kn]["w"],S[kn]["n"]; a,b=kn,ks
+    cw,cn=S[ks]["w"]-rw,S[ks]["n"]-rn
+    tot=np.full(cw.shape,np.nan); age=np.full(cw.shape,255,dtype=np.uint8); tstat={}
+    if M["n"]:
+        cap=run["caps"]["t"]
+        tot=np.where(np.isfinite(M["D"])&np.isfinite(cap["w"]),np.maximum(0.0,M["D"]*100.0+(S[ks]["w"]-cap["w"])),np.nan)
+        ah=(now-M["T"])/3600.0
+        age=np.where(np.isfinite(ah),np.clip(np.round(ah),0,254),255).astype(np.uint8)
+        v=tot[np.isfinite(tot)]
+        if v.size: tstat={"n":int(v.size),"mean":round(float(v.mean()),1),"p10":round(float(np.percentile(v,10)),1),"p90":round(float(np.percentile(v,90)),1),
+                          "min":round(float(v.min()),1),"max":round(float(v.max()),1)}
+    hs=SK.hour_stats(line,a,b,run["driftHours"]); hs.update(SK.field_stats(cw,cn,ok))
+    enc=lambda a_: base64.b64encode(np.where(np.isfinite(a_),np.clip(np.round(a_*10),-32000,32000),-32768).astype("<i2").tobytes()).decode()
     H=P["h"]
-    r={"ok":True,"estimate":True,"demo":W.get("demo",False),"offline":W.get("offline",False),"age_min":W.get("age_min"),
+    return {"ok":True,"estimate":True,"demo":W.get("demo",False),"test":test,"offline":W.get("offline",False),"age_min":W.get("age_min"),
        "lat0":P["lat0"],"lon0":P["lon0"],"half":half,"step":step,"n":P["n"],"layers":P["layers"],"centred":centred,
        "z0":round(z0),"altSrc":altsrc,"zmin":round(float(np.nanmin(H))),"zmax":round(float(np.nanmax(H))),
-       "hours":hours,"loose":loose,"from":hrs[0]["t"] if hrs else None,"to":(hrs[-1]["t"]+3600000) if hrs else None,
-       "stats":res["stats"],"hill":base64.b64encode(SK.hillshade(H,step).tobytes()).decode(),
-       "with":enc(res["with"]),"without":enc(res["without"]),
+       "stop":stop,"from":line[a]["t"] if a<len(line) else None,"to":(line[b-1]["t"]+3600000) if 0<b<=len(line) else None,
+       "now":fc[0]["t"],"histFrom":line[0]["t"] if hist else None,"histHours":len(hist),
+       "hist":{"ok":HI.get("ok",False),"error":HI.get("error"),"stations":HI.get("stations"),"missing":HI.get("missing"),"demo":HI.get("demo",False)},
+       "loose":loose,"stats":hs,"total":tstat,"measured":{"n":M["n"],"newest":M.get("newest"),"oldest":M.get("oldest")},
+       "cal":R["cal"],"pfac":R["pfac"],"usecal":usecal,"uselearn":uselearn,"learn":R["learn"],"secs":run["secs"],
+       "spat":enc(R["spat"]*10.0),
+       "hill":base64.b64encode(SK.hillshade(H,step).tobytes()).decode(),
+       "with":enc(cw),"without":enc(cn),"tot":enc(tot),"age":base64.b64encode(age.tobytes()).decode(),
        "z":base64.b64encode(np.where(np.isfinite(H),H,-9999).astype("<f4").tobytes()).decode(),
-       "attr":"Varsel: MET Norway (CC BY 4.0) · Terreng: "+", ".join(P["layers"])}
-    SNOWMAP_CACHE["r"]=(ck,time.time(),r)
-    return r
+       "attr":"Varsel: MET Norway (CC BY 4.0) · Målingar: MET Frost · Terreng: "+", ".join(P["layers"])}
 def ui_bounds():
     """Snøintervalla frå førarskjermen (Innst. › Snøintervall), til fargane i PDF-rapporten."""
     try: return (lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8"))).get("bounds")

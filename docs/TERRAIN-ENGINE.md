@@ -130,7 +130,7 @@ rett. Estimatet framfor maskina kan derimot bruke at ei planert overflate er jam
   5 cm, opptil 66 cm feil midt i bekken). Når snøen ligg jamt oppå terrenget (ikkje planert) er det omvendt –
   difor av/på-knappen. Direkte interpolasjon av overflata vart prøvd og forkasta (store feil i bratt bakke).
 
-## 6c. Snøkart – estimat av snøendring frå vêrvarselet (prototype v1.6.72, steg 1–2)
+## 6c. Snøkart – estimat av snøendring og snødjupne frå vêrdata (prototype v1.6.72–73, steg 1–4)
 
 **Grunnregel (eigaren 2026-10-09):** alle funksjonar i Vêr byggjer på **den gjeldande terrengmodellen** i SNOWMAN –
 dei aktive barmark-laga, høgast prioritet vinn (same som snødjupnemålinga). Høgda til varselet, «ved maskina» for
@@ -156,9 +156,31 @@ til eit 50 m-rutenett så lé-tala kan gjenbrukast medan maskina køyrer. Reknin
 snødjupne – skravur, «ESTIMAT»-vassmerke og banner «ESTIMAT – VÊRMODELL, IKKJE MÅLING». Terrengskugge (overdriven i
 slakt terreng) og høgdekurver for orientering.
 
-**Ikkje med enno (steg 3–5):** setjing, smelting av eldre snø, totaldjupne frå snøflate-minnet, nedbør og vind
-bakover i tid frå Frost, kalibrering mot RTK med treffsikkerheit, tidsglidar, snøproduksjon frå Hydrantstyring.
-Parameterane over er litteraturverdiar og må kalibrerast mot målingar på anlegget.
+**Steg 3 (v1.6.73) – setjing, smelting og totaldjupne:**
+- Setjing: laus snø søkk saman med 1 %/t ved 0 °C (seinare i kulde, raskare i mildvêr) mot 300 kg/m³.
+- Smelting: 0,15 mm vatn per °C og time + varme frå regn – først snøen frå perioden, så eldre snø (350 kg/m³).
+- Fokksnø blir pakka: 200–400 kg/m³ etter vindstyrken (150 + 15 · U). Eldre, tettare laus snø krev meir vind
+  før han flyttar seg (terskelen aukar med tettleiken).
+- Totaldjupne = sist målt med RTK (snøflate-minnet, snitt per rute, fylt mellom spor innan 12 m) + endringa i
+  modellen sidan målinga. Bleikare farge jo eldre målinga er. Same fargeintervall som målt snø, men skravert.
+
+**Steg 4 (v1.6.73) – vêr bakover, tidsglidar, treffsikkerheit og læring:**
+- Vêr bakover 72 t frå Frost (`frost.Frost.history`): temperatur og vind frå stasjonen nærast i høgd (temperatur
+  omrekna med −0,65 °C/100 m), nedbør frå næraste stasjon med nedbør (omrekna +7 %/100 m), timar utan data fylte frå
+  næraste time (maks 3 t). Utan Frost blir berre endringa frå no rekna.
+- Tidslina = historikk + varsel (inntil 48 t). Tidsglidar: «No (sidan sist målt)», +6, +12, +24, +48 t.
+  «Endring» ved «No» = sidan siste RTK-måling i ruta (elles sidan starten på historikken); framover = frå no.
+- Treffsikkerheit: ruter køyrde to gonger (to besøk, ≥ 2 t mellom) innanfor historikken. Målt endring i overflata
+  blir samanlikna med modellen si SWE-endring gjort om til pakka snø under beltet (450 kg/m³). Viser snittfeil,
+  skeivheit og nedbørsfaktor (Σ målt / Σ venta, 0,5–2, minst 30 ruter). «Juster etter RTK» brukar faktoren.
+- Læring (`snokart.Learn`): kvar hending blir lagra i faste 10 × 10 m UTM-ruter (data/snokart-laering.json, test for
+  seg). Etter minst 3 hendingar: faktor (Σ målt + 5)/(Σ venta + 5), delt på medianen i området → mønsteret for kvar
+  det kjem meir/mindre snø enn modellen ventar. «Bruk lært» multipliserer nedbøren med mønsteret (0,4–2,5).
+  Utelate: ruter innan 60 m frå snøkanon/hydrant (anleggsobjekt) og hendingar som ser ut som produksjon eller
+  skjerarbeid (målt > 3 × venta + 8 cm, eller > 10 cm under venta).
+
+**Ikkje med enno:** snøproduksjon frå Hydrantstyring (mengd og tid per kanon), skjer- og vinsjarbeid, stråling,
+og læring per vindretning. Parameterane er litteraturverdiar og blir justerte av kalibreringa og læringa.
 
 ## 7. Rekkjefølgje
 
