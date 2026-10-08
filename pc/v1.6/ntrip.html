@@ -1,5 +1,5 @@
 <!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. --><meta charset="utf-8"><title>SNOWMAN NTRIP v1.2</title>
-<style>body{font:16px Arial;background:#07141c;color:#eef;margin:25px;max-width:900px}input{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:230px}button{padding:11px 18px;margin:8px;background:#1687bd;color:white;border:0;border-radius:7px}.g{display:grid;grid-template-columns:180px 1fr;gap:4px}.card{background:#0b202b;padding:18px;border-radius:12px;margin:12px 0}.ok{color:#4f6}.bad{color:#f86}select{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:252px}#mtab{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}#mtab td,#mtab th{border-bottom:1px solid #294452;padding:6px;text-align:left}#mtab tr.m:hover{background:#163a4c;cursor:pointer}#mtab tr.sel{background:#1b4a60}</style>
+<style>body{font:16px Arial;background:#07141c;color:#eef;margin:25px;max-width:900px}input{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:230px}button{padding:11px 18px;margin:8px;background:#1687bd;color:white;border:0;border-radius:7px}button:disabled{opacity:.45}.g{display:grid;grid-template-columns:180px 1fr;gap:4px}.card{background:#0b202b;padding:18px;border-radius:12px;margin:12px 0}.ok{color:#4f6}.bad{color:#f86}select{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:252px}#mtab{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}#mtab td,#mtab th{border-bottom:1px solid #294452;padding:6px;text-align:left}#mtab tr.m:hover{background:#163a4c;cursor:pointer}#mtab tr.sel{background:#1b4a60}</style>
 <h1>SNOWMAN NTRIP / GNSS <button onclick="location.href='/'" style="background:#2e4b5c;font-size:15px;vertical-align:middle">← TILBAKE TIL SNOWMAN</button></h1>
 <div class=card><h3>GNSS / Leica</h3><div class=g>
 <label>COM-port</label><input id=serial_port list=ports placeholder="t.d. COM4"><datalist id=ports></datalist>
@@ -9,7 +9,8 @@
 <label>Port</label><input id=caster_port value="2101">
 <label>Mountpoint</label><div><input id=mountpoint><button type=button onclick=mounts() style="margin:4px;padding:9px 14px">HENT MOUNTPOINTS</button></div>
 <label>Brukarnamn</label><input id=username>
-<label>Passord</label><input id=password type=password placeholder="(uendra)">
+<label>Passord</label><div><input id=password type=password autocomplete=off placeholder="skriv passordet"><button type=button id=pwShow onclick=pwToggle() style="margin:4px;padding:9px 14px;background:#2e4b5c" disabled>VIS PASSORD</button>
+<div id=pwInfo style="font-size:13px;color:#9ab3c1;margin:2px 4px"></div></div>
 <label>NTRIP-versjon</label><select id=ntrip_version><option value=auto>Auto (tilrådd)</option><option value=1>NTRIP 1</option><option value=2>NTRIP 2</option></select>
 <label>Ny oppkopling etter</label><div><input id=ntrip_timeout type=number min=5 max=120 style="width:80px"> sekund utan korreksjonar</div></div>
 <div id=mlist></div>
@@ -19,20 +20,34 @@
 <p id=portinfo style="font-size:13px;color:#9ab3c1;margin:4px"></p>
 <button id=saveBtn onclick=save()>LAGRE / KOPLE TIL</button><button onclick="location.href='/'" style="background:#2e4b5c">← TILBAKE TIL SNOWMAN</button><div id=saveMsg aria-live=polite style="margin:4px 8px;font-weight:bold;min-height:1.3em"></div></div>
 <div class=card><h3>Status</h3><pre id=s>Vent...</pre></div>
+<script src="/tastatur.js"></script>
 <script>
+// Passord: skjult medan ein skriv, «VIS PASSORD» berre før det er lagra. Etter lagring står det berre stjerner –
+// passordet blir hugsa i SNOWMAN (tenesta), men blir aldri sendt tilbake til skjermen.
+const PW_MARK='********';
+function pwSaved(on){let p=document.getElementById('password'),b=document.getElementById('pwShow');
+if(on){p.type='text';p.value=PW_MARK;p.dataset.saved='1';b.disabled=true;b.textContent='VIS PASSORD';document.getElementById('pwInfo').textContent='Lagra i SNOWMAN. Trykk i feltet for å skrive eit nytt.'}
+else{delete p.dataset.saved;p.type='password';b.disabled=!p.value;b.textContent='VIS PASSORD';document.getElementById('pwInfo').textContent=''}}
+function pwToggle(){let p=document.getElementById('password'),b=document.getElementById('pwShow');if(p.dataset.saved)return;
+p.type=p.type==='password'?'text':'password';b.textContent=p.type==='password'?'VIS PASSORD':'SKJUL PASSORD';p.focus()}
+document.addEventListener('DOMContentLoaded',()=>{let p=document.getElementById('password');
+p.addEventListener('focus',()=>{if(p.dataset.saved){p.value='';pwSaved(false);document.getElementById('pwInfo').textContent='Nytt passord – det gamle gjeld til du trykkjer LAGRE.'}});
+p.addEventListener('input',()=>{document.getElementById('pwShow').disabled=!p.value||!!p.dataset.saved});
+p.addEventListener('blur',()=>setTimeout(()=>{if(!p.value&&!p.dataset.saved&&p.dataset.had){pwSaved(true)}},150))});
 // Fyll skjemaet med det som er lagra – elles blir tomme felt / feil port lagra over det som verkar
-async function load(){try{let r=await(await fetch('/api/config')).json(),c=r.config;for(let k in c){let e=document.getElementById(k);if(e&&c[k]!=null)e.value=c[k]}
+async function load(){try{let r=await(await fetch('/api/config')).json(),c=r.config;for(let k in c){if(k==='password')continue;let e=document.getElementById(k);if(e&&c[k]!=null)e.value=c[k]}
+let pw=document.getElementById('password');pw.dataset.had=c.password?'1':'';if(c.password)pwSaved(true);
 let p=(await(await fetch('/api/ports')).json()).ports||[];document.getElementById('ports').innerHTML=p.map(x=>`<option value="${x.port}">${x.desc}</option>`).join('');
 document.getElementById('portinfo').textContent=p.length?'Portar på PC-en: '+p.map(x=>x.port+' ('+x.desc+')').join(' · ')+'. Bluetooth: bruk den UTGÅANDE porten (Windows › Bluetooth › COM-portar).':''}catch(e){}}load();
 // Lagre: knappen og meldinga under viser tydeleg at det er lagra (og om oppkoplinga lukkast) – så ingen treng å trykke fleire gonger
 let saving=false;
 async function save(){if(saving)return;saving=true;let btn=document.getElementById('saveBtn'),msg=document.getElementById('saveMsg');
 btn.disabled=true;btn.textContent='LAGRAR …';btn.style.background='#4a6878';msg.className='';msg.textContent='';
-let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password','initCmds','ntrip_version','ntrip_timeout'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;x.ntrip_timeout=Math.max(5,+x.ntrip_timeout||20);if(!x.password)delete x.password;
+let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password','initCmds','ntrip_version','ntrip_timeout'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;x.ntrip_timeout=Math.max(5,+x.ntrip_timeout||20);if(!x.password||document.getElementById('password').dataset.saved)delete x.password;
 try{let r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x)}),j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
 let d=new Date(),kl=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 btn.textContent='✓ LAGRA';btn.style.background='#1f8a4c';msg.className='ok';msg.textContent='✓ Lagra kl. '+kl+'. Koplar til mottakar og caster …';
-document.getElementById('password').value='';
+{let pw=document.getElementById('password');if(x.password){pw.dataset.had='1'}if(pw.dataset.had)pwSaved(true);else{pw.value='';pwSaved(false)}}
 // Følg med på oppkoplinga i inntil 20 s og fortel korleis det gjekk
 let t0=Date.now();(async function chk(){try{let st=await(await fetch('/api/status')).json();
 if(x.caster&&x.mountpoint&&st.ntrip_connected&&Date.now()-t0>1500){msg.className='ok';msg.textContent='✓ Lagra kl. '+kl+' – NTRIP tilkopla'+(st.ntrip_proto?' ('+st.ntrip_proto+')':'')+'.';return}

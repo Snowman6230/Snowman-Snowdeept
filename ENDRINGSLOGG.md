@@ -9,6 +9,32 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.62 – snu kartet med to fingrar, tastatur på skjermen, passord berre som stjerner
+- **Nytt:** **vri med to fingrar** for å snu kartet (2D og førar-/horisontvising); knip zoomar som før. Rotasjonen
+  startar først etter 12° vriing, så kartet ikkje snur seg når ein berre zoomar. **Under prep** går kartet tilbake til
+  køyreretninga 12 s etter siste vriing («Kartet følgjer køyreretninga igjen»); utan prep blir det ståande til FØLG.
+- **Retta:** å dra på eit snudd kart flytta kartet i feil retning (Leaflet reknar i skjermretning, kartet er rotert
+  og skalert med CSS). No går kartet same vegen som fingeren (testa: 200 px til høgre → 201 px til høgre ved 45°).
+- **Nytt:** **tastatur på skjermen** (`tastatur.js`, brukt i førarskjermen og på NTRIP-sida): norsk med æøå for
+  tekst, talpanel for tal (komma blir punktum), eige siffer-panel for PIN. Kjem opp når ein trykkjer i eit skrivefelt
+  med fingeren (AUTO), forsvinn ved ekte tastetrykk. Legg seg på motsett side av feltet, viser feltnamn og det som er
+  skrive (prikkar for passord), er halvgjennomsiktig og kan dragast. Windows sitt eige tastatur blir halde unna.
+  Innstilling i Innst. › System: AUTO / ALLTID / AV.
+- **Endra:** PIN-spørsmåla for kioskmodus brukte nettlesaren sin `prompt()`, som ikkje kan brukast utan tastatur.
+  No er det ein eigen boks med siffer-panel.
+- **Endra (NTRIP-sida):** passordet er skjult medan ein skriv; **VIS PASSORD** viser det berre før ein har lagra.
+  Etter LAGRE står det berre `********` – passordet er hugsa i SNOWMAN, men blir aldri sendt tilbake til skjermen.
+  Trykkjer ein i feltet, kan ein skrive eit nytt; lèt ein det stå tomt, gjeld det gamle. Tenesta ignorerer felt som
+  berre er stjerner.
+- **Avgjerd:** eige tastatur i SNOWMAN i staden for Windows sitt berøringstastatur (fungerer i kioskmodus, dekkjer
+  ikkje feltet, store tastar for hanskar, utan nett). Rotasjon også under prep med automatisk retur (val B).
+- **Testa:** Chromium med simulert touch: vriing (8° = ingen rotasjon, 60° → 45° etter terskel), retur etter 12 s
+  under prep, dra på snudd kart, talpanel (1,25 → måldjupne 1.25 lagra), tekst «Pb600 æøå» (tastaturet dekkjer ikkje
+  feltet), ekte tast skjuler tastaturet, PIN-boks (1234), NTRIP-passord (skjult → VIS → lagra som stjerner).
+  Ingen JavaScript-feil. Lokale testinnstillingar er sette tilbake.
+- **Kvifor:** PC-en i maskina har berre berøringsskjerm; eigaren ville snu kartet med fingrane og kunne skrive inn
+  verdiar utan tastatur, og at passordet berre skal synast som stjerner etter lagring.
+
 ### PC-prototype v1.6.61 – SNOWMAN-logoen slik eigaren har han
 - **Endra:** logoen i toppfeltet er no eigaren sin: kvite fjelltoppar over «SNOWMAN» (rett, feit skrift) og
   «by Alpindata» i lyseblått under, teikna som SVG (skarp i alle storleikar). App-ikonet frå v1.6.60 er teke ut av

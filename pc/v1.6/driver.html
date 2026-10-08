@@ -1572,6 +1572,17 @@
           </div>
         </section>
         <section id="panelSys" class="panel">
+          <h3>TASTATUR PÅ SKJERMEN</h3>
+          <div class="row">
+            <span>Tastatur på skjermen når du trykkjer i eit skrivefelt</span
+            ><select id="kbMode" onchange="setKbMode(this.value)">
+              <option value="auto">AUTO</option><option value="alltid">ALLTID</option><option value="av">AV</option>
+            </select>
+          </div>
+          <div class="history" style="font-size: 12px">
+            AUTO: kjem opp når du trykkjer med fingeren, og blir borte når du brukar eit ekte tastatur. Talfelt får talpanel, tekstfelt
+            norsk tastatur med æøå. Tastaturet legg seg på motsett side av feltet, viser det du skriv, og kan dragast i lista øvst.
+          </div>
           <h3>KIOSKMODUS</h3>
           <div id="sysLauncher" class="history"></div>
           <button id="sysAuto" class="btn toggle" onclick="toggleSysAuto()">START SNOWMAN AUTOMATISK NÅR PC-EN STARTAR: AV</button>
@@ -1845,9 +1856,10 @@
     <script src="vendor/leaflet.js"></script>
     <script src="vendor/three.snowman.min.js"></script>
     <script src="vendor/qrcode.js"></script>
+    <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.61";
+      const APP_VERSION = "1.6.62";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1878,6 +1890,7 @@
           zOff: 0,
           northUp: false,
           detail3d: "normal", // 3D-detalj nær maskina: hog | normal | av
+          kbMode: "auto", // tastatur på skjermen: auto | alltid | av
           surfMem: true, // estimat frå tidlegare trakka overflate
           surfH: 24, // … frå dei siste surfH timane (3–72)
           terrain: null,
@@ -3118,7 +3131,7 @@
       }
       async function switchWindow(target) {
         if (target === "window" && cfg.kioskPinHash) {
-          let pin = prompt("PIN-kode for å gå ut av kioskmodus:");
+          let pin = window.SKB ? await SKB.ask("PIN-kode for å gå ut av kioskmodus:", { password: true, numeric: true }) : prompt("PIN-kode for å gå ut av kioskmodus:");
           if (pin === null) return;
           if ((await pinHash(pin.trim())) !== cfg.kioskPinHash) return toast("Feil PIN-kode");
         }
@@ -3328,7 +3341,7 @@
       }
       async function clearPin() {
         if (cfg.kioskPinHash) {
-          let pin = prompt("Skriv noverande PIN-kode for å fjerne han:");
+          let pin = window.SKB ? await SKB.ask("Skriv noverande PIN-kode for å fjerne han:", { password: true, numeric: true }) : prompt("Skriv noverande PIN-kode for å fjerne han:");
           if (pin === null) return;
           if ((await pinHash(pin.trim())) !== cfg.kioskPinHash) return toast("Feil PIN-kode");
         }
@@ -3390,6 +3403,12 @@
         surfAt = 0;
         updateAhead(true);
         surfStatus();
+      }
+      function setKbMode(m) {
+        cfg.kbMode = m;
+        persistCfg();
+        if (window.SKB) SKB.setMode(m);
+        toast("Tastatur på skjermen: " + { auto: "AUTO", alltid: "ALLTID", av: "AV" }[m]);
       }
       function toggleSurfMem() {
         pickSurf(cfg.surfMem === false ? surfHours() : 0);
@@ -3617,6 +3636,8 @@
         $("estSet").classList.toggle("on", cfg.estOn !== false);
         $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn !== false ? "PÅ" : "AV");
         surfLabel();
+        $("kbMode").value = cfg.kbMode || "auto";
+        if (window.SKB) SKB.setMode(cfg.kbMode || "auto");
         loadTerrain();
         TRA.load();
         renderLegend();
@@ -3920,7 +3941,7 @@
       function updateFreeUI() {
         $("freeBox").classList.toggle("hide", preparing);
         $("followBtn").classList.toggle("hide", !freeActive());
-        $("freeHint").textContent = VIEWS[viewMode()].gl && T3D.ready() ? "Dra for å snu · rull/knip for zoom · to fingrar/høgre knapp for å flytte" : "Dra for å flytte · ⟲ ⟳ snur kartet";
+        $("freeHint").textContent = VIEWS[viewMode()].gl && T3D.ready() ? "Dra for å snu · rull/knip for zoom · to fingrar/høgre knapp for å flytte" : "Dra for å flytte · vri med to fingrar eller ⟲ ⟳ for å snu";
       }
       function rotateBy(deg) {
         if (!freeAllowed()) return;
@@ -3939,6 +3960,94 @@
         if (pos) map.panTo(pos, { animate: false });
         updateFreeUI();
       }
+      /* ---------- Snu kartet med to fingrar (v1.6.62) ----------
+         To fingrar som VRIR snur kartet, to fingrar som KNIP zoomar (Leaflet). Rotasjonen startar først etter 12° vriing,
+         så kartet ikkje snur seg når ein berre zoomar. Fungerer også under prep: då går kartet tilbake til køyreretninga
+         12 s etter siste vriing. Utan prep blir det ståande til føraren trykkjer FØLG / kompasset. 3D-terreng har eiga styring. */
+      (function () {
+        const TH = 12,
+          BACK_MS = 12000;
+        let a0 = null,
+          b0 = 0,
+          on = false,
+          back = null;
+        const ang = (t) => (Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX) * 180) / Math.PI,
+          wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180,
+          gl = () => VIEWS[viewMode()].gl && T3D.ready(),
+          el = $("map");
+        el.addEventListener(
+          "touchstart",
+          (e) => {
+            if (e.touches.length === 2 && !gl()) {
+              a0 = ang(e.touches);
+              on = false;
+            } else if (e.touches.length !== 2) a0 = null;
+          },
+          { passive: true, capture: true },
+        );
+        el.addEventListener(
+          "touchmove",
+          (e) => {
+            if (a0 == null || e.touches.length !== 2) return;
+            let cur = ang(e.touches),
+              d = wrap(cur - a0);
+            if (!on) {
+              if (Math.abs(d) < TH) return;
+              on = true;
+              a0 = cur; // start utan hopp
+              b0 = manualBear != null ? manualBear : bearCont;
+              clearTimeout(back);
+              return;
+            }
+            manualBear = b0 - d; // fingrane med klokka → kartet med klokka
+            rotateMap(heading || 0);
+          },
+          { passive: true, capture: true },
+        );
+        el.addEventListener(
+          "touchend",
+          (e) => {
+            if (e.touches.length >= 2) return;
+            if (on) {
+              logClient("action", "Kartet snudd med fingrane (" + Math.round((((manualBear % 360) + 360) % 360)) + "°)");
+              updateFreeUI();
+              clearTimeout(back);
+              if (preparing)
+                back = setTimeout(() => {
+                  if (preparing && manualBear != null) {
+                    manualBear = null;
+                    rotateMap(heading || 0);
+                    updateFreeUI();
+                    toast("Kartet følgjer køyreretninga igjen");
+                  }
+                }, BACK_MS);
+            }
+            a0 = null;
+            on = false;
+          },
+          { passive: true, capture: true },
+        );
+      })();
+      // Dra på eit snudd kart: Leaflet reknar flyttinga i skjermretning, men kartet er rotert (og skalert) med CSS.
+      // Snu flyttinga tilbake, så kartet går same vegen som fingeren.
+      (function () {
+        const D = L.Draggable.prototype,
+          orig = D._updatePosition;
+        D._updatePosition = function () {
+          if (this._element === map._mapPane && !cfg.view3d && !(cfg.northUp && manualBear == null) && this._newPos && this._startPos) {
+            let ps = this._parentScale || { x: 1, y: 1 },
+              sc = 1.42,
+              d = this._newPos.subtract(this._startPos),
+              sx = (d.x * ps.x) / sc,
+              sy = (d.y * ps.y) / sc,
+              r = (bearCont * Math.PI) / 180,
+              c = Math.cos(r),
+              si = Math.sin(r);
+            this._newPos = this._startPos.add(L.point(sx * c - sy * si, sx * si + sy * c));
+          }
+          return orig.call(this);
+        };
+      })();
       map.on("dragstart", () => {
         if (freeAllowed()) {
           followMap = false;

@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.61"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.62"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -574,6 +574,8 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/hud":
             p=Path(__file__).with_name("hud.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
+        if u.path=="/tastatur.js":   # tastatur på skjermen (alle sider)
+            self.headers_ok(200,"application/javascript"); self.wfile.write((HERE/"tastatur.js").read_bytes()); return
         if u.path=="/ntrip":
             p=Path(__file__).with_name("ntrip.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
@@ -633,7 +635,7 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 d=json.loads(body or b"{}"); before=dict(CFG)
                 for k in CFG:
-                    if k in d and not (k=="password" and d[k] in ("***",)): CFG[k]=d[k]
+                    if k in d and not (k=="password" and re.fullmatch(r"\*{3,}|•{3,}",str(d[k]))): CFG[k]=d[k]
                 log_changes("NTRIP/mottakar",before,CFG,("serial_port","baud","caster","caster_port","mountpoint","username","password",
                             "ntrip_version","ntrip_timeout","gga_interval","initCmds"))
                 save_cfg(); update(last_error="")
@@ -811,7 +813,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 try:
                     old=json.loads(UI_CFG.read_text("utf-8")); oc=old.get("cfg",old); nc=d.get("cfg",d)
                     log_changes("førarskjerm",oc,nc,("mname","machine","blade","bladeN","tiller","tillerN","target","tol","bounds","northUp",
-                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH"))
+                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH","kbMode"))
                 except Exception: pass
                 write_atomic(UI_CFG,json.dumps(d,ensure_ascii=False,indent=1))
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
