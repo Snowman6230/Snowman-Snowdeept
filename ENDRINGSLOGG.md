@@ -9,6 +9,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.64 – loggen hoppar ikkje til toppen medan ein les
+- **Retta:** feltlogg-lista (Innst. › System) vart teikna på nytt kvart 2. sekund, så hendingsboksen hoppa tilbake
+  til toppen medan ein las. No blir ingenting teikna på nytt om innhaldet er likt, og rulleposisjonen i boksen blir
+  halden når nye linjer kjem. Står ein heilt nedst, følgjer boksen med nye linjer.
+- **Retta:** hendingane i loggen som pågår blir no henta på nytt kvart 2. sekund, så nye feilmeldingar kjem fram
+  medan boksen er open (før var lista frosen frå då ein opna ho).
+- **Retta (same feil andre stader):** Kontroll-panelet (status, kontrollmålingar, kontrollpunkt) vart òg teikna på
+  nytt kvart 2. sekund – no berre når noko er endra, og markørane på kartet blir ikkje teikna på nytt utan grunn.
+  Då blir heller ikkje knappar bytte ut midt i eit trykk på berøringsskjermen. Andre panel har ikkje slik oppdatering.
+- **Kvifor:** eigaren fekk ikkje lese feilmeldingane i loggen fordi teksten hoppa til toppen.
+- **Testa:** hendingsboksen midt i (pos. 200) held seg etter 7 s og nye linjer kjem til (58 → 61); nedst følgjer
+  boksen nye linjer (61 → 64). Ingen JavaScript-feil.
+
 ### Nytt app-ikon for SNOWMAN (skrivebord, oppgåvelinje og nettlesarfane)
 - **Nytt:** moderne ikon med SNOWMAN-fjelltoppane (snøline, same form som logoen) som går ned i ei snøflate, og den
   nye tråkkemaskina sett ovanfrå (skjer med venger, belte, raudt førarhus, fres og gul finisher) med preparert spor
