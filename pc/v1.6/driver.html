@@ -47,11 +47,25 @@
         align-items: center;
       }
       .brand {
-        width: 190px;
-        padding-left: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: none;
+        padding-left: 12px;
+        margin-right: 30px; /* luft mellom SNOWMAN og snødjupna */
         font-size: 30px;
         font-weight: 900;
         font-style: italic;
+      }
+      .brandLogo {
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        flex: none;
+        box-shadow: 0 0 0 1px #ffffff22;
+      }
+      .brandTxt {
+        line-height: 1.05;
       }
       .brand small {
         display: block;
@@ -471,9 +485,15 @@
           height: 64px;
         }
         .brand {
-          width: 120px;
           font-size: 21px;
-          padding-left: 8px;
+          padding-left: 6px;
+          margin-right: 10px;
+          gap: 6px;
+        }
+        .brandLogo {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
         }
         .brand small {
           font-size: 8px;
@@ -1215,7 +1235,9 @@
       </div>
       <div id="t3dInfo"></div>
       <div class="top">
-        <div class="brand">SNOWMAN<small>by Alpindata</small><small id="brandVer">PC v1.6</small></div>
+        <div class="brand"
+          ><img class="brandLogo" src="vendor/snowman-icon.png" alt="" /><div class="brandTxt">SNOWMAN<small>by Alpindata</small><small id="brandVer">PC v1.6</small></div></div
+        >
         <div class="depth"><label id="depthLabel">SNØDJUPNE (MIDT)</label><b id="depth">--</b><small id="depthNote">IKKJE MÅLT</small></div>
         <div id="aheadBox" class="ahead hide"><label id="aheadLabel">FRAMFOR · ESTIMERT</label><b id="aheadD">--</b><small id="aheadNote"></small></div>
         <div class="rtk" onclick="toggleSatStatus()">
@@ -1817,7 +1839,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.59";
+      const APP_VERSION = "1.6.60";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));

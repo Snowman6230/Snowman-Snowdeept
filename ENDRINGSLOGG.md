@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.60 – SNOWMAN-logoen i toppen og meir luft til snødjupna
+- **Endra:** toppfeltet på førarskjermen viser SNOWMAN-ikonet (tråkkemaskina framfor fjella, same som app-ikonet i
+  `ikon/`) til venstre for «SNOWMAN by Alpindata», og det er meir luft (30 px) mellom namnet og snødjupneboksen.
+  På smal skjerm blir ikonet mindre.
+- **Kvifor:** eigaren ønskte meir luft mellom SNOWMAN og snødjupna, og logoen inn i toppen.
+- **Testa:** nettlesar i 1368, 1920 og 680 px breidd.
+
 ### PC-prototype v1.6.59 – timeval for tidlegare flate, kart og tid per trasé i rapporten, sidetal på HUD
 - **Nytt:** knappen «≋ Flate» nedst opnar ein meny: **AV · 3 · 5 · 10 · 15 · 24 · 48 · 72 t** – kor gammal flata som
   blir brukt til estimatet framfor maskina kan vere. Knappen viser valet («Flate 24 t»). Same val i Innst. › Kart.
