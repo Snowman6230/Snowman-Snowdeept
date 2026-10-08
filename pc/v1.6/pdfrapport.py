@@ -227,7 +227,8 @@ def _h(pdf, s):
     pdf.y -= 22
 
 
-def build(rep, machine="", bounds=None):
+def build(rep, machine="", bounds=None, note=None):
+    """note: tydeleg merknad øvst og i botnen av kvar side (t.d. «EKSEMPEL – oppdikta data»)."""
     bounds = list(bounds or [0.3, 0.5, 0.8, 1.2, 1.6])[:5]
     n = lambda v, d=1: "–" if v is None else (f"{v:.{d}f}").replace(".", ",")
     hm = lambda ms: time.strftime("%H:%M", time.localtime(ms / 1000)) if ms else "–"
@@ -244,6 +245,10 @@ def build(rep, machine="", bounds=None):
     pdf.text(200, A4[1] - 38, f"Rapport – prepareringsdøgn {d} kl. 12 til {nxt} kl. 12", 12, True, (1, 1, 1))
     pdf.text(200, A4[1] - 56, (machine + " · " if machine else "") + "laga " + time.strftime("%d.%m.%Y %H:%M"), 9, False, (0.8, 0.88, 0.94))
     pdf.y = A4[1] - 100
+    if note:
+        pdf.rect(M, pdf.y - 24, A4[0] - 2 * M, 22, fill=(1.0, 0.93, 0.80), stroke=ORANGE)
+        pdf.text(M + 8, pdf.y - 17, note, 10, True, ORANGE)
+        pdf.y -= 30
     T = rep["total"]
     _h(pdf, "Samla")
     for s in (
@@ -310,4 +315,4 @@ def build(rep, machine="", bounds=None):
     else:
         pdf.text(M, pdf.y - 11, "Ingen fyllingar registrerte dette døgnet.", 9.5)
         pdf.y -= 16
-    return pdf.bytes(f"SNOWMAN by Alpindata – rapport {d}" + (f" – {machine}" if machine else ""))
+    return pdf.bytes(f"SNOWMAN by Alpindata – rapport {d}" + (f" – {machine}" if machine else "") + (f"  ·  {note}" if note else ""))

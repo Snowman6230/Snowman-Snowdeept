@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### Dokumentasjon – eksempel på alle rapportane (`docs/eksempel-rapportar/`)
+- **Nytt:** eksempel på dagsrapport som PDF med trasear og utan trasear, CSV til Excel og ein feltlogg (zip),
+  med `README.md` som forklarer kvar fil og kvar ein finn ho i SNOWMAN. Alle er laga med oppdikta eller simulerte data
+  og tydeleg merkte («EKSEMPEL – oppdikta data, ikkje ekte målingar» øvst og nedst i PDF-ane; feltloggen er frå
+  simulatoren og merkt simulert).
+- **Nytt:** `pc/v1.6/lag-eksempel.py` lagar eksempelrapportane på nytt i ei eiga mappe (data/ til SNOWMAN blir ikkje
+  rørt). `pdfrapport.build` har fått valfri merknad (`note`) for slike eksempel.
+- **Kvifor:** eigaren ville sjå eksempel på alle rapportane ein kan ta ut av SNOWMAN.
+
 ### PC-prototype v1.6.67 – snødjupne i farger på karta i rapporten, «Tal» først i knapperekkja
 - **Nytt:** karta i rapporten (i SNOWMAN og i PDF-en) er farga etter **målt snødjupne** i fresbreidda – same fargar og
   intervall som på kartet (Innst. › Snøintervall) – med **fargeskala** under kartet. Trakka utan måling er lyseblått,

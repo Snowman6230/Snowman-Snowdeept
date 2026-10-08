@@ -1,0 +1,21 @@
+﻿EKSEMPEL – oppdikta data;;;
+SNOWMAN rapport;prepareringsdøgn 2026-10-08 kl. 12 til neste dag kl. 12
+
+SAMLA (utan demo/test)
+Prep-tid (min);Køyrd (km);Areal køyrt (daa);Drivstoff fylt (l);Snødjupne snitt (m);Snødjupne minst (m)
+55;7,33;40,3;172,0;0,84;0,16
+
+TRASEAR
+Trasé;Areal (daa);Preparert (%);Preparert (daa);Tid i traseen (min);Sist preparert;Måldjupne (m);Snødjupne snitt (m);Snødjupne minst (m);Økter
+Familiebakken;15,6;92,0;14,4;21;17:51;0,8;1,06;0,56;1
+Storebakken;27,0;87,0;23,5;34;22:19;0,9;0,7;0,16;2
+
+ØKTER
+Økt;Maskin;Start;Slutt;Prep-tid (min);Køyrd (km);Fresbreidd (m);Areal (daa);Snødjupne snitt (m);Snødjupne minst (m);Merknad
+eks-1;PB600;17:30;17:51;21;2,8;5,5;15,4;1,06;0,56;
+eks-2;PB600;19:42;20:08;26;3,53;5,5;19,4;0,71;0,16;
+eks-3;PB600;22:12;22:19;8;0,99;5,5;5,5;0,7;0,54;
+
+DRIVSTOFF
+Tid;Liter;Timeteljar;Full tank;Liter per time;Grunnlag for time;Liter per daa;Merknad
+22:30;172,0;4316,6;ja;26,9;timeteljar;4,27;
