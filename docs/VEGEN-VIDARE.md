@@ -231,8 +231,15 @@ feilkodar og temperaturar i feltloggen.
 
 **Neste steg (ikkje plassert i vegplanen)**
 1. **Observasjonar frå næraste stasjon (MET Frost):** krev gratis klient-ID, lagra lokalt som NTRIP-passordet (aldri i
-   repoet). SNOWMAN vel stasjonar etter GPS (avstand og høgdeskilnad) og lagrar valet i stadprofilen. For Fjellsætra:
-   «Fv60 Strandafjellet» (yr id 5-60225) ser ut til å vere ein vegvêrstasjon – må stadfestast i Frost.
+   repoet). SNOWMAN vel stasjonar etter GPS (avstand og høgdeskilnad) og lagrar valet i stadprofilen. For Fjellsætra
+   (funne 2026-10-09; yr-id «5-NNNNN» svarar til MET-stasjon SNNNNNN – stadfest i Frost med klient-ID):
+   - **Roaldshornet (truleg SN60190)**, ca. 1050 moh., 62,3065 N 6,8490 Ø (ca. 17 km frå Fjellsætra): temperatur og vind
+     (også kast). Best for høgfjellstemperatur og vind.
+   - **Fv60 Strandafjellet (truleg SN60225)**, 504 moh.: temperatur, nedbør og vind. Truleg vegvêrstasjon.
+   - **Fv650 Liabygda** (id ikkje funnen): temperatur, nedbør og vind.
+   - Ingen av dei viser luftfukt eller snødjupne på yr – våttemperaturen må framleis kome frå varselet.
+   - github.com/metno har ikkje vêrdata, men `weathericons` (symbola til Locationforecast, `symbol_code`) kan
+     brukast i overlayet om lisensen tillèt det. YR-merket skal ikkje brukast i SNOWMAN (MET sine vilkår).
 2. **Vegvêr frå Statens vegvesen (DATEX II, NLOD):** krev søkt brukarkonto. Berre aktuelt der Frost ikkje har stasjonen.
 3. **Webkamera per anlegg:** liste i stadprofilen (namn, plassering, bilete-adresse), val etter GPS, ikon på kartet og
    bilete i eit panel. Valfritt eitt bilete i timen til dagsrapporten.

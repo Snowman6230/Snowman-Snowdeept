@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### Dokumentasjon – målestasjonar nær Fjellsætra (VEGEN-VIDARE kap. 13)
+- **Nytt:** Roaldshornet (ca. 1050 moh., temperatur og vind), Fv60 Strandafjellet (504 moh., temperatur, nedbør, vind)
+  og Fv650 Liabygda er dei næraste stasjonane yr viser. Truleg MET-id SN60190 og SN60225 – må stadfestast i Frost.
+- **Avgjerd:** github.com/metno har ingen eigne vêrdata eller offisiell Python-klient; SNOWMAN brukar eigen klient
+  (`ver.py`). YR-merket blir ikkje brukt. MET sine vêrsymbol (`weathericons`) kan vurderast etter lisenssjekk.
+- **Kvifor:** eigaren bad om å finne informasjon på github.com/metno.
+
 ### PC-prototype v1.6.68 – Vêr og snøproduksjon (Vêr-knappen, prototype)
 - **Nytt:** knappen **«❄ Vêr»** i verktøylinja (etter HUD) opnar eit **overlay** over kartet med varsel for staden og
   høgda til maskina: snøproduksjon no (GODT / MARGINALT / FOR MYKJE VIND / IKKJE MOGLEG), våttemperatur, luft og fukt,
