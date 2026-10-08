@@ -105,7 +105,7 @@ def demo_hours(alt, now=None):
         wind = 4 + 3 * math.sin(k / 7.0) + (12 if 33 <= k <= 38 else 0)
         pr = round(max(0.0, 1.6 * math.sin((k - 30) / 10 * math.pi)), 1) if 30 <= k <= 40 else 0.0
         out.append({"t": t * 1000, "temp": round(temp, 1), "rh": round(min(99, rh), 0), "wind": round(wind, 1),
-                    "dir": 250, "cloud": 80 if pr else 30, "precip": pr, "precip6": None,
+                    "dir": round(215 + 70 * math.sin(k / 12.0)) % 360, "cloud": 80 if pr else 30, "precip": pr, "precip6": None,
                     "sym": _demo_sym(pr, temp, 7 <= lh < 18, k)})
     return out
 

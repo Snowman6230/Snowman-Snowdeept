@@ -9,6 +9,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.71 – Vêr: vind som himmelretning, «kl.» på klokkeslett
+- **Endra:** vindretning blir vist som **himmelretning** (nord, nordaust, aust, søraust, sør, sørvest, vest, nordvest –
+  der vinden kjem frå) med ei **pil** som viser kvar vinden blæs, i staden for grader. Gjeld vindboksen, «Målt no» og
+  avlesinga i grafen.
+- **Endra:** klokkeslett står med **«kl.»**: tidsaksen i 48-timarsgrafen (kl. 06, kl. 12, kl. 18, og «Lau kl. 00» ved
+  midnatt), produksjonsvindauge, «vindauge no / neste vindauge» og avlesinga. Vindauge over midnatt får begge dagane,
+  t.d. «Fre kl. 18 – Lau kl. 09» (før: «Fre 18–09»).
+- **Kvifor:** eigaren: grader er vanskeleg å tolke for ein maskinførar, og grafen mangla klokkeslett.
+- **Testa:** med `simuler-leica.py` (isolert kopi) og demo (varierande vindretning). Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.70 – «MÅLT NO» i Vêr: målingar frå næraste vêrstasjonar (MET Frost)
 - **Nytt:** `frost.py` hentar siste målingar frå dei næraste stasjonane (Frost «nearest» frå GPS-posisjonen, maks 3 med
   ferske data): temperatur, vind og kast, luftfukt, nedbør siste time og snødjupne der stasjonen måler det. Nytt

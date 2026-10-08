@@ -819,6 +819,17 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      #wx .wxU {
+        font-style: normal;
+        font-size: 11px;
+        font-weight: 700;
+        color: #9ab3c1;
+      }
+      #wx .wxPil {
+        display: inline-block;
+        vertical-align: -3px;
+        fill: #7fd0ff;
+      }
       #wx .wxObsL {
         display: flex;
         flex-direction: column;
@@ -826,7 +837,7 @@
       }
       #wx .wxObs {
         display: grid;
-        grid-template-columns: 1.7fr 1.3fr 1fr 1.1fr 0.9fr 0.7fr;
+        grid-template-columns: 1.6fr 1.3fr 1.25fr 1.05fr 0.85fr 0.6fr;
         gap: 6px;
         background: #0b2231;
         border-radius: 8px;
@@ -2163,7 +2174,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.70";
+      const APP_VERSION = "1.6.71";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -6577,6 +6588,14 @@
         const lim = () => ({ good: cfg.wxGood ?? -5, marg: cfg.wxMarg ?? -2, wind: cfg.wxWind ?? 12 });
         const n1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toFixed(1).replace(".", ",").replace("-", "−"));
         const hh = (t) => String(new Date(t).getHours()).padStart(2, "0");
+        const kl = (t) => "kl. " + hh(t);
+        // vindretning som himmelretning (der vinden kjem frå) – lettare å lese enn grader. Pila viser kvar vinden blæs.
+        const HIM = ["nord", "nordaust", "aust", "søraust", "sør", "sørvest", "vest", "nordvest"],
+          HIMK = ["N", "NA", "A", "SA", "S", "SV", "V", "NV"];
+        const him = (d, kort) => (d == null ? "" : (kort ? HIMK : HIM)[Math.round((((d % 360) + 360) % 360) / 45) % 8]);
+        const pil = (d, px) =>
+          d == null ? "" : `<svg class="wxPil" viewBox="0 0 20 20" style="width:${px || 18}px;height:${px || 18}px;transform:rotate(${Math.round(d)}deg)"><title>Vinden blæs denne vegen</title><path d="M10 19 L3 9 H7.5 V1 H12.5 V9 H17 Z"/></svg>`;
+        const tidsrom = (a, b) => (day(a) === day(b) ? `${day(a)} ${kl(a)}–${hh(b)}` : `${day(a)} ${kl(a)} – ${day(b)} ${kl(b)}`);
         const day = (t) => DAYS[new Date(t).getDay()];
         const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
         async function load() {
@@ -6627,7 +6646,7 @@
             let d = new Date(h.t),
               g = d.getHours();
             if (g % 6) return;
-            o.push(`<line x1="${X(i)}" x2="${X(i)}" y1="${pt}" y2="${Ht - pb}" stroke="#fff" stroke-opacity="${g ? 0.06 : 0.22}"/><text x="${X(i)}" y="${Ht - 7}" text-anchor="middle" font-size="10" fill="${g ? "#7f9aa9" : "#e6f2f8"}" font-weight="${g ? 400 : 800}">${g ? hh(h.t) : day(h.t)}</text>`);
+            o.push(`<line x1="${X(i)}" x2="${X(i)}" y1="${pt}" y2="${Ht - pb}" stroke="#fff" stroke-opacity="${g ? 0.06 : 0.22}"/><text x="${X(i)}" y="${Ht - 7}" text-anchor="middle" font-size="10" fill="${g ? "#7f9aa9" : "#e6f2f8"}" font-weight="${g ? 400 : 800}">${g ? kl(h.t) : day(h.t) + " " + kl(h.t)}</text>`);
           });
           // vêrsymbol kvar 3. time (MET weathericons, MIT) – same symbol_code som i varselet
           H.forEach((h, i) => {
@@ -6656,7 +6675,7 @@
         function readout(h) {
           if (!h) return "Trykk eller dra i grafen for å sjå kvar time.";
           let c = CLS[h.cls];
-          return `<b>${day(h.t)} ${hh(h.t)}:00</b>${h.sym ? ` <img src="vendor/vaersymbol/${esc(h.sym)}.svg" alt="" style="width:18px;height:18px;vertical-align:-4px"> ${esc(h.symText)}` : ""} · våttemp. <b>${n1(h.tw)}°</b> · luft ${n1(h.temp)}° · fukt ${Math.round(h.rh)} % · vind ${n1(h.wind)} m/s · nedbør ${n1(h.precip ?? h.precip6 ?? 0)} mm · <b style="color:${c[1]}">${c[0]}</b>`;
+          return `<b>${day(h.t)} ${kl(h.t)}</b>${h.sym ? ` <img src="vendor/vaersymbol/${esc(h.sym)}.svg" alt="" style="width:18px;height:18px;vertical-align:-4px"> ${esc(h.symText)}` : ""} · våttemp. <b>${n1(h.tw)}°</b> · luft ${n1(h.temp)}° · fukt ${Math.round(h.rh)} % · vind ${n1(h.wind)} m/s${h.dir != null ? " frå " + him(h.dir) + " " + pil(h.dir) : ""} · nedbør ${n1(h.precip ?? h.precip6 ?? 0)} mm · <b style="color:${c[1]}">${c[0]}</b>`;
         }
         function render() {
           let el = $("wxCard"),
@@ -6678,7 +6697,7 @@
           let win = W.length
             ? W.map((w) => {
                 let k = CLS[w.quality];
-                return `<div><i style="background:${k[1]}"></i><span><b>${day(w.start)} ${hh(w.start)}–${hh(w.end)}</b> <small>(${w.hours} t)</small></span><span style="color:${k[1]};font-weight:900">${k[2].toUpperCase()}</span><small>snitt ${n1(w.twMean)}° · kaldast ${n1(w.twMin)}° · ${w.good} t godt</small></div>`;
+                return `<div><i style="background:${k[1]}"></i><span><b>${tidsrom(w.start, w.end)}</b> <small>(${w.hours} t)</small></span><span style="color:${k[1]};font-weight:900">${k[2].toUpperCase()}</span><small>snitt ${n1(w.twMean)}° · kaldast ${n1(w.twMin)}° · ${w.good} t godt</small></div>`;
               }).join("")
             : `<div><i style="background:#ff7a6b"></i><span>Ingen produksjonsvindauge dei neste ${Math.round(R.hours.length)} timane</span><span></span><small></small></div>`;
           let days = R.days
@@ -6693,10 +6712,10 @@
             (R.demo ? `<div class="wxDemo">DEMO – OPPDIKTA VÊRDATA, IKKJE VARSEL</div>` : "") +
             (R.offline ? `<div class="wxWarn">Utan nett – viser lagra varsel, ${R.age_min} min gammalt.</div>` : "") +
             `<div class="wxNow">
-              <div class="wxBox wxStat ${h.cls}"><span>SNØPRODUKSJON NO</span><b style="color:${c[1]}">${c[0]}</b><em>${next ? (next.start <= Date.now() ? "Vindauge no – til " + day(next.end) + " " + hh(next.end) + ":00" : "Neste vindauge: " + day(next.start) + " " + hh(next.start) + ":00") : "Ingen vindauge i varselet"}</em></div>
+              <div class="wxBox wxStat ${h.cls}"><span>SNØPRODUKSJON NO</span><b style="color:${c[1]}">${c[0]}</b><em>${next ? (next.start <= Date.now() ? "Vindauge no – til " + day(next.end) + " " + kl(next.end) : "Neste vindauge: " + day(next.start) + " " + kl(next.start)) : "Ingen vindauge i varselet"}</em></div>
               <div class="wxBox"><span>VÅTTEMPERATUR</span><b class="c-${h.cls}">${n1(h.tw)}°</b><em>grense ${n1(L.good)}° / ${n1(L.marg)}°</em></div>
               <div class="wxBox wxSymBox"><span>LUFT · FUKT</span>${h.sym ? `<img src="vendor/vaersymbol/${esc(h.sym)}.svg" alt="${esc(h.symText)}" title="${esc(h.symText)}">` : ""}<b>${n1(h.temp)}°</b><em>${Math.round(h.rh)} % fukt${h.symText ? " · " + esc(h.symText) : ""}</em></div>
-              <div class="wxBox"><span>VIND</span><b>${n1(h.wind)}</b><em>m/s${h.dir != null ? " frå " + Math.round(h.dir) + "°" : ""} · maks ${n1(L.wind)}</em></div>
+              <div class="wxBox"><span>VIND</span><b>${n1(h.wind)} ${pil(h.dir, 24)}</b><em>m/s${h.dir != null ? " frå " + him(h.dir) : ""} · maks ${n1(L.wind)}</em></div>
             </div>
             ${obsHtml()}
             <h4>PRODUKSJONSVINDAUGE</h4><div class="wxWin">${win}</div>
@@ -6747,7 +6766,7 @@
               return `<div class="wxObs">
                 <span><b>${esc(x.name)}</b><small>${x.masl != null ? x.masl + " moh." : ""}${x.km != null ? " · " + n1(x.km) + " km" : ""}</small></span>
                 <span><b>${n1(x.temp)}°</b><small>${x.tempAtMachine != null ? "≈ " + n1(x.tempAtMachine) + "° ved maskina" : "luft"}</small></span>
-                <span><b>${x.wind != null ? n1(x.wind) : "–"}</b><small>m/s${x.gust != null ? " · kast " + n1(x.gust) : ""}</small></span>
+                <span><b>${x.wind != null ? n1(x.wind) + '<i class="wxU"> m/s</i>' : "–"} ${pil(x.dir)}</b><small>${x.dir != null ? "frå " + him(x.dir) : "vind"}${x.gust != null ? " · kast " + n1(x.gust) : ""}</small></span>
                 <span><b${x.tw != null ? ' class="c-' + (x.tw <= lim().good ? "godt" : x.tw <= lim().marg ? "marg" : "nei") + '"' : ""}>${x.tw != null ? n1(x.tw) + "°" : x.rh != null ? Math.round(x.rh) + " %" : "–"}</b><small>${x.tw != null ? "våttemp. · " + Math.round(x.rh) + " %" : "fukt ikkje målt"}</small></span>
                 <span><b>${x.precip != null ? n1(x.precip) : "–"}</b><small>mm siste t${x.snow != null ? " · snø " + Math.round(x.snow) + " cm" : ""}</small></span>
                 <span class="${gam ? "c-marg" : ""}"><b>${x.age_min != null ? x.age_min : "–"}</b><small>min sidan</small></span>
