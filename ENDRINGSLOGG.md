@@ -9,6 +9,27 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.58 – estimat framfor maskina frå tidlegare trakka overflate (snøflateminne)
+- **Nytt:** SNOWMAN hugsar snøoverflata der maskina har køyrt (`snoflate.py`, `data/snoflate.json`, ruter på 1 × 1 m,
+  7 døgn). Ved neste preparering blir snødjupna framfor maskina estimert frå denne overflata: overflata følgjer den
+  store forma på bakken, men bekkar, groper og kular frå terrengmodellen blir rekna med under ei planert flate.
+  Eit gjenfylt bekkefar blir då estimert djupt sjølv om ein berre har køyrt på kvar side av det.
+- **Nytt:** knappen **«≋ Tidl. flate»** nedst slår dette av og på (også i Innst. › Kart, med status, forklaring og
+  «Gløym tidlegare overflate» t.d. etter mykje nysnø). Av = som før: estimatet byggjer berre på målingane i økta.
+- **Nytt:** estimatboksen viser «FRAMFOR · ESTIMERT · TIDL. FLATE» og alderen på flata («flate 18 t gammal»), også på
+  HUD-en. Det er alltid merka som estimat. Berre flate under 72 t blir brukt. Demo brukar det ikkje; simulert
+  mottakar lagrar og brukar berre test-flate (blandar aldri test og ekte).
+- **Avgjerd (modell):** `djupne = r(x) + Tg(x) − terreng(x)`, der `Tg` er glatta terreng (±6 m) og `r = overflate − Tg`
+  for kvar lagra måling. Direkte interpolasjon av overflata vart prøvd først og forkasta: i 14° helling gav ho opptil
+  0,7 m feil framfor maskina.
+- **Testa:** `testsnoflate.py` (syntetisk bakke med bekkefar og kul): planert overflate – snittavvik 0,5 cm, midt i
+  bekken 1,91 m mot fasit 1,92 m (gamle metoden 1,25 m). Ikkje planert snø (snøen følgjer terrenget) – den nye metoden
+  bommar med opptil 0,65 m, den gamle treffer; difor av/på-knappen. Simulert GNSS over testterrenget
+  (`simuler-leica.py --terreng`, `--simulert`): minnet blir fylt, estimatet kjem på 0,07 s, knappen byter mellom
+  metodane, ingen JavaScript-feil. Testlag og testminne er sletta etterpå.
+- **Kvifor:** eigaren påpeikte at terrenget ser annleis ut etter planering (slettare, bekkar og kular forsvinn) og
+  ville teste i v1.6 korleis SNOWMAN skal tolke overflata, med ein knapp for å slå det av og på.
+
 ### PC-prototype v1.6.57 – all tekst synest i vallistene i Rapport og Historikk
 - **Retta:** tekstane i vallistene vart kutta. Rapport: feltet heiter no «Prepareringsdøgn (12–12)», og lista viser
   berre datoen («08.10.2026») i staden for «08.10.2026 kl. 12 – neste dag kl. 12». Historikk: «Vel økt (dato, starttid

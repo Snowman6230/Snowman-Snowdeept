@@ -109,6 +109,23 @@ Snøkanon, hydrant, heismast, bygg, kum, kabel, steinar og andre hindringar.
 
 Trasear og objekt blir lagra i anleggsprofilen og følgjer med til alle maskiner.
 
+## 6b. Snøflateminne – estimat framfor maskina frå tidlegare trakka overflate (v1.6.58)
+
+Barmarka endrar seg ikkje når maskina planerer – det gjer snøoverflata. Målinga under maskina er difor alltid
+rett. Estimatet framfor maskina kan derimot bruke at ei planert overflate er jamn:
+
+- **Lagring** (`snoflate.py`, `data/snoflate.json`): kvar gyldige snødjupne (RTK FIX, kalibrert, i terrengmodellen)
+  lagrar snøoverflata (NN2000) i ei rute på 1 × 1 m med tid, i 7 døgn. Testmodus blir lagra merka som test.
+- **Modell:** overflata følgjer den store forma på terrenget, ikkje bekkar/groper/kular.
+  `Tg` = glatta terreng (snitt ±6 m), `r = overflate − Tg` (jamn), estimert djupne = `r(x) + Tg(x) − terreng(x)`.
+- **Estimat:** same rutemønster som før (2 × 2 m, 4–40 m framfor), berre overflate under 72 t, minst 3 målingar
+  innanfor 8 m og den næraste innanfor 6 m. Alltid merka «ESTIMERT · TIDL. FLATE» med alder.
+- **Av/på:** knappen «Tidl. flate» nedst og i Innst. › Kart. Av = estimatet byggjer berre på snødjupna målt i
+  denne økta. «Gløym tidlegare overflate» slettar minnet (t.d. etter mykje nysnø).
+- **Testa** (`testsnoflate.py`): planert overflate over bekkefar – snittavvik 0,5 cm (enkel djupne-interpolasjon:
+  5 cm, opptil 66 cm feil midt i bekken). Når snøen ligg jamt oppå terrenget (ikkje planert) er det omvendt –
+  difor av/på-knappen. Direkte interpolasjon av overflata vart prøvd og forkasta (store feil i bratt bakke).
+
 ## 7. Rekkjefølgje
 
 | Versjon | Innhald |

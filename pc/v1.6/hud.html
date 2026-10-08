@@ -341,7 +341,7 @@
         // Framfor maskina (6–30 m): estimat frå målingar i nærleiken – aldri vist som måling
         let a = h.ahead;
         $("ahead").classList.toggle("hide", !a);
-        if (a) $("ahead").innerHTML = "<small>FRAMFOR · ESTIMERT" + (h.demo ? " (DEMO)" : "") + "</small>≈" + fmt(a.mean) + " m<small>minst " + fmt(a.min) + " m</small>";
+        if (a) $("ahead").innerHTML = "<small>FRAMFOR · ESTIMERT" + (h.demo ? " (DEMO)" : "") + (a.ageH != null ? " · TIDL. FLATE" : "") + "</small>≈" + fmt(a.mean) + " m<small>minst " + fmt(a.min) + " m" + (a.ageH != null ? " · " + (a.ageH < 1 ? "&lt; 1" : Math.round(a.ageH)) + " t" : "") + "</small>";
         $("warn").textContent = h.warn || "";
         $("warn").classList.toggle("hide", !h.warn);
         $("warn").classList.toggle("near", h.warnLevel === "near");

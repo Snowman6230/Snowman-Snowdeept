@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.57"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.58"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -23,6 +23,8 @@ CFG_FILE=HERE/"snowman-config.local.json"   # lokal, aldri i git (sjå .gitignor
 VENDOR={"leaflet.js":"application/javascript","leaflet.css":"text/css","qrcode.js":"application/javascript","three.snowman.min.js":"application/javascript","snowman-icon.png":"image/png"}
 import terrain as T
 TERR=T.TerrainLibrary(DATA/"terrain")
+import snoflate as SF
+SURF=SF.SnowSurface(DATA/"snoflate.json")   # snøflateminne: målt snøoverflate, til estimat framfor maskina
 import kontroll as K
 import helling as HL
 HEL=HL.Helling()   # hellingskorreksjon: antenna står ikkje rett over beltet når maskina står på skrå
@@ -242,6 +244,8 @@ def parse_gga(line):
             LOG.event(f"Snødjupne-status: {pst} → {dstat} ({DEPTH_TXT.get(dstat,'OK') if dstat!='OK' else 'snødjupne blir vist'}); "
                       f"høgd {det.get('H')}, overflate {det.get('surface')}, terreng {det.get('terrain')}, rå {det.get('raw')}, "
                       f"lag {(ter or {}).get('name','-')}",err=dstat in ("NEGATIVE","NO_GEOID","NO_HEIGHT","NO_ENGINE"))
+        if dstat=="OK" and det.get("surface") is not None:   # snøflateminne (testmodus blir lagra merka som test)
+            SURF.add(mlat,mlon,det["surface"],TERR.height,test=bool(STATE.get("simulated"))); SURF.save()
         update(last_gga=line.strip(), fix=fix,
                satellites=int(p[7] or 0), hdop=float(p[8]) if p[8] else None,
                altitude=alt, geoid_sep=sep, lat=lat, lon=lon, tilt=tilt, geoid_model=None if gN is None else round(gN,3),
@@ -479,6 +483,16 @@ class API(http.server.BaseHTTPRequestHandler):
             return
         if u.path=="/api/objekt":
             r={"ok":True,"objekt":OBJ.listing(),"types":{k:{"name":v[0],"radius":v[1],"sym":v[2]} for k,v in TR.OBJ_TYPES.items()}} if OBJ else {"ok":False,"error":TRA_ERR}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path in ("/api/surface/ahead","/api/surface/status"):   # estimat framfor maskina frå tidlegare snøoverflate
+            q=urllib.parse.parse_qs(u.query); test=bool(STATE.get("simulated"))
+            try:
+                if u.path.endswith("status"): r=dict(SURF.stats(test),ok=True,test=test)
+                else:
+                    f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null") else d
+                    r=SURF.ahead(f("lat"),f("lon"),f("hdg"),f("w",5.0),TERR.height,test=test,max_age_h=f("maxh",72.0))
+                    r.update(ok=True,test=test)
+            except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/history/coverage":   # trakka område i ein periode eller for éi økt (Historikk › TRAKKA OMRÅDE)
             q=urllib.parse.parse_qs(u.query); per=q.get("period",["day"])[0]; now=time.time()
@@ -790,6 +804,10 @@ class API(http.server.BaseHTTPRequestHandler):
             RESTART[0]=True; save_cfg()
             self.headers_ok(); self.wfile.write(b'{"ok":true}')
             threading.Thread(target=lambda:(time.sleep(0.5),SERVER[0] and SERVER[0].shutdown()),daemon=True).start(); return
+        if self.path=="/api/surface/clear":   # gløym tidlegare snøoverflate (t.d. etter mykje nysnø)
+            test=bool(STATE.get("simulated")); n=SURF.stats(test).get("cells",0); SURF.clear(test=test)
+            LOG.event(f"Snøflateminne sletta ({n} ruter{' – test' if test else ''})")
+            self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"cleared":n}).encode()); return
         if self.path=="/api/shutdown":   # «Avslutt SNOWMAN» frå førarskjermen (berre frå denne PC-en)
             save_cfg()
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True}).encode())
@@ -901,6 +919,8 @@ def main():
     except KeyboardInterrupt: pass
     finally:
         STOP.set(); save_cfg(); LOG.stop()
+        try: SURF.save(force=True)
+        except Exception: pass
         try:
             if serial_obj: serial_obj.close()   # frigjer COM-porten til Leica
         except Exception: pass

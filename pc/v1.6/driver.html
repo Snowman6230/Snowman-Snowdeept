@@ -1296,6 +1296,19 @@
           </div>
           <button id="bgSet" class="btn toggle on" onclick="toggleBg()">BAKGRUNN (KART/TERRENG): PÅ</button
           ><button id="estSet" class="btn toggle on" onclick="toggleEst()">SNØDJUPNE FRAMFOR (ESTIMAT): PÅ</button>
+          <button id="surfSet" class="btn toggle on" onclick="toggleSurfMem()">ESTIMAT FRÅ TIDLEGARE OVERFLATE: PÅ</button>
+          <div id="surfStat" class="history" style="font-size: 12px"></div>
+          <details class="fold info">
+            <summary>ℹ Estimat frå tidlegare trakka overflate</summary>
+            <div class="fbody">
+              SNOWMAN hugsar høgda på snøoverflata der maskina har køyrt (1 × 1 m, i 7 døgn). Framfor maskina blir overflata
+              interpolert og barmarka frå terrengmodellen trekt frå. Etter planering er overflata jamn, medan terrengmodellen kjenner
+              bekkar, groper og kular – så eit gjenfylt bekkefar blir estimert djupt sjølv om du berre har køyrt på kvar side av det.
+              Dette er alltid eit <b>estimat</b>: nysnø, vind og setningar etter siste køyring er ikkje med, og alderen blir vist.
+              Brukar berre overflate som er under 72 timar gammal. Av: estimatet byggjer berre på målingane i denne økta.
+              <button class="btn" onclick="clearSurfMem()">GLØYM TIDLEGARE OVERFLATE (t.d. etter mykje nysnø)</button>
+            </div>
+          </details>
           <button id="detailSet" class="btn" onclick="cycleDetail3d()">3D-DETALJ NÆR MASKINA: NORMAL</button>
           <button id="fsSet" class="btn toggle" onclick="toggleFullscreen()">FULLSKJERM: AV</button>
           <button id="northSet" class="btn" onclick="toggleNorth()">KARTRETNING: KØYRERETNING OPP</button>
@@ -1669,6 +1682,7 @@
         ><button class="tool" onclick="zoomBtn(1)"><i>＋</i>Zoom inn</button
         ><button id="viewBtn" class="tool" onclick="openViewMenu(event)"><i>◭</i>Kart</button
         ><button id="bgBtn" class="tool on" onclick="toggleBg()"><i>▦</i>Bakgrunn</button
+        ><button id="surfBtn" class="tool on" onclick="toggleSurfMem()" title="Estimat framfor maskina frå tidlegare trakka snøoverflate (på/av)"><i>≋</i>Tidl. flate</button
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
@@ -1760,7 +1774,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.57";
+      const APP_VERSION = "1.6.58";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3267,6 +3281,43 @@
         applyBg();
         toast(cfg.bgOn ? "Bakgrunn på" : "Bakgrunn av – berre spor og snødjupne");
       }
+      function surfLabel() {
+        let on = cfg.surfMem !== false;
+        $("surfBtn").classList.toggle("on", on);
+        $("surfSet").classList.toggle("on", on);
+        $("surfSet").textContent = "ESTIMAT FRÅ TIDLEGARE OVERFLATE: " + (on ? "PÅ" : "AV");
+      }
+      function toggleSurfMem() {
+        cfg.surfMem = cfg.surfMem === false;
+        persistCfg();
+        surfLabel();
+        logClient("action", "Estimat frå tidlegare overflate: " + (cfg.surfMem ? "PÅ" : "AV"));
+        toast(cfg.surfMem ? "Estimat frå tidlegare trakka overflate: PÅ" : "Estimat frå tidlegare overflate: AV – berre målingar frå denne økta");
+        SURFR = null;
+        updateAhead(true);
+        surfStatus();
+      }
+      async function surfStatus() {
+        if (!serverCfg) return;
+        try {
+          let r = await fetch("api/surface/status").then((x) => x.json());
+          $("surfStat").textContent = r.cells
+            ? "Snøflateminne" + (r.test ? " (TEST)" : "") + ": " + r.cells + " ruter à 1 m² · sist målt " + new Date(r.newest * 1000).toLocaleString("nb-NO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })
+            : "Snøflateminne" + (r.test ? " (TEST)" : "") + ": tomt – blir fylt når SNOWMAN måler snødjupne (RTK FIX, inne i terrengmodellen).";
+        } catch (e) {}
+      }
+      async function clearSurfMem() {
+        if (!confirm("Gløyme all lagra snøoverflate? Estimatet framfor maskina byggjer då berre på nye målingar.")) return;
+        try {
+          let r = await api("api/surface/clear", {});
+          toast("Tidlegare overflate gløymd (" + r.cleared + " ruter)");
+          SURFR = null;
+          updateAhead(true);
+          surfStatus();
+        } catch (e) {
+          toast(e.message);
+        }
+      }
       function toggleEst() {
         cfg.estOn = cfg.estOn === false;
         persistCfg();
@@ -3429,6 +3480,7 @@
         $("panel" + a[n]).classList.add("on");
         $("tab" + a[n]).classList.add("on");
         if (n === "ctl") loadControl();
+        if (n === "map") surfStatus();
         if (n === "sys") loadLog();
         if (n === "trase") TRA.load();
         if (n === "fuel") RAP.loadFuel();
@@ -3467,6 +3519,7 @@
         if (IN_KIOSK) keepAwake(true);
         $("estSet").classList.toggle("on", cfg.estOn !== false);
         $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn !== false ? "PÅ" : "AV");
+        surfLabel();
         loadTerrain();
         TRA.load();
         renderLegend();
@@ -3979,23 +4032,72 @@
       }
       let estLast = 0,
         aheadEst = null; // siste estimat framfor maskina {mean, min} – blir vist på HUD (alltid merka ESTIMERT)
+      /* Estimat frå tidlegare trakka snøoverflate (snøflateminnet i tenesta): overflata blir interpolert og barmarka
+         trekt frå, så bekkar/groper under ei planert flate kjem med. Berre med ekte (eller simulert) mottakar – ikkje demo. */
+      let SURFR = null,
+        surfBusy = false,
+        surfAt = 0;
+      const surfActive = () => cfg.surfMem !== false && src === "gnss" && serverCfg;
+      async function fetchSurf() {
+        if (surfBusy || !pos || heading == null) return;
+        surfBusy = true;
+        try {
+          let w = toolsFull ? cfg.tiller : cfg.tillerN,
+            r = await fetch("api/surface/ahead?lat=" + pos[0] + "&lon=" + pos[1] + "&hdg=" + heading + "&w=" + w).then((x) => x.json());
+          SURFR = r.ok ? r : null;
+        } catch (e) {
+          SURFR = null;
+        }
+        surfAt = Date.now();
+        surfBusy = false;
+        updateAhead(true);
+      }
+      function surfCells(r) {
+        let h = (r.hdg * Math.PI) / 180,
+          fx = Math.sin(h),
+          fy = Math.cos(h),
+          C = (r.cell || 2) / 2;
+        return r.cells.map((q) => {
+          let mx = 111320 * Math.cos((q.lat * Math.PI) / 180),
+            c = [
+              [-1, -1],
+              [1, -1],
+              [1, 1],
+              [-1, 1],
+            ].map(([a, b]) => [q.lat + (fy * a * C - fx * b * C) / 111320, q.lon + (fx * a * C + fy * b * C) / mx]);
+          return { c, d: q.d, age: q.age };
+        });
+      }
       function updateAhead(force) {
         if (!force && Date.now() - estLast < 1000) return;
         estLast = Date.now();
         let on = cfg.estOn !== false && snowOn,
           w = toolsFull ? cfg.tiller : cfg.tillerN,
-          r = on ? EST.run(pos, heading, w) : null;
+          r = on ? EST.run(pos, heading, w) : null,
+          cells = on ? EST.cells() : [],
+          fromSurf = false;
+        if (on && surfActive()) {
+          if (Date.now() - surfAt > 1000) fetchSurf();
+          if (SURFR && SURFR.cells.length && Date.now() - surfAt < 5000) {
+            cells = surfCells(SURFR);
+            if (SURFR.summary) r = SURFR.summary;
+            fromSurf = true;
+          }
+        }
         estGroup.clearLayers();
         if (on)
-          EST.cells().forEach((c) =>
+          cells.forEach((c) =>
             L.polygon(c.c, { renderer: estRenderer, stroke: false, fill: true, fillColor: depthColor(c.d), fillOpacity: 1, interactive: false }).addTo(estGroup),
           );
-        T3D.setEstimate(on ? EST.cells() : []);
+        T3D.setEstimate(on ? cells : []);
         $("aheadBox").classList.toggle("hide", !on || !(preparing || src === "demo"));
-        $("aheadLabel").textContent = src === "demo" ? "FRAMFOR · ESTIMERT (DEMO)" : "FRAMFOR · ESTIMERT";
+        $("aheadLabel").textContent = src === "demo" ? "FRAMFOR · ESTIMERT (DEMO)" : fromSurf ? "FRAMFOR · ESTIMERT · TIDL. FLATE" : "FRAMFOR · ESTIMERT";
         $("aheadD").textContent = r ? "≈" + r.mean.toFixed(2).replace(".", ",") + " m" : "--";
-        aheadEst = r && (preparing || src === "demo") ? { mean: +r.mean.toFixed(2), min: +r.min.toFixed(2) } : null;
-        $("aheadNote").textContent = r ? "minst " + r.min.toFixed(2).replace(".", ",") + " m · 6–30 m" : "ingen målingar i nærleiken";
+        let age = fromSurf && r && r.ageH != null ? r.ageH : null;
+        aheadEst = r && (preparing || src === "demo") ? { mean: +r.mean.toFixed(2), min: +r.min.toFixed(2), ageH: age } : null;
+        $("aheadNote").textContent = r
+          ? "minst " + r.min.toFixed(2).replace(".", ",") + " m · 6–30 m" + (age != null ? " · flate " + (age < 1 ? "< 1 t" : Math.round(age) + " t") + " gammal" : "")
+          : "ingen målingar i nærleiken";
       }
       function addCoverage(p) {
         if (!snowOn || !lastCoverage) {
