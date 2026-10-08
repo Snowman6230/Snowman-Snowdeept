@@ -9,6 +9,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.65 – breiare innstillingar ved å dra, og knapp for å skjule fart/kurs/spor/areal/tid
+- **Nytt:** eit blått handtak på venstre kant av innstillingane. Hald og dra mot venstre, så blir panelet så breitt
+  som der du slepp – høgst 50 % av skjermen. Dra heilt tilbake for fast plass (vanleg breidd). Kvar gong
+  innstillingane blir opna, startar dei med vanleg breidd igjen. Fungerer med mus og finger.
+- **Nytt:** knappen **«⏱ Tal»** nede slår av og på boksane FART, KURS, SPOR, AREAL og TID nede til venstre
+  (trasé-ruta blir ståande når ein er i ein trasé). Valet blir hugsa.
+- **Kvifor:** eigaren ville kunne gjere innstillingane breiare ved behov og ha meir kart synleg.
+- **Testa:** 390 px → dra til x = 700 gir 668 px, dra langt til venstre stoppar på 684 px (50 % av 1368),
+  dra tilbake gir vanleg breidd, lukk og opne gir vanleg breidd. «Tal» skjuler og viser boksane. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.64 – loggen hoppar ikkje til toppen medan ein les
 - **Retta:** feltlogg-lista (Innst. › System) vart teikna på nytt kvart 2. sekund, så hendingsboksen hoppa tilbake
   til toppen medan ein las. No blir ingenting teikna på nytt om innhaldet er likt, og rulleposisjonen i boksen blir

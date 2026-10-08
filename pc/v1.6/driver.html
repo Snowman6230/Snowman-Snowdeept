@@ -358,6 +358,36 @@
         height: 22px;
         margin: 0 auto 3px;
       }
+      /* Fart, kurs, spor, areal og tid kan slåast av med knappen «Tal» nede (trasé-ruta blir ståande) */
+      .tele.off > div:not(.traCell) {
+        display: none;
+      }
+      /* Handtak på venstre kant av innstillingane: dra for å gjere panelet breiare (høgst 50 % av skjermen) */
+      .setGrip {
+        position: absolute;
+        z-index: 1101;
+        top: 72px;
+        bottom: 78px;
+        width: 26px;
+        cursor: ew-resize;
+        touch-action: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .setGrip.hide {
+        display: none;
+      }
+      .setGrip i {
+        width: 8px;
+        height: 64px;
+        border-radius: 4px;
+        background: #4db8ffaa;
+        box-shadow: 0 0 0 1px #02141d;
+      }
+      .setGrip.drag i {
+        background: #4db8ff;
+      }
       .settings {
         position: absolute;
         z-index: 1100;
@@ -1277,7 +1307,7 @@
         </button>
       </div>
       <div id="legend" class="legend"></div>
-      <div class="tele">
+      <div id="tele" class="tele">
         <div id="traCell" class="traCell hide"><small id="traCellLbl">TRASÉ</small><b id="traCellV">--</b></div>
         <div><small>FART</small><b id="speed">0,0 km/t</b></div>
         <div><small>KURS</small><b id="course">--</b></div>
@@ -1288,6 +1318,7 @@
       <div id="groomer" class="groomer">
         <svg id="groomerSvg" viewBox="0 0 10 10"></svg>
       </div>
+      <div id="setGrip" class="setGrip hide" title="Dra mot venstre for å gjere innstillingane breiare"><i></i></div>
       <div id="settings" class="settings hide">
         <h2 style="display: flex; align-items: center; gap: 8px">
           ⚙ INNSTILLINGAR
@@ -1755,6 +1786,7 @@
         ><button class="tool" onclick="zoomBtn(1)"><i>＋</i>Zoom inn</button
         ><button id="viewBtn" class="tool" onclick="openViewMenu(event)"><i>◭</i>Kart</button
         ><button id="bgBtn" class="tool on" onclick="toggleBg()"><i>▦</i>Bakgrunn</button
+        ><button id="teleBtn" class="tool on" onclick="toggleTele()" title="Vis eller skjul fart, kurs, spor, areal og tid"><i>⏱</i>Tal</button
         ><button id="surfBtn" class="tool on" onclick="openSurfMenu(event)" title="Estimat frå tidlegare trakka snøoverflate: vel kor mange timar tilbake, eller AV"><i>≋</i><span id="surfBtnTxt">Flate 24 t</span></button
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
@@ -1859,7 +1891,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.64";
+      const APP_VERSION = "1.6.65";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1891,6 +1923,7 @@
           northUp: false,
           detail3d: "normal", // 3D-detalj nær maskina: hog | normal | av
           kbMode: "auto", // tastatur på skjermen: auto | alltid | av
+          teleOn: true, // fart, kurs, spor, areal og tid nede til venstre
           surfMem: true, // estimat frå tidlegare trakka overflate
           surfH: 24, // … frå dei siste surfH timane (3–72)
           terrain: null,
@@ -3424,6 +3457,63 @@
         updateAhead(true);
         surfStatus();
       }
+      function teleLabel() {
+        let on = cfg.teleOn !== false;
+        $("tele").classList.toggle("off", !on);
+        $("teleBtn").classList.toggle("on", on);
+      }
+      function toggleTele() {
+        cfg.teleOn = cfg.teleOn === false;
+        persistCfg();
+        teleLabel();
+      }
+      /* Breiare innstillingar: dra handtaket på venstre kant. Breidda går frå vanleg breidd (fast plass) til 50 % av
+         skjermen, og blir sett tilbake til vanleg breidd kvar gong innstillingane blir opna. */
+      (function () {
+        const set = $("settings"),
+          grip = $("setGrip");
+        let base = 0;
+        const place = () => {
+          grip.classList.toggle("hide", set.classList.contains("hide"));
+          grip.style.right = set.offsetWidth - 13 + "px";
+          grip.style.top = getComputedStyle(set).top;
+          grip.style.bottom = getComputedStyle(set).bottom;
+        };
+        new MutationObserver(() => {
+          if (!set.classList.contains("hide") && !grip._open) set.style.width = ""; // opna på nytt: vanleg breidd
+          grip._open = !set.classList.contains("hide");
+          place();
+        }).observe(set, { attributes: true, attributeFilter: ["class"] });
+        grip.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          grip.setPointerCapture(e.pointerId);
+          let cur = set.offsetWidth;
+          set.style.width = "";
+          base = set.offsetWidth; // vanleg (fast) breidd
+          set.style.width = Math.max(base, cur) + "px";
+          grip.classList.add("drag");
+          const mv = (ev) => {
+            let w = Math.round(Math.max(base, Math.min(innerWidth * 0.5, innerWidth - ev.clientX)));
+            set.style.width = w + "px";
+            place();
+          };
+          const up = () => {
+            grip.removeEventListener("pointermove", mv);
+            grip.removeEventListener("pointerup", up);
+            grip.removeEventListener("pointercancel", up);
+            grip.classList.remove("drag");
+            if (set.offsetWidth <= base + 4) set.style.width = ""; // dregen heilt tilbake = fast plass
+            place();
+          };
+          grip.addEventListener("pointermove", mv);
+          grip.addEventListener("pointerup", up);
+          grip.addEventListener("pointercancel", up);
+        });
+        addEventListener("resize", () => {
+          if (set.style.width && parseFloat(set.style.width) > innerWidth * 0.5) set.style.width = Math.round(innerWidth * 0.5) + "px";
+          place();
+        });
+      })();
       function setKbMode(m) {
         cfg.kbMode = m;
         persistCfg();
@@ -3656,6 +3746,7 @@
         $("estSet").classList.toggle("on", cfg.estOn !== false);
         $("estSet").textContent = "SNØDJUPNE FRAMFOR (ESTIMAT): " + (cfg.estOn !== false ? "PÅ" : "AV");
         surfLabel();
+        teleLabel();
         $("kbMode").value = cfg.kbMode || "auto";
         if (window.SKB) SKB.setMode(cfg.kbMode || "auto");
         loadTerrain();
