@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.57 – all tekst synest i vallistene i Rapport og Historikk
+- **Retta:** tekstane i vallistene vart kutta. Rapport: feltet heiter no «Prepareringsdøgn (12–12)», og lista viser
+  berre datoen («08.10.2026») i staden for «08.10.2026 kl. 12 – neste dag kl. 12». Historikk: «Vel økt (dato, starttid
+  og type)» står over ei vallist i full breidde, med tekst som «08.10.2026 kl. 17:20 – KØYRING» (24-timars klokke).
+  Trakka område: «Periode» står over ei vallist i full breidde, og første valet heiter «Prepareringsdøgn (12–12)».
+- **Kvifor:** eigaren såg at ikkje all tekst synest i rubrikkane, og ønskte «Prepareringsdøgn (12-12)».
+- **Testa:** nettlesar med lagra økter – Rapport og Historikk, all tekst synest. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.56 – Målprofil forklart, Avslutt sist, eigen knapp for kontroll på barmark
 - **Endra:** Innst. › Målprofil har ei kort forklaring øvst («✓ PÅ MÅL», raudt under, blått over), tydelege namn på
   felta (Måldjupne, Toleranse ±, Demo-snødjupne – «berre for DEMO-knappen, aldri ei ekte måling») og ein boks

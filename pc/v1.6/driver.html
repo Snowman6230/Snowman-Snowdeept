@@ -1582,8 +1582,8 @@
         <section id="panelReport" class="panel">
           <h3>RAPPORT</h3>
           <div class="row">
-            <span>Prepareringsdøgn</span
-            ><select id="repDay" style="width: 230px" onchange="RAP.loadReport()"></select>
+            <span>Prepareringsdøgn (12–12)</span
+            ><select id="repDay" style="width: 160px" onchange="RAP.loadReport()"></select>
           </div>
           <div id="repOut"></div>
           <button class="btn" onclick="RAP.csv()">LAST NED RAPPORT (CSV / EXCEL)</button>
@@ -1612,9 +1612,9 @@
         </section>
         <section id="panelHistory" class="panel">
           <h3>KØYREHISTORIKK</h3>
-          <div class="row">
-            <span>Vel dato / økt</span
-            ><select id="historyDate" onchange="showHistoryInfo()"></select>
+          <div class="rowWide">
+            <div>Vel økt (dato, starttid og type)</div
+            ><select id="historyDate" style="width: 100%" onchange="showHistoryInfo()"></select>
           </div>
           <div id="historyInfo" class="history">Ingen lagra økter.</div>
           <div class="btnRow">
@@ -1623,10 +1623,10 @@
             ><button class="btn" onclick="stopPlayback()">■ STOPP</button>
           </div>
           <h3>TRAKKA OMRÅDE</h3>
-          <div class="row">
-            <span>Periode</span
-            ><select id="covPeriod" style="width: 190px">
-              <option value="day">Dette prepareringsdøgnet (frå kl. 12)</option>
+          <div class="rowWide">
+            <div>Periode</div
+            ><select id="covPeriod" style="width: 100%">
+              <option value="day">Prepareringsdøgn (12–12)</option>
               <option value="24h">Siste 24 timar</option>
               <option value="3d">Siste 3 døgn</option>
               <option value="7d">Siste 7 døgn</option>
@@ -1760,7 +1760,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.56";
+      const APP_VERSION = "1.6.57";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -4238,9 +4238,9 @@
                   '<option value="' +
                   x.id +
                   '">' +
-                  x.date +
-                  " " +
-                  new Date(x.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+                  String(x.date).split("-").reverse().join(".") +
+                  " kl. " +
+                  new Date(x.start).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit", hour12: false }) +
                   " " +
                   (x.demo ? "– DEMO" : "– KØYRING") +
                   "</option>",
@@ -5393,7 +5393,7 @@
           try {
             let d = (await api("api/report/days")).days || [];
             sel.innerHTML = d.length
-              ? d.map((x) => '<option value="' + x + '">' + x.split("-").reverse().join(".") + " kl. 12 – neste dag kl. 12</option>").join("")
+              ? d.map((x) => '<option value="' + x + '">' + x.split("-").reverse().join(".") + "</option>").join("")
               : "<option value=''>Ingen økter enno</option>";
             if (cur && d.includes(cur)) sel.value = cur;
           } catch (e) {
