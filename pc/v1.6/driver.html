@@ -819,6 +819,42 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      #wx .wxObsL {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      #wx .wxObs {
+        display: grid;
+        grid-template-columns: 1.7fr 1.3fr 1fr 1.1fr 0.9fr 0.7fr;
+        gap: 6px;
+        background: #0b2231;
+        border-radius: 8px;
+        padding: 6px 9px;
+        align-items: center;
+      }
+      #wx .wxObs b {
+        display: block;
+        font-size: 16px;
+      }
+      #wx .wxObs small {
+        display: block;
+        font-size: 11px;
+        color: #9ab3c1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #wx .wxObsN,
+      #wx .wxObsNo {
+        font-size: 11px;
+        color: #7f9aa9;
+        margin-top: 4px;
+      }
+      #wx .wxObsNo {
+        font-size: 12px;
+        color: #ffd27a;
+      }
       #wx .wxBar span {
         display: block;
         height: 100%;
@@ -2127,7 +2163,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.69";
+      const APP_VERSION = "1.6.70";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -6532,6 +6568,7 @@
       const WX = (() => {
         let open = false,
           R = null,
+          O = null,
           timer = null,
           busy = false,
           hoverI = null;
@@ -6549,7 +6586,9 @@
             let L = lim(),
               q = "demo=" + (demo ? 1 : 0) + "&good=" + L.good + "&marg=" + L.marg + "&wind=" + L.wind;
             if (pos) q += "&lat=" + pos[0] + "&lon=" + pos[1];
-            R = await fetch("api/weather?" + q).then((x) => x.json());
+            let [a, b] = await Promise.all([fetch("api/weather?" + q).then((x) => x.json()), fetch("api/weather/obs?" + q).then((x) => x.json()).catch(() => null)]);
+            R = a;
+            O = b;
           } catch (e) {
             R = { ok: false, error: "Fekk ikkje kontakt med SNOWMAN-tenesta" };
           }
@@ -6627,7 +6666,7 @@
             return;
           }
           if (!R.ok) {
-            el.innerHTML = head() + `<div class="wxWarn">${esc(R.error)}</div><p style="color:#b8cdd8;font-size:13px">Vêrvarselet krev nett første gong. Etterpå blir siste varsel vist også utan nett. Alt anna i SNOWMAN fungerer som før.</p>${R.detail ? `<p style="color:#7f9aa9;font-size:11px">Teknisk: ${esc(R.detail)}</p>` : ""}` + foot();
+            el.innerHTML = head() + `<div class="wxWarn">${esc(R.error)}</div><p style="color:#b8cdd8;font-size:13px">Vêrvarselet krev nett første gong. Etterpå blir siste varsel vist også utan nett. Alt anna i SNOWMAN fungerer som før.</p>${R.detail ? `<p style="color:#7f9aa9;font-size:11px">Teknisk: ${esc(R.detail)}</p>` : ""}` + (O && O.ok && O.stations.length ? obsHtml() : "") + foot();
             return;
           }
           let H = R.hours.slice(0, 48),
@@ -6659,6 +6698,7 @@
               <div class="wxBox wxSymBox"><span>LUFT · FUKT</span>${h.sym ? `<img src="vendor/vaersymbol/${esc(h.sym)}.svg" alt="${esc(h.symText)}" title="${esc(h.symText)}">` : ""}<b>${n1(h.temp)}°</b><em>${Math.round(h.rh)} % fukt${h.symText ? " · " + esc(h.symText) : ""}</em></div>
               <div class="wxBox"><span>VIND</span><b>${n1(h.wind)}</b><em>m/s${h.dir != null ? " frå " + Math.round(h.dir) + "°" : ""} · maks ${n1(L.wind)}</em></div>
             </div>
+            ${obsHtml()}
             <h4>PRODUKSJONSVINDAUGE</h4><div class="wxWin">${win}</div>
             <h4>NESTE 48 TIMAR – <span style="color:#7fd0ff">━ våttemperatur</span> &nbsp;<span style="color:#9ab3c1">╍ lufttemperatur</span> &nbsp; bakgrunn: <span class="c-godt">godt</span> · <span class="c-marg">marginalt</span> · <span class="c-vind">vind</span> · <span class="c-nei">ikkje mogleg</span></h4>
             <div id="wxCh" style="touch-action:none">${chart(H)}</div>
@@ -6696,13 +6736,33 @@
             })
           );
         }
+        // «MÅLT NO»: siste målingar frå dei næraste stasjonane (MET Frost), side om side med varselet
+        function obsHtml() {
+          if (!O) return "";
+          if (!O.ok || !O.stations.length)
+            return `<h4>MÅLT NO – NÆRASTE STASJONAR</h4><div class="wxObsNo">${esc(O.error || "Ingen stasjonar med ferske målingar i nærleiken.")}</div>`;
+          let rows = O.stations
+            .map((x) => {
+              let gam = x.age_min != null && x.age_min > 90;
+              return `<div class="wxObs">
+                <span><b>${esc(x.name)}</b><small>${x.masl != null ? x.masl + " moh." : ""}${x.km != null ? " · " + n1(x.km) + " km" : ""}</small></span>
+                <span><b>${n1(x.temp)}°</b><small>${x.tempAtMachine != null ? "≈ " + n1(x.tempAtMachine) + "° ved maskina" : "luft"}</small></span>
+                <span><b>${x.wind != null ? n1(x.wind) : "–"}</b><small>m/s${x.gust != null ? " · kast " + n1(x.gust) : ""}</small></span>
+                <span><b${x.tw != null ? ' class="c-' + (x.tw <= lim().good ? "godt" : x.tw <= lim().marg ? "marg" : "nei") + '"' : ""}>${x.tw != null ? n1(x.tw) + "°" : x.rh != null ? Math.round(x.rh) + " %" : "–"}</b><small>${x.tw != null ? "våttemp. · " + Math.round(x.rh) + " %" : "fukt ikkje målt"}</small></span>
+                <span><b>${x.precip != null ? n1(x.precip) : "–"}</b><small>mm siste t${x.snow != null ? " · snø " + Math.round(x.snow) + " cm" : ""}</small></span>
+                <span class="${gam ? "c-marg" : ""}"><b>${x.age_min != null ? x.age_min : "–"}</b><small>min sidan</small></span>
+              </div>`;
+            })
+            .join("");
+          return `<h4>MÅLT NO – NÆRASTE STASJONAR${O.offline ? ' <span class="c-marg">· utan nett, lagra målingar</span>' : ""}</h4><div class="wxObsL">${rows}</div><div class="wxObsN">«Ved maskina» er omrekna til høgda til maskina med 0,65 °C per 100 m – eit anslag, ikkje måling.</div>`;
+        }
         function head() {
           let p = R && R.ok ? `${n1(R.lat).replace(",", ".")}° N ${n1(R.lon).replace(",", ".")}° Ø${R.alt != null ? " · " + R.alt + " moh." : ""}` : "";
           let a = R && R.ok && !R.demo ? ` · oppdatert for ${R.age_min} min sidan` : "";
           return `<div class="wxHead"><h3>❄ VÊR OG SNØPRODUKSJON<br><small>${p}${a}</small></h3><button class="wxX" onclick="WX.toggle()" title="Lukk (eller trykk Vêr-knappen igjen)">✕</button></div>`;
         }
         function foot() {
-          return `<div class="wxFoot">${R && R.demo ? "Oppdikta demo-data til visning." : esc((R && R.attr) || "Data frå MET Norway (CC BY 4.0)") + " · Locationforecast for staden og høgda til maskina."} ${esc((R && R.iconAttr) || "Vêrsymbol: MET Norway / Yr (MIT-lisens)")}. Våttemperatur etter Stull (2011). Varsel – ikkje måling. Grensene varierer med kanon og vasstemperatur.</div>`;
+          return `<div class="wxFoot">${R && R.demo ? "Oppdikta demo-data til visning." : esc((R && R.attr) || "Data frå MET Norway (CC BY 4.0)") + " · Locationforecast for staden og høgda til maskina."} ${esc((R && R.iconAttr) || "Vêrsymbol: MET Norway / Yr (MIT-lisens)")}. Målingar: MET Frost (CC BY 4.0). Våttemperatur etter Stull (2011). Varsel – ikkje måling. Grensene varierer med kanon og vasstemperatur.</div>`;
         }
         function toggle() {
           open = !open;

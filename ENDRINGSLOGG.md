@@ -9,6 +9,25 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.70 – «MÅLT NO» i Vêr: målingar frå næraste vêrstasjonar (MET Frost)
+- **Nytt:** `frost.py` hentar siste målingar frå dei næraste stasjonane (Frost «nearest» frå GPS-posisjonen, maks 3 med
+  ferske data): temperatur, vind og kast, luftfukt, nedbør siste time og snødjupne der stasjonen måler det. Nytt
+  endepunkt `/api/weather/obs`.
+- **Nytt:** vêr-overlayet har fått delen **«MÅLT NO – NÆRASTE STASJONAR»** med namn, høgd, avstand, målingar og alder.
+  Temperaturen blir også omrekna til høgda til maskina (0,65 °C/100 m, merkt som anslag), og våttemperatur blir rekna ut
+  der stasjonen måler luftfukt. Målingane blir viste også når varselet manglar.
+- **Nytt:** offline først – stasjonslista blir lagra i 7 dagar og siste målingar i `data/frost-cache.json`, vist med
+  merknad når nettet manglar. Nye målingar blir henta høgst kvar 10. min.
+- **Nytt:** `snowman-config.local.json` kan ha `frost_client_id` (eige anlegg sin ID) og `frost_stations`
+  (fast liste, t.d. `SN60190,SN60225`). Tomt = innebygd ID og næraste stasjonar.
+- **Avgjerd (eigaren):** SNOWMAN sin Frost **klient-ID ligg i koden** (`frost.py`). Eigaren: «Det er ingen fare med det» –
+  ID-en gir berre tilgang til opne data. **Client secret blir ikkje brukt og ligg ikkje i repoet.** Andre anlegg bør få
+  eigen ID seinare, så ikkje alle deler éin.
+- **Kvifor:** eigaren registrerte ein Frost-ID og ville ha han brukt i SNOWMAN.
+- **Testa:** mot ei lokal testteneste som svarar som Frost (stasjonsoppslag, siste målingar, færre element ved feil 400,
+  lagring og offline), i demo og med `simuler-leica.py`. Frost er ikkje nåbar frå testmaskina, så første test mot ekte
+  Frost blir på maskin-PC-en. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.69 – vêrsymbol i vêr-overlayet
 - **Nytt:** vêrsymbola til MET (same `symbol_code` som i varselet) blir viste kvar 3. time over 48-timarsgrafen, i
   boksen «Luft · fukt» for timen no, ved kvar dag i «Dag for dag» og i avlesinga når ein trykkjer i grafen – med nynorsk

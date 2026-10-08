@@ -230,8 +230,8 @@ feilkodar og temperaturar i feltloggen.
 48 t-graf, dag for dag, innstillbare grenser, offline-lagring, DEMO-merking). Skjermbilete: `prototypar/ver/`.
 
 **Neste steg (ikkje plassert i vegplanen)**
-1. **Observasjonar frå næraste stasjon (MET Frost):** krev gratis klient-ID, lagra lokalt som NTRIP-passordet (aldri i
-   repoet). SNOWMAN vel stasjonar etter GPS (avstand og høgdeskilnad) og lagrar valet i stadprofilen. For Fjellsætra
+1. **Observasjonar frå næraste stasjon (MET Frost):** prototype i v1.6.70 («MÅLT NO»). Klient-ID ligg i koden etter
+   avgjerd frå eigaren (berre opne data); eige anlegg kan setje `frost_client_id` lokalt. SNOWMAN vel stasjonar etter GPS (avstand og høgdeskilnad) og lagrar valet i stadprofilen. For Fjellsætra
    (funne 2026-10-09; yr-id «5-NNNNN» svarar til MET-stasjon SNNNNNN – stadfest i Frost med klient-ID):
    - **Roaldshornet (truleg SN60190)**, ca. 1050 moh., 62,3065 N 6,8490 Ø (ca. 17 km frå Fjellsætra): temperatur og vind
      (også kast). Best for høgfjellstemperatur og vind.

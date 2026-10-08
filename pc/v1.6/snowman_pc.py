@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.69"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.70"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -27,6 +27,8 @@ import snoflate as SF
 SURF=SF.SnowSurface(DATA/"snoflate.json")   # snøflateminne: målt snøoverflate, til estimat framfor maskina
 import ver as VER
 WX=VER.Weather(DATA/"ver-cache.json",VERSION)   # vêr og snøproduksjon (MET Locationforecast), lagra for bruk utan nett
+import frost as FR
+FROST=FR.Frost(DATA/"frost-cache.json",VERSION)  # målingar frå næraste vêrstasjonar (MET Frost) – «MÅLT NO» i Vêr
 import kontroll as K
 import helling as HL
 HEL=HL.Helling()   # hellingskorreksjon: antenna står ikkje rett over beltet når maskina står på skrå
@@ -108,7 +110,9 @@ CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint
        "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,
        "tiltMode":"auto","tiltFlipPitch":False,"tiltFlipRoll":False,
        "initCmds":"",   # oppstartskommandoar til mottakaren (éin per linje), sende når seriellporten blir opna
-       "hudLan":False}
+       "hudLan":False,
+       "frost_client_id":"",   # tomt = SNOWMAN sin innebygde Frost-ID (berre opne data); eit anlegg kan setje sin eigen
+       "frost_stations":""}    # tomt = næraste stasjonar etter GPS; elles t.d. "SN60190,SN60225"
 def load_cfg():
     try: CFG.update({k:v for k,v in json.loads(CFG_FILE.read_text("utf-8")).items() if k in CFG})
     except FileNotFoundError: pass
@@ -547,6 +551,26 @@ class API(http.server.BaseHTTPRequestHandler):
                     if alt is None: alt=STATE.get("altitude")
                     r=WX.forecast(lat,lon,alt,{"good":f("good"),"marg":f("marg"),"wind":f("wind")},demo=demo)
             except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/weather/obs":   # «MÅLT NO» i Vêr: siste målingar frå næraste vêrstasjonar (MET Frost), eller DEMO
+            q=urllib.parse.parse_qs(u.query)
+            f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
+            try:
+                FROST.cid=(CFG.get("frost_client_id") or "").strip() or FR.CLIENT_ID
+                lat,lon=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")); demo=q.get("demo",["0"])[0]=="1"
+                if demo and lat is None: lat,lon=62.3905,6.5810
+                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon frå GNSS endå.","stations":[]}
+                else:
+                    alt=f("alt")
+                    if alt is None:
+                        try: alt=TERR.height(lat,lon) if T.AVAILABLE else None
+                        except Exception: alt=None
+                    if alt is None: alt=STATE.get("altitude")
+                    fixed=re.sub(r"[^A-Za-z0-9,]","",CFG.get("frost_stations") or "") or None
+                    r=FROST.observations(lat,lon,alt,fixed,demo=demo); r["alt"]=None if alt is None else round(alt)
+                    for st in r.get("stations",[]):   # våttemperatur der stasjonen måler luftfukt
+                        if st.get("temp") is not None and st.get("rh") is not None: st["tw"]=round(VER.wetbulb(st["temp"],st["rh"]),1)
+            except Exception as e: r={"ok":False,"error":str(e),"stations":[]}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/history/coverage":   # trakka område i ein periode eller for éi økt (Historikk › TRAKKA OMRÅDE)
             q=urllib.parse.parse_qs(u.query); per=q.get("period",["day"])[0]; now=time.time()
