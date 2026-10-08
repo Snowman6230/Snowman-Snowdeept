@@ -9,6 +9,20 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.56 – Målprofil forklart, Avslutt sist, eigen knapp for kontroll på barmark
+- **Endra:** Innst. › Målprofil har ei kort forklaring øvst («✓ PÅ MÅL», raudt under, blått over), tydelege namn på
+  felta (Måldjupne, Toleranse ±, Demo-snødjupne – «berre for DEMO-knappen, aldri ei ekte måling») og ein boks
+  «ℹ Kvar målprofilen blir brukt» (HUD-en alltid; førarskjermen i trasé; traseen si eiga måldjupne gjeld føre).
+  Demo-snødjupna blir vist med to desimalar.
+- **Endra:** «⏻ AVSLUTT SNOWMAN» er flytt frå overskrifta til sist i knapperekkja, etter System.
+- **Nytt:** Innst. › Kontroll har knappen **KONTROLL PÅ BARMARK (0 m SNØ)**. Han lagrar ei kontrollmåling med 0 m snø
+  (etter stadfesting) og merknaden «Barmark». «Kjend snødjupne her» heiter no «Snødjupne målt med snøsonde rett under
+  antenna (m)», og knappen LAGRE MED SNØSONDE. Ei kort forklaring øvst seier kva ein gjer på barmark og på snø.
+- **Kvifor:** eigaren syntest Målprofil ikkje var forklart, at «Kjend snødjupne» var uklart, og ønskte Avslutt sist og
+  ein eigen knapp for kontroll på barmark.
+- **Testa:** nettlesar – begge panela, og at barmark-knappen sender 0 m med merknad og snøsonde-knappen sender den
+  innskrivne djupna. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.55 – same tråkkemaskin i 3D-terreng og frontrute
 - **Endra:** 3D-modellen av maskina har same utsjånad og mål som 2D-teikninga frå v1.6.54: belte med slitebane og
   runde endar, raudt karosseri, førarhus med frontrute, sidevindauge, tak og varsellys, motorlokk med rister, fresbom,

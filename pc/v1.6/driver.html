@@ -250,8 +250,8 @@
         background: #0878df;
       }
       /* Val av kartperspektiv (opnar seg over knappen) */
+      .tabs .quitBtn,
       .quitBtn {
-        margin-left: auto;
         background: #7a1f1a;
         border: 1px solid #c2453b;
         color: #fff;
@@ -1236,8 +1236,7 @@
       <div id="settings" class="settings hide">
         <h2 style="display: flex; align-items: center; gap: 8px">
           ⚙ INNSTILLINGAR
-          <button class="quitBtn" onclick="quitSnowman()">⏻ AVSLUTT SNOWMAN</button>
-          <button style="background: none; border: 0; color: #9bc6e2; font-size: 24px" onclick="toggleSettings()">×</button>
+          <button style="margin-left: auto; background: none; border: 0; color: #9bc6e2; font-size: 24px" onclick="toggleSettings()">×</button>
         </h2>
         <div class="tabs">
           <button id="tabMachine" class="on" onclick="showTab('machine')">Maskin</button
@@ -1250,7 +1249,8 @@
           ><button id="tabFuel" onclick="showTab('fuel')">Drivstoff</button
           ><button id="tabReport" onclick="showTab('report')">Rapport</button
           ><button id="tabHistory" onclick="showTab('history')">Historikk</button
-          ><button id="tabSys" onclick="showTab('sys')">System</button>
+          ><button id="tabSys" onclick="showTab('sys')">System</button
+          ><button class="quitBtn" onclick="quitSnowman()">⏻ AVSLUTT SNOWMAN</button>
         </div>
         <section id="panelMachine" class="panel on">
           <h3>MASKINMÅL</h3>
@@ -1269,9 +1269,21 @@
         </section>
         <section id="panelTarget" class="panel">
           <h3>MÅLPROFIL</h3>
-          <div class="row"><span>Måldjupne</span><input id="target" type="number" step=".05" /></div>
-          <div class="row"><span>Toleranse ± m</span><input id="tol" type="number" step=".05" /></div>
-          <div class="row"><span>Demo snødjupne</span><input id="demoD" type="number" step=".05" /></div>
+          <div class="history" style="font-size: 12px">
+            Målprofilen seier kor mykje snø løypa skal ha. Er snødjupna innanfor toleransen, står det «✓ PÅ MÅL». Under målet blir
+            talet raudt («▼ UNDER MÅL»), over målet blått («▲ OVER MÅL»).
+          </div>
+          <div class="row"><span>Måldjupne (m) – snødjupna løypa skal ha</span><input id="target" type="number" step=".05" /></div>
+          <div class="row"><span>Toleranse ± (m) – så mykje over eller under som tel som «på mål»</span><input id="tol" type="number" step=".05" /></div>
+          <div class="row"><span>Demo-snødjupne (m) – berre for DEMO-knappen, aldri ei ekte måling</span><input id="demoD" type="number" step=".05" /></div>
+          <details class="fold info">
+            <summary>ℹ Kvar målprofilen blir brukt</summary>
+            <div class="fbody">
+              <b>HUD-en</b> samanliknar alltid snødjupna med måldjupna her. <b>Førarskjermen</b> viser over/under mål når maskina er inne i
+              ein trasé. Har traseen eiga måldjupne (Innst. › Trasear), gjeld ho i staden for måldjupna her; toleransen herifrå gjeld
+              overalt. Eksempel: måldjupne 0,9 og toleranse 0,1 gir «på mål» mellom 0,8 og 1,0 m.
+            </div>
+          </details>
         </section>
         <section id="panelMap" class="panel">
           <h3>KART, GNSS OG VISNING</h3>
@@ -1385,17 +1397,23 @@
         <section id="panelCtl" class="panel">
           <h3>KONTROLLMÅLING HER</h3>
           <div id="ctlNow" class="history">Ventar på SNOWMAN-tenesta …</div>
-          <div class="row"><span>Kjend snødjupne her (m) – 0 på barmark</span><input id="ctlKnown" type="number" step=".01" min="0" /></div>
-          <div class="row"><span>Merknad</span><input id="ctlNote" type="text" style="width: 170px" placeholder="t.d. snøsonde ved hydrant 4" /></div>
-          <button class="btn" onclick="saveCheck()">LAGRE KONTROLLMÅLING</button>
+          <div class="history" style="font-size: 12px">
+            Kontrollmålinga syner om SNOWMAN reknar rett. Stopp maskina og vent på RTK FIX. <b>Står du på barmark</b> (brøyta veg,
+            parkeringsplass, grus): trykk KONTROLL PÅ BARMARK. <b>Står du på snø</b>: stikk snøsonda ned til bakken rett under antenna,
+            skriv inn djupna og trykk LAGRE MED SNØSONDE.
+          </div>
+          <button class="btn" onclick="saveCheck(0)">KONTROLL PÅ BARMARK (0 m SNØ)</button>
+          <div class="row"><span>Snødjupne målt med snøsonde rett under antenna (m)</span><input id="ctlKnown" type="number" step=".01" min="0" placeholder="t.d. 0,85" /></div>
+          <div class="row"><span>Merknad (valfri)</span><input id="ctlNote" type="text" style="width: 170px" placeholder="t.d. ved hydrant 4" /></div>
+          <button class="btn" onclick="saveCheck()">LAGRE MED SNØSONDE</button>
           <div id="ctlStats" class="history"></div>
           <button id="ctlApply" class="btn hide" onclick="applyOffset()">JUSTER HØGDEOFFSET</button>
           <div id="ctlChecks"></div>
           <details class="fold info">
             <summary>ℹ Slik gjer du ei kontrollmåling</summary>
             <div class="fbody">
-              Stopp maskina der du veit snødjupna – stikk snøsonda ned rett under antenna, eller stå på barmark (brøyta veg,
-              parkeringsplass) og skriv 0. Vent på RTK FIX og trykk LAGRE. Ta minst 3 målingar på ulike stader. Er avviket likt
+              Stopp maskina der du veit snødjupna: på barmark (brøyta veg, parkeringsplass) trykkjer du KONTROLL PÅ BARMARK; på snø
+              stikk du snøsonda ned rett under antenna, skriv inn djupna og trykkjer LAGRE MED SNØSONDE. Vent på RTK FIX først. Ta minst 3 målingar på ulike stader. Er avviket likt
               overalt, er det ein feil i kalibreringa, og SNOWMAN kan justere høgdekorreksjonen. Sprikar avvika, er det terrengmodellen
               eller snøsonderinga som er usikker.
             </div>
@@ -1742,7 +1760,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.55";
+      const APP_VERSION = "1.6.56";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3429,7 +3447,7 @@
       const NUM = ["machine", "blade", "bladeN", "tiller", "tillerN", "demoD", "target", "tol", "antX", "antY", "ant2X", "ant2Y", "antZ", "zOff"];
       function load() {
         NUM.forEach((x) => {
-          $(x).value = cfg[x] != null ? cfg[x] : "";
+          $(x).value = cfg[x] != null ? (x === "demoD" ? +(+cfg[x]).toFixed(2) : cfg[x]) : "";
           $(x).onchange = save;
           $(x).oninput = drawMachineFigs; // teikninga følgjer med medan ein skriv
         });
@@ -5597,11 +5615,15 @@
             .addTo(ctlGroup),
         );
       }
-      async function saveCheck() {
-        let v = parseFloat(String($("ctlKnown").value).replace(",", "."));
-        if (isNaN(v)) return toast("Skriv inn kjend snødjupne (0 på barmark)");
+      async function saveCheck(known) {
+        let bare = known === 0,
+          v = bare ? 0 : parseFloat(String($("ctlKnown").value).replace(",", "."));
+        if (isNaN(v)) return toast("Skriv inn snødjupna du målte med snøsonda – eller trykk KONTROLL PÅ BARMARK");
+        if (bare && !confirm("Står antenna rett over barmark (ingen snø under maskina)?")) return;
+        let note = $("ctlNote").value.trim();
+        if (bare) note = "Barmark" + (note ? " – " + note : "");
         try {
-          let r = await api("api/control/check", { known: v, note: $("ctlNote").value });
+          let r = await api("api/control/check", { known: v, note: note });
           toast("Kontrollmåling lagra · avvik " + cm(r.check.raw - r.check.known, 1));
           $("ctlKnown").value = "";
           $("ctlNote").value = "";
