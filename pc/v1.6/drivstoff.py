@@ -193,6 +193,8 @@ class Drivstoff:
                 if area.get("empty"):   # berre demo/test dette døgnet: vis det, tydeleg merka TEST
                     area = dict(self.tra.coverage(t0, t1, include_test=True, max_cells=250_000), onlyTest=True)
                 area.pop("passes", None)
+                if not area.get("empty"):
+                    area["parts"] = split_area(area)
             except Exception as e:
                 area = {"empty": True, "error": str(e)}
         return {
@@ -268,6 +270,51 @@ def default_report_dir():
     return _DOCS[0]
 
 
+def split_area(a, block_m=60.0, max_parts=4, pad=6):
+    """Del trakka område i samanhengande delar (t.d. to bakkar langt frå kvarandre), kvar med sitt eige utsnitt,
+    så karta i rapporten blir store nok å lese. Største delen først."""
+    import base64
+    from collections import deque
+    W, H, cell = a["W"], a["H"], a["cell"]
+    age = np.frombuffer(base64.b64decode(a["age"]), np.uint8)[: W * H].reshape(H, W)
+    cov = age != 255
+    b = max(1, int(block_m / cell))
+    hb, wb = -(-H // b), -(-W // b)
+    pc = np.zeros((hb * b, wb * b), bool)
+    pc[:H, :W] = cov
+    coarse = pc.reshape(hb, b, wb, b).any(axis=(1, 3))
+    lab = np.zeros(coarse.shape, int)
+    parts = []
+    for r0, c0 in zip(*np.nonzero(coarse)):
+        if lab[r0, c0]:
+            continue
+        n = len(parts) + 1
+        lab[r0, c0] = n
+        q, cells = deque([(r0, c0)]), []
+        while q:
+            r, c = q.popleft()
+            cells.append((r, c))
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    rr, cc = r + dr, c + dc
+                    if 0 <= rr < hb and 0 <= cc < wb and coarse[rr, cc] and not lab[rr, cc]:
+                        lab[rr, cc] = n
+                        q.append((rr, cc))
+        rs, cs = [x[0] for x in cells], [x[1] for x in cells]
+        parts.append((n, min(rs) * b, (max(rs) + 1) * b, min(cs) * b, (max(cs) + 1) * b))
+    out = []
+    for n, ra, rb, ca, cb in parts:
+        mask = np.kron(lab == n, np.ones((b, b), bool))[:H, :W] & cov
+        rr, cc = np.nonzero(mask)
+        ra, rb = max(int(rr.min()) - pad, 0), min(int(rr.max()) + pad + 1, H)
+        ca, cb = max(int(cc.min()) - pad, 0), min(int(cc.max()) + pad + 1, W)
+        sub = np.where(mask[ra:rb, ca:cb], age[ra:rb, ca:cb], 255).astype(np.uint8)
+        out.append({"W": cb - ca, "H": rb - ra, "cell": cell, "age": base64.b64encode(sub.tobytes()).decode(),
+                    "area": round(float(mask.sum()) * cell * cell), "onlyTest": a.get("onlyTest", False)})
+    out.sort(key=lambda p: -p["area"])
+    return out[:max_parts]
+
+
 def export_reports(fuel, folder, machine="", days=2):
     """Skriv rapporten (CSV) for dei siste prepareringsdøgna til mappa. Berre filer som er endra blir skrivne på nytt.
     Returnerer (talet på filer skrivne, filnamn)."""
@@ -293,4 +340,13 @@ def export_reports(fuel, folder, machine="", days=2):
         tmp.write_text(data, "utf-8")
         tmp.replace(f)
         written += 1
+        # same rapport som PDF (kart, trasear, økter, drivstoff) – berre når CSV-en er endra
+        try:
+            import pdfrapport as PR
+            pn = name[:-4] + ".pdf"
+            (folder / (pn + ".tmp")).write_bytes(PR.build(fuel.report(date, maps=True), machine))
+            (folder / (pn + ".tmp")).replace(folder / pn)
+            names.append(pn)
+        except Exception:
+            pass
     return written, names

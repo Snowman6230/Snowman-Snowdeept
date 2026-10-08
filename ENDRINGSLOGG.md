@@ -9,6 +9,20 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.66 – rapporten som PDF (kart, trasear, økter, drivstoff)
+- **Nytt:** knappen **⬇ RAPPORT SOM PDF** i Innst. › Rapport (ved sida av ⬇ CSV / EXCEL). PDF-en (A4) har samandrag,
+  trasear med tid i traseen, kart per trasé (trakka grønt, ikkje trakka grått, berre TEST oransje, målestokk og nord) –
+  eller kart over heile området om ingen trasear er lagde inn – økter og drivstoff. TEST/demo er merka i oransje.
+  Skriven med eigen kode (`pdfrapport.py`, berre numpy), så det fungerer offline utan nye pakkar.
+- **Nytt:** automatisk lagring skriv no både CSV og PDF til mappa (t.d. OneDrive).
+- **Retta:** kartet over trakka område vart nesten tomt når det var køyrt på stader langt frå kvarandre (t.d.
+  Fjellsætra og Sykkylven sentrum). No blir det delt i opptil 4 kart («Område 1 av 2»), kvart skore til det som er
+  køyrt – både i SNOWMAN og i PDF-en.
+- **Kvifor:** eigaren ville kunne laste ned kart, drivstoff og økter som PDF, i tillegg til CSV.
+- **Testa:** PDF frå testdata (1 side; med testtrasé 2 sider), med drivstoff og økter (testdata), nedlasting frå
+  knappen, automatisk lagring (CSV + PDF), deling av område (to område langt frå kvarandre → to kart). Ingen
+  JavaScript-feil.
+
 ### PC-prototype v1.6.65 – breiare innstillingar ved å dra, og knapp for å skjule fart/kurs/spor/areal/tid
 - **Nytt:** eit blått handtak på venstre kant av innstillingane. Hald og dra mot venstre, så blir panelet så breitt
   som der du slepp – høgst 50 % av skjermen. Dra heilt tilbake for fast plass (vanleg breidd). Kvar gong

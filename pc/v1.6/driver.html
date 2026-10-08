@@ -1703,7 +1703,10 @@
             ><select id="repDay" style="width: 160px" onchange="RAP.loadReport()"></select>
           </div>
           <div id="repOut"></div>
-          <button class="btn" onclick="RAP.csv()">LAST NED RAPPORT (CSV / EXCEL)</button>
+          <div class="btnRow">
+            <button class="btn" onclick="RAP.pdf()" title="Samandrag, kart, trasear, økter og drivstoff">⬇ RAPPORT SOM PDF</button
+            ><button class="btn" onclick="RAP.csv()" title="Tabellane til Excel">⬇ CSV / EXCEL</button>
+          </div>
           <details class="fold" ontoggle="FOLD.exp = this.open">
             <summary><span><b>Automatisk lagring</b> <span id="expSum" class="dim" style="color: #8aa3b1"></span></span></summary>
             <div class="fbody">
@@ -1718,7 +1721,7 @@
           <details class="fold info">
             <summary>ℹ Om rapporten og automatisk lagring</summary>
             <div class="fbody">
-            SNOWMAN lagrar rapporten for dei to siste prepareringsdøgna i mappa kvart 5. minutt og når prep blir stoppa – også
+            SNOWMAN lagrar rapporten (PDF med kart, og CSV til Excel) for dei to siste prepareringsdøgna i mappa kvart 5. minutt og når prep blir stoppa – også
             utan nett. Ligg mappa i <b>OneDrive</b>, <b>Google Drive</b> eller <b>Dropbox</b> på PC-en, blir filene lasta opp av seg
             sjølv når PC-en har nett (wifi eller mobildata). På Windows ligg «Dokument» ofte allereie i OneDrive.
               <br /><br />
@@ -1891,7 +1894,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.65";
+      const APP_VERSION = "1.6.66";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -5872,13 +5875,21 @@
                     .join("")),
             );
           } else if (r.area && !r.area.empty) {
-            maps.push({ kind: "area", a: r.area });
+            let parts = r.area.parts && r.area.parts.length ? r.area.parts : [r.area];
             h.push(
               fold("rapMap", "<b>Kart – trakka område</b> · " + n(r.area.area / 1000, 1) + " daa" + (r.area.onlyTest ? " <span style='color:#ffb24d'>TEST</span>" : ""),
                 "<div class='history' style='font-size:12px'>Ingen trasear er lagde inn (Innst. › Trasear), så kartet viser heile området som er køyrt dette døgnet, i fresbreidda. Overlapp tel éin gong." +
                   (r.area.onlyTest ? "<br><span style='color:#ffb24d'>Berre demo/test dette døgnet – ikkje ekte preparering.</span>" : "") + "</div>" +
                   "<div class='repLeg'><i style='background:" + (r.area.onlyTest ? "#c98a2a'></i>trakka (TEST)" : "#19c46a'></i>trakka") + " · nord er opp</div>" +
-                  "<div class='repMap'><canvas data-m='0'></canvas></div>"),
+                  parts
+                    .map((pt, i) => {
+                      maps.push({ kind: "area", a: Object.assign({ onlyTest: r.area.onlyTest }, pt) });
+                      return (
+                        "<div class='repMap'>" + (parts.length > 1 ? "<div><b>Område " + (i + 1) + " av " + parts.length + "</b> · " + n(pt.area / 1000, 1) + " daa</div>" : "") +
+                        "<canvas data-m='" + (maps.length - 1) + "'></canvas></div>"
+                      );
+                    })
+                    .join("")),
             );
           }
           h.push(
@@ -5921,7 +5932,7 @@
         // Teiknar eit rutenett (rad 0 = sørkanten) på ein canvas: trakka grønt, resten av traseen grått
         function drawRepMap(cv, m) {
           if (!m) return;
-          let bits = (b64) => {
+          const bits = (b64) => {
               let s = atob(b64 || ""),
                 u = new Uint8Array(s.length);
               for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
@@ -5929,49 +5940,68 @@
             },
             on = (u, i) => (u[i >> 3] >> (7 - (i & 7))) & 1,
             M = m.kind === "trase" ? m.t.map : m.a,
-            W = M.W,
-            H = M.H,
-            maxW = Math.min(340, cv.parentElement.clientWidth || 340),
+            W0 = M.W,
+            H0 = M.H;
+          let ins, cov, all, age;
+          if (m.kind === "trase") {
+            ins = bits(M.ins);
+            cov = bits(M.cov);
+            all = bits(M.covAll);
+          } else age = Uint8Array.from(atob(M.age || ""), (ch) => ch.charCodeAt(0));
+          // Farge for ruta (rad r frå sør, kolonne c), eller null = utanfor
+          const colOf = (r, c) => {
+            let i = r * W0 + c;
+            if (m.kind === "trase") return !on(ins, i) ? null : on(cov, i) ? [25, 196, 106] : on(all, i) ? [201, 138, 42] : [52, 80, 95];
+            return age[i] !== 255 ? (M.onlyTest ? [201, 138, 42] : [25, 196, 106]) : null;
+          };
+          // Trakka område utan trasear: berre utsnittet rundt det som er køyrt (med litt luft), så kartet blir stort nok
+          let r0 = 0,
+            c0 = 0,
+            H = H0,
+            W = W0;
+          if (m.kind !== "trase") {
+            let rmin = H0,
+              rmax = -1,
+              cmin = W0,
+              cmax = -1;
+            for (let r = 0; r < H0; r++)
+              for (let c = 0; c < W0; c++)
+                if (age[r * W0 + c] !== 255) {
+                  if (r < rmin) rmin = r;
+                  if (r > rmax) rmax = r;
+                  if (c < cmin) cmin = c;
+                  if (c > cmax) cmax = c;
+                }
+            if (rmax >= 0) {
+              r0 = Math.max(0, rmin - 6);
+              c0 = Math.max(0, cmin - 6);
+              H = Math.min(H0, rmax + 7) - r0;
+              W = Math.min(W0, cmax + 7) - c0;
+            }
+          }
+          let maxW = Math.min(340, cv.parentElement.clientWidth || 340),
             k = Math.min(maxW / W, 300 / H),
             px = Math.max(1, Math.round(W * k)),
             py = Math.max(1, Math.round(H * k));
           cv.width = px;
           cv.height = py;
           let cx = cv.getContext("2d"),
-            img = cx.createImageData(px, py),
-            col = (r, g, b, i) => {
-              img.data[i] = r;
-              img.data[i + 1] = g;
-              img.data[i + 2] = b;
-              img.data[i + 3] = 255;
-            };
-          let ins, cov, all, age;
-          if (m.kind === "trase") {
-            ins = bits(M.ins);
-            cov = bits(M.cov);
-            all = bits(M.covAll);
-          } else {
-            let s = atob(M.age);
-            age = new Uint8Array(s.length);
-            for (let i = 0; i < s.length; i++) age[i] = s.charCodeAt(i);
-          }
+            img = cx.createImageData(px, py);
           for (let y = 0; y < py; y++)
             for (let x = 0; x < px; x++) {
-              let c = Math.min(W - 1, Math.floor(x / k)),
-                rr = Math.min(H - 1, Math.floor((py - 1 - y) / k)),
-                i = rr * W + c,
+              let c = c0 + Math.min(W - 1, Math.floor(x / k)),
+                r = r0 + Math.min(H - 1, Math.floor((py - 1 - y) / k)),
+                v = colOf(r, c) || [6, 20, 29],
                 o = (y * px + x) * 4;
-              if (m.kind === "trase") {
-                if (!on(ins, i)) col(6, 20, 29, o);
-                else if (on(cov, i)) col(25, 196, 106, o);
-                else if (on(all, i)) col(201, 138, 42, o);
-                else col(52, 80, 95, o);
-              } else col(...(age[i] !== 255 ? (M.onlyTest ? [201, 138, 42] : [25, 196, 106]) : [6, 20, 29]), o);
+              img.data[o] = v[0];
+              img.data[o + 1] = v[1];
+              img.data[o + 2] = v[2];
+              img.data[o + 3] = 255;
             }
           cx.putImageData(img, 0, 0);
-          // målestokk
+          // målestokk og nord
           let mPerPx = M.cell / k,
-            L = [10, 20, 50, 100, 200, 500].find((v) => v / mPerPx > 50) || 500,
+            L = [10, 20, 50, 100, 200, 500, 1000].find((v) => v / mPerPx > 50) || 1000,
             lp = L / mPerPx;
           cx.fillStyle = "#ffffff";
           cx.fillRect(8, py - 10, lp, 3);
@@ -5989,6 +6019,17 @@
           loadDays,
           loadReport,
           toggleFull: () => setFull(!full),
+          pdf() {
+            let d = $("repDay").value;
+            if (!d) return toast("Ingen rapport å laste ned");
+            let a = document.createElement("a");
+            a.href = "api/report/pdf?date=" + d;
+            a.download = "snowman-rapport-" + d + ".pdf";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            toast("Lagar PDF …");
+          },
           csv() {
             let d = $("repDay").value;
             if (!d) return toast("Ingen rapport å laste ned");

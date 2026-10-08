@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.65"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.66"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -496,6 +496,18 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/api/report/export":
             r={"ok":True,**report_cfg(),**EXPORT}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/report/pdf":   # rapporten som PDF: samandrag, kart, trasear, økter og drivstoff
+            try:
+                import pdfrapport as PR
+                date=urllib.parse.parse_qs(u.query).get("date",[None])[0]
+                try: mname=(lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8"))).get("mname","")
+                except Exception: mname=""
+                rep=FUEL.report(date,maps=True); data=PR.build(rep,mname); name="snowman-rapport-"+rep["date"]+".pdf"
+                self.send_response(200); self.send_header("Content-Type","application/pdf")
+                self.send_header("Content-Disposition",f'attachment; filename="{name}"'); self.end_headers(); self.wfile.write(data)
+            except Exception as e:
+                self.headers_ok(500); self.wfile.write(json.dumps({"ok":False,"error":f"PDF: {e}{where(e)}"}).encode())
+            return
         if u.path=="/api/report/csv":   # rapporten som CSV (Excel)
             try:
                 date=urllib.parse.parse_qs(u.query).get("date",[None])[0]
