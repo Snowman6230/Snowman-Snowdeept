@@ -7,6 +7,34 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-09
+
+### PC-prototype v1.6.68 – Vêr og snøproduksjon (Vêr-knappen, prototype)
+- **Nytt:** knappen **«❄ Vêr»** i verktøylinja (etter HUD) opnar eit **overlay** over kartet med varsel for staden og
+  høgda til maskina: snøproduksjon no (GODT / MARGINALT / FOR MYKJE VIND / IKKJE MOGLEG), våttemperatur, luft og fukt,
+  vind, **produksjonsvindauge** (samanhengande timar, minst 2 t), graf for dei neste 48 timane (våttemperatur og
+  lufttemperatur med grenselinjer, bakgrunn etter status, eigen liten nedbørsgraf) og **dag for dag**-oversikt.
+  Trykk eller dra i grafen for å lese av kvar time. Trykk **Vêr** igjen (eller ✕) for å lukke.
+- **Nytt:** overlayet stoppar ingenting – GNSS, måling, spor, økt og verktøylinja går vidare under (testa: sporet voks
+  frå 36 til 65 punkt medan overlayet var ope, og Zoom ut fungerte). DEMO-/TEST-merket blir flytt så det alltid synest.
+- **Nytt:** `ver.py` hentar **MET Norway Locationforecast 2.0** (gratis, CC BY 4.0) via SNOWMAN-tenesta
+  (`/api/weather`), reknar ut **våttemperatur etter Stull (2011)** og klassifiserer kvar time. MET sine vilkår blir følgde:
+  eigen User-Agent, maks 4 desimalar, nytt oppslag først når «Expires» er passert, og If-Modified-Since.
+- **Nytt:** **offline først** – siste varsel blir lagra i `data/ver-cache.json` og vist med alder når nettet manglar.
+  Utan lagra varsel står det tydeleg at SNOWMAN ikkje får kontakt med api.met.no; resten av SNOWMAN er urørt.
+- **Nytt:** grensene kan stillast inn nedst i overlayet (standard godt ≤ −5 °C, marginalt ≤ −2 °C våttemperatur,
+  maks vind 12 m/s). Lagra i førarskjerm-innstillingane (`wxGood`, `wxMarg`, `wxWind`) og loggførte ved endring.
+- **Nytt:** i **Demo** blir oppdikta vêrdata viste, merkte «DEMO – OPPDIKTA VÊRDATA, IKKJE VARSEL». Dei blir aldri
+  lagra som ekte varsel.
+- **Avgjerd:** prototypen brukar berre Locationforecast (ingen registrering eller nøklar). Observasjonar frå
+  stasjonar (Frost, Strandafjellet), vegvêr frå Statens vegvesen, webkamera og snøanslag med vind er neste steg
+  (VEGEN-VIDARE kap. 13).
+- **Kvifor:** eigaren ville ha forhold for snøproduksjon i SNOWMAN, som eit overlay som kan opnast og lukkast med éin
+  knapp utan at noko anna stoppar.
+- **Testa:** med `simuler-leica.py` (isolert kopi), demo og utan nett (MET ikkje nåbar frå testmaskina), og mot ein lokal
+  testteneste som svarar som MET: rett tolking, mellomlagring til «Expires», If-Modified-Since, og lagra varsel når nettet
+  forsvinn. Ingen JavaScript-feil. Skjermbilete i `docs/prototypar/ver/`.
+
 ## 2026-10-08
 
 ### Dokumentasjon – eksempel på alle rapportane (`docs/eksempel-rapportar/`)

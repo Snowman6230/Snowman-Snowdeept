@@ -224,6 +224,23 @@ Frontskjeret har truleg ikkje absolutte posisjonsgivarar.
 og koplingar i SNOWMAN: fres aktiv avgjer preparert areal, målt drivstoff i rapporten, fresposisjon i kartet,
 feilkodar og temperaturar i feltloggen.
 
+## 13. Vêr, snøproduksjon, snøanslag og webkamera (analyse 2026-10-08, prototype 2026-10-09)
+
+**Prototype i v1.6.68:** Vêr-knappen med overlay for snøproduksjon (MET Locationforecast, våttemperatur, vindauge,
+48 t-graf, dag for dag, innstillbare grenser, offline-lagring, DEMO-merking). Skjermbilete: `prototypar/ver/`.
+
+**Neste steg (ikkje plassert i vegplanen)**
+1. **Observasjonar frå næraste stasjon (MET Frost):** krev gratis klient-ID, lagra lokalt som NTRIP-passordet (aldri i
+   repoet). SNOWMAN vel stasjonar etter GPS (avstand og høgdeskilnad) og lagrar valet i stadprofilen. For Fjellsætra:
+   «Fv60 Strandafjellet» (yr id 5-60225) ser ut til å vere ein vegvêrstasjon – må stadfestast i Frost.
+2. **Vegvêr frå Statens vegvesen (DATEX II, NLOD):** krev søkt brukarkonto. Berre aktuelt der Frost ikkje har stasjonen.
+3. **Webkamera per anlegg:** liste i stadprofilen (namn, plassering, bilete-adresse), val etter GPS, ikon på kartet og
+   bilete i eit panel. Valfritt eitt bilete i timen til dagsrapporten.
+4. **Snøanslag:** høgdejustert temperatur, snø/regn etter våttemperatur, nedbør × snøtettleik, smelting (graddøgn) og
+   vindflytting (le/lo frå terrengmodellen). Kopla til snøflate-minnet: «venta nysnø sidan sist preparering», kalibrert
+   mot RTK-målingar. Alltid merkt **ESTIMAT – vêrmodell**, aldri blanda med målt snødjupne.
+5. Kopling til Snowman Hydrantstyring (produksjonsvindauge per hydrant/kanon og høgd).
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |

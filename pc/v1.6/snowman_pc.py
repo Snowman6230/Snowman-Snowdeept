@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.67"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.68"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -25,6 +25,8 @@ import terrain as T
 TERR=T.TerrainLibrary(DATA/"terrain")
 import snoflate as SF
 SURF=SF.SnowSurface(DATA/"snoflate.json")   # snøflateminne: målt snøoverflate, til estimat framfor maskina
+import ver as VER
+WX=VER.Weather(DATA/"ver-cache.json",VERSION)   # vêr og snøproduksjon (MET Locationforecast), lagra for bruk utan nett
 import kontroll as K
 import helling as HL
 HEL=HL.Helling()   # hellingskorreksjon: antenna står ikkje rett over beltet når maskina står på skrå
@@ -530,6 +532,22 @@ class API(http.server.BaseHTTPRequestHandler):
                     r.update(ok=True,test=test)
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/weather":   # vêr og snøproduksjon (Vêr-knappen) – varsel frå MET, eller DEMO
+            q=urllib.parse.parse_qs(u.query)
+            f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
+            try:
+                lat,lon=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")); demo=q.get("demo",["0"])[0]=="1"
+                if demo and lat is None: lat,lon=62.3905,6.5810
+                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon frå GNSS endå – vêret blir henta for staden maskina er."}
+                else:
+                    alt=f("alt")
+                    if alt is None:
+                        try: alt=TERR.height(lat,lon) if T.AVAILABLE else None
+                        except Exception: alt=None
+                    if alt is None: alt=STATE.get("altitude")
+                    r=WX.forecast(lat,lon,alt,{"good":f("good"),"marg":f("marg"),"wind":f("wind")},demo=demo)
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/history/coverage":   # trakka område i ein periode eller for éi økt (Historikk › TRAKKA OMRÅDE)
             q=urllib.parse.parse_qs(u.query); per=q.get("period",["day"])[0]; now=time.time()
             try:
@@ -825,7 +843,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 try:
                     old=json.loads(UI_CFG.read_text("utf-8")); oc=old.get("cfg",old); nc=d.get("cfg",d)
                     log_changes("førarskjerm",oc,nc,("mname","machine","blade","bladeN","tiller","tillerN","target","tol","bounds","northUp",
-                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH","kbMode","teleOn"))
+                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH","kbMode","teleOn","wxGood","wxMarg","wxWind"))
                 except Exception: pass
                 write_atomic(UI_CFG,json.dumps(d,ensure_ascii=False,indent=1))
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')

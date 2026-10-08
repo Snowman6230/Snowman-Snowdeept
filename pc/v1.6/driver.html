@@ -620,6 +620,211 @@
       .rtk.bad b {
         color: #ff6b5b;
       }
+      /* Vêr og snøproduksjon (Vêr-knappen): overlay over kartet. Berre kortet tek imot trykk –
+         kart, spor, måling og økt går vidare under, og verktøylinja er alltid tilgjengeleg. */
+      #wx {
+        position: absolute;
+        z-index: 1100;
+        top: 76px;
+        right: 12px;
+        bottom: 84px;
+        width: min(640px, 62vw);
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+      }
+      #wx.hide {
+        display: none;
+      }
+      #wx .wxCard {
+        pointer-events: auto;
+        background: #02121bea;
+        border: 1px solid #3d5c6e;
+        border-radius: 14px;
+        padding: 12px 14px;
+        color: #e6f2f8;
+        overflow-y: auto;
+        max-height: 100%;
+        box-shadow: 0 8px 30px #0008;
+        backdrop-filter: blur(3px);
+      }
+      #wx .wxHead {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      #wx .wxHead h3 {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: 1px;
+        flex: 1;
+      }
+      #wx .wxHead small {
+        color: #9ab3c1;
+        font-weight: 700;
+      }
+      #wx .wxX {
+        border: 1px solid #3d5c6e;
+        background: #0c2433;
+        color: #fff;
+        border-radius: 8px;
+        font-weight: 900;
+        font-size: 16px;
+        width: 40px;
+        height: 36px;
+      }
+      #wx .wxDemo {
+        background: #b06a00;
+        color: #fff;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-align: center;
+        border-radius: 8px;
+        padding: 4px;
+        margin: 8px 0 0;
+      }
+      #wx .wxWarn {
+        background: #4a3200;
+        color: #ffd27a;
+        border-radius: 8px;
+        padding: 5px 8px;
+        margin-top: 8px;
+        font-weight: 700;
+        font-size: 13px;
+      }
+      #wx .wxNow {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr 1fr 1fr;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      #wx .wxBox {
+        background: #0b2231;
+        border: 1px solid #23465a;
+        border-radius: 10px;
+        padding: 8px 10px;
+      }
+      #wx .wxBox span {
+        display: block;
+        font-size: 11px;
+        font-weight: 800;
+        color: #9ab3c1;
+        letter-spacing: 0.5px;
+      }
+      #wx .wxBox b {
+        font-size: 24px;
+        font-weight: 900;
+      }
+      #wx .wxBox em {
+        display: block;
+        font-style: normal;
+        font-size: 12px;
+        color: #b8cdd8;
+      }
+      #wx .wxStat b {
+        font-size: 22px;
+      }
+      #wx .c-godt { color: #3ee07a; }
+      #wx .c-marg { color: #ffcf5b; }
+      #wx .c-nei { color: #ff7a6b; }
+      #wx .c-vind { color: #c99bff; }
+      #wx .wxStat.godt { border-color: #2c9c58; background: #0d2f22; }
+      #wx .wxStat.marg { border-color: #9c7c2c; background: #2e2810; }
+      #wx .wxStat.nei { border-color: #8c3b33; background: #2d1513; }
+      #wx .wxStat.vind { border-color: #6d4fa6; background: #211a33; }
+      #wx h4 {
+        margin: 12px 0 6px;
+        font-size: 12px;
+        color: #9ab3c1;
+        letter-spacing: 1px;
+      }
+      #wx .wxWin {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      #wx .wxWin div {
+        display: grid;
+        grid-template-columns: 14px 1.5fr 0.6fr 1fr;
+        align-items: center;
+        gap: 8px;
+        background: #0b2231;
+        border-radius: 8px;
+        padding: 6px 9px;
+        font-size: 14px;
+      }
+      #wx .wxWin i {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+      }
+      #wx .wxWin small {
+        color: #9ab3c1;
+      }
+      #wx svg.wxChart {
+        width: 100%;
+        height: auto;
+        display: block;
+        background: #071a26;
+        border-radius: 10px;
+      }
+      #wx .wxDays {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+        gap: 6px;
+      }
+      #wx .wxDays > div {
+        background: #0b2231;
+        border-radius: 8px;
+        padding: 6px;
+        text-align: center;
+        font-size: 12px;
+        color: #b8cdd8;
+      }
+      #wx .wxDays > div > b {
+        display: block;
+        color: #fff;
+        font-size: 13px;
+      }
+      #wx .wxBar {
+        display: flex;
+        height: 7px;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #3a1d1a;
+        margin: 4px 0;
+      }
+      #wx .wxBar span {
+        display: block;
+        height: 100%;
+      }
+      /* demo-/testmerket skal alltid synast: flytt det til midten av den frie delen av kartet når Vêr er ope */
+      body.wxOpen .demoTag {
+        left: calc((100vw - min(640px, 62vw) - 24px) / 2);
+      }
+      #wx .wxLim {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        font-size: 12px;
+        color: #b8cdd8;
+        margin-top: 10px;
+      }
+      #wx .wxLim input {
+        width: 58px;
+        background: #0b2231;
+        color: #fff;
+        border: 1px solid #3d5c6e;
+        border-radius: 6px;
+        padding: 4px;
+        font-weight: 800;
+      }
+      #wx .wxFoot {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #7f9aa9;
+      }
       .demoTag {
         position: absolute;
         z-index: 950;
@@ -1793,6 +1998,7 @@
 
         ><button id="surfBtn" class="tool on" onclick="openSurfMenu(event)" title="Estimat frå tidlegare trakka snøoverflate: vel kor mange timar tilbake, eller AV"><i>≋</i><span id="surfBtnTxt">Flate 24 t</span></button
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
+        ><button id="wxBtn" class="tool" onclick="WX.toggle()" title="Vêr og snøproduksjon (varsel frå MET). Trykk igjen for å lukke – alt anna går vidare i bakgrunnen."><i>❄</i>Vêr</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
         ><button class="tool" onclick="logClient('action', 'Reset spor (knapp)');resetWork()"><i>↺</i>Reset spor</button
@@ -1838,6 +2044,7 @@
         <button class="btn" onclick="closeHud()">LUKK</button>
       </div>
       <div id="demoTag" class="demoTag hide">DEMO – SIMULERTE DATA</div>
+      <div id="wx" class="hide" aria-live="polite"><div class="wxCard" id="wxCard"></div></div>
       <div id="traseWarn" class="traseWarn hide"></div>
       <div id="obstWarn" class="obstWarn hide"><div id="obstName"></div><div id="obstDist"></div></div>
       <div id="objDlg" class="hudDlg hide">
@@ -1895,7 +2102,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.67";
+      const APP_VERSION = "1.6.68";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -4525,6 +4732,7 @@
         $("demoBtn").classList.add("on");
         $("demoTag").textContent = "DEMO – SIMULERTE DATA";
         $("demoTag").classList.remove("hide");
+        if (WX.open) WX.load(); // vêr-overlayet: byt mellom DEMO og ekte varsel
         renderLegend();
         pts = [];
         coverGroup.clearLayers();
@@ -4566,6 +4774,7 @@
           src = srcBeforeDemo === "demo" ? "none" : srcBeforeDemo;
           $("demoBtn").classList.remove("on");
           $("demoTag").classList.add("hide");
+          if (WX.open) WX.load(); // vêr-overlayet: byt mellom DEMO og ekte varsel
           currentSession = null;
           last = null;
           lastCoverage = null;
@@ -6291,6 +6500,196 @@
       }
 
       /* ---------- HUD-dialog: eigen skjerm eller mobil (QR-kode) ---------- */
+      /* ---------- Vêr og snøproduksjon (Vêr-knappen) ----------
+         Overlay over kartet: varsel frå MET for staden maskina er, våttemperatur og produksjonsvindauge.
+         Overlayet stoppar ingenting – GNSS, måling, spor og økt går vidare under. Trykk Vêr igjen for å lukke.
+         I demo-modus blir oppdikta vêrdata viste, tydeleg merka DEMO. */
+      const WX = (() => {
+        let open = false,
+          R = null,
+          timer = null,
+          busy = false,
+          hoverI = null;
+        const CLS = { godt: ["GODT", "#3ee07a", "Godt"], marg: ["MARGINALT", "#ffcf5b", "Marginalt"], vind: ["FOR MYKJE VIND", "#c99bff", "Vind"], nei: ["IKKJE MOGLEG", "#ff7a6b", "Ikkje"] };
+        const DAYS = ["Sun", "Mån", "Tys", "Ons", "Tor", "Fre", "Lau"];
+        const lim = () => ({ good: cfg.wxGood ?? -5, marg: cfg.wxMarg ?? -2, wind: cfg.wxWind ?? 12 });
+        const n1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toFixed(1).replace(".", ",").replace("-", "−"));
+        const hh = (t) => String(new Date(t).getHours()).padStart(2, "0");
+        const day = (t) => DAYS[new Date(t).getDay()];
+        const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+        async function load() {
+          if (busy) return;
+          busy = true;
+          try {
+            let L = lim(),
+              q = "demo=" + (demo ? 1 : 0) + "&good=" + L.good + "&marg=" + L.marg + "&wind=" + L.wind;
+            if (pos) q += "&lat=" + pos[0] + "&lon=" + pos[1];
+            R = await fetch("api/weather?" + q).then((x) => x.json());
+          } catch (e) {
+            R = { ok: false, error: "Fekk ikkje kontakt med SNOWMAN-tenesta" };
+          }
+          busy = false;
+          if (open) render();
+        }
+        function chart(H) {
+          let W = 600,
+            Ht = 190,
+            pl = 34,
+            pr = 8,
+            pt = 10,
+            pb = 22,
+            n = H.length,
+            L = R.limits,
+            vals = H.flatMap((h) => [h.temp, h.tw]).concat([L.good - 1, L.marg + 1]),
+            lo = Math.floor(Math.min(...vals) - 0.5),
+            hi = Math.ceil(Math.max(...vals) + 0.5),
+            X = (i) => pl + ((W - pl - pr) * i) / Math.max(1, n),
+            Y = (v) => pt + ((Ht - pt - pb) * (hi - v)) / (hi - lo),
+            cw = (W - pl - pr) / n,
+            o = [];
+          // bakgrunn per time etter status (med tekst i forklaringa – ikkje berre farge)
+          H.forEach((h, i) => o.push(`<rect x="${X(i).toFixed(1)}" y="${pt}" width="${(cw + 0.3).toFixed(1)}" height="${Ht - pt - pb}" fill="${CLS[h.cls][1]}" opacity=".16"/>`));
+          // rutenett og akse
+          let step = hi - lo > 14 ? 4 : 2;
+          for (let v = Math.ceil(lo / step) * step; v <= hi; v += step)
+            o.push(`<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#ffffff" stroke-opacity="${v === 0 ? 0.35 : 0.08}"/><text x="${pl - 5}" y="${Y(v) + 4}" text-anchor="end" font-size="10" fill="#9ab3c1">${String(v).replace("-", "−")}°</text>`);
+          // grenser
+          [
+            [L.good, "godt ≤ " + n1(L.good) + "°"],
+            [L.marg, "marg. ≤ " + n1(L.marg) + "°"],
+          ].forEach(([v, t]) => o.push(`<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#e6f2f8" stroke-opacity=".55" stroke-dasharray="4 4"/><text x="${W - pr - 4}" y="${Y(v) - 4}" text-anchor="end" font-size="10" fill="#cfe0ea">${t}</text>`));
+          // tidsakse: kvar 6. time, dagnamn ved midnatt
+          H.forEach((h, i) => {
+            let d = new Date(h.t),
+              g = d.getHours();
+            if (g % 6) return;
+            o.push(`<line x1="${X(i)}" x2="${X(i)}" y1="${pt}" y2="${Ht - pb}" stroke="#fff" stroke-opacity="${g ? 0.06 : 0.22}"/><text x="${X(i)}" y="${Ht - 7}" text-anchor="middle" font-size="10" fill="${g ? "#7f9aa9" : "#e6f2f8"}" font-weight="${g ? 400 : 800}">${g ? hh(h.t) : day(h.t)}</text>`);
+          });
+          let line = (k) => H.map((h, i) => (i ? "L" : "M") + (X(i) + cw / 2).toFixed(1) + " " + Y(h[k]).toFixed(1)).join("");
+          o.push(`<path d="${line("temp")}" fill="none" stroke="#9ab3c1" stroke-width="2" stroke-dasharray="5 3"/>`);
+          o.push(`<path d="${line("tw")}" fill="none" stroke="#7fd0ff" stroke-width="2.5"/>`);
+          if (hoverI != null && H[hoverI]) {
+            let x = X(hoverI) + cw / 2,
+              h = H[hoverI];
+            o.push(`<line x1="${x}" x2="${x}" y1="${pt}" y2="${Ht - pb}" stroke="#fff" stroke-opacity=".7"/><circle cx="${x}" cy="${Y(h.tw)}" r="4.5" fill="#7fd0ff" stroke="#02121b" stroke-width="2"/><circle cx="${x}" cy="${Y(h.temp)}" r="4" fill="#9ab3c1" stroke="#02121b" stroke-width="2"/>`);
+          }
+          o.push(`<rect x="${pl}" y="0" width="${W - pl - pr}" height="${Ht}" fill="transparent" data-wxhit="1"/>`);
+          // nedbør: eigen liten graf med eiga akse (mm), ikkje dobbel akse
+          let P = H.map((h) => h.precip ?? 0),
+            pm = Math.max(1, ...P),
+            ph = 46,
+            py = (v) => ph - 14 - ((ph - 20) * v) / pm,
+            q = [`<text x="${pl - 5}" y="12" text-anchor="end" font-size="10" fill="#9ab3c1">${n1(pm)}</text><text x="${pl - 5}" y="${ph - 12}" text-anchor="end" font-size="10" fill="#9ab3c1">0</text><line x1="${pl}" x2="${W - pr}" y1="${ph - 14}" y2="${ph - 14}" stroke="#fff" stroke-opacity=".15"/>`];
+          P.forEach((v, i) => v > 0 && q.push(`<rect x="${(X(i) + 1).toFixed(1)}" y="${py(v).toFixed(1)}" width="${Math.max(1, cw - 2).toFixed(1)}" height="${(ph - 14 - py(v)).toFixed(1)}" rx="1.5" fill="${H[i].temp < 0.5 ? "#e6f2f8" : "#5aa9ff"}"/>`));
+          q.push(`<text x="${pl + 2}" y="${ph - 2}" font-size="10" fill="#7f9aa9">Nedbør mm/t (kvit = truleg snø, blå = regn/sludd)</text>`);
+          return `<svg class="wxChart" id="wxSvg" viewBox="0 0 ${W} ${Ht}">${o.join("")}</svg><svg class="wxChart" viewBox="0 0 ${W} ${ph}" style="margin-top:4px">${q.join("")}</svg>`;
+        }
+        function readout(h) {
+          if (!h) return "Trykk eller dra i grafen for å sjå kvar time.";
+          let c = CLS[h.cls];
+          return `<b>${day(h.t)} ${hh(h.t)}:00</b> · våttemp. <b>${n1(h.tw)}°</b> · luft ${n1(h.temp)}° · fukt ${Math.round(h.rh)} % · vind ${n1(h.wind)} m/s · nedbør ${n1(h.precip ?? h.precip6 ?? 0)} mm · <b style="color:${c[1]}">${c[0]}</b>`;
+        }
+        function render() {
+          let el = $("wxCard"),
+            sy = el.scrollTop;
+          if (!R) {
+            el.innerHTML = head() + `<p>Hentar vêrvarsel …</p>`;
+            return;
+          }
+          if (!R.ok) {
+            el.innerHTML = head() + `<div class="wxWarn">${esc(R.error)}</div><p style="color:#b8cdd8;font-size:13px">Vêrvarselet krev nett første gong. Etterpå blir siste varsel vist også utan nett. Alt anna i SNOWMAN fungerer som før.</p>${R.detail ? `<p style="color:#7f9aa9;font-size:11px">Teknisk: ${esc(R.detail)}</p>` : ""}` + foot();
+            return;
+          }
+          let H = R.hours.slice(0, 48),
+            h = R.now,
+            c = CLS[h.cls],
+            L = R.limits,
+            W = R.windows.slice(0, 4),
+            next = R.windows[0];
+          let win = W.length
+            ? W.map((w) => {
+                let k = CLS[w.quality];
+                return `<div><i style="background:${k[1]}"></i><span><b>${day(w.start)} ${hh(w.start)}–${hh(w.end)}</b> <small>(${w.hours} t)</small></span><span style="color:${k[1]};font-weight:900">${k[2].toUpperCase()}</span><small>snitt ${n1(w.twMean)}° · kaldast ${n1(w.twMin)}° · ${w.good} t godt</small></div>`;
+              }).join("")
+            : `<div><i style="background:#ff7a6b"></i><span>Ingen produksjonsvindauge dei neste ${Math.round(R.hours.length)} timane</span><span></span><small></small></div>`;
+          let days = R.days
+            .map((d) => {
+              let g = (100 * d.good) / d.n,
+                m = (100 * d.marg) / d.n;
+              return `<div><b>${day(new Date(d.date + "T12:00").getTime())} ${d.date.slice(8)}.${d.date.slice(5, 7)}</b><div class="wxBar"><span style="width:${g}%;background:#3ee07a"></span><span style="width:${m}%;background:#ffcf5b"></span></div>${d.good} t godt · ${d.marg} t marg.<br>${n1(d.tmin)}…${n1(d.tmax)}° · ${n1(d.precip)} mm</div>`;
+            })
+            .join("");
+          el.innerHTML =
+            head() +
+            (R.demo ? `<div class="wxDemo">DEMO – OPPDIKTA VÊRDATA, IKKJE VARSEL</div>` : "") +
+            (R.offline ? `<div class="wxWarn">Utan nett – viser lagra varsel, ${R.age_min} min gammalt.</div>` : "") +
+            `<div class="wxNow">
+              <div class="wxBox wxStat ${h.cls}"><span>SNØPRODUKSJON NO</span><b style="color:${c[1]}">${c[0]}</b><em>${next ? (next.start <= Date.now() ? "Vindauge no – til " + day(next.end) + " " + hh(next.end) + ":00" : "Neste vindauge: " + day(next.start) + " " + hh(next.start) + ":00") : "Ingen vindauge i varselet"}</em></div>
+              <div class="wxBox"><span>VÅTTEMPERATUR</span><b class="c-${h.cls}">${n1(h.tw)}°</b><em>grense ${n1(L.good)}° / ${n1(L.marg)}°</em></div>
+              <div class="wxBox"><span>LUFT · FUKT</span><b>${n1(h.temp)}°</b><em>${Math.round(h.rh)} % relativ fukt</em></div>
+              <div class="wxBox"><span>VIND</span><b>${n1(h.wind)}</b><em>m/s${h.dir != null ? " frå " + Math.round(h.dir) + "°" : ""} · maks ${n1(L.wind)}</em></div>
+            </div>
+            <h4>PRODUKSJONSVINDAUGE</h4><div class="wxWin">${win}</div>
+            <h4>NESTE 48 TIMAR – <span style="color:#7fd0ff">━ våttemperatur</span> &nbsp;<span style="color:#9ab3c1">╍ lufttemperatur</span> &nbsp; bakgrunn: <span class="c-godt">godt</span> · <span class="c-marg">marginalt</span> · <span class="c-vind">vind</span> · <span class="c-nei">ikkje mogleg</span></h4>
+            <div id="wxCh" style="touch-action:none">${chart(H)}</div>
+            <div id="wxRead" style="font-size:12px;color:#cfe0ea;margin-top:5px;min-height:16px">${readout(H[hoverI])}</div>
+            <h4>DAG FOR DAG</h4><div class="wxDays">${days}</div>
+            <div class="wxLim">GRENSER (våttemp.): godt ≤ <input id="wxG" type="number" step="0.5" inputmode="numeric" value="${L.good}"> °C &nbsp; marginalt ≤ <input id="wxM" type="number" step="0.5" inputmode="numeric" value="${L.marg}"> °C &nbsp; maks vind <input id="wxW" type="number" step="1" inputmode="numeric" value="${L.wind}"> m/s</div>` +
+            foot();
+          el.scrollTop = sy;
+          // trykk/dra i grafen: berre grafen og avlesinga blir teikna på nytt (wxCh står fast, så dra-rørsla held fram)
+          let box = $("wxCh");
+          let pick = (ev) => {
+            let r = $("wxSvg").getBoundingClientRect();
+            if (ev.clientY > r.bottom + 50) return;
+            let x = ((ev.clientX - r.left) / r.width) * 600,
+              i = Math.floor(((x - 34) / (600 - 42)) * H.length);
+            if (i < 0 || i >= H.length || i === hoverI) return;
+            hoverI = i;
+            box.innerHTML = chart(H);
+            $("wxRead").innerHTML = readout(H[i]);
+          };
+          box.addEventListener("pointermove", pick);
+          box.addEventListener("pointerdown", pick);
+          [
+            ["wxG", "wxGood"],
+            ["wxM", "wxMarg"],
+            ["wxW", "wxWind"],
+          ].forEach(([id, k]) =>
+            $(id).addEventListener("change", (e) => {
+              let v = parseFloat(String(e.target.value).replace(",", "."));
+              if (!isFinite(v)) return;
+              cfg[k] = v;
+              persistCfg();
+              logClient("action", "Vêr: grense " + k + " = " + v);
+              load();
+            })
+          );
+        }
+        function head() {
+          let p = R && R.ok ? `${n1(R.lat).replace(",", ".")}° N ${n1(R.lon).replace(",", ".")}° Ø${R.alt != null ? " · " + R.alt + " moh." : ""}` : "";
+          let a = R && R.ok && !R.demo ? ` · oppdatert for ${R.age_min} min sidan` : "";
+          return `<div class="wxHead"><h3>❄ VÊR OG SNØPRODUKSJON<br><small>${p}${a}</small></h3><button class="wxX" onclick="WX.toggle()" title="Lukk (eller trykk Vêr-knappen igjen)">✕</button></div>`;
+        }
+        function foot() {
+          return `<div class="wxFoot">${R && R.demo ? "Oppdikta demo-data til visning." : esc((R && R.attr) || "Data frå MET Norway (CC BY 4.0)") + " · Locationforecast for staden og høgda til maskina."} Våttemperatur etter Stull (2011). Varsel – ikkje måling. Grensene varierer med kanon og vasstemperatur.</div>`;
+        }
+        function toggle() {
+          open = !open;
+          $("wx").classList.toggle("hide", !open);
+          $("wxBtn").classList.toggle("on", open);
+          document.body.classList.toggle("wxOpen", open);
+          logClient("action", open ? "Vêr opna" : "Vêr lukka");
+          clearInterval(timer);
+          if (open) {
+            hoverI = null;
+            render();
+            load();
+            timer = setInterval(load, 10 * 60 * 1000); // tenesta hentar berre nytt frå MET når varselet er gått ut
+          }
+        }
+        return { toggle, load, get open() { return open; } };
+      })();
       async function openHud() {
         $("hudDlg").classList.remove("hide");
         try {
