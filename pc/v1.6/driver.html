@@ -1742,7 +1742,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.54";
+      const APP_VERSION = "1.6.55";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -2200,35 +2200,62 @@
           hatch = estCx.createPattern(hc, "repeat");
           return true;
         }
-        // Enkel trakkemaskin i målestokk: belte, hus, førarhus, skjær framme og fres bak.
+        // Trakkemaskin i målestokk, same utsjånad som 2D-teikninga (groomerSVG): grått skjer med venger, belte med
+        // slitebane, raudt førarhus med glas og tak, motorlokk, fres og gul finisher, og GPS-antenna(ne).
+        // Delane står i høve til midten av beltet; heile modellen er flytt slik at antenna (GPS 1) er i posisjonen.
         function buildMachine() {
-          let key = [cfg.machine, toolsFull ? cfg.blade : cfg.bladeN, toolsFull ? cfg.tiller : cfg.tillerN].join();
+          let key = [cfg.machine, toolsFull ? cfg.blade : cfg.bladeN, toolsFull ? cfg.tiller : cfg.tillerN, cfg.antX, cfg.antY, cfg.antZ, cfg.antN, cfg.ant2X, cfg.ant2Y].join();
           if (machine && key === machineKey) return;
           if (machine) scene.remove(machine);
           machineKey = key;
           let g = new THREE.Group(),
-            mat = (c) => new THREE.MeshLambertMaterial({ color: c }),
-            box = (w, h, l, c, x, y, z, keep) => {
-              let m = new THREE.Mesh(new THREE.BoxGeometry(w, h, l), mat(c));
+            body = new THREE.Group(),
+            MC = {},
+            mat = (c) => MC[c] || (MC[c] = new THREE.MeshLambertMaterial({ color: c })),
+            add = (m, x, y, z, keep) => {
               m.position.set(x, y, z);
-              m.userData.keep = !!keep; // synleg også i frontrutevisinga (berre skjæret)
-              g.add(m);
+              m.userData.keep = !!keep; // keep = synleg også i frontrutevisinga (skjeret og armane)
+              body.add(m);
+              return m;
             },
-            W = cfg.machine,
-            blade = toolsFull ? cfg.blade : cfg.bladeN,
-            tiller = toolsFull ? cfg.tiller : cfg.tillerN;
-          box(1.1, 0.9, 5.2, 0x1a2228, -(W / 2 - 0.55), 0.45, 0); // belte venstre
-          box(1.1, 0.9, 5.2, 0x1a2228, W / 2 - 0.55, 0.45, 0); // belte høgre
-          box(W - 2.4, 1.1, 4.6, 0xe23b32, 0, 1.25, 0.2); // hus
-          box(2.3, 1.7, 2.1, 0xd8e4ea, 0, 2.6, -0.7); // førarhus
-          box(2.0, 1.2, 1.9, 0x263943, 0, 2.7, -0.75); // vindauge (mørkt, litt inne)
-          // Skjær: tynn, bøygd skjærplate (krummar fram i toppen) med sidevengjer og skyvearmar – ikkje ein kloss
-          // Halvgjennomsiktig plate: i frontrutevisinga ser føraren snøfargane framfor skjæret gjennom plata
-          let bladeMat = new THREE.MeshLambertMaterial({ color: 0xd49a1a, side: THREE.DoubleSide, transparent: true, opacity: 0.45, depthWrite: false }),
-            edgeMat = new THREE.MeshLambertMaterial({ color: 0x2a2f33 }),
-            BH = 1.15, // høgd på skjæret
-            N = 10;
-          // Skjærplata som flate (minimal three.js-pakke har ikkje Shape/Extrude): profil x = 0,32·t² fram, y = BH·t
+            box = (w, h, l, c, x, y, z, keep) => add(new THREE.Mesh(new THREE.BoxGeometry(w, h, l), mat(c)), x, y, z, keep),
+            W = Math.max(1, cfg.machine),
+            blade = Math.max(1, toolsFull ? cfg.blade : cfg.bladeN),
+            tiller = Math.max(1, toolsFull ? cfg.tiller : cfg.tillerN),
+            F = MFIG,
+            tl = F.trackHalf,
+            tw = Math.max(0.7, Math.min(1.4, W * 0.22)),
+            bx = W / 2 - tw - 0.06,
+            cw = Math.min(bx - 0.25, 1.25);
+          // Belte: kropp, slitebane (tverrband) og runde endar (drivhjul)
+          [-1, 1].forEach((sd) => {
+            let cx = sd * (W / 2 - tw / 2);
+            box(tw, 0.95, 2 * tl - 0.9, 0x1a252d, cx, 0.475, 0);
+            [-1, 1].forEach((e) => {
+              let c = add(new THREE.Mesh(new THREE.CylinderGeometry(0.475, 0.475, tw, 16), mat(0x1a252d)), cx, 0.475, e * (tl - 0.45));
+              c.rotation.z = Math.PI / 2;
+              let hub = add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, tw + 0.04, 12), mat(0x5d6f7b)), cx, 0.475, e * (tl - 0.45));
+              hub.rotation.z = Math.PI / 2;
+            });
+            for (let z = -tl + 0.6; z < tl - 0.5; z += 0.32) box(tw - 0.06, 0.05, 0.1, 0x5a6b76, cx, 0.97, z);
+          });
+          // Karosseri, førarhus framme og motorlokk bak
+          box(2 * bx, 1.0, 2 * tl - 0.1, 0xd42c2c, 0, 1.0, -0.05);
+          box(2 * cw, 1.55, 2.35, 0xe8504a, 0, 2.27, -tl + 1.22); // førarhus
+          box(2 * cw - 0.2, 1.0, 0.04, 0x1d3a4f, 0, 2.5, -tl + 0.03); // frontrute
+          box(0.04, 0.9, 1.9, 0x1d3a4f, -cw - 0.01, 2.5, -tl + 1.25); // sidevindauge venstre
+          box(0.04, 0.9, 1.9, 0x1d3a4f, cw + 0.01, 2.5, -tl + 1.25); // sidevindauge høgre
+          box(2 * cw - 0.5, 0.08, 1.4, 0xf06a62, 0, 3.08, -tl + 1.25); // tak
+          add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.16, 10), mat(0xffa020)), 0, 3.2, -tl + 0.8); // varsellys
+          box(2 * cw, 0.6, tl - 0.15, 0xb82222, 0, 1.8, (tl + 0.15) / 2 + 0.1); // motorlokk
+          for (let z = 0.75; z < tl - 0.3; z += 0.22) box(2 * cw - 0.4, 0.03, 0.07, 0x8f1717, 0, 2.115, z); // rister
+          // Skyvearmar og skjer: tynn, bøygd plate (krummar fram i toppen) med venger. Halvgjennomsiktig, så føraren
+          // ser snøfargane framfor skjeret gjennom plata i frontrutevisinga.
+          let bladeMat = new THREE.MeshLambertMaterial({ color: 0x8d9ba5, side: THREE.DoubleSide, transparent: true, opacity: 0.55, depthWrite: false }),
+            edgeMat = mat(0x76848e),
+            BH = 1.15,
+            N = 10,
+            bz = F.bladeBack - 0.05;
           let plate = (w, x, z, yaw) => {
             let pos = [],
               idx = [];
@@ -2243,26 +2270,40 @@
             geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pos), 3));
             geo.setIndex(idx);
             geo.computeVertexNormals();
-            let m = new THREE.Mesh(geo, bladeMat);
-            m.rotation.y = yaw || 0; // vengjene: ytterenden peikar fram
-            m.position.set(x, 0.05, z);
-            m.userData.keep = true;
-            g.add(m);
-            let top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, 0.1), edgeMat); // gummilist/kant i toppen
+            let m = add(new THREE.Mesh(geo, bladeMat), x, 0.05, z, true);
+            m.rotation.y = yaw || 0;
+            let top = add(new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, 0.12), edgeMat), x - Math.sin(yaw || 0) * 0.32, 0.05 + BH, z - Math.cos(yaw || 0) * 0.32, true);
             top.rotation.y = yaw || 0;
-            top.position.set(x - Math.sin(yaw || 0) * 0.32, 0.05 + BH, z - Math.cos(yaw || 0) * 0.32);
-            top.userData.keep = true;
-            g.add(top);
+            let foot = add(new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, 0.1), edgeMat), x, 0.07, z, true); // skjerstål nede
+            foot.rotation.y = yaw || 0;
           };
-          let wing = Math.min(0.7, blade * 0.12),
+          let wing = Math.min(0.75, blade * 0.17),
             mid = blade - 2 * wing * 0.9;
-          plate(mid, 0, -3.25);
-          plate(wing, -(mid / 2 + wing * 0.45), -3.25 - wing * 0.22, -0.45); // venstre veng, vinkla fram
-          plate(wing, mid / 2 + wing * 0.45, -3.25 - wing * 0.22, 0.45); // høgre veng
-          box(0.16, 0.16, 1.0, 0x2a2f33, -(W / 2 - 1.0), 0.55, -2.75, true); // skyvearm venstre
-          box(0.16, 0.16, 1.0, 0x2a2f33, W / 2 - 1.0, 0.55, -2.75, true); // skyvearm høgre
-          box(tiller, 0.6, 1.4, 0x3a4a55, 0, 0.35, 3.6); // fres
-          box(tiller, 0.08, 1.0, 0xe9f3f8, 0, 0.05, 4.8); // finisher
+          plate(mid, 0, bz);
+          plate(wing, -(mid / 2 + wing * 0.45), bz - wing * 0.22, -0.45); // venstre veng, vinkla fram
+          plate(wing, mid / 2 + wing * 0.45, bz - wing * 0.22, 0.45); // høgre veng
+          for (let i = 1; i < 8; i++) box(0.05, BH * 0.85, 0.05, 0x9aa7b0, -mid / 2 + (mid * i) / 8, 0.55, bz + 0.03, true); // ribber bak på plata
+          let armL = bz + 0.05,
+            armLen = -tl + 0.2 - armL;
+          box(0.18, 0.18, armLen, 0x4a5862, -Math.min(bx - 0.15, mid * 0.3), 0.6, armL + armLen / 2, true); // skyvearm venstre
+          box(0.18, 0.18, armLen, 0x4a5862, Math.min(bx - 0.15, mid * 0.3), 0.6, armL + armLen / 2, true); // skyvearm høgre
+          // Fresbom, fres og finisher med gule flapsar
+          box(0.9, 0.35, F.tillerFront - tl + 0.2, 0x4a5862, 0, 0.75, (tl + F.tillerFront) / 2);
+          box(tiller, 0.7, F.tillerBack - F.tillerFront, 0xcc2424, 0, 0.4, (F.tillerFront + F.tillerBack) / 2);
+          for (let i = 1; i < 12; i++) box(0.04, 0.05, F.tillerBack - F.tillerFront - 0.1, 0x8a1414, -tiller / 2 + (tiller * i) / 12, 0.77, (F.tillerFront + F.tillerBack) / 2);
+          box(tiller, 0.05, F.flapBack - F.tillerBack, 0xf2c230, 0, 0.05, (F.tillerBack + F.flapBack) / 2);
+          box(0.12, 0.75, F.flapBack - F.tillerFront, 0xffd33f, -tiller / 2 - 0.06, 0.4, (F.tillerFront + F.flapBack) / 2);
+          box(0.12, 0.75, F.flapBack - F.tillerFront, 0xffd33f, tiller / 2 + 0.06, 0.4, (F.tillerFront + F.flapBack) / 2);
+          // GPS-antenner (GPS 1 grøn, GPS 2 blå) på antennehøgda, med mast ned til taket
+          machineAnts().forEach((a, i) => {
+            let ah = Math.max(3.2, +cfg.antZ || 2.8);
+            add(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.09, 16), mat(i ? 0x4db8ff : 0x19e07a)), a.x, ah, a.y);
+            if (ah > 3.12) add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, ah - 3.1, 6), mat(0xc8d1d7)), a.x, (ah + 3.1) / 2, a.y);
+          });
+          // Flytt modellen så GPS 1 står i origo (posisjonen frå mottakaren). a.y er bakover, som z.
+          let a0 = machineAnts()[0];
+          body.position.set(-a0.x, 0, -a0.y);
+          g.add(body);
           machine = g;
           machine.rotation.order = "YXZ";
           scene.add(machine);
@@ -2657,7 +2698,7 @@
           let pitch = isNaN(hF - hB) ? 0 : Math.atan((hF - hB) / 5),
             fr = viewMode() === "frontrute";
           machine.visible = machineOn;
-          machine.children.forEach((m) => (m.visible = !fr || m.userData.keep)); // frontrute: berre skjæret synest
+          machine.children[0].children.forEach((m) => (m.visible = !fr || m.userData.keep)); // frontrute: berre skjeret og armane synest
           machine.position.set(sm.x, sm.h - hRef, -sm.y);
           machine.rotation.set(pitch, -hd, isNaN(hR - hL) ? 0 : Math.atan((hR - hL) / 3));
           if (free) {
@@ -2667,7 +2708,7 @@
               camera.fov = 55;
               camera.updateProjectionMatrix();
             }
-            machine.children.forEach((m) => (m.visible = true));
+            machine.children[0].children.forEach((m) => (m.visible = true));
             let cp = Math.cos(free.pitch),
               cx = free.x - Math.sin(free.yaw) * cp * free.dist,
               cy = free.y - Math.cos(free.yaw) * cp * free.dist,

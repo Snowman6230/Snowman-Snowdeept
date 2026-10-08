@@ -9,6 +9,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.55 – same tråkkemaskin i 3D-terreng og frontrute
+- **Endra:** 3D-modellen av maskina har same utsjånad og mål som 2D-teikninga frå v1.6.54: belte med slitebane og
+  runde endar, raudt karosseri, førarhus med frontrute, sidevindauge, tak og varsellys, motorlokk med rister, fresbom,
+  raud fres, gul finisher og gule sideflapsar, og grått skjer med venger, ribber og skyvearmar. GPS-antenna (grøn) og
+  eventuell antenne 2 (blå) står på taket.
+- **Endra:** modellen står no med **GPS-antenna i posisjonen** (etter «Antenne framfor midten av beltet» og «til sida»),
+  slik som på kartet. Før stod han med eit fast punkt i posisjonen.
+- **Endra:** i frontrutevisinga er skjeret grått som på maskina (før gult). Det er framleis halvgjennomsiktig, så
+  snøfargane framfor skjeret synest gjennom plata. Berre skjeret og skyvearmane er synlege der, som før.
+- **Kvifor:** eigaren ønskte same tydelege maskin i 3D-modellen og frontruta som i 2D.
+- **Testa:** simulert GNSS over testterrenget (`simuler-leica.py --terreng`, testlag lagt inn og sletta etterpå):
+  3D-terreng bak maskina og frontrute. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.54 – tydeleg tråkkemaskin på kartet, i Maskin og i Kalibrering
 - **Endra:** maskinteikninga på kartet er ny og tydelegare (ovanfrå, front opp): frontskjer med venger, belte med
   slitebane, raudt førarhus med frontrute og tak, motorlokk, fresbom, fres og gul finisher. Ho er teikna i meter etter
