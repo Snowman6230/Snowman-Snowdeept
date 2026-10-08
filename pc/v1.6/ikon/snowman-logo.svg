@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 150" width="360" height="150">
+  <g transform="translate(108 2) scale(1.2)"><path d="M14 30 L46 2 L66 20 L74 13 L104 30 Z" fill="#ffffff"/><path d="M33 14 L39 17 L46 11 L52 17 L57 14 M68 18 L74 16 L80 19" fill="none" stroke="#02141d" stroke-width="2.2" stroke-linejoin="round"/></g>
+  <text x="180" y="100" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="64" letter-spacing="1" fill="#ffffff">SNOWMAN</text>
+  <text x="180" y="136" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="28" fill="#8cc8f0">by Alpindata</text>
+</svg>

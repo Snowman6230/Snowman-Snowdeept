@@ -9,6 +9,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### Nytt app-ikon for SNOWMAN (skrivebord, oppgåvelinje og nettlesarfane)
+- **Nytt:** moderne ikon med SNOWMAN-fjelltoppane (snøline, same form som logoen) som går ned i ei snøflate, og den
+  nye tråkkemaskina sett ovanfrå (skjer med venger, belte, raudt førarhus, fres og gul finisher) med preparert spor
+  bak. Dei små storleikane (16–32 px) er forenkla, så ikonet er tydeleg på skrivebordet.
+- **Nytt:** `ikon/lag-ikon.py` lagar alle ikonfilene og logoen frå éi kjelde (`snowman.svg`, `snowman-enkel.svg`,
+  `snowman-logo.svg`, `snowman.ico`, `snowman-256/512.png`, `vendor/snowman-icon.png`). `docs/LOGO.md` har filer,
+  fargar og skrift, så ikon og logo kan følgje med vidare i utviklinga.
+- **Merk:** Windows kan vise det gamle ikonet på snarvegen til ikon-mellomlageret blir oppdatert (omstart, eller køyr
+  INSTALLER-WINDOWS.bat på nytt for å lage snarvegen på nytt).
+- **Kvifor:** eigaren ønskte eit meir moderne ikon med den nye maskina og logoen med snø i fjella.
+
 ### PC-prototype v1.6.63 – skjermtastaturet kjem att etter bruk av ekte tastatur
 - **Retta:** etter eit trykk på ein ekte tast (Surface-tastaturet) kom ikkje skjermtastaturet opp att når ein trykte
   på skjermen – det var sperra i 10 minutt. No opnar **kvart trykk med fingeren** i eit skrivefelt tastaturet igjen,
