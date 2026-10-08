@@ -9,6 +9,28 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.59 – timeval for tidlegare flate, kart og tid per trasé i rapporten, sidetal på HUD
+- **Nytt:** knappen «≋ Flate» nedst opnar ein meny: **AV · 3 · 5 · 10 · 15 · 24 · 48 · 72 t** – kor gammal flata som
+  blir brukt til estimatet framfor maskina kan vere. Knappen viser valet («Flate 24 t»). Same val i Innst. › Kart.
+  Standard er 24 t (før: fast 72 t). Valet kan endrast før og under «Start prep»; sporet du køyrer no er òg med.
+- **Nytt (rapport):** ny kolonne **Tid** per trasé (tid med maskina inne i traseen, utan transport over 40 km/t og
+  hopp i sporet), også i CSV-fila. Ny boks **«Kart per trasé»** med kart over kvar det er trakka (grønt), ikkje trakka
+  (grått) og berre TEST (oransje), med målestokk og nord opp. Er ingen trasear lagde inn, viser **«Kart – trakka
+  område»** heile området som er køyrt i prepareringsdøgnet (i fresbreidda; berre test blir vist oransje og merka TEST).
+- **Nytt (HUD):** hovudtalet er framleis dagens målte snødjupne. På sidene:
+  - venstre: **OVERFLATE SIDAN SIST ±x cm** (målt overflate no mot førre preparering same stad – nysnø, setning,
+    snø flytt av skjeret), med alderen på førre preparering;
+  - høgre: **SIST MÅLT HER ≈x m** (estimat, stipla ramme) når den direkte målinga manglar, t.d. utan RTK FIX;
+  - nede: estimatet framfor maskina blir no vist også før «Start prep» når det kjem frå tidlegare flate.
+- **Endra:** snøflateminnet hugsar overflata frå førre besøk i kvar rute (over 2 t mellomrom = ny preparering).
+- **Avgjerd:** «soner» i rapporten = trasear lagde inn på kartet. Innkøyring i forbodne område blir ikkje vist i
+  rapporten (eigaren). Ordet er «spor», ikkje «lane».
+- **Testa:** `testsnoflate.py` (OK), einingstest av førre besøk (+12 cm etter 20 t) og «sist målt her» (0,80 m, 20 t);
+  simulert GNSS over testterrenget: menyen (3 t → AV → 24 t under prep), estimat på HUD etter prep, rapport med og
+  utan testtrasé, HUD-sidetala med testdata. Ingen JavaScript-feil. Testlag, testtrasé og testminne er sletta.
+- **Kvifor:** eigaren ønskte timeval for estimatet, kart over kvar det er trakka per trasé i rapporten, og estimert
+  snødjupne frå førre preparering på HUD-en – med dagens målte snødjupne som hovudtal.
+
 ### PC-prototype v1.6.58 – estimat framfor maskina frå tidlegare trakka overflate (snøflateminne)
 - **Nytt:** SNOWMAN hugsar snøoverflata der maskina har køyrt (`snoflate.py`, `data/snoflate.json`, ruter på 1 × 1 m,
   7 døgn). Ved neste preparering blir snødjupna framfor maskina estimert frå denne overflata: overflata følgjer den

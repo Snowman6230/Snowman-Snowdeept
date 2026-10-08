@@ -433,6 +433,7 @@ class Trasear:
                 cov_real = np.zeros(g["ins"].shape, bool)
                 cov_all = np.zeros(g["ins"].shape, bool)
                 depths, last, ids = [], None, []
+                secs_real = secs_test = 0.0
                 for s in sessions:
                     key = s["key"] + (t["id"], t["updated"], since_s, until_s)
                     hit = self._stamps.get(key)
@@ -448,12 +449,21 @@ class Trasear:
                         inside = np.zeros(len(x), bool)
                         inside[ok] = g["ins"][ri[ok], ci[ok]]
                         d = P[inside, 3]
-                        hit = (tmp if tmp.any() else None, float(P[inside, 2].max()) if inside.any() else None, d[np.isfinite(d)])
+                        # tid i traseen: strekningar der begge endepunkta er inne, utan hopp og transport (> 40 km/t)
+                        dt = np.diff(P[:, 2])
+                        dl = np.hypot(np.diff(x), np.diff(y))
+                        mv = inside[1:] & inside[:-1] & (dt > 0) & (dt <= MAX_GAP_S) & (dl <= np.maximum(dt, 0.2) * MAX_PREP_SPEED)
+                        hit = (tmp if tmp.any() else None, float(P[inside, 2].max()) if inside.any() else None, d[np.isfinite(d)],
+                               float(dt[mv].sum()))
                         self._stamps = {k: v for k, v in self._stamps.items() if k[0] != key[0] or k[1] == key[1]}
                         if len(self._stamps) > 400:
                             self._stamps.clear()
                         self._stamps[key] = hit
-                    tmp, tl, d = hit
+                    tmp, tl, d, sec = hit
+                    if s["test"]:
+                        secs_test += sec
+                    else:
+                        secs_real += sec
                     if tl:
                         last = max(last or 0, tl)
                     if tmp is None:
@@ -470,13 +480,18 @@ class Trasear:
                     "area": round(g["n"] * a), "covered": round(int(cov_real.sum()) * a), "coveredTest": round(int(cov_all.sum()) * a),
                     "pct": round(100.0 * float(cov_real.sum()) / n, 1), "pctTest": round(100.0 * float(cov_all.sum()) / n, 1),
                     "last": int(last * 1000) if last else None, "sessions": ids,
+                    "secs": round(secs_real), "secsTest": round(secs_real + secs_test),
                     "depthAvg": round(sum(depths) / len(depths), 2) if depths else None,
                     "depthMin": round(min(depths), 2) if depths else None, "depthN": len(depths),
                     # uprepart areal: rad 0 = sørkanten, bit = rute inne i traseen som ikkje er køyrd
                     "map": {"lat0": g["L"].lat0, "lon0": g["L"].lon0, "mx": g["L"].mx, "my": g["L"].my, "x0": g["x0"], "y0": g["y0"],
                             "cell": g["cell"], "W": g["W"], "H": g["H"],
                             "real": base64.b64encode(np.packbits(g["ins"] & ~cov_real).tobytes()).decode(),
-                            "all": base64.b64encode(np.packbits(g["ins"] & ~cov_all).tobytes()).decode()},
+                            "all": base64.b64encode(np.packbits(g["ins"] & ~cov_all).tobytes()).decode(),
+                            # til kartet i rapporten: inne i traseen, trakka (ekte), trakka medrekna TEST
+                            "ins": base64.b64encode(np.packbits(g["ins"]).tobytes()).decode(),
+                            "cov": base64.b64encode(np.packbits(g["ins"] & cov_real).tobytes()).decode(),
+                            "covAll": base64.b64encode(np.packbits(g["ins"] & cov_all).tobytes()).decode()},
                 }
             out = {"since": int(since_s * 1000), "until": int(until_s * 1000) if until_s else None, "dayStartHour": DAY_START_HOUR, "status": res}
             self._status = (now, (since_s, until_s), out)

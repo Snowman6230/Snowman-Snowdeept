@@ -13,6 +13,10 @@ På ein jamn bakke er dette same som å interpolere snødjupna. Over eit gjenfyl
 djupna større, oppå ein kul (terreng over Tg) mindre – sjølv om ein berre har køyrt på kvar side av forma.
 (Å interpolere sjølve overflata direkte vart prøvd og forkasta: i bratt bakke blir det store feil framfor maskina.)
 
+Kvar rute hugsar også overflata frå FØRRE besøk (eit besøk = målingar med under 2 t mellomrom). Då kan HUD-en vise
+kor mykje overflata har endra seg sidan førre preparering (nysnø, setning, snø flytt av skjeret), og «sist målt her»
+når den direkte målinga manglar (t.d. utan RTK FIX).
+
 Alt herifrå er ESTIMAT og skal alltid visast merka som det, med alder. Nysnø, vind og setningar etter siste
 køyring er ikkje med. Simulerte målingar (testmodus) blir lagra merka som test og berre brukte i testmodus.
 Data: data/snoflate.json (høyrer til anlegget, ikkje i git).
@@ -27,6 +31,7 @@ R = 8.0                # søkjeradius for interpolasjonen (m)
 NEAR = 6.0             # næraste måling må vere innanfor dette (m)
 MIN_PTS = 3            # minst så mange ruter med måling innanfor R
 SMOOTH = 6             # glatta terreng: snitt innanfor ±SMOOTH m (prøvar kvar 2. m)
+VISIT_GAP = 2 * 3600   # målingar med lengre mellomrom enn dette i same rute = nytt besøk (ny preparering)
 
 
 def zone_of(lon):
@@ -50,7 +55,7 @@ class SnowSurface:
     def __init__(self, path):
         self.path = Path(path)
         self.lock = threading.Lock()
-        self.cells = {}        # (sone, E, N) -> [overflate_m, tid_s, test, glatta_terreng_m]
+        self.cells = {}        # (sone, E, N) -> [overflate_m, tid_s, test, glatta_terreng_m, førre_overflate, førre_tid]
         self.dirty = False
         self.saved = 0.0
         self._load()
@@ -62,7 +67,8 @@ class SnowSurface:
             for k, v in d.get("cells", {}).items():
                 z, e, n = (int(x) for x in k.split(","))
                 if v[1] >= lim and len(v) >= 4:
-                    self.cells[(z, e, n)] = [float(v[0]), float(v[1]), bool(v[2]), float(v[3])]
+                    prev = (float(v[4]), float(v[5])) if len(v) >= 6 and v[4] is not None else (None, None)
+                    self.cells[(z, e, n)] = [float(v[0]), float(v[1]), bool(v[2]), float(v[3]), *prev]
         except FileNotFoundError:
             pass
         except Exception:
@@ -75,7 +81,8 @@ class SnowSurface:
         with self.lock:
             lim = time.time() - KEEP_DAYS * 86400
             self.cells = {k: v for k, v in self.cells.items() if v[1] >= lim}
-            data = {"cells": {f"{k[0]},{k[1]},{k[2]}": [round(v[0], 3), round(v[1]), 1 if v[2] else 0, round(v[3], 3)] for k, v in self.cells.items()}}
+            data = {"cells": {f"{k[0]},{k[1]},{k[2]}": [round(v[0], 3), round(v[1]), 1 if v[2] else 0, round(v[3], 3),
+                                                                None if v[4] is None else round(v[4], 3), None if v[5] is None else round(v[5])] for k, v in self.cells.items()}}
             self.dirty = False
             self.saved = time.time()
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,18 +94,45 @@ class SnowSurface:
         os.replace(tmp, self.path)
 
     def add(self, lat, lon, surface, terrain_height, test=False, t=None):
+        """Lagre målt overflate. Returnerer (endring_m, alder_s) mot overflata ved førre besøk i ruta, eller None."""
         if lat is None or lon is None or surface is None or not math.isfinite(surface):
-            return
+            return None
+        now = t or time.time()
         z = zone_of(lon)
         E, N = utm_forward(lat, lon, z)
         k = (z, int(math.floor(E)), int(math.floor(N)))
         old = self.cells.get(k)
+        if old and old[2] != bool(test):
+            old = None   # test og ekte blir aldri blanda
         tg = old[3] if old else smooth_terrain(z, math.floor(E) + 0.5, math.floor(N) + 0.5, terrain_height)
         if tg is None:
-            return
+            return None
+        if old and now - old[1] > VISIT_GAP:
+            prev = (old[0], old[1])          # ruta var sist køyrd ved ei tidlegare preparering
+        elif old:
+            prev = (old[4], old[5])          # same besøk: behald førre besøk
+        else:
+            prev = (None, None)
         with self.lock:
-            self.cells[k] = [float(surface), t or time.time(), bool(test), tg]
+            self.cells[k] = [float(surface), now, bool(test), tg, *prev]
             self.dirty = True
+        return (float(surface) - prev[0], now - prev[1]) if prev[0] is not None else None
+
+    def at(self, lat, lon, terrain_height, test=False, max_age_h=72):
+        """Estimert snødjupne akkurat her frå lagra overflate (til «sist målt her» når målinga manglar)."""
+        if lat is None or lon is None:
+            return None
+        z = zone_of(lon)
+        E, N = utm_forward(lat, lon, z)
+        with self.lock:
+            r = self._resid_at(z, E, N, bool(test), time.time() - max_age_h * 3600)
+        if r is None:
+            return None
+        ter = terrain_height(lat, lon)
+        tg = smooth_terrain(z, E, N, terrain_height) if ter is not None else None
+        if tg is None:
+            return None
+        return {"d": round(max(0.0, r[0] + tg - ter["h"]), 2), "ageH": round(r[1] / 3600, 1)}
 
     def stats(self, test=False):
         with self.lock:

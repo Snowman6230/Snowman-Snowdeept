@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.58"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.59"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -135,7 +135,9 @@ def hud_state():
         d=STATE.get("depth"); ter=STATE.get("terrain") or {}
         out.update(src="gnss",demo=bool(STATE.get("simulated")),fix=STATE.get("fix"),sats=STATE.get("satellites"),
                    speed=round((STATE.get("speed") or 0)*3.6,1),heading=STATE.get("course"),
-                   depth=d,depthNote=ter.get("name","") if d is not None else DEPTH_TXT.get(STATE.get("depth_status"),"IKKJE MÅLT"))
+                   depth=d,depthNote=ter.get("name","") if d is not None else DEPTH_TXT.get(STATE.get("depth_status"),"IKKJE MÅLT"),
+                   change=STATE.get("surf_change") if d is not None else None,
+                   last=STATE.get("surf_last") if d is None else None)
         age=gnss_age
     elif fresh_drv:
         out=drv; age=drv_age
@@ -205,6 +207,29 @@ def _motion(lat,lon):
     elif dt>3: pr["v"]=0.0; pr.update(t=now)
     return pr["v"],pr["h"]
 
+SURFX={"chg":[],"last_t":0}
+def surf_upd(dstat,det,lat,lon,ter):
+    """Snøflateminnet: lagre overflata ved gyldig snødjupne, og rekn ut til HUD-en
+    – endring i overflata sidan førre preparering (median av dei siste målingane), og
+    – «sist målt her» frå minnet når den direkte målinga manglar (høgst 1 gong i sekundet)."""
+    test=bool(STATE.get("simulated")); now=time.time()
+    if dstat=="OK" and det.get("surface") is not None:
+        c=SURF.add(lat,lon,det["surface"],TERR.height,test=test); SURF.save()
+        L=SURFX["chg"]; L.append((now,c)); del L[:-15]
+        v=[x[1] for x in L if x[1] is not None and now-x[0]<5]
+        if len(v)>=5:
+            dz=sorted(a for a,_ in v)[len(v)//2]; ag=sorted(b for _,b in v)[len(v)//2]
+            STATE["surf_change"]={"dz":round(dz,2),"ageH":round(ag/3600,1)}
+        else: STATE["surf_change"]=None
+        STATE["surf_last"]=None
+    else:
+        STATE["surf_change"]=None
+        if ter is not None and now-SURFX["last_t"]>1:
+            SURFX["last_t"]=now
+            try: STATE["surf_last"]=SURF.at(lat,lon,TERR.height,test=test)
+            except Exception: STATE["surf_last"]=None
+        elif ter is None: STATE["surf_last"]=None
+
 LOGRATE={}   # siste tid ei hending av same slag vart skriven i feltloggen (unngår tusenvis av like linjer)
 def parse_gga(line):
     try:
@@ -244,8 +269,7 @@ def parse_gga(line):
             LOG.event(f"Snødjupne-status: {pst} → {dstat} ({DEPTH_TXT.get(dstat,'OK') if dstat!='OK' else 'snødjupne blir vist'}); "
                       f"høgd {det.get('H')}, overflate {det.get('surface')}, terreng {det.get('terrain')}, rå {det.get('raw')}, "
                       f"lag {(ter or {}).get('name','-')}",err=dstat in ("NEGATIVE","NO_GEOID","NO_HEIGHT","NO_ENGINE"))
-        if dstat=="OK" and det.get("surface") is not None:   # snøflateminne (testmodus blir lagra merka som test)
-            SURF.add(mlat,mlon,det["surface"],TERR.height,test=bool(STATE.get("simulated"))); SURF.save()
+        surf_upd(dstat,det,mlat,mlon,ter)
         update(last_gga=line.strip(), fix=fix,
                satellites=int(p[7] or 0), hdop=float(p[8]) if p[8] else None,
                altitude=alt, geoid_sep=sep, lat=lat, lon=lon, tilt=tilt, geoid_model=None if gN is None else round(gN,3),
@@ -466,7 +490,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 q=urllib.parse.parse_qs(u.query); date=q.get("date",[None])[0]
                 if u.path=="/api/fuel": r={"ok":True,"fuel":FUEL.computed(),"summary":FUEL.summary()}
                 elif u.path=="/api/report/days": r={"ok":True,"days":FUEL.days()}
-                else: r=FUEL.report(date); r["ok"]=True
+                else: r=FUEL.report(date,maps=q.get("maps",["0"])[0]=="1"); r["ok"]=True
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/report/export":
@@ -787,7 +811,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 try:
                     old=json.loads(UI_CFG.read_text("utf-8")); oc=old.get("cfg",old); nc=d.get("cfg",d)
                     log_changes("førarskjerm",oc,nc,("mname","machine","blade","bladeN","tiller","tillerN","target","tol","bounds","northUp",
-                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y"))
+                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH"))
                 except Exception: pass
                 write_atomic(UI_CFG,json.dumps(d,ensure_ascii=False,indent=1))
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')

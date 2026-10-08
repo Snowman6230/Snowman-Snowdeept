@@ -182,6 +182,31 @@
       #app.view3d .groomer .dims {
         display: none;
       }
+      .repMap {
+        margin: 8px 0;
+        font-size: 13px;
+      }
+      .repMap canvas {
+        display: block;
+        margin-top: 4px;
+        border: 1px solid #27465a;
+        border-radius: 6px;
+        background: #06141d;
+        max-width: 100%;
+      }
+      .repLeg {
+        font-size: 12px;
+        color: #9bb5c6;
+        margin: 4px 0;
+      }
+      .repLeg i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        vertical-align: -2px;
+        margin: 0 3px 0 8px;
+      }
       .mfig {
         background: #06141d;
         border: 1px solid #27465a;
@@ -1296,7 +1321,13 @@
           </div>
           <button id="bgSet" class="btn toggle on" onclick="toggleBg()">BAKGRUNN (KART/TERRENG): PÅ</button
           ><button id="estSet" class="btn toggle on" onclick="toggleEst()">SNØDJUPNE FRAMFOR (ESTIMAT): PÅ</button>
-          <button id="surfSet" class="btn toggle on" onclick="toggleSurfMem()">ESTIMAT FRÅ TIDLEGARE OVERFLATE: PÅ</button>
+          <div class="row">
+            <span>Estimat frå tidlegare trakka overflate – bruk flate frå siste</span
+            ><select id="surfSel" onchange="pickSurf(+this.value)">
+              <option value="0">AV</option><option value="3">3 t</option><option value="5">5 t</option><option value="10">10 t</option>
+              <option value="15">15 t</option><option value="24">24 t</option><option value="48">48 t</option><option value="72">72 t</option>
+            </select>
+          </div>
           <div id="surfStat" class="history" style="font-size: 12px"></div>
           <details class="fold info">
             <summary>ℹ Estimat frå tidlegare trakka overflate</summary>
@@ -1305,7 +1336,8 @@
               interpolert og barmarka frå terrengmodellen trekt frå. Etter planering er overflata jamn, medan terrengmodellen kjenner
               bekkar, groper og kular – så eit gjenfylt bekkefar blir estimert djupt sjølv om du berre har køyrt på kvar side av det.
               Dette er alltid eit <b>estimat</b>: nysnø, vind og setningar etter siste køyring er ikkje med, og alderen blir vist.
-              Brukar berre overflate som er under 72 timar gammal. Av: estimatet byggjer berre på målingane i denne økta.
+              Du vel kor mange timar tilbake flata kan vere (3–72 t) med knappen «≋ Flate» nedst eller her – også medan du preparerer.
+              Sporet du køyrer no blir òg med. AV: estimatet byggjer berre på målingane i denne økta.
               <button class="btn" onclick="clearSurfMem()">GLØYM TIDLEGARE OVERFLATE (t.d. etter mykje nysnø)</button>
             </div>
           </details>
@@ -1682,7 +1714,7 @@
         ><button class="tool" onclick="zoomBtn(1)"><i>＋</i>Zoom inn</button
         ><button id="viewBtn" class="tool" onclick="openViewMenu(event)"><i>◭</i>Kart</button
         ><button id="bgBtn" class="tool on" onclick="toggleBg()"><i>▦</i>Bakgrunn</button
-        ><button id="surfBtn" class="tool on" onclick="toggleSurfMem()" title="Estimat framfor maskina frå tidlegare trakka snøoverflate (på/av)"><i>≋</i>Tidl. flate</button
+        ><button id="surfBtn" class="tool on" onclick="openSurfMenu(event)" title="Estimat frå tidlegare trakka snøoverflate: vel kor mange timar tilbake, eller AV"><i>≋</i><span id="surfBtnTxt">Flate 24 t</span></button
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
@@ -1697,6 +1729,17 @@
         ><button data-v="horisont" onclick="pickView('horisont')"><i>⌓</i>Horisont<small>lågt, langt fram</small></button
         ><button data-v="3d" onclick="pickView('3d')"><i>◬</i>3D-terreng<small>bak maskina</small></button
         ><button data-v="frontrute" onclick="pickView('frontrute')"><i>⧈</i>Frontrute<small>frå førarhuset</small></button>
+      </div>
+      <div id="surfMenu" class="viewMenu hide">
+        <b>ESTIMAT FRÅ TIDLEGARE TRAKKA OVERFLATE – BRUK FLATE FRÅ SISTE …</b>
+        <button data-h="0" onclick="pickSurf(0)"><i>✕</i>AV<small>berre denne økta</small></button
+        ><button data-h="3" onclick="pickSurf(3)"><i>3</i>timar<small>siste 3 t</small></button
+        ><button data-h="5" onclick="pickSurf(5)"><i>5</i>timar<small>siste 5 t</small></button
+        ><button data-h="10" onclick="pickSurf(10)"><i>10</i>timar<small>siste 10 t</small></button
+        ><button data-h="15" onclick="pickSurf(15)"><i>15</i>timar<small>siste 15 t</small></button
+        ><button data-h="24" onclick="pickSurf(24)"><i>24</i>timar<small>siste døgn</small></button
+        ><button data-h="48" onclick="pickSurf(48)"><i>48</i>timar<small>siste 2 døgn</small></button
+        ><button data-h="72" onclick="pickSurf(72)"><i>72</i>timar<small>siste 3 døgn</small></button>
       </div>
       <div id="hudDlg" class="hudDlg hide">
         <h3>HUD – FRONTRUTE</h3>
@@ -1774,7 +1817,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.58";
+      const APP_VERSION = "1.6.59";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1805,6 +1848,8 @@
           zOff: 0,
           northUp: false,
           detail3d: "normal", // 3D-detalj nær maskina: hog | normal | av
+          surfMem: true, // estimat frå tidlegare trakka overflate
+          surfH: 24, // … frå dei siste surfH timane (3–72)
           terrain: null,
         },
         pos = null,
@@ -2968,6 +3013,7 @@
       }
       document.addEventListener("click", (e) => {
         if (!$("viewMenu").contains(e.target)) $("viewMenu").classList.add("hide");
+        if (!$("surfMenu").contains(e.target)) $("surfMenu").classList.add("hide");
       });
       /* ---------- Kioskmodus og fullskjerm ----------
          Starta med oppstartsprogrammet (SNOWMAN.bat / snowman / autostart): knappen byter mellom KIOSK (berre SNOWMAN
@@ -3281,21 +3327,42 @@
         applyBg();
         toast(cfg.bgOn ? "Bakgrunn på" : "Bakgrunn av – berre spor og snødjupne");
       }
+      const SURF_H = [3, 5, 10, 15, 24, 48, 72];
+      const surfHours = () => (SURF_H.includes(+cfg.surfH) ? +cfg.surfH : 24);
       function surfLabel() {
-        let on = cfg.surfMem !== false;
+        let on = cfg.surfMem !== false,
+          h = surfHours();
         $("surfBtn").classList.toggle("on", on);
-        $("surfSet").classList.toggle("on", on);
-        $("surfSet").textContent = "ESTIMAT FRÅ TIDLEGARE OVERFLATE: " + (on ? "PÅ" : "AV");
+        $("surfBtnTxt").textContent = on ? "Flate " + h + " t" : "Flate AV";
+        $("surfSel").value = on ? String(h) : "0";
+        document.querySelectorAll("#surfMenu button").forEach((b) => b.classList.toggle("on", +b.dataset.h === (on ? h : 0)));
       }
-      function toggleSurfMem() {
-        cfg.surfMem = cfg.surfMem === false;
+      function openSurfMenu(ev) {
+        ev.stopPropagation();
+        let m = $("surfMenu");
+        m.classList.toggle("hide");
+        if (!m.classList.contains("hide")) {
+          let b = $("surfBtn").getBoundingClientRect(),
+            w = m.offsetWidth;
+          m.style.left = Math.max(8 + w / 2, Math.min(innerWidth - 8 - w / 2, b.left + b.width / 2)) + "px";
+        }
+      }
+      // h = 0: AV; elles bruk flate som er målt dei siste h timane (fungerer også medan ein preparerer)
+      function pickSurf(h) {
+        $("surfMenu").classList.add("hide");
+        cfg.surfMem = h > 0;
+        if (h > 0) cfg.surfH = h;
         persistCfg();
         surfLabel();
-        logClient("action", "Estimat frå tidlegare overflate: " + (cfg.surfMem ? "PÅ" : "AV"));
-        toast(cfg.surfMem ? "Estimat frå tidlegare trakka overflate: PÅ" : "Estimat frå tidlegare overflate: AV – berre målingar frå denne økta");
+        logClient("action", "Estimat frå tidlegare overflate: " + (h > 0 ? "siste " + h + " t" : "AV"));
+        toast(h > 0 ? "Estimat frå tidlegare trakka overflate: siste " + h + " timar" : "Estimat frå tidlegare overflate: AV – berre målingar frå denne økta");
         SURFR = null;
+        surfAt = 0;
         updateAhead(true);
         surfStatus();
+      }
+      function toggleSurfMem() {
+        pickSurf(cfg.surfMem === false ? surfHours() : 0);
       }
       async function surfStatus() {
         if (!serverCfg) return;
@@ -4043,7 +4110,7 @@
         surfBusy = true;
         try {
           let w = toolsFull ? cfg.tiller : cfg.tillerN,
-            r = await fetch("api/surface/ahead?lat=" + pos[0] + "&lon=" + pos[1] + "&hdg=" + heading + "&w=" + w).then((x) => x.json());
+            r = await fetch("api/surface/ahead?lat=" + pos[0] + "&lon=" + pos[1] + "&hdg=" + heading + "&w=" + w + "&maxh=" + surfHours()).then((x) => x.json());
           SURFR = r.ok ? r : null;
         } catch (e) {
           SURFR = null;
@@ -4090,11 +4157,11 @@
             L.polygon(c.c, { renderer: estRenderer, stroke: false, fill: true, fillColor: depthColor(c.d), fillOpacity: 1, interactive: false }).addTo(estGroup),
           );
         T3D.setEstimate(on ? cells : []);
-        $("aheadBox").classList.toggle("hide", !on || !(preparing || src === "demo"));
+        $("aheadBox").classList.toggle("hide", !on || !(preparing || src === "demo" || fromSurf)); // tidlegare flate: også før Start prep
         $("aheadLabel").textContent = src === "demo" ? "FRAMFOR · ESTIMERT (DEMO)" : fromSurf ? "FRAMFOR · ESTIMERT · TIDL. FLATE" : "FRAMFOR · ESTIMERT";
         $("aheadD").textContent = r ? "≈" + r.mean.toFixed(2).replace(".", ",") + " m" : "--";
         let age = fromSurf && r && r.ageH != null ? r.ageH : null;
-        aheadEst = r && (preparing || src === "demo") ? { mean: +r.mean.toFixed(2), min: +r.min.toFixed(2), ageH: age } : null;
+        aheadEst = r && (preparing || src === "demo" || fromSurf) ? { mean: +r.mean.toFixed(2), min: +r.min.toFixed(2), ageH: age } : null;
         $("aheadNote").textContent = r
           ? "minst " + r.min.toFixed(2).replace(".", ",") + " m · 6–30 m" + (age != null ? " · flate " + (age < 1 ? "< 1 t" : Math.round(age) + " t") + " gammal" : "")
           : "ingen målingar i nærleiken";
@@ -5511,7 +5578,7 @@
             return;
           }
           try {
-            r = await api("api/report?date=" + date);
+            r = await api("api/report?maps=1&date=" + date);
           } catch (e) {
             $("repOut").innerHTML = '<div class="history">' + esc(e.message) + "</div>";
             return;
@@ -5527,18 +5594,43 @@
           if (r.trasear.length)
             h.push(
               fold("rapTra", "<b>Trasear</b> (" + r.trasear.length + ") · snitt " + n(r.trasear.reduce((a, t) => a + (t.pct || 0), 0) / r.trasear.length, 0) + " % preparert",
-              "<table class='fmt'><tr><td><b>Trasé</b></td><td><b>Preparert</b></td><td><b>Sist</b></td><td><b>Snødjupne</b></td></tr>" +
+              "<table class='fmt'><tr><td><b>Trasé</b></td><td><b>Preparert</b></td><td><b>Tid</b></td><td><b>Sist</b></td><td><b>Snødjupne</b></td></tr>" +
                 r.trasear
                   .map(
                     (t) =>
                       "<tr><td><span class='traSw' style='background:" + t.color + "'></span>" + esc(t.name) + "<br><small>" + n(t.areaDaa, 1) + " daa</small></td><td><b>" +
                       n(t.pct, 0) + " %</b>" + (t.pctTest > t.pct ? "<br><small style='color:#ffb24d'>" + n(t.pctTest, 0) + " % med TEST</small>" : "") +
+                      "</td><td>" + mins(t.min || 0) + (t.minTest > t.min ? "<br><small style='color:#ffb24d'>" + mins(t.minTest) + " med TEST</small>" : "") +
                       "</td><td>" + hm(t.last) + "</td><td>" +
                       (t.depthAvg != null ? "snitt " + n(t.depthAvg, 2) + " m<br>minst " + n(t.depthMin, 2) + " m" : "–") +
                       (t.target != null ? "<br><small>mål " + n(t.target, 2) + " m</small>" : "") + "</td></tr>",
                   )
                   .join("") + "</table>"),
             );
+          // Kart: kvar det er trakka i kvar trasé – eller i heile området om ingen trasear er lagde inn
+          let maps = [];
+          if (r.trasear.some((t) => t.map)) {
+            h.push(
+              fold("rapMap", "<b>Kart per trasé</b> – kvar det er trakka",
+                repMapLegend(r.trasear.some((t) => t.pctTest > t.pct)) +
+                  r.trasear
+                    .filter((t) => t.map)
+                    .map((t) => {
+                      maps.push({ kind: "trase", t });
+                      return "<div class='repMap'><div><span class='traSw' style='background:" + t.color + "'></span><b>" + esc(t.name) + "</b> · " + n(t.pct, 0) + " % · " + mins(t.min || 0) + "</div><canvas data-m='" + (maps.length - 1) + "'></canvas></div>";
+                    })
+                    .join("")),
+            );
+          } else if (r.area && !r.area.empty) {
+            maps.push({ kind: "area", a: r.area });
+            h.push(
+              fold("rapMap", "<b>Kart – trakka område</b> · " + n(r.area.area / 1000, 1) + " daa" + (r.area.onlyTest ? " <span style='color:#ffb24d'>TEST</span>" : ""),
+                "<div class='history' style='font-size:12px'>Ingen trasear er lagde inn (Innst. › Trasear), så kartet viser heile området som er køyrt dette døgnet, i fresbreidda. Overlapp tel éin gong." +
+                  (r.area.onlyTest ? "<br><span style='color:#ffb24d'>Berre demo/test dette døgnet – ikkje ekte preparering.</span>" : "") + "</div>" +
+                  "<div class='repLeg'><i style='background:" + (r.area.onlyTest ? "#c98a2a'></i>trakka (TEST)" : "#19c46a'></i>trakka") + " · nord er opp</div>" +
+                  "<div class='repMap'><canvas data-m='0'></canvas></div>"),
+            );
+          }
           h.push(
             fold("rapSes", "<b>Økter</b> (" + r.sessions.length + ")" + (r.sessions.length ? " · " + mins(T.prepMin) + " · " + n(T.areaDaa, 1) + " daa" : ""),
               (r.sessions.length
@@ -5567,6 +5659,75 @@
                 : '<div class="history">Ingen fyllingar registrerte dette døgnet.</div>')),
           );
           $("repOut").innerHTML = h.join("");
+          $("repOut").querySelectorAll("canvas[data-m]").forEach((c) => drawRepMap(c, maps[+c.dataset.m]));
+        }
+        function repMapLegend(test) {
+          return (
+            "<div class='repLeg'><i style='background:#19c46a'></i>trakka <i style='background:#34505f'></i>ikkje trakka" +
+            (test ? " <i style='background:#c98a2a'></i>berre TEST" : "") +
+            " · nord er opp</div>"
+          );
+        }
+        // Teiknar eit rutenett (rad 0 = sørkanten) på ein canvas: trakka grønt, resten av traseen grått
+        function drawRepMap(cv, m) {
+          if (!m) return;
+          let bits = (b64) => {
+              let s = atob(b64 || ""),
+                u = new Uint8Array(s.length);
+              for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+              return u;
+            },
+            on = (u, i) => (u[i >> 3] >> (7 - (i & 7))) & 1,
+            M = m.kind === "trase" ? m.t.map : m.a,
+            W = M.W,
+            H = M.H,
+            maxW = Math.min(340, cv.parentElement.clientWidth || 340),
+            k = Math.min(maxW / W, 300 / H),
+            px = Math.max(1, Math.round(W * k)),
+            py = Math.max(1, Math.round(H * k));
+          cv.width = px;
+          cv.height = py;
+          let cx = cv.getContext("2d"),
+            img = cx.createImageData(px, py),
+            col = (r, g, b, i) => {
+              img.data[i] = r;
+              img.data[i + 1] = g;
+              img.data[i + 2] = b;
+              img.data[i + 3] = 255;
+            };
+          let ins, cov, all, age;
+          if (m.kind === "trase") {
+            ins = bits(M.ins);
+            cov = bits(M.cov);
+            all = bits(M.covAll);
+          } else {
+            let s = atob(M.age);
+            age = new Uint8Array(s.length);
+            for (let i = 0; i < s.length; i++) age[i] = s.charCodeAt(i);
+          }
+          for (let y = 0; y < py; y++)
+            for (let x = 0; x < px; x++) {
+              let c = Math.min(W - 1, Math.floor(x / k)),
+                rr = Math.min(H - 1, Math.floor((py - 1 - y) / k)),
+                i = rr * W + c,
+                o = (y * px + x) * 4;
+              if (m.kind === "trase") {
+                if (!on(ins, i)) col(6, 20, 29, o);
+                else if (on(cov, i)) col(25, 196, 106, o);
+                else if (on(all, i)) col(201, 138, 42, o);
+                else col(52, 80, 95, o);
+              } else col(...(age[i] !== 255 ? (M.onlyTest ? [201, 138, 42] : [25, 196, 106]) : [6, 20, 29]), o);
+            }
+          cx.putImageData(img, 0, 0);
+          // målestokk
+          let mPerPx = M.cell / k,
+            L = [10, 20, 50, 100, 200, 500].find((v) => v / mPerPx > 50) || 500,
+            lp = L / mPerPx;
+          cx.fillStyle = "#ffffff";
+          cx.fillRect(8, py - 10, lp, 3);
+          cx.font = "bold 11px system-ui,sans-serif";
+          cx.fillText(L + " m", 8, py - 14);
+          cx.fillText("N ↑", px - 30, 14);
         }
         return {
           loadFuel,
@@ -5876,7 +6037,7 @@
             distance: Math.round(total),
             area: Math.round(total * (toolsFull ? cfg.tiller : cfg.tillerN)),
             elapsed: $("elapsed").textContent,
-            ahead: preparing || demo ? aheadEst : null, // estimat framfor maskina (null = ingen målingar i nærleiken eller ikkje i arbeid)
+            ahead: aheadEst, // estimat framfor maskina (null = ingen målingar i nærleiken); frå tidlegare flate også før Start prep
           };
           fetch("api/hud", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(st) }).catch(() => {});
         }

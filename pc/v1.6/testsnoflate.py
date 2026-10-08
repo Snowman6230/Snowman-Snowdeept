@@ -3,7 +3,7 @@
 """Test av snøflateminnet (snoflate.py) med syntetisk terreng – utan GNSS og utan terrengfil.
 
 Bakke med 14° helling, ei stor bølgje, eit bekkefar (1,2 m djupt) på tvers og ein kul. Maskina har køyrt fire
-lanar (x = −10, −5, 5, 10 m) og skal no køyre lana x = 0. Estimatet framfor maskina blir samanlikna med fasit for:
+spor (x = −10, −5, 5, 10 m) og skal no køyre sporet x = 0. Estimatet framfor maskina blir samanlikna med fasit for:
   - PLANERT: snøoverflata følgjer den store forma, men ikkje bekk/kul (slik det er etter tråkking)
   - IKKJE PLANERT: snøen ligg jamt oppå terrenget (t.d. naturleg snø før første tråkking)
 og mot den enkle metoden (interpolere snødjupna), som førarskjermen brukar når estimatet frå tidlegare overflate er av.

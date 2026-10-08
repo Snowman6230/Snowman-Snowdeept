@@ -145,7 +145,7 @@ class Drivstoff:
             out.add(time.strftime("%Y-%m-%d", time.localtime(prep_day_start(f["t"] / 1000.0))))
         return sorted(out, reverse=True)
 
-    def report(self, date=None):
+    def report(self, date=None, maps=False):
         t0 = prep_day_start(date=date) if date else prep_day_start()
         t1 = t0 + 86400
         date = time.strftime("%Y-%m-%d", time.localtime(t0))
@@ -169,7 +169,7 @@ class Drivstoff:
                 for k in ("secs", "dist", "area"):
                     tot[k] += st[k]
                 tot["depths"] += [float(v) for v in dep]
-        trs = self.tra.status(t0, t1, cache_s=0)["status"]
+        trs = self.tra.status(t0, t1, cache_s=0, with_map=maps)["status"]
         names = {t["id"]: t for t in self.tra.listing()}
         trasear = []
         for tid, s in trs.items():
@@ -178,12 +178,25 @@ class Drivstoff:
                 trasear.append({"id": tid, "name": t["name"], "level": t["level"], "color": t["color"], "target": t.get("target"),
                                 "areaDaa": round(s["area"] / 1000, 1), "pct": s["pct"], "pctTest": s["pctTest"],
                                 "coveredDaa": round(s["covered"] / 1000, 1), "last": s["last"], "depthAvg": s["depthAvg"],
-                                "depthMin": s["depthMin"], "sessions": len([x for x in s["sessions"] if not x["test"]])})
+                                "depthMin": s["depthMin"], "sessions": len([x for x in s["sessions"] if not x["test"]]),
+                                "min": round(s.get("secs", 0) / 60), "minTest": round(s.get("secsTest", 0) / 60)})
+                if maps and s.get("map"):
+                    trasear[-1]["map"] = s["map"]
         trasear.sort(key=lambda r: r["name"].lower())
         comp = {f["id"]: f for f in self.computed()}
         fuel = [comp[f["id"]] for f in self.items if t0 * 1000 <= f["t"] < t1 * 1000]
         d = tot["depths"]
+        area = None
+        if maps and not trasear:   # ingen trasear: kart over heile området som er køyrt dette døgnet
+            try:
+                area = self.tra.coverage(t0, t1, include_test=False, max_cells=250_000)
+                if area.get("empty"):   # berre demo/test dette døgnet: vis det, tydeleg merka TEST
+                    area = dict(self.tra.coverage(t0, t1, include_test=True, max_cells=250_000), onlyTest=True)
+                area.pop("passes", None)
+            except Exception as e:
+                area = {"empty": True, "error": str(e)}
         return {
+            "area": area,
             "date": date, "from": int(t0 * 1000), "to": int(t1 * 1000), "sessions": sess, "trasear": trasear, "fuel": fuel,
             "total": {"prepMin": round(tot["secs"] / 60), "km": round(tot["dist"] / 1000, 2), "areaDaa": round(tot["area"] / 1000, 1),
                       "litres": round(sum(f["litres"] for f in fuel), 1), "depthAvg": round(sum(d) / len(d), 2) if d else None,
@@ -200,9 +213,9 @@ class Drivstoff:
         T = r["total"]
         L += ["SAMLA (utan demo/test)", "Prep-tid (min);Køyrd (km);Areal køyrt (daa);Drivstoff fylt (l);Snødjupne snitt (m);Snødjupne minst (m)",
               ";".join(num(v) for v in (T["prepMin"], T["km"], T["areaDaa"], T["litres"], T["depthAvg"], T["depthMin"])), ""]
-        L += ["TRASEAR", "Trasé;Areal (daa);Preparert (%);Preparert (daa);Sist preparert;Måldjupne (m);Snødjupne snitt (m);Snødjupne minst (m);Økter"]
+        L += ["TRASEAR", "Trasé;Areal (daa);Preparert (%);Preparert (daa);Tid i traseen (min);Sist preparert;Måldjupne (m);Snødjupne snitt (m);Snødjupne minst (m);Økter"]
         for t in r["trasear"]:
-            L.append(";".join([t["name"], num(t["areaDaa"]), num(t["pct"]), num(t["coveredDaa"]), hm(t["last"]), num(t["target"]),
+            L.append(";".join([t["name"], num(t["areaDaa"]), num(t["pct"]), num(t["coveredDaa"]), num(t["min"]), hm(t["last"]), num(t["target"]),
                                num(t["depthAvg"]), num(t["depthMin"]), str(t["sessions"])]))
         L += ["", "ØKTER", "Økt;Maskin;Start;Slutt;Prep-tid (min);Køyrd (km);Fresbreidd (m);Areal (daa);Snødjupne snitt (m);Snødjupne minst (m);Merknad"]
         for s in r["sessions"]:

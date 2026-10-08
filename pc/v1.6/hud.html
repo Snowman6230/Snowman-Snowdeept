@@ -122,6 +122,39 @@
         color: var(--warn);
         letter-spacing: 0.08em;
       }
+      /* Sidetal: endring sidan førre preparering (venstre) og «sist målt her» frå minnet (høgre). Hovudtalet i midten er
+         alltid dagens målte snødjupne. «Sist målt» er eit estimat: stipla ramme som estimatet framfor maskina. */
+      .side {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        max-width: 22vw;
+        font-size: 6vh;
+        font-weight: 900;
+        line-height: 1.05;
+        text-align: center;
+        border-radius: 1.2vh;
+        padding: 0.6vh 1.2vw;
+        font-variant-numeric: tabular-nums;
+      }
+      .side small {
+        display: block;
+        font-size: 2.4vh;
+        letter-spacing: 0.06em;
+        color: var(--dim);
+      }
+      #chg {
+        left: 2vw;
+        border: 0.35vh solid var(--dim);
+      }
+      #last {
+        right: 2vw;
+        color: var(--warn);
+        border: 0.45vh dashed var(--warn);
+      }
+      #last small {
+        color: var(--warn);
+      }
       #demo {
         font-size: 3.6vh;
         color: var(--warn);
@@ -212,6 +245,8 @@
         <span id="prep" class="chip dim">--:--:--</span>
       </div>
       <div id="warn" class="hide"></div>
+      <div id="chg" class="side hide"></div>
+      <div id="last" class="side hide"></div>
       <div id="center">
         <div id="depthLabel">SNØDJUPNE</div>
         <div id="depth">--</div>
@@ -339,6 +374,14 @@
         }
         $("speed").innerHTML = fmt(h.speed || 0, 1) + "<small>km/t</small>";
         // Framfor maskina (6–30 m): estimat frå målingar i nærleiken – aldri vist som måling
+        // Sidetal (alltid mindre enn hovudtalet): endring i overflata sidan førre preparering, og sist målt her
+        let c = h.change,
+          l = h.last,
+          tt = (x) => (x < 1 ? "&lt; 1 t" : Math.round(x) + " t");
+        $("chg").classList.toggle("hide", !c);
+        if (c) $("chg").innerHTML = "<small>OVERFLATE SIDAN SIST</small>" + (c.dz >= 0 ? "+" : "−") + Math.round(Math.abs(c.dz) * 100) + " cm<small>førre prep. for " + tt(c.ageH) + " sidan</small>";
+        $("last").classList.toggle("hide", !l);
+        if (l) $("last").innerHTML = "<small>SIST MÅLT HER · ESTIMAT</small>≈" + fmt(l.d) + " m<small>for " + tt(l.ageH) + " sidan</small>";
         let a = h.ahead;
         $("ahead").classList.toggle("hide", !a);
         if (a) $("ahead").innerHTML = "<small>FRAMFOR · ESTIMERT" + (h.demo ? " (DEMO)" : "") + (a.ageH != null ? " · TIDL. FLATE" : "") + "</small>≈" + fmt(a.mean) + " m<small>minst " + fmt(a.min) + " m" + (a.ageH != null ? " · " + (a.ageH < 1 ? "&lt; 1" : Math.round(a.ageH)) + " t" : "") + "</small>";
