@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.53"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.54"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -773,7 +773,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 try:
                     old=json.loads(UI_CFG.read_text("utf-8")); oc=old.get("cfg",old); nc=d.get("cfg",d)
                     log_changes("førarskjerm",oc,nc,("mname","machine","blade","bladeN","tiller","tillerN","target","tol","bounds","northUp",
-                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY"))
+                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y"))
                 except Exception: pass
                 write_atomic(UI_CFG,json.dumps(d,ensure_ascii=False,indent=1))
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')

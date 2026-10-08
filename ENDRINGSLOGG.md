@@ -9,6 +9,24 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.54 – tydeleg tråkkemaskin på kartet, i Maskin og i Kalibrering
+- **Endra:** maskinteikninga på kartet er ny og tydelegare (ovanfrå, front opp): frontskjer med venger, belte med
+  slitebane, raudt førarhus med frontrute og tak, motorlokk, fresbom, fres og gul finisher. Ho er teikna i meter etter
+  maskinmåla (frontskjer, maskinbreidde og fres), så breiddene stemmer med kartet. Målpilene (t.d. «5,5 m») ligg i
+  teikninga. Teikninga er meir dekkjande enn før (92 % mot 58 %), og ho er aldri mindre enn 90 px.
+- **Endra:** **GPS-antenna står no midt i posisjonen** på kartet, og maskina blir teikna rundt ho etter «Antenne framfor
+  midten av beltet» og «til sida». Før stod midten av teikninga i posisjonen.
+- **Nytt:** Innst. › Maskin viser maskina med mål (Frontskjer, Maskin, Fres). Teikninga følgjer med medan ein skriv, og
+  viser full breidde eller innkøyrd etter ARBEIDSSTILLING.
+- **Nytt:** Innst. › Kalibrering viser maskina med GPS-antenna (grøn) og eventuelt antenne 2 (blå), og eit kryss for
+  midten av beltet (nullpunktet). Nytt val «Tal på GPS-antenner» (1 eller 2) med plassering av antenne 2.
+- **Avgjerd:** antenne 2 er førebels **berre til informasjon** (teikninga). SNOWMAN brukar framleis éin posisjon frå
+  mottakaren. Lengdene i teikninga er skjematiske (PB600-klasse); berre breiddene er eigarens mål.
+- **Kvifor:** eigaren ønskte maskina tydeleg som på førebiletet hans, med måla synlege i innstillingane og plasseringa
+  av GPS-antenna(ne) synleg under kalibrering.
+- **Testa:** simulert GNSS (`simuler-leica.py --terreng`): kart ved zoom 19/20, 3D-vising, Maskin- og Kalibrering-panelet
+  med 1 og 2 antenner. Ingen JavaScript-feil.
+
 ### Dokumentasjon – PB600-sporet lagra i vegplanen
 - **Nytt:** `docs/VEGEN-VIDARE.md` kap. 12 samlar CAN/J1939-sporet for PB600: kvar vi står, kva data som truleg finst
   utan ekstra sensorar, neste steg for eigaren og plan for `maskindata`-modulen. Vegplan-lina «Seinare – CAN-bus»

@@ -171,8 +171,34 @@
         width: 150px;
         height: 260px;
         transform: translate(-50%, -50%);
-        opacity: 0.58;
+        opacity: 0.92;
         pointer-events: none;
+      }
+      .groomer svg {
+        overflow: visible;
+        filter: drop-shadow(0 0 3px #000a);
+      }
+      .groomer.tiny .dims,
+      #app.view3d .groomer .dims {
+        display: none;
+      }
+      .mfig {
+        background: #06141d;
+        border: 1px solid #27465a;
+        border-radius: 10px;
+        padding: 8px;
+        margin: 8px 0 10px;
+        text-align: center;
+      }
+      .mfig svg {
+        width: 100%;
+        max-height: 330px;
+      }
+      .mfig small {
+        display: block;
+        color: #9bb5c6;
+        font-size: 12px;
+        margin-top: 4px;
       }
       .groomer.hide {
         display: none;
@@ -191,15 +217,6 @@
         font-weight: 900;
         white-space: nowrap;
         font-size: 12px;
-      }
-      .bladeTag {
-        top: -4px;
-      }
-      .trackTag {
-        top: 119px;
-      }
-      .tillerTag {
-        bottom: -5px;
       }
       .toolbar {
         position: absolute;
@@ -494,9 +511,6 @@
         }
         .tag {
           font-size: 9px;
-        }
-        .trackTag {
-          top: 83px;
         }
       }
       /* ---- PC v1.5 ---- */
@@ -1217,16 +1231,7 @@
         <div><small>TID</small><b id="elapsed">00:00:00</b></div>
       </div>
       <div id="groomer" class="groomer">
-        <svg viewBox="0 0 190 330">
-          <path d="M8 20 Q95 -3 182 20 L171 61 Q95 47 19 61 Z" fill="#687782" stroke="#c8d1d7" stroke-width="3" />
-          <path d="M60 68 L130 68 L145 232 L122 255 L68 255 L45 232 Z" fill="#d22f2f" stroke="#7b0e0e" stroke-width="4" />
-          <rect x="25" y="92" width="35" height="145" rx="8" fill="#17242c" />
-          <rect x="130" y="92" width="35" height="145" rx="8" fill="#17242c" />
-          <rect x="18" y="274" width="154" height="36" rx="5" fill="#cf2525" stroke="#ffd33f" stroke-width="4" />
-        </svg>
-        <div id="bladeTag" class="tag bladeTag">5,5 m</div>
-        <div id="trackTag" class="tag trackTag">5,0 m</div>
-        <div id="tillerTag" class="tag tillerTag">5,5 m</div>
+        <svg id="groomerSvg" viewBox="0 0 10 10"></svg>
       </div>
       <div id="settings" class="settings hide">
         <h2 style="display: flex; align-items: center; gap: 8px">
@@ -1249,6 +1254,7 @@
         </div>
         <section id="panelMachine" class="panel on">
           <h3>MASKINMÅL</h3>
+          <div class="mfig"><svg id="machineFig" viewBox="0 0 10 10"></svg><small id="machineFigTxt"></small></div>
           <div class="row"><span>Frontskjer full</span><input id="blade" type="number" step=".1" /></div>
           <div class="row"><span>Frontskjer innkøyrd</span><input id="bladeN" type="number" step=".1" /></div>
           <div class="row"><span>Maskinbreidde</span><input id="machine" type="number" step=".1" /></div>
@@ -1322,6 +1328,13 @@
           <div class="row"><span>Maskinnamn (blir vist i rapportane)</span><input id="mname" type="text" style="width: 170px" /></div>
           <div class="row"><span>Antenne framfor midten av beltet (m, + = fram, − = bak) – førebels berre til informasjon</span><input id="antX" type="number" step=".001" /></div>
           <div class="row"><span>Antenne til sida for midtlinja (m, + = høgre, − = venstre) – førebels berre til informasjon</span><input id="antY" type="number" step=".001" /></div>
+          <div class="row"><span>Tal på GPS-antenner på maskina</span
+            ><select id="antN" onchange="save()"><option value="1">1 antenne</option><option value="2">2 antenner (t.d. for retning)</option></select></div>
+          <div id="ant2Rows" style="display: none">
+            <div class="row"><span>Antenne 2 framfor midten av beltet (m, + = fram, − = bak) – berre til informasjon</span><input id="ant2X" type="number" step=".001" /></div>
+            <div class="row"><span>Antenne 2 til sida for midtlinja (m, + = høgre, − = venstre) – berre til informasjon</span><input id="ant2Y" type="number" step=".001" /></div>
+          </div>
+          <div class="mfig"><svg id="antFig" viewBox="0 0 10 10"></svg><small id="antFigTxt"></small></div>
           <div class="row"><span>Antennehøgd: frå botnen av antennefestet ned til underkanten av belta (m)</span><input id="antZ" type="number" step=".001" /></div>
           <div class="history" style="font-size: 12px">Mål loddrett med maskina på flat mark. Antennehøgda i sjølve mottakaren (t.d. Zenith) skal då vere 0.</div>
           <div class="row"><span>Høgdekorreksjon frå kontrollmåling (m) – normalt 0</span><input id="zOff" type="number" step=".001" /></div>
@@ -1729,7 +1742,7 @@
     <script src="vendor/qrcode.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.53";
+      const APP_VERSION = "1.6.54";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -1753,6 +1766,9 @@
           mname: "Trakkemaskin 1",
           antX: 0,
           antY: 0,
+          antN: 1, // tal på GPS-antenner (teikninga); antenne 2 er førebels berre til informasjon
+          ant2X: -1,
+          ant2Y: 0,
           antZ: 2.8,
           zOff: 0,
           northUp: false,
@@ -3369,12 +3385,14 @@
       }
 
       /* ---------- Innstillingar ---------- */
-      const NUM = ["machine", "blade", "bladeN", "tiller", "tillerN", "demoD", "target", "tol", "antX", "antY", "antZ", "zOff"];
+      const NUM = ["machine", "blade", "bladeN", "tiller", "tillerN", "demoD", "target", "tol", "antX", "antY", "ant2X", "ant2Y", "antZ", "zOff"];
       function load() {
         NUM.forEach((x) => {
-          $(x).value = cfg[x];
+          $(x).value = cfg[x] != null ? cfg[x] : "";
           $(x).onchange = save;
+          $(x).oninput = drawMachineFigs; // teikninga følgjer med medan ein skriv
         });
+        $("antN").value = String(cfg.antN || 1);
         $("mname").value = cfg.mname;
         $("mname").onchange = save;
         $("bounds").innerHTML = cfg.bounds
@@ -3416,6 +3434,7 @@
           cfg[x] = isNaN(v) ? cfg[x] : v;
         });
         cfg.mname = $("mname").value.trim() || cfg.mname;
+        cfg.antN = parseInt($("antN").value) || 1;
         cfg.bounds = cfg.bounds.map((v, i) => parseFloat($("b" + i).value) || v);
         persistCfg();
         renderLegend();
@@ -3448,24 +3467,164 @@
       function updateMachine() {
         let b = toolsFull ? cfg.blade : cfg.bladeN,
           t = toolsFull ? cfg.tiller : cfg.tillerN;
-        $("bladeTag").textContent = b.toFixed(1).replace(".", ",") + " m";
-        $("trackTag").textContent = cfg.machine.toFixed(1).replace(".", ",") + " m";
-        $("tillerTag").textContent = t.toFixed(1).replace(".", ",") + " m";
+        GROOMER_VB = groomerSVG($("groomerSvg"), { b: b, m: cfg.machine, t: t, ants: machineAnts(), dims: true, center: "ant" });
+        drawMachineFigs();
         scaleGroomer();
       }
-      // Maskinteikninga i målestokk: fresen (154 av 190 einingar i SVG-en) = fresbreidda i meter på kartet.
+      /* ---------- Maskinteikning (ovanfrå, front opp) i meter ----------
+         Origo = midten av beltet. x = til høgre, y = bakover. Brukt på kartet (i målestokk, antenna i midten av skjermen),
+         i Innst. › Maskin (med mål) og i Innst. › Kalibrering (med GPS-antenner). Teikninga er skjematisk: berre breiddene
+         er måla; lengdene er typiske for ein PistenBully 600-klasse. */
+      let GROOMER_VB = { w: 8, h: 11 };
+      const MFIG = { trackHalf: 2.3, bladeFront: -4.25, bladeBack: -3.45, tillerFront: 3.05, tillerBack: 3.95, flapBack: 4.45 };
+      function machineAnts() {
+        let a = [{ x: +cfg.antY || 0, y: -(+cfg.antX || 0), n: "GPS 1" }];
+        if ((cfg.antN || 1) > 1) a.push({ x: +cfg.ant2Y || 0, y: -(+cfg.ant2X || 0), n: "GPS 2" });
+        return a;
+      }
+      function mfmt(v) {
+        return (+v).toFixed(1).replace(".", ",") + " m";
+      }
+      function groomerSVG(svg, o) {
+        let b = Math.max(1, +o.b || 5),
+          m = Math.max(1, +o.m || 5),
+          t = Math.max(1, +o.t || 5),
+          F = MFIG,
+          tw = Math.max(0.7, Math.min(1.4, m * 0.22)), // beltebreidd
+          tl = F.trackHalf,
+          bx = m / 2 - tw - 0.06, // innerkant belte = kanten på karosseriet
+          P = [],
+          f = (v) => +v.toFixed(3);
+        // Belte med slitebanemønster
+        [-1, 1].forEach((sd) => {
+          let x0 = sd < 0 ? -m / 2 : m / 2 - tw;
+          P.push('<rect x="' + f(x0) + '" y="' + -tl + '" width="' + f(tw) + '" height="' + 2 * tl + '" rx="0.35" fill="#1a252d" stroke="#5d6f7b" stroke-width="0.06"/>');
+          let g = "";
+          for (let y = -tl + 0.25; y < tl - 0.1; y += 0.32) g += "M" + f(x0 + 0.08) + " " + f(y) + "h" + f(tw - 0.16);
+          P.push('<path d="' + g + '" stroke="#5a6b76" stroke-width="0.09"/>');
+        });
+        // Skyvearmar til skjeret
+        P.push('<path d="M' + f(-bx + 0.15) + " " + (-tl + 0.2) + "L" + f(-b * 0.22) + " " + (F.bladeBack + 0.05) + "M" + f(bx - 0.15) + " " + (-tl + 0.2) + "L" + f(b * 0.22) + " " + (F.bladeBack + 0.05) + '" stroke="#4a5862" stroke-width="0.22" stroke-linecap="round"/>');
+        // Frontskjer med venger
+        let c = b * 0.33,
+          y0 = F.bladeFront,
+          y1 = F.bladeBack;
+        P.push(
+          '<path d="M' + f(-b / 2) + " " + f(y0 + 0.45) + "L" + f(-c) + " " + y0 + "L" + f(c) + " " + y0 + "L" + f(b / 2) + " " + f(y0 + 0.45) +
+            "L" + f(b / 2 - 0.18) + " " + f(y1 + 0.3) + "L" + f(c) + " " + f(y1) + "L" + f(-c) + " " + f(y1) + "L" + f(-b / 2 + 0.18) + " " + f(y1 + 0.3) +
+            'Z" fill="#8d9ba5" stroke="#dfe6ea" stroke-width="0.07" stroke-linejoin="round"/>',
+        );
+        let rib = "";
+        for (let i = 1; i < 8; i++) {
+          let x = -c + (2 * c * i) / 8;
+          rib += "M" + f(x) + " " + f(y0 + 0.1) + "V" + f(y1 - 0.08);
+        }
+        rib += "M" + f(-c) + " " + y0 + "V" + y1 + "M" + f(c) + " " + y0 + "V" + y1;
+        P.push('<path d="' + rib + '" stroke="#5f6d77" stroke-width="0.05"/>');
+        // Karosseri: førarhus framme, motor bak
+        P.push('<path d="M' + f(-bx + 0.25) + " " + (-tl - 0.15) + "H" + f(bx - 0.25) + "L" + f(bx) + " " + (-tl + 0.5) + "V" + f(tl - 0.25) + "L" + f(bx - 0.3) + " " + f(tl + 0.05) + "H" + f(-bx + 0.3) + "L" + f(-bx) + " " + f(tl - 0.25) + "V" + (-tl + 0.5) + 'Z" fill="#d42c2c" stroke="#6e0d0d" stroke-width="0.08" stroke-linejoin="round"/>');
+        let cw = Math.min(bx - 0.25, 1.25); // halv breidd på førarhuset
+        P.push('<rect x="' + f(-cw) + '" y="' + (-tl + 0.05) + '" width="' + f(2 * cw) + '" height="2.35" rx="0.25" fill="#e8504a" stroke="#7d1010" stroke-width="0.06"/>');
+        P.push('<path d="M' + f(-cw + 0.12) + " " + (-tl + 0.2) + "H" + f(cw - 0.12) + "L" + f(cw - 0.3) + " " + (-tl + 0.75) + "H" + f(-cw + 0.3) + 'Z" fill="#1d3a4f" stroke="#9cc3dc" stroke-width="0.04"/>'); // frontrute
+        P.push('<rect x="' + f(-cw + 0.35) + '" y="' + (-tl + 0.95) + '" width="' + f(2 * cw - 0.7) + '" height="1.15" rx="0.15" fill="#f06a62" stroke="#a51d1d" stroke-width="0.04"/>'); // tak
+        P.push('<path d="M' + f(-cw + 0.06) + " " + (-tl + 0.9) + "v1.2M" + f(cw - 0.06) + " " + (-tl + 0.9) + 'v1.2" stroke="#1d3a4f" stroke-width="0.12"/>'); // sidevindauge
+        let gr = "";
+        for (let y = 0.75; y < tl - 0.3; y += 0.22) gr += "M" + f(-cw + 0.2) + " " + f(y) + "H" + f(cw - 0.2);
+        P.push('<path d="' + gr + '" stroke="#8f1717" stroke-width="0.07"/>'); // motorlokk
+        // Fres med bom og finisher (gule flapsar)
+        P.push('<rect x="-0.45" y="' + f(tl - 0.1) + '" width="0.9" height="' + f(F.tillerFront - tl + 0.2) + '" fill="#4a5862"/>');
+        P.push('<rect x="' + f(-t / 2) + '" y="' + F.tillerFront + '" width="' + f(t) + '" height="' + f(F.tillerBack - F.tillerFront) + '" rx="0.12" fill="#cc2424" stroke="#6e0d0d" stroke-width="0.07"/>');
+        let tr = "";
+        for (let i = 1; i < 12; i++) tr += "M" + f(-t / 2 + (t * i) / 12) + " " + (F.tillerFront + 0.12) + "V" + (F.tillerBack - 0.12);
+        P.push('<path d="' + tr + '" stroke="#8a1414" stroke-width="0.05"/>');
+        P.push('<rect x="' + f(-t / 2) + '" y="' + F.tillerBack + '" width="' + f(t) + '" height="' + f(F.flapBack - F.tillerBack) + '" fill="#f2c230" stroke="#9a7a12" stroke-width="0.05"/>');
+        P.push('<rect x="' + f(-t / 2 - 0.12) + '" y="' + (F.tillerFront + 0.1) + '" width="0.2" height="' + f(F.flapBack - F.tillerFront - 0.1) + '" fill="#ffd33f"/><rect x="' + f(t / 2 - 0.08) + '" y="' + (F.tillerFront + 0.1) + '" width="0.2" height="' + f(F.flapBack - F.tillerFront - 0.1) + '" fill="#ffd33f"/>');
+        // Mål
+        let xmin = -Math.max(b, m, t) / 2 - 0.3,
+          xmax = -xmin,
+          ymin = F.bladeFront - (o.dims ? 1.05 : 0.3),
+          ymax = F.flapBack + (o.dims ? 1.05 : 0.3);
+        let fs = o.fs || 0.5;
+        const dim = (w, y, label) => {
+          let lw = label.length * fs * 0.6 + 0.4;
+          return (
+            '<path d="M' + f(-w / 2) + " " + y + "H" + f(w / 2) + "M" + f(-w / 2) + " " + f(y - 0.25) + "v0.5M" + f(w / 2) + " " + f(y - 0.25) + 'v0.5" stroke="#fff" stroke-width="0.07"/>' +
+            '<path d="M' + f(-w / 2 + 0.3) + " " + f(y - 0.15) + "L" + f(-w / 2 + 0.04) + " " + y + "L" + f(-w / 2 + 0.3) + " " + f(y + 0.15) + "M" + f(w / 2 - 0.3) + " " + f(y - 0.15) + "L" + f(w / 2 - 0.04) + " " + y + "L" + f(w / 2 - 0.3) + " " + f(y + 0.15) + '" stroke="#fff" stroke-width="0.07" fill="none"/>' +
+            '<rect x="' + f(-lw / 2) + '" y="' + f(y - fs * 0.75) + '" width="' + f(lw) + '" height="' + f(fs * 1.5) + '" rx="' + f(fs * 0.3) + '" fill="#020f17" stroke="#ffffff55" stroke-width="0.04"/>' +
+            '<text x="0" y="' + f(y + fs * 0.36) + '" font-size="' + fs + '" font-weight="700" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">' + label + "</text>"
+          );
+        };
+        if (o.dims)
+          P.push(
+            '<g class="dims">' +
+              dim(b, f(F.bladeFront - 0.55), (o.dimNames ? "Frontskjer " : "") + mfmt(b)) +
+              dim(m, 1.55, (o.dimNames ? "Maskin " : "") + mfmt(m)) +
+              dim(t, f(F.flapBack + 0.55), (o.dimNames ? "Fres " : "") + mfmt(t)) +
+              "</g>",
+          );
+        // GPS-antenner
+        (o.ants || []).forEach((a, i) => {
+          let r = o.antR || 0.22;
+          P.push(
+            '<g class="ant"><circle cx="' + f(a.x) + '" cy="' + f(a.y) + '" r="' + f(r * 1.9) + '" fill="#19e07a33"/><circle cx="' + f(a.x) + '" cy="' + f(a.y) + '" r="' + f(r) + '" fill="' + (i ? "#4db8ff" : "#19e07a") + '" stroke="#fff" stroke-width="' + f(r * 0.35) + '"/>' +
+              (o.antLabels ? '<text x="' + f(a.x + r * 1.8) + '" y="' + f(a.y - r * 1.2) + '" font-size="' + f(fs * 0.85) + '" font-weight="700" fill="#fff" stroke="#020f17" stroke-width="0.12" paint-order="stroke" font-family="system-ui,sans-serif">' + a.n + "</text>" : "") +
+              "</g>",
+          );
+          xmin = Math.min(xmin, a.x - 0.6);
+          xmax = Math.max(xmax, a.x + (o.antLabels ? 2.2 : 0.6));
+          ymin = Math.min(ymin, a.y - 0.8);
+          ymax = Math.max(ymax, a.y + 0.6);
+        });
+        if (o.extra) P.push(o.extra);
+        let vb;
+        if (o.center === "ant") {
+          // Antenna (GPS 1) i midten, så teikninga står rett i høve til posisjonen på kartet
+          let a = (o.ants && o.ants[0]) || { x: 0, y: 0 },
+            hw = Math.max(a.x - xmin, xmax - a.x),
+            hh = Math.max(a.y - ymin, ymax - a.y);
+          vb = { x: a.x - hw, y: a.y - hh, w: 2 * hw, h: 2 * hh };
+        } else vb = { x: xmin, y: ymin, w: xmax - xmin, h: ymax - ymin };
+        if (svg) {
+          svg.setAttribute("viewBox", [vb.x, vb.y, vb.w, vb.h].map(f).join(" "));
+          svg.innerHTML = P.join("");
+        }
+        return vb;
+      }
+      function drawMachineFigs() {
+        if (!$("machineFig")) return;
+        let rd = (id, d) => {
+            let v = parseFloat($(id) && $(id).value);
+            return isNaN(v) ? d : v;
+          },
+          full = toolsFull,
+          b = rd(full ? "blade" : "bladeN", full ? cfg.blade : cfg.bladeN),
+          m = rd("machine", cfg.machine),
+          t = rd(full ? "tiller" : "tillerN", full ? cfg.tiller : cfg.tillerN);
+        groomerSVG($("machineFig"), { b: b, m: m, t: t, dims: true, dimNames: true, fs: 0.42 });
+        $("machineFigTxt").textContent = "Viser " + (full ? "full breidde" : "innkøyrd") + " – byt med ARBEIDSSTILLING. Lengdene er skjematiske; breiddene er dine mål.";
+        let n = parseInt($("antN").value) || 1;
+        $("ant2Rows").style.display = n > 1 ? "" : "none";
+        let ants = [{ x: rd("antY", cfg.antY || 0), y: -rd("antX", cfg.antX || 0), n: "GPS 1" }];
+        if (n > 1) ants.push({ x: rd("ant2Y", cfg.ant2Y || 0), y: -rd("ant2X", cfg.ant2X || 0), n: "GPS 2" });
+        // Midten av beltet (nullpunktet for målingane) som eit lite kryss med akselinjer
+        let ref = '<path d="M-0.35 0H0.35M0 -0.35V0.35" stroke="#fff" stroke-width="0.07"/><path d="M0 -4.4V4.6" stroke="#ffffff55" stroke-width="0.04" stroke-dasharray="0.2 0.15"/>';
+        groomerSVG($("antFig"), { b: cfg.blade, m: cfg.machine, t: cfg.tiller, ants: ants, antLabels: true, antR: 0.2, fs: 0.42, extra: ref });
+        $("antFigTxt").textContent =
+          "Kryss = midten av beltet (nullpunkt). " +
+          ants.map((a) => a.n + ": " + (-a.y >= 0 ? "+" : "") + (-a.y).toFixed(2).replace(".", ",") + " m fram, " + (a.x >= 0 ? "+" : "") + a.x.toFixed(2).replace(".", ",") + " m til høgre").join(" · ");
+      }
+      // Maskinteikninga i målestokk på kartet: viewBox er i meter, så pikslar = meter × pikslar per meter.
       function scaleGroomer() {
         let lat = (pos || [map.getCenter().lat])[0],
           mPerPx = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, map.getZoom()),
           pxPerM = (1 / mPerPx) * (cfg.northUp || cfg.view3d ? 1 : 1.42),
-          t = toolsFull ? cfg.tiller : cfg.tillerN,
-          w = Math.max(44, Math.min(420, (t * pxPerM * 190) / 154)),
+          vb = GROOMER_VB,
+          k = Math.max(90 / vb.w, Math.min(pxPerM, 460 / vb.w)),
           g = $("groomer");
-        g.style.width = w + "px";
-        g.style.height = (w * 330) / 190 + "px";
+        g.style.width = vb.w * k + "px";
+        g.style.height = vb.h * k + "px";
         g.style.top = cfg.view3d ? "calc(50% + " + SHIFT + "vh)" : "50%";
-        $("trackTag").style.top = w * 0.66 + "px";
-        g.classList.toggle("tiny", w < 90);
+        g.classList.toggle("tiny", vb.w * k < 120);
       }
       map.on("zoomend", scaleGroomer);
       // Pilene og senterlinja har fast storleik i pikslar. Langt ute blir dei tynnare/skjulte så sporflata synest.
