@@ -243,7 +243,7 @@ feilkodar og temperaturar i feltloggen.
 2. **Vegvêr frå Statens vegvesen (DATEX II, NLOD):** krev søkt brukarkonto. Berre aktuelt der Frost ikkje har stasjonen.
 3. **Webkamera per anlegg:** liste i stadprofilen (namn, plassering, bilete-adresse), val etter GPS, ikon på kartet og
    bilete i eit panel. Valfritt eitt bilete i timen til dagsrapporten.
-4. **Snøanslag:** høgdejustert temperatur, snø/regn etter våttemperatur, nedbør × snøtettleik, smelting (graddøgn) og
+4. **Snøanslag (steg 1–2 som prototype i v1.6.72: Vêr › Snøkart, sjå TERRAIN-ENGINE 6c):** høgdejustert temperatur, snø/regn etter våttemperatur, nedbør × snøtettleik, smelting (graddøgn) og
    vindflytting (le/lo frå terrengmodellen). Kopla til snøflate-minnet: «venta nysnø sidan sist preparering», kalibrert
    mot RTK-målingar. Alltid merkt **ESTIMAT – vêrmodell**, aldri blanda med målt snødjupne.
 5. Kopling til Snowman Hydrantstyring (produksjonsvindauge per hydrant/kanon og høgd).

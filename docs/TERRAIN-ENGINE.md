@@ -130,6 +130,36 @@ rett. Estimatet framfor maskina kan derimot bruke at ei planert overflate er jam
   5 cm, opptil 66 cm feil midt i bekken). Når snøen ligg jamt oppå terrenget (ikkje planert) er det omvendt –
   difor av/på-knappen. Direkte interpolasjon av overflata vart prøvd og forkasta (store feil i bratt bakke).
 
+## 6c. Snøkart – estimat av snøendring frå vêrvarselet (prototype v1.6.72, steg 1–2)
+
+**Grunnregel (eigaren 2026-10-09):** alle funksjonar i Vêr byggjer på **den gjeldande terrengmodellen** i SNOWMAN –
+dei aktive barmark-laga, høgast prioritet vinn (same som snødjupnemålinga). Høgda til varselet, «ved maskina» for
+stasjonane og snøkartet blir alle henta derifrå. Står maskina utanfor terrengmodellen, blir snøkartet lagt midt på
+det høgast prioriterte laget.
+
+Kode: `pc/v1.6/snokart.py` (modell), `/api/snowmap` i `snowman_pc.py`, overlay `SNK` i `driver.html`.
+
+**Rutenett:** `TerrainLibrary.patch` rundt maskina, ±300 / ±600 / ±1200 m, 301 × 301 ruter (2–8 m). Midten blir festa
+til eit 50 m-rutenett så lé-tala kan gjenbrukast medan maskina køyrer. Rekning: ca. 0,2–0,4 s for 24–48 t.
+
+**Steg 1 – nysnø:** temperatur −0,65 °C/100 m, nedbør +7 %/100 m (0,5–2 ×), snødel frå våttemperatur
+(−0,5…+1,5 °C), nysnøtettleik etter Hedstrom & Pomeroy (tyngre i vind), smelting 0,15 mm/°C/t av snøen i perioden.
+
+**Steg 2 – vindflytting:**
+- Lé-tal Sx (Winstral m.fl. 2002) per rute og 16 vindretningar, inntil 100 m i lo. Relativt lé-tal
+  Sxr = Sx − 0,7 · snitt(Sx innan 100 m) styrer erosjon, avsetjing og lokal vind (ryggar/kantar/søkk skil seg ut).
+- Terskel 5 m/s (kald laus snø), 7 m/s (−2…0 °C), 10 m/s (over 0 °C). Erosjon ∝ (U − Ut)³, avgrensa av laus snø.
+- Transport 40 m medvinds, spreidd over ca. 50 m, lagd att etter skjerming. Masse halden (15 % fordampar),
+  fokksnø 250 kg/m³. «Laus snø frå før» (0–20 cm, 90 kg/m³) er eit val føraren gjer.
+
+**Vising:** eigne fargar (blå skala for snøendring, oransje ↔ blå for vindeffekt) – med vilje ulike dei for målt
+snødjupne – skravur, «ESTIMAT»-vassmerke og banner «ESTIMAT – VÊRMODELL, IKKJE MÅLING». Terrengskugge (overdriven i
+slakt terreng) og høgdekurver for orientering.
+
+**Ikkje med enno (steg 3–5):** setjing, smelting av eldre snø, totaldjupne frå snøflate-minnet, nedbør og vind
+bakover i tid frå Frost, kalibrering mot RTK med treffsikkerheit, tidsglidar, snøproduksjon frå Hydrantstyring.
+Parameterane over er litteraturverdiar og må kalibrerast mot målingar på anlegget.
+
 ## 7. Rekkjefølgje
 
 | Versjon | Innhald |

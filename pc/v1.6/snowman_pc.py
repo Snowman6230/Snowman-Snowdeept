@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.71"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.72"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -28,6 +28,9 @@ SURF=SF.SnowSurface(DATA/"snoflate.json")   # snøflateminne: målt snøoverflat
 import ver as VER
 WX=VER.Weather(DATA/"ver-cache.json",VERSION)   # vêr og snøproduksjon (MET Locationforecast), lagra for bruk utan nett
 import frost as FR
+try: import snokart as SK; SNOWMAP=SK.SnowMap()
+except Exception: SK=SNOWMAP=None   # snøkartet krev numpy (same som terrengmotoren)
+SNOWMAP_CACHE={}   # snøkart (estimat) i Vêr – byggjer på den gjeldande terrengmodellen
 FROST=FR.Frost(DATA/"frost-cache.json",VERSION)  # målingar frå næraste vêrstasjonar (MET Frost) – «MÅLT NO» i Vêr
 import kontroll as K
 import helling as HL
@@ -544,12 +547,8 @@ class API(http.server.BaseHTTPRequestHandler):
                 if demo and lat is None: lat,lon=62.3905,6.5810
                 if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon frå GNSS endå – vêret blir henta for staden maskina er."}
                 else:
-                    alt=f("alt")
-                    if alt is None:
-                        try: alt=TERR.height(lat,lon) if T.AVAILABLE else None
-                        except Exception: alt=None
-                    if alt is None: alt=STATE.get("altitude")
-                    r=WX.forecast(lat,lon,alt,{"good":f("good"),"marg":f("marg"),"wind":f("wind")},demo=demo)
+                    alt,src=terrain_alt(lat,lon,f("alt"))
+                    r=WX.forecast(lat,lon,alt,{"good":f("good"),"marg":f("marg"),"wind":f("wind")},demo=demo); r["altSrc"]=src
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/weather/obs":   # «MÅLT NO» i Vêr: siste målingar frå næraste vêrstasjonar (MET Frost), eller DEMO
@@ -561,16 +560,17 @@ class API(http.server.BaseHTTPRequestHandler):
                 if demo and lat is None: lat,lon=62.3905,6.5810
                 if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon frå GNSS endå.","stations":[]}
                 else:
-                    alt=f("alt")
-                    if alt is None:
-                        try: alt=TERR.height(lat,lon) if T.AVAILABLE else None
-                        except Exception: alt=None
-                    if alt is None: alt=STATE.get("altitude")
+                    alt,_src=terrain_alt(lat,lon,f("alt"))
                     fixed=re.sub(r"[^A-Za-z0-9,]","",CFG.get("frost_stations") or "") or None
                     r=FROST.observations(lat,lon,alt,fixed,demo=demo); r["alt"]=None if alt is None else round(alt)
                     for st in r.get("stations",[]):   # våttemperatur der stasjonen måler luftfukt
                         if st.get("temp") is not None and st.get("rh") is not None: st["tw"]=round(VER.wetbulb(st["temp"],st["rh"]),1)
             except Exception as e: r={"ok":False,"error":str(e),"stations":[]}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/snowmap":   # Vêr › Snøkart: ESTIMAT av snøendring i den gjeldande terrengmodellen
+            q=urllib.parse.parse_qs(u.query)
+            try: r=snowmap_response(q)
+            except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/history/coverage":   # trakka område i ein periode eller for éi økt (Historikk › TRAKKA OMRÅDE)
             q=urllib.parse.parse_qs(u.query); per=q.get("period",["day"])[0]; now=time.time()
@@ -961,6 +961,58 @@ EXPORT={"last":None,"error":"","files":[],"written":0}
 def report_cfg():
     s=O.system_cfg()
     return {"on":s.get("reportExport",True),"dir":s.get("reportDir") or str(DS.default_report_dir())} if FUEL else {"on":False,"dir":""}
+def terrain_alt(lat,lon,alt=None):
+    """Høgda alle Vêr-funksjonane brukar: frå den gjeldande terrengmodellen (aktive barmark-lag), elles GNSS."""
+    if alt is not None: return alt,"oppgitt"
+    try:
+        h=TERR.height(lat,lon) if T.AVAILABLE else None
+        if h: return h["h"],"terrengmodell «"+h["name"]+"»"
+    except Exception: pass
+    a=STATE.get("altitude")
+    return a,("GNSS-høgd" if a is not None else None)
+def terrain_centre():
+    """Midten av det høgast prioriterte aktive barmark-laget (når maskina står utanfor terrengmodellen)."""
+    ms=sorted((m for m in TERR.listing() if m.get("active") and m.get("type")=="barmark"),key=lambda m:-m["priority"]) if T.AVAILABLE else []
+    if not ms: return None
+    m=ms[0]
+    return T.utm_inverse(m["x0"]+m["nx"]*m["dx"]/2,m["y0"]-m["ny"]*m["dy"]/2,m["zone"])
+def snowmap_response(q):
+    f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
+    if not T.AVAILABLE or SK is None: return {"ok":False,"error":"Terrengmotoren er ikkje tilgjengeleg (numpy manglar)."}
+    np=SK.np
+    half=min(1500.0,max(150.0,f("half",600.0))); hours=int(min(48,max(1,f("hours",24)))); loose=min(50.0,max(0.0,f("loose",0.0)))
+    demo=q.get("demo",["0"])[0]=="1"
+    lat,lon=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")); centred="maskina"
+    if lat is None or TERR.height(lat,lon) is None:
+        c=terrain_centre()
+        if c is None: return {"ok":False,"error":"Ingen aktiv terrengmodell (barmark). Snøkartet byggjer på den gjeldande terrengmodellen – legg inn eller slå på eit lag under Innst. › Terreng."}
+        lat,lon=c; centred="terrengmodellen"
+    g=50.0   # fest midten til eit 50 m-rutenett, så lé-tala kan gjenbrukast medan maskina køyrer
+    lat=round(lat*111320/g)*g/111320; mx=111320*math.cos(math.radians(lat)); lon=round(lon*mx/g)*g/mx
+    step=max(1.0,round(half/150.0,1))
+    z0,altsrc=terrain_alt(lat,lon)
+    if z0 is None: return {"ok":False,"error":"Fann ikkje høgda i terrengmodellen."}
+    W=WX.forecast(lat,lon,z0,demo=demo)
+    if not W.get("ok"): return {"ok":False,"error":W.get("error","Ingen vêrdata"),"detail":W.get("detail")}
+    now=time.time()*1000; hrs=[h for h in W["hours"] if h["t"]>=now-3600000][:hours]
+    ck=(round(lat,6),round(lon,6),half,hours,loose,demo,W.get("updated") or W.get("age_min"),hrs[0]["t"] if hrs else 0,tuple(m["id"]+str(m.get("priority")) for m in TERR.listing() if m.get("active")))
+    c=SNOWMAP_CACHE.get("r")
+    if c and c[0]==ck and time.time()-c[1]<600: return c[2]
+    P=TERR.patch(lat,lon,half,step)
+    if P is None: return {"ok":False,"error":"Terrengmodellen dekkjer ikkje området."}
+    res=SNOWMAP.run(P,hrs,z0,loose,key=(ck[0],ck[1],half,step,ck[-1]))
+    enc=lambda a: base64.b64encode(np.where(np.isfinite(a),np.clip(np.round(a*10),-32000,32000),-32768).astype("<i2").tobytes()).decode()
+    H=P["h"]
+    r={"ok":True,"estimate":True,"demo":W.get("demo",False),"offline":W.get("offline",False),"age_min":W.get("age_min"),
+       "lat0":P["lat0"],"lon0":P["lon0"],"half":half,"step":step,"n":P["n"],"layers":P["layers"],"centred":centred,
+       "z0":round(z0),"altSrc":altsrc,"zmin":round(float(np.nanmin(H))),"zmax":round(float(np.nanmax(H))),
+       "hours":hours,"loose":loose,"from":hrs[0]["t"] if hrs else None,"to":(hrs[-1]["t"]+3600000) if hrs else None,
+       "stats":res["stats"],"hill":base64.b64encode(SK.hillshade(H,step).tobytes()).decode(),
+       "with":enc(res["with"]),"without":enc(res["without"]),
+       "z":base64.b64encode(np.where(np.isfinite(H),H,-9999).astype("<f4").tobytes()).decode(),
+       "attr":"Varsel: MET Norway (CC BY 4.0) · Terreng: "+", ".join(P["layers"])}
+    SNOWMAP_CACHE["r"]=(ck,time.time(),r)
+    return r
 def ui_bounds():
     """Snøintervalla frå førarskjermen (Innst. › Snøintervall), til fargane i PDF-rapporten."""
     try: return (lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8"))).get("bounds")

@@ -9,6 +9,31 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.72 – Snøkart: estimert snøendring i terrengmodellen (Vêr › Snøkart, steg 1–2)
+- **Nytt:** knappen **«🗺 Snøkart (estimat)»** i Vêr opnar eit nytt overlay over Vêr med eit kart over estimert
+  snøendring i den gjeldande terrengmodellen: periode 6 / 12 / 24 / 48 t frå varselet, visingane «Med vind»,
+  «Utan vind» og «Berre vindeffekt», område ±300 / ±600 / ±1200 m og «Laus snø frå før» 0–20 cm. Trykk i kartet for
+  å lese av ein stad. Sidepanel med periode, nedbør, snitt nysnø med og utan vind, vind (himmelretning), del av
+  arealet som blir blåst bort / fylt på, og fargeskala. Maskina, nordpil, vindpil og målestokk står i kartet.
+- **Nytt:** ✕ i snøkartet går tilbake til Vêr. Vêr-knappen i verktøylinja lukkar begge. Alt anna går vidare under
+  (testa: sporet voks frå 44 til 94 punkt medan snøkartet var ope).
+- **Nytt:** `snokart.py` – steg 1: nysnø frå nedbør, høgd og våttemperatur (−0,65 °C og +7 % nedbør per 100 m,
+  nysnøtettleik etter temperatur og vind, smelting av snøen i perioden). Steg 2: vindflytting med lé-tal (Winstral Sx)
+  frå terrengmodellen for 16 vindretningar, vind over terskel, transport medvinds og avsetjing i le – massen blir
+  halden. Nytt endepunkt `/api/snowmap`. Detaljar i TERRAIN-ENGINE kap. 6c.
+- **Nytt:** Vêr viser kvar høgda kjem frå («høgd frå terrengmodell «…»»).
+- **Avgjerd (eigaren):** **den gjeldande terrengmodellen i SNOWMAN blir alltid brukt i alle funksjonane i Vêr**
+  (varsel-høgd, «ved maskina» for stasjonane, snøkartet). Står maskina utanfor, blir snøkartet lagt midt på det
+  høgast prioriterte aktive laget.
+- **Avgjerd:** snøkartet har eigne fargar (blå for snøendring, oransje ↔ blå for vindeffekt), skravur,
+  «ESTIMAT»-vassmerke og banner – så det aldri kan forvekslast med målt snødjupne.
+- **Endra:** demo-varselet har fått ei snøbye med vestaversvind dei første timane, så snøkartet har noko å vise i demo.
+- **Kvifor:** eigaren ville ha eit estimert snøkart som tek omsyn til vindretning, vindstyrke og nedbør.
+- **Testa:** `python3 snokart.py` (kunstig rygg: vestavind blæs ryggen rein og fyller austsida), og i ein isolert kopi
+  med eit ekte DTM1-utsnitt (Kartverket, ca. 870–1040 moh.) og `simuler-leica.py --anlegg`. Retta under testinga:
+  for sterk erosjon på jamne lo-bakkar (no relativt lé-tal) og opphoping ved kanten av terrengmodellen. Ingen
+  JavaScript-feil. Skjermbilete i `docs/prototypar/snokart/`. Parametrane er ikkje kalibrerte mot målingar enno.
+
 ### PC-prototype v1.6.71 – Vêr: vind som himmelretning, «kl.» på klokkeslett
 - **Endra:** vindretning blir vist som **himmelretning** (nord, nordaust, aust, søraust, sør, sørvest, vest, nordvest –
   der vinden kjem frå) med ei **pil** som viser kvar vinden blæs, i staden for grader. Gjeld vindboksen, «Målt no» og

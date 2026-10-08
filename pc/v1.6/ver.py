@@ -102,8 +102,11 @@ def demo_hours(alt, now=None):
         lh = time.localtime(t).tm_hour
         temp = -1.2 + 3.6 * math.cos(2 * math.pi * (lh - 15) / 24) - 2.2 * math.sin(k / 20.0) - max(-300, min(300, alt - 700)) * LAPSE
         rh = 82 + 10 * math.sin(k / 9.0) + (8 if 30 <= k <= 40 else 0)
-        wind = 4 + 3 * math.sin(k / 7.0) + (12 if 33 <= k <= 38 else 0)
+        wind = 4 + 3 * math.sin(k / 7.0) + (12 if 33 <= k <= 38 else 0) + (7 * math.sin((k - 3) / 14 * math.pi) if 3 <= k <= 17 else 0)
         pr = round(max(0.0, 1.6 * math.sin((k - 30) / 10 * math.pi)), 1) if 30 <= k <= 40 else 0.0
+        if 4 <= k <= 16:      # snøbye med vestaversvind dei første timane (gir noko å sjå i snøkartet)
+            pr = round(1.2 * math.sin((k - 3) / 14 * math.pi), 1)
+            temp -= 1.5
         out.append({"t": t * 1000, "temp": round(temp, 1), "rh": round(min(99, rh), 0), "wind": round(wind, 1),
                     "dir": round(215 + 70 * math.sin(k / 12.0)) % 360, "cloud": 80 if pr else 30, "precip": pr, "precip6": None,
                     "sym": _demo_sym(pr, temp, 7 <= lh < 18, k)})
