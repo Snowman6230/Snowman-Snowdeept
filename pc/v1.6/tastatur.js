@@ -2,7 +2,7 @@
    Tastatur på skjermen (norsk, med æøå) for PC-en i maskina, der det ikkje er tastatur.
 
    - Kjem opp når ein trykkjer på eit skrivefelt med fingeren (AUTO), alltid (ALLTID) eller aldri (AV).
-     I AUTO forsvinn det så snart ein trykkjer på ein ekte tast (då er det eit tastatur tilkopla).
+     I AUTO forsvinn det når ein trykkjer på ein ekte tast, og kjem att ved neste trykk med fingeren.
    - Talfelt får eit talpanel, tekstfelt eit norsk tastatur. Passord blir vist som prikkar.
    - Legg seg på motsett side av feltet (felt nede → tastatur oppe), viser kva felt og kva som er skrive,
      er halvgjennomsiktig og kan dragast. Windows sitt eige tastatur blir halde unna (inputmode="none").
@@ -13,7 +13,6 @@
   const TEXT_TYPES = ["text", "password", "search", "url", "email", "tel", "number", ""];
   let mode = "auto",
     lastPointer = "mouse",
-    hwKey = 0, // tid for siste ekte tastetrykk
     el = null, // feltet vi skriv i
     buf = "", // talfelt: det som er skrive (kan vere «-» eller «0,» som enno ikkje er eit tal)
     shift = false,
@@ -297,7 +296,6 @@
     "keydown",
     (e) => {
       if (e.isTrusted) {
-        hwKey = Date.now();
         if (mode === "auto" && kb && !kb.classList.contains("hide")) hide();
       }
     },
@@ -306,9 +304,21 @@
   document.addEventListener("focusin", (e) => {
     let t = e.target;
     if (!wants(t)) return;
-    let on = mode === "alltid" || (mode === "auto" && lastPointer === "touch" && Date.now() - hwKey > 600000);
+    // Kvart trykk med fingeren opnar tastaturet igjen – også etter at eit ekte tastatur har vore brukt
+    // (tastaturet på Surface kan vere kopla til og frå)
+    let on = mode === "alltid" || (mode === "auto" && lastPointer === "touch");
     if (on) show(t);
   });
+  // Trykk med fingeren i feltet som alt har fokus (då kjem ikkje «focusin»): opne tastaturet igjen
+  document.addEventListener(
+    "pointerup",
+    (e) => {
+      if (mode === "av" || e.pointerType !== "touch") return;
+      let t = e.target;
+      if (wants(t) && document.activeElement === t && (!kb || kb.classList.contains("hide") || el !== t)) show(t);
+    },
+    true,
+  );
   document.addEventListener("focusout", (e) => {
     if (e.target !== el) return;
     setTimeout(() => {
@@ -344,7 +354,7 @@
       inp.addEventListener("keydown", (e) => e.key === "Enter" && done(inp.value));
       inp.addEventListener("skbok", () => setTimeout(() => done(inp.value), 0)); // OK på skjermtastaturet
       inp.focus();
-      if (mode !== "av" && Date.now() - hwKey > 600000) show(inp);
+      if (mode === "alltid" || (mode === "auto" && lastPointer === "touch")) show(inp);
     });
   }
 

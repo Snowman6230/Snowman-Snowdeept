@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.63 – skjermtastaturet kjem att etter bruk av ekte tastatur
+- **Retta:** etter eit trykk på ein ekte tast (Surface-tastaturet) kom ikkje skjermtastaturet opp att når ein trykte
+  på skjermen – det var sperra i 10 minutt. No opnar **kvart trykk med fingeren** i eit skrivefelt tastaturet igjen,
+  også i feltet som alt har fokus. Ekte tastetrykk skjuler det framleis. Museklikk opnar det ikkje (AUTO).
+- **Kvifor:** tastaturet til Surface kan vere kopla til og frå; då må skjermtastaturet kome att.
+- **Testa:** trykk → synleg, ekte tast → skjult, trykk i same felt → synleg, ekte tast + trykk i anna felt → synleg,
+  museklikk → ikkje synleg. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.62 – snu kartet med to fingrar, tastatur på skjermen, passord berre som stjerner
 - **Nytt:** **vri med to fingrar** for å snu kartet (2D og førar-/horisontvising); knip zoomar som før. Rotasjonen
   startar først etter 12° vriing, så kartet ikkje snur seg når ein berre zoomar. **Under prep** går kartet tilbake til
