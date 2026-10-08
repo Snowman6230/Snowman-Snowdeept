@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.68"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.69"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -609,6 +609,9 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/ntrip":
             p=Path(__file__).with_name("ntrip.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
+        m=re.fullmatch(r"/vendor/vaersymbol/([a-z_]{3,40})\.svg",u.path)
+        if m and (HERE/"vendor"/"vaersymbol"/(m.group(1)+".svg")).is_file():   # vêrsymbol frå MET (MIT), til vêr-overlayet
+            self.headers_ok(200,"image/svg+xml"); self.wfile.write((HERE/"vendor"/"vaersymbol"/(m.group(1)+".svg")).read_bytes()); return
         if u.path.startswith("/vendor/") and u.path[8:] in VENDOR:
             self.headers_ok(200,VENDOR[u.path[8:]]); self.wfile.write((HERE/"vendor"/u.path[8:]).read_bytes()); return
         m=re.fullmatch(r"/tiles/(\d{1,2})/(\d{1,8})/(\d{1,8})",u.path)

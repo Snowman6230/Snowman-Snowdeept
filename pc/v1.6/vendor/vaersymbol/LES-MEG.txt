@@ -1,0 +1,8 @@
+Vêrsymbol i SNOWMAN (vêr-overlayet)
+
+Kjelde:  https://github.com/metno/weathericons (mappa weather/svg og weather/legend.csv), henta 2026-10-09
+         Same symbol som MET Norway leverer til Locationforecast 2.0 (filnamn = symbol_code).
+Lisens:  MIT – Copyright (c) 2015-2017 Yr. Sjå LICENSE i denne mappa (skal følgje med SNOWMAN).
+Endra:   ingenting – filene er uendra kopiar.
+
+Merk: lisensen gjeld symbolfilene. Namnet og merket «Yr» blir ikkje brukt i SNOWMAN.

@@ -11,6 +11,7 @@ Demo: oppdikta vêrdata (demo=True) er alltid merkte «DEMO» og blir aldri lagr
 Våttemperatur (Tw) etter Stull (2011), gyldig for RH 5–99 % og T −20…50 °C (godt nok til snøproduksjon).
 Grensene er standard  godt ≤ −5 °C,  marginalt ≤ −2 °C,  maks vind 12 m/s – kan stillast inn i førarskjermen.
 """
+from pathlib import Path
 import calendar, json, math, threading, time, urllib.request, urllib.error
 from email.utils import parsedate_to_datetime
 
@@ -18,6 +19,24 @@ URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact"
 ATTR = "Data frå MET Norway (CC BY 4.0)"
 LAPSE = 0.0065          # °C per meter – berre brukt i demo (MET justerer sjølv for høgda vi sender)
 DEFAULT_LIMITS = {"good": -5.0, "marg": -2.0, "wind": 12.0}
+ICON_DIR = Path(__file__).resolve().parent / "vendor" / "vaersymbol"   # MET weathericons (MIT), sjå LES-MEG.txt der
+ICON_ATTR = "Vêrsymbol: MET Norway / Yr (MIT-lisens)"
+
+
+def _legend():
+    """symbol_code (utan _day/_night/_polartwilight) → nynorsk tekst, frå legend.csv i weathericons."""
+    try:
+        rows = (ICON_DIR / "legend.csv").read_text("utf-8").splitlines()[1:]
+        return {r.split(",")[0]: r.split(",")[3] for r in rows if r.count(",") >= 5}
+    except Exception:
+        return {}
+
+
+LEGEND = _legend()
+
+
+def sym_text(code):
+    return LEGEND.get((code or "").split("_")[0], "") if code else ""
 
 
 def wetbulb(t, rh):
@@ -87,8 +106,17 @@ def demo_hours(alt, now=None):
         pr = round(max(0.0, 1.6 * math.sin((k - 30) / 10 * math.pi)), 1) if 30 <= k <= 40 else 0.0
         out.append({"t": t * 1000, "temp": round(temp, 1), "rh": round(min(99, rh), 0), "wind": round(wind, 1),
                     "dir": 250, "cloud": 80 if pr else 30, "precip": pr, "precip6": None,
-                    "sym": "snow" if pr and temp < 0.5 else ("cloudy" if pr else "clearsky_night")})
+                    "sym": _demo_sym(pr, temp, 7 <= lh < 18, k)})
     return out
+
+
+def _demo_sym(pr, temp, day, k):
+    v = "_day" if day else "_night"
+    if pr:
+        if temp < 0.5:
+            return "heavysnow" if pr > 1.2 else ("snow" if pr > 0.6 else "lightsnow")
+        return "sleet" if temp < 1.5 else "rain"
+    return ("clearsky", "fair", "partlycloudy", "cloudy")[(k // 7) % 4] + ("" if (k // 7) % 4 == 3 else v)
 
 
 class Weather:
@@ -168,6 +196,7 @@ class Weather:
         for h in hours:
             h["tw"] = round(wetbulb(h["temp"], h["rh"] if h["rh"] is not None else 90.0), 1)
             h["cls"] = classify(h["tw"], h["wind"], lim)
+            h["symText"] = sym_text(h.get("sym"))
         res["hours"] = hours
         res["now"] = hours[0] if hours else None
         hourly = [h for h in hours if h["precip"] is not None]
@@ -182,7 +211,13 @@ class Weather:
             x["tmin"], x["tmax"] = min(x["tmin"], h["temp"]), max(x["tmax"], h["temp"])
             x["twmin"] = min(x["twmin"], h["tw"])
             x["precip"] = round(x["precip"] + (h["precip"] or h["precip6"] or 0), 1)
+        for d in days.values():   # symbol for dagen: timen nærast kl. 12
+            hs = [h for h in hours if time.strftime("%Y-%m-%d", time.localtime(h["t"] / 1000)) == d["date"] and h.get("sym")]
+            if hs:
+                m = min(hs, key=lambda h: abs(time.localtime(h["t"] / 1000).tm_hour - 12))
+                d["sym"], d["symText"] = m["sym"], m["symText"]
         res["days"] = list(days.values())[:7]
+        res["iconAttr"] = ICON_ATTR
         return res
 
 

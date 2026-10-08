@@ -9,6 +9,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.69 – vêrsymbol i vêr-overlayet
+- **Nytt:** vêrsymbola til MET (same `symbol_code` som i varselet) blir viste kvar 3. time over 48-timarsgrafen, i
+  boksen «Luft · fukt» for timen no, ved kvar dag i «Dag for dag» og i avlesinga når ein trykkjer i grafen – med nynorsk
+  tekst frå `legend.csv` (t.d. «Klårvêr», «Kraftig snø»). Demo-data har fått passande symbol.
+- **Nytt:** symbola ligg i `vendor/vaersymbol/` (83 SVG, uendra) og blir levert av SNOWMAN-tenesta, så dei verkar utan
+  nett. Kjelde og lisens står i `vendor/vaersymbol/LES-MEG.txt` og `LICENSE`. Kreditering i overlayet og i Om-feltet.
+- **Avgjerd (lisens sjekka):** `github.com/metno/weathericons` er **MIT-lisensiert (Copyright (c) 2015-2017 Yr)**, ikkje
+  CC BY – CC BY 4.0 gjeld vêrdataa frå api.met.no. MIT tillèt bruk i proprietær programvare når lisensteksten følgjer
+  med. Namnet og merket Yr blir ikkje brukt som merke i SNOWMAN, berre i den påkravde opphavsmerknaden.
+- **Kvifor:** eigaren ville ha vêrsymbola inn i overlayet.
+- **Testa:** med `simuler-leica.py` (isolert kopi) og demo: symbol blir viste, `/vendor/vaersymbol/…` slepp berre gjennom
+  gyldige filnamn (stigar som `..` gir 404). Ingen JavaScript-feil. Nye skjermbilete i `docs/prototypar/ver/`.
+
 ### Dokumentasjon – målestasjonar nær Fjellsætra (VEGEN-VIDARE kap. 13)
 - **Nytt:** Roaldshornet (ca. 1050 moh., temperatur og vind), Fv60 Strandafjellet (504 moh., temperatur, nedbør, vind)
   og Fv650 Liabygda er dei næraste stasjonane yr viser. Truleg MET-id SN60190 og SN60225 – må stadfestast i Frost.

@@ -238,8 +238,8 @@ feilkodar og temperaturar i feltloggen.
    - **Fv60 Strandafjellet (truleg SN60225)**, 504 moh.: temperatur, nedbør og vind. Truleg vegvêrstasjon.
    - **Fv650 Liabygda** (id ikkje funnen): temperatur, nedbør og vind.
    - Ingen av dei viser luftfukt eller snødjupne på yr – våttemperaturen må framleis kome frå varselet.
-   - github.com/metno har ikkje vêrdata, men `weathericons` (symbola til Locationforecast, `symbol_code`) kan
-     brukast i overlayet om lisensen tillèt det. YR-merket skal ikkje brukast i SNOWMAN (MET sine vilkår).
+   - github.com/metno har ikkje vêrdata. `weathericons` (MIT) er teke inn i v1.6.69 (`vendor/vaersymbol/`).
+     YR-merket skal ikkje brukast i SNOWMAN (MET sine vilkår).
 2. **Vegvêr frå Statens vegvesen (DATEX II, NLOD):** krev søkt brukarkonto. Berre aktuelt der Frost ikkje har stasjonen.
 3. **Webkamera per anlegg:** liste i stadprofilen (namn, plassering, bilete-adresse), val etter GPS, ikon på kartet og
    bilete i eit panel. Valfritt eitt bilete i timen til dagsrapporten.

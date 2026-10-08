@@ -794,6 +794,31 @@
         background: #3a1d1a;
         margin: 4px 0;
       }
+      #wx .wxSymBox {
+        position: relative;
+      }
+      #wx .wxSymBox img {
+        position: absolute;
+        right: 6px;
+        top: 6px;
+        width: 34px;
+        height: 34px;
+      }
+      #wx .wxDSym {
+        display: block;
+        width: 34px;
+        height: 34px;
+        margin: 2px auto 0;
+      }
+      #wx .wxDays > div > small {
+        display: block;
+        min-height: 14px;
+        font-size: 11px;
+        color: #9ab3c1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       #wx .wxBar span {
         display: block;
         height: 100%;
@@ -1975,7 +2000,7 @@
           <button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b class="appVer">PC v1.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon <span class="appVer">1.6</span> – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart og geoidemodell (HREF2018B, CC BY 4.0): © Kartverket
+          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b class="appVer">PC v1.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon <span class="appVer">1.6</span> – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart og geoidemodell (HREF2018B, CC BY 4.0): © Kartverket<br />Vêrdata: MET Norway (CC BY 4.0) · Vêrsymbol: MET Norway / Yr (MIT-lisens, vendor/vaersymbol)
         </div>
       </div>
       <div class="toolbar">
@@ -2102,7 +2127,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.68";
+      const APP_VERSION = "1.6.69";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -6533,10 +6558,10 @@
         }
         function chart(H) {
           let W = 600,
-            Ht = 190,
+            Ht = 216,
             pl = 34,
             pr = 8,
-            pt = 10,
+            pt = 36,
             pb = 22,
             n = H.length,
             L = R.limits,
@@ -6565,6 +6590,11 @@
             if (g % 6) return;
             o.push(`<line x1="${X(i)}" x2="${X(i)}" y1="${pt}" y2="${Ht - pb}" stroke="#fff" stroke-opacity="${g ? 0.06 : 0.22}"/><text x="${X(i)}" y="${Ht - 7}" text-anchor="middle" font-size="10" fill="${g ? "#7f9aa9" : "#e6f2f8"}" font-weight="${g ? 400 : 800}">${g ? hh(h.t) : day(h.t)}</text>`);
           });
+          // vêrsymbol kvar 3. time (MET weathericons, MIT) – same symbol_code som i varselet
+          H.forEach((h, i) => {
+            if (i % 3 || !h.sym) return;
+            o.push(`<image href="vendor/vaersymbol/${esc(h.sym)}.svg" x="${(X(i) + cw / 2 - 13).toFixed(1)}" y="4" width="26" height="26"><title>${esc(h.symText)}</title></image>`);
+          });
           let line = (k) => H.map((h, i) => (i ? "L" : "M") + (X(i) + cw / 2).toFixed(1) + " " + Y(h[k]).toFixed(1)).join("");
           o.push(`<path d="${line("temp")}" fill="none" stroke="#9ab3c1" stroke-width="2" stroke-dasharray="5 3"/>`);
           o.push(`<path d="${line("tw")}" fill="none" stroke="#7fd0ff" stroke-width="2.5"/>`);
@@ -6577,17 +6607,17 @@
           // nedbør: eigen liten graf med eiga akse (mm), ikkje dobbel akse
           let P = H.map((h) => h.precip ?? 0),
             pm = Math.max(1, ...P),
-            ph = 46,
+            ph = 52,
             py = (v) => ph - 14 - ((ph - 20) * v) / pm,
             q = [`<text x="${pl - 5}" y="12" text-anchor="end" font-size="10" fill="#9ab3c1">${n1(pm)}</text><text x="${pl - 5}" y="${ph - 12}" text-anchor="end" font-size="10" fill="#9ab3c1">0</text><line x1="${pl}" x2="${W - pr}" y1="${ph - 14}" y2="${ph - 14}" stroke="#fff" stroke-opacity=".15"/>`];
           P.forEach((v, i) => v > 0 && q.push(`<rect x="${(X(i) + 1).toFixed(1)}" y="${py(v).toFixed(1)}" width="${Math.max(1, cw - 2).toFixed(1)}" height="${(ph - 14 - py(v)).toFixed(1)}" rx="1.5" fill="${H[i].temp < 0.5 ? "#e6f2f8" : "#5aa9ff"}"/>`));
-          q.push(`<text x="${pl + 2}" y="${ph - 2}" font-size="10" fill="#7f9aa9">Nedbør mm/t (kvit = truleg snø, blå = regn/sludd)</text>`);
+          q.push(`<text x="${pl + 2}" y="${ph - 3}" font-size="10" fill="#7f9aa9">Nedbør mm/t (kvit = truleg snø, blå = regn/sludd)</text>`);
           return `<svg class="wxChart" id="wxSvg" viewBox="0 0 ${W} ${Ht}">${o.join("")}</svg><svg class="wxChart" viewBox="0 0 ${W} ${ph}" style="margin-top:4px">${q.join("")}</svg>`;
         }
         function readout(h) {
           if (!h) return "Trykk eller dra i grafen for å sjå kvar time.";
           let c = CLS[h.cls];
-          return `<b>${day(h.t)} ${hh(h.t)}:00</b> · våttemp. <b>${n1(h.tw)}°</b> · luft ${n1(h.temp)}° · fukt ${Math.round(h.rh)} % · vind ${n1(h.wind)} m/s · nedbør ${n1(h.precip ?? h.precip6 ?? 0)} mm · <b style="color:${c[1]}">${c[0]}</b>`;
+          return `<b>${day(h.t)} ${hh(h.t)}:00</b>${h.sym ? ` <img src="vendor/vaersymbol/${esc(h.sym)}.svg" alt="" style="width:18px;height:18px;vertical-align:-4px"> ${esc(h.symText)}` : ""} · våttemp. <b>${n1(h.tw)}°</b> · luft ${n1(h.temp)}° · fukt ${Math.round(h.rh)} % · vind ${n1(h.wind)} m/s · nedbør ${n1(h.precip ?? h.precip6 ?? 0)} mm · <b style="color:${c[1]}">${c[0]}</b>`;
         }
         function render() {
           let el = $("wxCard"),
@@ -6616,7 +6646,7 @@
             .map((d) => {
               let g = (100 * d.good) / d.n,
                 m = (100 * d.marg) / d.n;
-              return `<div><b>${day(new Date(d.date + "T12:00").getTime())} ${d.date.slice(8)}.${d.date.slice(5, 7)}</b><div class="wxBar"><span style="width:${g}%;background:#3ee07a"></span><span style="width:${m}%;background:#ffcf5b"></span></div>${d.good} t godt · ${d.marg} t marg.<br>${n1(d.tmin)}…${n1(d.tmax)}° · ${n1(d.precip)} mm</div>`;
+              return `<div><b>${day(new Date(d.date + "T12:00").getTime())} ${d.date.slice(8)}.${d.date.slice(5, 7)}</b>${d.sym ? `<img class="wxDSym" src="vendor/vaersymbol/${esc(d.sym)}.svg" alt="${esc(d.symText)}" title="${esc(d.symText)}"><small>${esc(d.symText)}</small>` : ""}<div class="wxBar"><span style="width:${g}%;background:#3ee07a"></span><span style="width:${m}%;background:#ffcf5b"></span></div>${d.good} t godt · ${d.marg} t marg.<br>${n1(d.tmin)}…${n1(d.tmax)}° · ${n1(d.precip)} mm</div>`;
             })
             .join("");
           el.innerHTML =
@@ -6626,7 +6656,7 @@
             `<div class="wxNow">
               <div class="wxBox wxStat ${h.cls}"><span>SNØPRODUKSJON NO</span><b style="color:${c[1]}">${c[0]}</b><em>${next ? (next.start <= Date.now() ? "Vindauge no – til " + day(next.end) + " " + hh(next.end) + ":00" : "Neste vindauge: " + day(next.start) + " " + hh(next.start) + ":00") : "Ingen vindauge i varselet"}</em></div>
               <div class="wxBox"><span>VÅTTEMPERATUR</span><b class="c-${h.cls}">${n1(h.tw)}°</b><em>grense ${n1(L.good)}° / ${n1(L.marg)}°</em></div>
-              <div class="wxBox"><span>LUFT · FUKT</span><b>${n1(h.temp)}°</b><em>${Math.round(h.rh)} % relativ fukt</em></div>
+              <div class="wxBox wxSymBox"><span>LUFT · FUKT</span>${h.sym ? `<img src="vendor/vaersymbol/${esc(h.sym)}.svg" alt="${esc(h.symText)}" title="${esc(h.symText)}">` : ""}<b>${n1(h.temp)}°</b><em>${Math.round(h.rh)} % fukt${h.symText ? " · " + esc(h.symText) : ""}</em></div>
               <div class="wxBox"><span>VIND</span><b>${n1(h.wind)}</b><em>m/s${h.dir != null ? " frå " + Math.round(h.dir) + "°" : ""} · maks ${n1(L.wind)}</em></div>
             </div>
             <h4>PRODUKSJONSVINDAUGE</h4><div class="wxWin">${win}</div>
@@ -6672,7 +6702,7 @@
           return `<div class="wxHead"><h3>❄ VÊR OG SNØPRODUKSJON<br><small>${p}${a}</small></h3><button class="wxX" onclick="WX.toggle()" title="Lukk (eller trykk Vêr-knappen igjen)">✕</button></div>`;
         }
         function foot() {
-          return `<div class="wxFoot">${R && R.demo ? "Oppdikta demo-data til visning." : esc((R && R.attr) || "Data frå MET Norway (CC BY 4.0)") + " · Locationforecast for staden og høgda til maskina."} Våttemperatur etter Stull (2011). Varsel – ikkje måling. Grensene varierer med kanon og vasstemperatur.</div>`;
+          return `<div class="wxFoot">${R && R.demo ? "Oppdikta demo-data til visning." : esc((R && R.attr) || "Data frå MET Norway (CC BY 4.0)") + " · Locationforecast for staden og høgda til maskina."} ${esc((R && R.iconAttr) || "Vêrsymbol: MET Norway / Yr (MIT-lisens)")}. Våttemperatur etter Stull (2011). Varsel – ikkje måling. Grensene varierer med kanon og vasstemperatur.</div>`;
         }
         function toggle() {
           open = !open;
