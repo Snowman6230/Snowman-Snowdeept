@@ -317,9 +317,10 @@ class Trasear:
         return out
 
     @staticmethod
-    def _stamp(cov, g, x, y, t, width, pad=0.5):
+    def _stamp(cov, g, x, y, t, width, pad=0.5, vals=None, out=None):
         """Merk rutene innanfor halve breidda frå køyrelinja (x, y i meter).
-        pad: ekstra margin i ruter (0,5 = romsleg for trasé-prosent; 0 = rett areal for trakka område)."""
+        pad: ekstra margin i ruter (0,5 = romsleg for trasé-prosent; 0 = rett areal for trakka område).
+        vals/out: skriv også ein verdi per punkt (t.d. snødjupna) i out i fresbreidda – siste køyring gjeld."""
         if len(x) < 2:
             return
         dx, dy, dt = np.diff(x), np.diff(y), np.diff(t)
@@ -334,6 +335,9 @@ class Trasear:
         frac = (np.arange(k.sum()) - np.repeat(np.cumsum(k) - k, k)) / np.repeat(np.maximum(k, 1), k)
         sx = x[idx] + dx[idx] * frac
         sy = y[idx] + dy[idx] * frac
+        if vals is not None:
+            va, vb = vals[idx], vals[idx + 1]
+            sv = np.where(np.isnan(va), vb, np.where(np.isnan(vb), va, va + (vb - va) * frac))
         r = width / 2.0
         rc = int(math.ceil(r / g["cell"]))
         oy, ox = np.mgrid[-rc:rc + 1, -rc:rc + 1]
@@ -349,6 +353,10 @@ class Trasear:
         R = (ri[:, None] + oy[None, :]).ravel()
         v = (C >= 0) & (C < g["W"]) & (R >= 0) & (R < g["H"])
         cov[R[v], C[v]] = True
+        if vals is not None and out is not None:
+            V = np.repeat(sv[inb], len(ox))
+            k2 = v & ~np.isnan(V)
+            out[R[k2], C[k2]] = V[k2]
 
     def status(self, since_s=None, until_s=None, cache_s=4.0, with_map=False):
         """Prosent preparert per trasé sidan since_s (standard: starten på dette prepareringsdøgnet).
@@ -358,6 +366,30 @@ class Trasear:
         if with_map:
             return r
         return dict(r, status={k: {a: b for a, b in v.items() if a != "map"} for k, v in r["status"].items()})
+
+    def depth_grid(self, lat0, lon0, x0, y0, cell, W, H, since_s, until_s=None, include_test=True):
+        """Målt snødjupne i fresbreidda på eit rutenett (same som karta i rapporten). Siste køyring gjeld.
+        Ekte økter først; finst ingen ekte målingar, blir test/simulert brukt (og merkt). Returnerer (rutenett, simulert)."""
+        with self.lock:
+            ses = [x for x in self._sessions(since_s or 0, until_s) if len(x["pts"]) >= 2 and x["pts"].shape[1] > 3]
+        L = Local(lat0, lon0)
+        g = {"x0": x0, "y0": y0, "cell": cell, "W": W, "H": H}
+
+        def run(sel):
+            out = np.full((H, W), np.nan)
+            tmp = np.zeros((H, W), bool)
+            for x in sorted(sel, key=lambda s: s["pts"][0, 2]):
+                q = x["pts"]
+                d = q[:, 3].astype(float)
+                if not np.isfinite(d).any():
+                    continue
+                px, py = L.xy(q[:, 0], q[:, 1])
+                self._stamp(tmp, g, px, py, q[:, 2], x["width"], pad=0.0, vals=d, out=out)
+            return out
+        real = run([x for x in ses if not x["test"]])
+        if np.isfinite(real).any() or not include_test:
+            return real, False
+        return run([x for x in ses if x["test"]]), True
 
     def coverage(self, since_s=0, until_s=None, ids=None, include_test=False, max_cells=6_000_000):
         """Trakka område i perioden (eller for utvalde økter) som rutenett i fresbreidda til kvar økt.

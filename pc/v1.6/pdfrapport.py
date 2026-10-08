@@ -94,26 +94,57 @@ class Pdf:
         return out
 
 
+# Snødjupne-fargane frå førarskjermen (raud = lite snø … blå = mykje), og «preparert, ikkje målt»
+COLORS = [(237, 32, 36), (255, 148, 18), (233, 237, 22), (39, 216, 77), (8, 203, 234), (7, 93, 229)]
+NEUTRAL = (127, 178, 214)
+
+
+def _depth(m, n):
+    """Snødjupne-rutenettet (m) frå rapporten, nan = ikkje målt."""
+    if not m.get("depth"):
+        return None
+    v = np.frombuffer(base64.b64decode(m["depth"]), np.uint8)[:n].astype(float)
+    v[v == 255] = np.nan
+    return v / 50.0
+
+
+def _paint_depth(img, mask, d, bounds):
+    """Farg trakka ruter etter snødjupna (klassar som i førarskjermen); trakka utan måling blir lyseblå."""
+    img[mask] = NEUTRAL
+    if d is None:
+        return False
+    ok = mask & np.isfinite(d)
+    if not ok.any():
+        return False
+    cls = np.digitize(d[ok], bounds)
+    img[ok] = np.array(COLORS, np.uint8)[np.clip(cls, 0, 5)]
+    return True
+
+
 def _bits(b64, n):
     return np.unpackbits(np.frombuffer(base64.b64decode(b64 or ""), np.uint8))[:n].astype(bool)
 
 
-def _trase_rgb(m):
+def _trase_rgb(m, bounds):
     W, H = m["W"], m["H"]
     ins, cov, alls = (_bits(m.get(k), W * H).reshape(H, W) for k in ("ins", "cov", "covAll"))
+    d = _depth(m, W * H)
+    d = None if d is None else d.reshape(H, W)
     img = np.full((H, W, 3), 255, np.uint8)
     img[ins] = (214, 222, 228)
-    img[ins & alls & ~cov] = (232, 160, 60)
-    img[ins & cov] = (40, 168, 92)
-    return np.flipud(img)  # rad 0 er sørkanten – nord skal vere opp
+    trakka = ins & (alls if m.get("depthSim") else cov)
+    has = _paint_depth(img, trakka, d, bounds)
+    return np.flipud(img), has  # rad 0 er sørkanten – nord skal vere opp
 
 
-def _area_rgb(a):
+def _area_rgb(a, bounds):
     W, H = a["W"], a["H"]
     age = np.frombuffer(base64.b64decode(a["age"]), np.uint8)[: W * H].reshape(H, W)
+    d = _depth(a, W * H)
+    d = None if d is None else d.reshape(H, W)
     img = np.full((H, W, 3), 255, np.uint8)
-    img[age != 255] = (232, 160, 60) if a.get("onlyTest") else (40, 168, 92)
-    return np.flipud(img)
+    has = _paint_depth(img, age != 255, d, bounds)
+    return np.flipud(img), has
 
 
 def _crop(img, cell, pad=6):
@@ -124,6 +155,27 @@ def _crop(img, cell, pad=6):
     r, c = np.where(m)
     r0, r1, c0, c1 = max(r.min() - pad, 0), min(r.max() + pad + 1, img.shape[0]), max(c.min() - pad, 0), min(c.max() + pad + 1, img.shape[1])
     return img[r0:r1, c0:c1], cell
+
+
+def _scale(pdf, bounds, sim, has):
+    """Fargeskala for snødjupna under kartet."""
+    x, y = M, pdf.y - 4
+    labels = [f"< {bounds[0]:g}"] + [f"{bounds[i]:g}–{bounds[i + 1]:g}" for i in range(4)] + [f"> {bounds[4]:g}"]
+    pdf.text(x, y - 9, "Snødjupne (m):", 8, True, NAVY)
+    x += 64
+    for c, l in zip(COLORS, labels):
+        pdf.rect(x, y - 11, 10, 10, fill=tuple(v / 255 for v in c))
+        pdf.text(x + 13, y - 9, l, 8)
+        x += 52
+    pdf.rect(x, y - 11, 10, 10, fill=tuple(v / 255 for v in NEUTRAL))
+    pdf.text(x + 13, y - 9, "trakka, ikkje målt", 8)
+    pdf.y -= 18
+    if sim:
+        pdf.text(M, pdf.y - 6, "SIMULERT SNØ (TEST) – ikkje ekte måling.", 8, True, ORANGE)
+        pdf.y -= 12
+    elif not has:
+        pdf.text(M, pdf.y - 6, "Ingen målt snødjupne her (krev RTK FIX, kalibrering og terrengmodell).", 8, False, GREY)
+        pdf.y -= 12
 
 
 def _map(pdf, img, cell, title, legend):
@@ -144,7 +196,7 @@ def _map(pdf, img, cell, title, legend):
     pdf.rect(M + 6, y + 6, L / mpp, 3, fill=(0.1, 0.1, 0.1))
     pdf.text(M + 6, y + 12, f"{L} m", 8, True)
     pdf.text(M + w - 24, y + h - 14, "N ^", 9, True)
-    pdf.y = y - 14
+    pdf.y = y - 6
 
 
 def _table(pdf, cols, rows, widths, colors=None):
@@ -175,10 +227,12 @@ def _h(pdf, s):
     pdf.y -= 22
 
 
-def build(rep, machine=""):
+def build(rep, machine="", bounds=None):
+    bounds = list(bounds or [0.3, 0.5, 0.8, 1.2, 1.6])[:5]
     n = lambda v, d=1: "–" if v is None else (f"{v:.{d}f}").replace(".", ",")
     hm = lambda ms: time.strftime("%H:%M", time.localtime(ms / 1000)) if ms else "–"
     mins = lambda m: f"{int(m) // 60} t {int(m) % 60:02d} min"
+    sm = lambda m: f"{int(m)} min" if int(m) < 60 else f"{int(m) // 60} t {int(m) % 60:02d} min"
     date = rep["date"]
     d = time.strftime("%d.%m.%Y", time.strptime(date, "%Y-%m-%d"))
     nxt = time.strftime("%d.%m.%Y", time.localtime(time.mktime(time.strptime(date, "%Y-%m-%d")) + 86400))
@@ -209,7 +263,7 @@ def build(rep, machine=""):
             pdf,
             ["Trasé", "Areal", "Preparert", "Tid i traseen", "Sist", "Snødjupne snitt / minst", "Mål"],
             [[t["name"], n(t["areaDaa"]) + " daa", n(t["pct"], 0) + " %" + (f" ({n(t['pctTest'], 0)} % m/TEST)" if t["pctTest"] > t["pct"] else ""),
-              mins(t.get("min") or 0) + (f" ({mins(t['minTest'])} m/TEST)" if (t.get("minTest") or 0) > (t.get("min") or 0) else ""), hm(t["last"]), (n(t["depthAvg"], 2) + " / " + n(t["depthMin"], 2) + " m") if t["depthAvg"] is not None else "–",
+              sm(t.get("min") or 0) + (f" ({sm(t['minTest'])} TEST)" if (t.get("minTest") or 0) > (t.get("min") or 0) else ""), hm(t["last"]), (n(t["depthAvg"], 2) + " / " + n(t["depthMin"], 2) + " m") if t["depthAvg"] is not None else "–",
               (n(t["target"], 2) + " m") if t.get("target") is not None else "–"] for t in tr],
             [105, 46, 82, 100, 32, 100, 46],
         )
@@ -218,17 +272,21 @@ def build(rep, machine=""):
     if maps:
         _h(pdf, "Kart per trasé – kvar det er trakka")
         for t in maps:
-            _map(pdf, _trase_rgb(t["map"]), t["map"]["cell"], f"{t['name']} · {n(t['pct'], 0)} % preparert · {mins(t.get('min') or 0)}",
-                 "Grønt: trakka · grått: ikkje trakka" + (" · oransje: berre TEST" if t["pctTest"] > t["pct"] else "") + " · nord er opp")
+            img, has = _trase_rgb(t["map"], bounds)
+            _map(pdf, img, t["map"]["cell"], f"{t['name']} · {n(t['pct'], 0)} % preparert · {mins(t.get('min') or 0)}",
+                 "Farga etter snødjupne der det er trakka · grått: ikkje trakka · nord er opp")
+            _scale(pdf, bounds, t["map"].get("depthSim"), has)
     elif rep.get("area") and not rep["area"].get("empty"):
         a = rep["area"]
         _h(pdf, "Kart – trakka område")
         parts = a.get("parts") or [a]
         for i, part in enumerate(parts):
-            _map(pdf, _area_rgb(part), part["cell"],
+            img, has = _area_rgb(part, bounds)
+            _map(pdf, img, part["cell"],
                  (f"Område {i + 1} av {len(parts)} · " if len(parts) > 1 else "Heile området som er køyrt · ") + f"{n(part['area'] / 1000, 1)} daa" + (" · TEST" if a.get("onlyTest") else ""),
                  ("Ingen trasear er lagde inn, så kartet viser alt som er køyrt i fresbreidda. " if i == 0 else "")
-                 + ("Oransje: berre demo/test – ikkje ekte preparering." if a.get("onlyTest") else "Grønt: trakka.") + " Nord er opp.")
+                 + ("Berre demo/test – ikkje ekte preparering. " if a.get("onlyTest") else "") + "Farga etter snødjupne. Nord er opp.")
+            _scale(pdf, bounds, part.get("depthSim"), has)
     # Økter
     ses = rep.get("sessions") or []
     _h(pdf, f"Økter ({len(ses)})")

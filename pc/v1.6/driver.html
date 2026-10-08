@@ -1774,7 +1774,8 @@
         </div>
       </div>
       <div class="toolbar">
-        <button id="snowBtn" class="tool on" onclick="toggleSnow()"><i>▰</i>Snødjupne</button
+        <button id="teleBtn" class="tool on" onclick="toggleTele()" title="Vis eller skjul fart, kurs, spor, areal og tid"><i>⏱</i>Tal</button
+        ><button id="snowBtn" class="tool on" onclick="toggleSnow()"><i>▰</i>Snødjupne</button
         ><button id="trackBtn" class="tool on" onclick="toggleTrack()"><i>↝</i>Spor</button
         ><button id="machineBtn" class="tool on" onclick="toggleMachine()">
           <svg class="groomIcon" viewBox="0 0 70 40">
@@ -1789,7 +1790,7 @@
         ><button class="tool" onclick="zoomBtn(1)"><i>＋</i>Zoom inn</button
         ><button id="viewBtn" class="tool" onclick="openViewMenu(event)"><i>◭</i>Kart</button
         ><button id="bgBtn" class="tool on" onclick="toggleBg()"><i>▦</i>Bakgrunn</button
-        ><button id="teleBtn" class="tool on" onclick="toggleTele()" title="Vis eller skjul fart, kurs, spor, areal og tid"><i>⏱</i>Tal</button
+
         ><button id="surfBtn" class="tool on" onclick="openSurfMenu(event)" title="Estimat frå tidlegare trakka snøoverflate: vel kor mange timar tilbake, eller AV"><i>≋</i><span id="surfBtnTxt">Flate 24 t</span></button
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
@@ -1894,7 +1895,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.66";
+      const APP_VERSION = "1.6.67";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -5865,7 +5866,7 @@
           if (r.trasear.some((t) => t.map)) {
             h.push(
               fold("rapMap", "<b>Kart per trasé</b> – kvar det er trakka",
-                repMapLegend(r.trasear.some((t) => t.pctTest > t.pct)) +
+                repMapLegend(true, r.trasear.some((t) => t.map && t.map.depthSim)) +
                   r.trasear
                     .filter((t) => t.map)
                     .map((t) => {
@@ -5880,7 +5881,7 @@
               fold("rapMap", "<b>Kart – trakka område</b> · " + n(r.area.area / 1000, 1) + " daa" + (r.area.onlyTest ? " <span style='color:#ffb24d'>TEST</span>" : ""),
                 "<div class='history' style='font-size:12px'>Ingen trasear er lagde inn (Innst. › Trasear), så kartet viser heile området som er køyrt dette døgnet, i fresbreidda. Overlapp tel éin gong." +
                   (r.area.onlyTest ? "<br><span style='color:#ffb24d'>Berre demo/test dette døgnet – ikkje ekte preparering.</span>" : "") + "</div>" +
-                  "<div class='repLeg'><i style='background:" + (r.area.onlyTest ? "#c98a2a'></i>trakka (TEST)" : "#19c46a'></i>trakka") + " · nord er opp</div>" +
+                  repMapLegend(false, !!r.area.depthSim) +
                   parts
                     .map((pt, i) => {
                       maps.push({ kind: "area", a: Object.assign({ onlyTest: r.area.onlyTest }, pt) });
@@ -5922,11 +5923,18 @@
           $("repOut").innerHTML = h.join("");
           $("repOut").querySelectorAll("canvas[data-m]").forEach((c) => drawRepMap(c, maps[+c.dataset.m]));
         }
-        function repMapLegend(test) {
+        // Fargeskala for snødjupna (same fargar og intervall som kartet), og kva grått/lyseblått tyder
+        function repMapLegend(trase, sim) {
+          let b = cfg.bounds,
+            lab = ["< " + b[0], b[0] + "–" + b[1], b[1] + "–" + b[2], b[2] + "–" + b[3], b[3] + "–" + b[4], "> " + b[4]];
           return (
-            "<div class='repLeg'><i style='background:#19c46a'></i>trakka <i style='background:#34505f'></i>ikkje trakka" +
-            (test ? " <i style='background:#c98a2a'></i>berre TEST" : "") +
-            " · nord er opp</div>"
+            "<div class='repLeg'><b>Snødjupne (m):</b>" +
+            colors.map((c, i) => "<i style='background:" + c + "'></i>" + lab[i]).join(" ") +
+            "<br><i style='background:" + NEUTRAL + "'></i>trakka, ikkje målt" +
+            (trase ? " <i style='background:#34505f'></i>ikkje trakka" : "") +
+            " · nord er opp" +
+            (sim ? "<br><span style='color:#ffb24d'><b>SIMULERT SNØ (TEST)</b> – ikkje ekte måling</span>" : "") +
+            "</div>"
           );
         }
         // Teiknar eit rutenett (rad 0 = sørkanten) på ein canvas: trakka grønt, resten av traseen grått
@@ -5948,11 +5956,17 @@
             cov = bits(M.cov);
             all = bits(M.covAll);
           } else age = Uint8Array.from(atob(M.age || ""), (ch) => ch.charCodeAt(0));
+          // Snødjupna i fresbreidda (cm/2, 255 = ikkje målt) – trakka ruter blir farga etter henne
+          const dep = M.depth ? Uint8Array.from(atob(M.depth), (ch) => ch.charCodeAt(0)) : null,
+            rgb = (hx) => [1, 3, 5].map((j) => parseInt(hx.substr(j, 2), 16)),
+            PAL = colors.map(rgb),
+            NEU = rgb(NEUTRAL),
+            dCol = (i) => (dep && dep[i] !== 255 ? PAL[colors.indexOf(depthColor(dep[i] / 50))] : NEU);
           // Farge for ruta (rad r frå sør, kolonne c), eller null = utanfor
           const colOf = (r, c) => {
             let i = r * W0 + c;
-            if (m.kind === "trase") return !on(ins, i) ? null : on(cov, i) ? [25, 196, 106] : on(all, i) ? [201, 138, 42] : [52, 80, 95];
-            return age[i] !== 255 ? (M.onlyTest ? [201, 138, 42] : [25, 196, 106]) : null;
+            if (m.kind === "trase") return !on(ins, i) ? null : on(M.depthSim ? all : cov, i) ? dCol(i) : [52, 80, 95];
+            return age[i] !== 255 ? dCol(i) : null;
           };
           // Trakka område utan trasear: berre utsnittet rundt det som er køyrt (med litt luft), så kartet blir stort nok
           let r0 = 0,

@@ -9,6 +9,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-08
 
+### PC-prototype v1.6.67 – snødjupne i farger på karta i rapporten, «Tal» først i knapperekkja
+- **Nytt:** karta i rapporten (i SNOWMAN og i PDF-en) er farga etter **målt snødjupne** i fresbreidda – same fargar og
+  intervall som på kartet (Innst. › Snøintervall) – med **fargeskala** under kartet. Trakka utan måling er lyseblått,
+  ikkje trakka del av ein trasé er grått. Siste køyring gjeld der spor overlappar. Finst det berre simulert snø, står
+  det «SIMULERT SNØ (TEST) – ikkje ekte måling».
+- **Endra:** knappen **«⏱ Tal»** står no lengst til venstre, før «Snødjupne».
+- **Kvifor:** eigaren: utan fargeskala er det vanskeleg å vite djupna på snøen i rapporten.
+- **Testa:** rapport og PDF med og utan testtrasé (simulert snø, 1199 målte ruter, snitt 0,78 m), fargeskala under
+  kvart kart. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.66 – rapporten som PDF (kart, trasear, økter, drivstoff)
 - **Nytt:** knappen **⬇ RAPPORT SOM PDF** i Innst. › Rapport (ved sida av ⬇ CSV / EXCEL). PDF-en (A4) har samandrag,
   trasear med tid i traseen, kart per trasé (trakka grønt, ikkje trakka grått, berre TEST oransje, målestokk og nord) –

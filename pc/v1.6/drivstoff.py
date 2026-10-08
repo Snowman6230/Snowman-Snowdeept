@@ -181,7 +181,13 @@ class Drivstoff:
                                 "depthMin": s["depthMin"], "sessions": len([x for x in s["sessions"] if not x["test"]]),
                                 "min": round(s.get("secs", 0) / 60), "minTest": round(s.get("secsTest", 0) / 60)})
                 if maps and s.get("map"):
-                    trasear[-1]["map"] = s["map"]
+                    m = dict(s["map"])
+                    try:   # snødjupna i traseen, til fargekartet i rapporten
+                        dg, sim = self.tra.depth_grid(m["lat0"], m["lon0"], m["x0"], m["y0"], m["cell"], m["W"], m["H"], t0, t1)
+                        m["depth"], m["depthSim"] = enc_depth(dg), sim
+                    except Exception:
+                        pass
+                    trasear[-1]["map"] = m
         trasear.sort(key=lambda r: r["name"].lower())
         comp = {f["id"]: f for f in self.computed()}
         fuel = [comp[f["id"]] for f in self.items if t0 * 1000 <= f["t"] < t1 * 1000]
@@ -194,6 +200,11 @@ class Drivstoff:
                     area = dict(self.tra.coverage(t0, t1, include_test=True, max_cells=250_000), onlyTest=True)
                 area.pop("passes", None)
                 if not area.get("empty"):
+                    try:
+                        dg, sim = self.tra.depth_grid(area["lat0"], area["lon0"], area["x0"], area["y0"], area["cell"], area["W"], area["H"], t0, t1)
+                        area["depth"], area["depthSim"] = enc_depth(dg), sim
+                    except Exception:
+                        pass
                     area["parts"] = split_area(area)
             except Exception as e:
                 area = {"empty": True, "error": str(e)}
@@ -270,6 +281,15 @@ def default_report_dir():
     return _DOCS[0]
 
 
+def enc_depth(d):
+    """Snødjupne-rutenett (m, nan = ikkje målt) som base64 av uint8: verdi = cm/2 (0–5 m), 255 = ikkje målt."""
+    import base64
+    v = np.full(d.shape, 255, np.uint8)
+    ok = np.isfinite(d)
+    v[ok] = np.clip(np.round(d[ok] * 50), 0, 250).astype(np.uint8)
+    return base64.b64encode(v.tobytes()).decode()
+
+
 def split_area(a, block_m=60.0, max_parts=4, pad=6):
     """Del trakka område i samanhengande delar (t.d. to bakkar langt frå kvarandre), kvar med sitt eige utsnitt,
     så karta i rapporten blir store nok å lese. Største delen først."""
@@ -309,13 +329,18 @@ def split_area(a, block_m=60.0, max_parts=4, pad=6):
         ra, rb = max(int(rr.min()) - pad, 0), min(int(rr.max()) + pad + 1, H)
         ca, cb = max(int(cc.min()) - pad, 0), min(int(cc.max()) + pad + 1, W)
         sub = np.where(mask[ra:rb, ca:cb], age[ra:rb, ca:cb], 255).astype(np.uint8)
-        out.append({"W": cb - ca, "H": rb - ra, "cell": cell, "age": base64.b64encode(sub.tobytes()).decode(),
-                    "area": round(float(mask.sum()) * cell * cell), "onlyTest": a.get("onlyTest", False)})
+        part = {"W": cb - ca, "H": rb - ra, "cell": cell, "age": base64.b64encode(sub.tobytes()).decode(),
+                "area": round(float(mask.sum()) * cell * cell), "onlyTest": a.get("onlyTest", False)}
+        if a.get("depth"):
+            dep = np.frombuffer(base64.b64decode(a["depth"]), np.uint8)[: W * H].reshape(H, W)
+            part["depth"] = base64.b64encode(np.ascontiguousarray(dep[ra:rb, ca:cb]).tobytes()).decode()
+            part["depthSim"] = a.get("depthSim", False)
+        out.append(part)
     out.sort(key=lambda p: -p["area"])
     return out[:max_parts]
 
 
-def export_reports(fuel, folder, machine="", days=2):
+def export_reports(fuel, folder, machine="", days=2, bounds=None):
     """Skriv rapporten (CSV) for dei siste prepareringsdøgna til mappa. Berre filer som er endra blir skrivne på nytt.
     Returnerer (talet på filer skrivne, filnamn)."""
     import re
@@ -344,7 +369,7 @@ def export_reports(fuel, folder, machine="", days=2):
         try:
             import pdfrapport as PR
             pn = name[:-4] + ".pdf"
-            (folder / (pn + ".tmp")).write_bytes(PR.build(fuel.report(date, maps=True), machine))
+            (folder / (pn + ".tmp")).write_bytes(PR.build(fuel.report(date, maps=True), machine, bounds))
             (folder / (pn + ".tmp")).replace(folder / pn)
             names.append(pn)
         except Exception:

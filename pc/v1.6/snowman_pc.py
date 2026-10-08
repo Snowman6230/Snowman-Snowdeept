@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.66"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.67"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -500,9 +500,9 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 import pdfrapport as PR
                 date=urllib.parse.parse_qs(u.query).get("date",[None])[0]
-                try: mname=(lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8"))).get("mname","")
-                except Exception: mname=""
-                rep=FUEL.report(date,maps=True); data=PR.build(rep,mname); name="snowman-rapport-"+rep["date"]+".pdf"
+                try: uc=(lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8")))
+                except Exception: uc={}
+                rep=FUEL.report(date,maps=True); data=PR.build(rep,uc.get("mname",""),uc.get("bounds")); name="snowman-rapport-"+rep["date"]+".pdf"
                 self.send_response(200); self.send_header("Content-Type","application/pdf")
                 self.send_header("Content-Disposition",f'attachment; filename="{name}"'); self.end_headers(); self.wfile.write(data)
             except Exception as e:
@@ -916,6 +916,10 @@ EXPORT={"last":None,"error":"","files":[],"written":0}
 def report_cfg():
     s=O.system_cfg()
     return {"on":s.get("reportExport",True),"dir":s.get("reportDir") or str(DS.default_report_dir())} if FUEL else {"on":False,"dir":""}
+def ui_bounds():
+    """Snøintervalla frå førarskjermen (Innst. › Snøintervall), til fargane i PDF-rapporten."""
+    try: return (lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8"))).get("bounds")
+    except Exception: return None
 def ui_machine():
     try: return json.loads(UI_CFG.read_text("utf-8")).get("mname","")
     except Exception: return ""
@@ -923,7 +927,7 @@ def export_now():
     c=report_cfg()
     if not (FUEL and c["on"]): return
     try:
-        n,files=DS.export_reports(FUEL,c["dir"],ui_machine())
+        n,files=DS.export_reports(FUEL,c["dir"],ui_machine(),bounds=ui_bounds())
         EXPORT.update(last=time.strftime("%Y-%m-%d %H:%M"),error="",files=files,written=EXPORT["written"]+n)
     except Exception as e:
         EXPORT.update(last=time.strftime("%Y-%m-%d %H:%M"),error=str(e))
