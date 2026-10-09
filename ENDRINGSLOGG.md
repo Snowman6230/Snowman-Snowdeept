@@ -9,6 +9,21 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.87 – funn frå felttest: Zenith35 Pro og korreksjonar over Bluetooth
+- **Funn (felttest 9.10.2026, Surface + GeoMax Zenith35 Pro):**
+  - Posisjon (GGA) kjem stabilt over Bluetooth (utgåande COM4), opp til 26 satellittar.
+  - Korreksjonane frå casteren er feilfrie (basen TH, RTCM 3, GPS+GLONASS), og SNOWMAN sender dei som reine RTCM-rammer.
+  - Zenith-en brukar dei likevel ikkje. Han står i GPS/SBAS, Status Info viser «Datalink Status: Disconnected» med
+    «Datalink: Bluetooth», og mottakaren svarar `@GNSS,…,ERROR` på korreksjonsdataa.
+  - Den innkommande porten (COM3) blir ikkje brukt av mottakaren.
+  - Landnova X på Mesa2 gav RTK FIX med same base, men mot ein Xsite ROVER V2, ikkje mot Zenith-en.
+- **Avgjerd:** for Zenith35 Pro tilrår SNOWMAN no RTK Data Source = GSM/GPRS (SIM-kort og NTRIP-oppsett i mottakaren)
+  eller External (kabel). SNOWMAN les då berre posisjonen. Working Mode skal vere RTK Rover, aldri RTK Base på maskina.
+  Kjem det fram ein GeoMax-kommando som opnar Bluetooth-datalinken, kan han leggjast i «Oppstartskommandoar».
+- **Endra:** hjelpeteksten på NTRIP-sida og diagnosen (`rtk_hint`) seier dette, i staden for at Zenith-en «treng
+  ingen kommandoar».
+- Testa med `simuler-leica.py --anlegg` (RTK FIX, inga åtvaring). Playwright gav ingen JS-feil.
+
 ### PC-prototype v1.6.86 – retting: SNOWMAN koplar til mottakaren på nytt av seg sjølv
 - **Retta (feil i SNOWMAN):** Etter at Zenith35 Pro vart starta på nytt, kom det aldri posisjon igjen. Det stod
   «NO DATA, SAT 0» og «Write timeout» heilt til SNOWMAN sjølv vart starta på nytt. Årsaka: når mottakaren startar på

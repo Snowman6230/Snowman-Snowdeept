@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.86"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.87"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -428,9 +428,9 @@ def rtk_hint(st):
         # dei, ville han brukt basen (DGPS/FLOAT) sjølv med dårleg sikt – så dette er innstillingar, ikkje sikt.
         return (f"Mottakaren les ikkje korreksjonane frå SNOWMAN ({out//1024} kB sendt): han brukar SBAS-satellitt {bid} "
                 f"i staden for basen.{kmt} Feilen ligg i korreksjonsinngangen på mottakaren, ikkje i sikta eller i SNOWMAN. "
-                "Sjekk på nettsida til mottakaren (Zenith: 192.168.10.1): RTK Data Source = Bluetooth, korreksjonsformat "
-                "RTCM 3 (ikkje CMR/RTCM 2) om det finst, Save Settings og start mottakaren på nytt. Status Info der viser "
-                "om mottakaren ser data på korreksjonsinngangen.")
+                "Sjekk på nettsida til mottakaren (Zenith: 192.168.10.1 › Status Info) om «Datalink Status» er Disconnected. "
+                "GeoMax Zenith35 Pro tok i felttest ikkje imot korreksjonar frå PC over Bluetooth: bruk RTK Data Source = "
+                "GSM/GPRS (SIM og NTRIP i mottakaren) eller External (kabel). SNOWMAN les då berre posisjonen.")
     if fix=="RTK FLOAT":
         return ("Mottakaren brukar korreksjonane (RTK FLOAT) og reknar seg fram mot FIX – vent 1–3 min med fri sikt."+kmt+
                 " Står han lenge i FLOAT: antenna treng fri sikt mot himmelen (ikkje inne i bil/under tak, unngå bygningar og tre).")
