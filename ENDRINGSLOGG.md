@@ -9,6 +9,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.86 – retting: SNOWMAN koplar til mottakaren på nytt av seg sjølv
+- **Retta (feil i SNOWMAN):** Etter at Zenith35 Pro vart starta på nytt, kom det aldri posisjon igjen. Det stod
+  «NO DATA, SAT 0» og «Write timeout» heilt til SNOWMAN sjølv vart starta på nytt. Årsaka: når mottakaren startar på
+  nytt, døyr Bluetooth-sambandet utan at Windows lukkar porten. SNOWMAN las difor ingenting frå ein «open» port i det
+  uendelege. NTRIP-delen var i orden, men fekk ikkje skrive korreksjonane til den døde porten.
+- **Nytt:** vakthund på mottakarporten. Kjem det ingen data på 15 s, blir porten lukka og opna på nytt. Mottakarar
+  sender minst éin gong i sekundet, så 15 s stille tyder at sambandet er dødt. Er mottakaren framleis av, prøver
+  SNOWMAN igjen kvart 2. sekund med forklaringa frå v1.6.81.
+- **Nytt:** tre feil på rad når NTRIP skriv korreksjonar til mottakaren, opnar òg porten på nytt.
+- **Retta:** «LAGRE / KOPLE TIL» koplar no alltid til mottakaren på nytt. Før skjedde det berre når port, baud eller
+  oppstartskommandoar var endra.
+- **Nytt:** statusen på NTRIP-sida viser kor mange gonger porten er opna på nytt, og når det skjedde sist.
+- Testa med `simuler-leica.py --anlegg`:
+  - simulatoren fryst i 19 s: porten vart opna på nytt etter 15 s, og RTK FIX kom tilbake då data kom att
+  - «LAGRE / KOPLE TIL» med same port koplar til på nytt
+  - Playwright gav ingen JS-feil
+
 ### PC-prototype v1.6.85 – forklaring for MANUELL og nøytrale namn
 - **Bakgrunn:** Etter omstart av Zenith35 Pro viste SNOWMAN «MANUELL» (GGA-kvalitet 7). Diagnosen sa då at mottakaren
   «får korreksjonar men brukar dei ikkje». Det var misvisande, for kvalitet 7 er ein fast eller innlagd posisjon og

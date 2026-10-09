@@ -74,7 +74,7 @@ el.innerHTML=`<p>${r.mounts.length} mountpoints på ${h(r.caster)} (${h(r.proto)
 r.mounts.map(m=>`<tr class="m${m.mountpoint==cur?' sel':''}" data-m="${h(m.mountpoint)}"><td><b>${h(m.mountpoint)}</b></td><td>${h(m.name)}</td><td>${h(m.format)}</td><td>${h(m.systems)}</td><td>${m.km!=null?m.km+' km':'–'}</td><td>${m.network_rtk?'nettverk':'enkeltbase'}${m.nmea?' · krev posisjon':''}</td></tr>`).join('')+'</table>';
 el.querySelectorAll('tr.m').forEach(tr=>tr.onclick=()=>{document.getElementById('mountpoint').value=tr.dataset.m;el.querySelectorAll('tr.m').forEach(x=>x.classList.toggle('sel',x==tr))})
 }catch(e){el.innerHTML='<p class=bad>Feil: '+h(e)+'</p>'}}
-async function poll(){try{let x=await(await fetch('/api/status')).json();s.textContent=`Serial: ${x.serial_connected?'TILKOPLA':'AV'}  ${x.port} @ ${x.baud}
+async function poll(){try{let x=await(await fetch('/api/status')).json();s.textContent=`Serial: ${x.serial_connected?'TILKOPLA':'AV'}  ${x.port} @ ${x.baud}${x.serial_reopens?'  (opna på nytt '+x.serial_reopens+' gong(er) etter stille samband, sist for '+Math.round(Date.now()/1000-x.serial_reopen_time)+' s sidan)':''}
 NTRIP: ${x.ntrip_connected?'TILKOPLA':'AV'}  ${x.caster}/${x.mountpoint}${x.ntrip_proto?'  ('+x.ntrip_proto+')':''}${x.ntrip_connected&&x.ntrip_wait>=3?'  – ingen korreksjonar på '+x.ntrip_wait+' s':''}
 RTK: ${x.fix}   SAT: ${x.satellites}   HDOP: ${x.hdop??'--'}
 Høgd frå mottakar: ${x.altitude??'--'} m (geoidehøgd i meldinga: ${x.geoid_sep??'--'} m)

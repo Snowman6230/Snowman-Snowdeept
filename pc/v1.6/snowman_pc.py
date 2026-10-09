@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.85"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.86"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -316,6 +316,9 @@ def serial_explain(e,port):
         return f"Porten {port} finst ikkje. Sjekk kabel og portnamn."
     return ""
 
+SERIAL_REOPEN=threading.Event()   # «LAGRE / KOPLE TIL» eller døyande samband: lukk porten og opne han på nytt
+SERIAL_IDLE=15.0                   # s utan data frå mottakaren før porten blir opna på nytt (mottakarar sender minst 1 Hz)
+
 def serial_loop():
     global serial_obj
     while not STOP.is_set():
@@ -338,11 +341,26 @@ def serial_loop():
                 if cmd.strip():
                     serial_obj.write((cmd.strip()+"\r\n").encode("ascii","ignore")); LOG.event("Sendt til mottakar: "+cmd.strip()); time.sleep(0.3)
             buf=b""; opened=(CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds")); bad_n=0; gnss_lost=False
+            SERIAL_REOPEN.clear(); last_rx=time.time()
             while not STOP.is_set() and serial_obj.is_open:
                 if (CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"))!=opened:   # endra i oppsettet: opne på nytt
                     LOG.event("Mottakaroppsett endra – opnar porten på nytt"); serial_obj.close()
                     update(serial_connected=False); serial_obj=None; break
+                if SERIAL_REOPEN.is_set():   # LAGRE / KOPLE TIL, eller NTRIP får ikkje skrive til porten
+                    SERIAL_REOPEN.clear(); LOG.event("Opnar mottakarporten på nytt (kople til på nytt)")
+                    serial_obj.close(); update(serial_connected=False); serial_obj=None; break
+                # Vakthund (v1.6.86): når mottakaren startar på nytt eller går utanfor rekkjevidd, døyr Bluetooth-sambandet
+                # utan at Windows lukkar porten – då kjem det aldri meir data. Opne porten på nytt etter SERIAL_IDLE s stille.
+                if time.time()-last_rx>SERIAL_IDLE:
+                    LOG.event(f"Ingen data frå mottakaren på {SERIAL_IDLE:.0f} s – opnar porten på nytt",err=True)
+                    update(serial_reopens=STATE.get("serial_reopens",0)+1,serial_reopen_time=time.time())
+                    update(serial_connected=False,last_error=f"Serial: ingen data frå mottakaren på {SERIAL_IDLE:.0f} s – koplar til på nytt "
+                           "(mottakaren av, starta på nytt eller utanfor rekkjevidd?)")
+                    try: serial_obj.close()
+                    except Exception: pass
+                    serial_obj=None; time.sleep(1); break
                 b=serial_obj.read(4096)
+                if b: last_rx=time.time()
                 ga=time.time()-(STATE.get("gga_time") or time.time())
                 if ga>5 and not gnss_lost:
                     gnss_lost=True; LOG.event(f"Mottakaren har slutta å sende posisjon (ingen GGA på {ga:.0f} s)",err=True)
@@ -427,7 +445,7 @@ def ntrip_loop():
     Vakthund (v1.6.41): kjem det ingen data på CFG["ntrip_timeout"] sekund, blir sambandet kopla opp på nytt
     (mobilnettet kan «henge» utan at sambandet blir lukka – då ville SNOWMAN elles vente i det uendelege)."""
     global ntrip_sock
-    last_rtcm_log=0; last_wfail=0
+    last_rtcm_log=0; last_wfail=0; wfails=0
     while not STOP.is_set():
         stream=None
         try:
@@ -460,8 +478,10 @@ def ntrip_loop():
                     # Feil ved skriving til mottakaren er ein MOTTAKARFEIL: NTRIP-sambandet skal halde fram.
                     # (write_timeout=1 hindrar at eit dødt Bluetooth-samband held tråden fast.)
                     try:
-                        so.write(clean); update(bytes_rtcm_out=STATE.get("bytes_rtcm_out",0)+len(clean),rtcm_out_time=now)
+                        so.write(clean); update(bytes_rtcm_out=STATE.get("bytes_rtcm_out",0)+len(clean),rtcm_out_time=now); wfails=0
                     except Exception as e:
+                        wfails+=1
+                        if wfails>=3: SERIAL_REOPEN.set(); wfails=0   # porten tek ikkje imot: sambandet er dødt – opne på nytt
                         if now-last_wfail>=10:
                             last_wfail=now; update(last_error=f"Serial: klarte ikkje å sende korreksjonar til mottakaren ({e})")
                             LOG.event(f"Mottakar-feil ved sending av RTCM: {e}",err=True)
@@ -826,6 +846,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 log_changes("NTRIP/mottakar",before,CFG,("serial_port","baud","caster","caster_port","mountpoint","username","password",
                             "ntrip_version","ntrip_timeout","gga_interval","initCmds"))
                 save_cfg(); update(last_error="")
+                if "serial_port" in d: SERIAL_REOPEN.set()   # LAGRE / KOPLE TIL: kople alltid til mottakaren på nytt
                 self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"config":{**CFG,"password":"***" if CFG["password"] else ""}}).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
