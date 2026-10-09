@@ -9,6 +9,25 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.82 – kvifor manglar RTK FIX? Diagnose av heile kjeda
+- **Bakgrunn:** Etter at Bluetooth fungerte, viste Zenith35 Pro «SBAS» (GGA-kvalitet 9) med 10 satellittar. NTRIP var
+  tilkopla med gyldige RTCM-korreksjonar, men det kom ingen snødjupne, sidan snødjupne krev RTK FIX. Sjølve
+  avgrensinga er rett og blir ikkje endra: utan RTK FIX blir det ingen snødjupne.
+- **Nytt:** `rtk_hint()` vurderer heile kjeda når det ikkje er RTK FIX. Vurderinga blir vist i GNSS-panelet og på
+  NTRIP-sida, og skil mellom:
+  - mottakaren er ikkje tilkopla
+  - ingen NTRIP
+  - korreksjonane er ikkje i orden
+  - korreksjonane blir ikkje sende vidare til mottakaren
+  - mottakaren får korreksjonar men brukar dei ikkje (antenna utan fri sikt, eller feil innstilling i mottakaren)
+  - RTK FLOAT: vent med fri sikt
+- **Nytt:** NTRIP-sida viser byte sende til mottakaren. Ho viser òg om mottakaren sjølv brukar korreksjonar
+  (korreksjonsalder og base-ID frå GGA-felt 13–14, som SNOWMAN alt las). SBAS kan òg fylle feltet, og då står det.
+- **Endra:** Kjelde i GNSS-panelet viser «GNSS + NTRIP» i staden for «Leica + CPOS». SNOWMAN er leverandøruavhengig,
+  og korreksjonane kan kome frå andre enn CPOS.
+- Testa med `simuler-leica.py --anlegg` (RTK FIX, ingen åtvaring) og `rtk_hint` mot tilstandane over. Playwright
+  gav ingen JS-feil.
+
 ### PC-prototype v1.6.81 – forklaring når mottakarporten ikkje opnar
 - **Bakgrunn:** På Surface med GeoMax Zenith35 Pro over Bluetooth fekk SNOWMAN berre feilen
   `could not open port 'COM4': FileNotFoundError(2, 'Systemet finner ikke angitt fil.')`. Porten (UTGÅANDE COM4)

@@ -81,8 +81,9 @@ Høgd frå mottakar: ${x.altitude??'--'} m (geoidehøgd i meldinga: ${x.geoid_se
 Ellipsoidisk høgd: ${x.h_ell??'--'} m · Kartverket-geoide N: ${x.geoid_model??'--'} m
 NN2000-høgd (med kalibreringa): ${x.h_nn2000??'--'} m
 Posisjon: ${x.lat??'--'}, ${x.lon??'--'}${x.serial_connected&&x.gga_age!=null&&x.gga_age>=3?'  – INGEN NY POSISJON PÅ '+Math.round(x.gga_age)+' s':''}${x.nmea_bad?'\nNMEA med feil sjekksum (forkasta): '+x.nmea_bad:''}${x.nmea_nock?'\nNMEA utan sjekksum: '+x.nmea_nock:''}
-RTCM mottatt: ${x.bytes_rtcm} byte
+RTCM mottatt: ${x.bytes_rtcm} byte · sendt til mottakaren: ${x.bytes_rtcm_out||0} byte
 ${rtcmTxt(x)}
+Mottakaren brukar korreksjonar: ${x.corr_age!=null?'alder '+x.corr_age+' s · base-ID '+(x.base_id??'?')+(/RTK/.test(x.fix||'')?'':' (kan vere SBAS, ikkje RTK)'):'nei (tomt korreksjonsfelt i GGA)'}${x.rtk_hint?'\nUTAN RTK FIX: '+x.rtk_hint:''}
 Svar frå mottakar: ${x.rx_text||'--'}
 Feil: ${x.last_error||'Ingen'}`;}catch(e){s.textContent='Tenesta svarar ikkje: '+e}setTimeout(poll,1000)}poll()
 </script>

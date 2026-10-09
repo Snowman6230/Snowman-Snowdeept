@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.81"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.82"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -382,6 +382,28 @@ def serial_loop():
             except: pass
             serial_obj=None; time.sleep(2)
 
+def rtk_hint(st):
+    """Kvifor manglar RTK FIX? Kort vurdering på norsk frå heile kjeda: caster → SNOWMAN → mottakar → løysing.
+    Byggjer på GGA-kvaliteten og korreksjonsfelta i GGA (alder, base-ID) og byte sende til mottakaren."""
+    fix=st.get("fix") or ""
+    if fix=="RTK FIX" or fix=="SIMULERT": return ""
+    if not st.get("serial_connected"): return "Mottakaren er ikkje tilkopla – sjå «Feil»."
+    if not st.get("ntrip_connected"): return "Ingen korreksjonar: NTRIP er ikkje tilkopla (Innst. › Kart, GNSS). Utan korreksjonar blir det aldri RTK FIX."
+    r=st.get("rtcm") or {}
+    if not str(r.get("verdict","")).startswith("OK"): return "Korreksjonane frå casteren er ikkje i orden: "+str(r.get("verdict") or "ventar")
+    out=st.get("bytes_rtcm_out",0); ot=st.get("rtcm_out_time")
+    if not out or (ot and time.time()-ot>10):
+        return "Korreksjonane kjem frå casteren, men blir ikkje sende vidare til mottakaren – sjekk at mottakarporten er open."
+    km=r.get("baseKm"); kmt=f" Basen er {km} km unna." if km is not None else ""
+    if fix=="RTK FLOAT":
+        return ("Mottakaren brukar korreksjonane (RTK FLOAT) og reknar seg fram mot FIX – vent 1–3 min med fri sikt."+kmt+
+                " Står han lenge i FLOAT: antenna treng fri sikt mot himmelen (ikkje inne i bil/under tak, unngå bygningar og tre).")
+    return (f"Mottakaren får korreksjonar frå SNOWMAN ({out//1024} kB sendt), men brukar dei ikkje – han står i {fix or 'ukjend'}."+kmt+
+            " Sjekk: 1) Antenna ute med fri sikt mot himmelen – inne i bil eller under tak blir det sjeldan RTK. "
+            "2) På nettsida til mottakaren (Zenith: 192.168.10.1 › Settings): Working Mode = RTK Rover og RTK Data Source = "
+            "same veg som SNOWMAN er kopla (Bluetooth), trykk Save Settings og start mottakaren på nytt. "
+            "3) Status Info på same nettside viser om mottakaren sjølv ser korreksjonane (korreksjonsalder).")
+
 def ntrip_loop():
     """Hentar korreksjonar frå casteren og sender dei uendra vidare til mottakaren.
     Vakthund (v1.6.41): kjem det ingen data på CFG["ntrip_timeout"] sekund, blir sambandet kopla opp på nytt
@@ -418,7 +440,8 @@ def ntrip_loop():
                 if so is not None and getattr(so,"is_open",False):
                     # Feil ved skriving til mottakaren er ein MOTTAKARFEIL: NTRIP-sambandet skal halde fram.
                     # (write_timeout=1 hindrar at eit dødt Bluetooth-samband held tråden fast.)
-                    try: so.write(data)
+                    try:
+                        so.write(data); update(bytes_rtcm_out=STATE.get("bytes_rtcm_out",0)+len(data),rtcm_out_time=now)
                     except Exception as e:
                         if now-last_wfail>=10:
                             last_wfail=now; update(last_error=f"Serial: klarte ikkje å sende korreksjonar til mottakaren ({e})")
@@ -459,6 +482,8 @@ class API(http.server.BaseHTTPRequestHandler):
         u=urllib.parse.urlparse(self.path)
         if u.path=="/api/status":
             st=dict(STATE); gt=st.get("gga_time"); st["gga_age"]=None if not gt else round(time.time()-gt,1)
+            try: st["rtk_hint"]=rtk_hint(st)
+            except Exception: st["rtk_hint"]=""
             self.headers_ok(); self.wfile.write(json.dumps(st).encode()); return
         if u.path=="/":
             p=Path(__file__).with_name("driver.html")

@@ -2388,6 +2388,7 @@
         </div>
         <small id="satNote" style="display: block; margin-top: 10px; color: #9ab3c1"
           >Ekstern GNSS (Leica/RTK) blir lesen automatisk frå den lokale SNOWMAN-tenesta. Mobil-GPS kan brukast til test, men gir ikkje satellittal.</small
+        ><small id="satRtk" style="display: block; margin-top: 8px; color: #ffd27a; font-weight: 700"></small
         ><button
           class="btn"
           onclick="
@@ -2995,7 +2996,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.81";
+      const APP_VERSION = "1.6.82";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3155,6 +3156,7 @@
       function renderSat() {
         if (src === "demo") {
           $("satCount").textContent = "18*";
+          $("satRtk").textContent = "";
           $("satFix").textContent = "DEMO";
           $("satAcc").textContent = "simulert";
           $("satSource").textContent = "DEMO";
@@ -3162,9 +3164,11 @@
           $("satCount").textContent = gnss.satellites;
           $("satFix").textContent = gnss.fix;
           $("satAcc").textContent = gnss.hdop == null ? "--" : "HDOP " + gnss.hdop;
-          $("satSource").textContent = gnss.ntrip_connected ? "Leica + CPOS" : "Leica";
+          $("satSource").textContent = gnss.ntrip_connected ? "GNSS + NTRIP" : "GNSS";
+          $("satRtk").textContent = gnss.rtk_hint ? "Utan RTK FIX: " + gnss.rtk_hint : "";
         } else {
           $("satCount").textContent = "--";
+          $("satRtk").textContent = "";
           $("satFix").textContent = watchId !== null ? "GPS" : "AV";
           $("satAcc").textContent = $("acc").textContent || "--";
           $("satSource").textContent = watchId !== null ? "Mobil" : "Ingen";
