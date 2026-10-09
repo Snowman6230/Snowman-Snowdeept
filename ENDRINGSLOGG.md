@@ -9,6 +9,36 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.89 – RTK-feilsøkar
+- **Nytt:** sida «🔍 Feilsøk RTK» (`/feilsok`, ny modul `rtksjekk.py`). Eigaren ønskte eit program som sjekkar alle
+  stega for å få RTK. Sida går gjennom heile kjeda og blir oppdatert kvart 2. sekund:
+  1. mottakarport vald og open
+  2. posisjon (GGA) kjem inn
+  3. satellittar og sikt
+  4. mottakaren er rover (ikkje base)
+  5. internett og caster (live DNS- og TCP-test)
+  6. innlogging og mountpoint
+  7. korreksjonar frå basen
+  8. basen sender observasjonar og posisjon
+  9. avstand til basen
+  10. korreksjonar sende til mottakaren
+  11. mottakaren godtek dei (`@GNSS,…ERROR`)
+  12. mottakaren brukar dei (korreksjonsalder og base-ID, SBAS)
+  13. RTK FIX
+  14. snødjupne
+
+  Det første steget som feilar, er merkt «HER STOPPAR DET», med konkret råd.
+- **Nytt:** «KOPIER RAPPORT» gir heile resultatet som tekst, utan passord og brukarnamn, klar til å limast inn i ei
+  melding i staden for skjermbilete.
+- **Nytt:** knappen «🔍 FEILSØK RTK» i GNSS-panelet og på NTRIP-sida.
+- **Avgjerd:** mottakaren kan òg hente korreksjonane sjølv (GSM/SIM eller radio). Har mottakaren FIX utan caster i
+  SNOWMAN, er det godkjent, og stega for korreksjonar via SNOWMAN blir hoppa over.
+- Testa:
+  - sjølvtest (`python3 rtksjekk.py`) med felttilstanden frå 9.10. (stoppar på «godtek korreksjonane»), FIX,
+    `FileNotFoundError`, MANUELL, DNS-feil, SBAS og korreksjonar direkte til mottakaren
+  - Playwright utan og med `simuler-leica.py --anlegg` (alle steg grøne), utan JS-feil
+  - skjermbilete i `docs/prototypar/feilsok/`
+
 ### Avgjerd – RTK i SNOWMAN (ingen kodeendring)
 - **Avgjerd:** eigaren vil at SNOWMAN skal rekne RTK sjølv, og at det skal vere mottakaruavhengig (rådata som RTCM 3
   MSM). Planen er RTKLIB demo5 (BSD-2) i `pc/v1.7`, med «RTK i mottakaren» som val.

@@ -1,0 +1,66 @@
+<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. -->
+<html lang="nn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SNOWMAN – feilsøk RTK</title>
+<style>
+body{font:16px Arial,sans-serif;background:#07141c;color:#eef;margin:20px;max-width:980px}
+h1{font-size:24px;margin:0 0 6px}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+button{padding:11px 16px;background:#1687bd;color:#fff;border:0;border-radius:7px;font-size:15px;font-weight:700;cursor:pointer}
+button.sec{background:#2e4b5c}
+#sum{font-size:18px;font-weight:800;padding:12px 14px;border-radius:10px;margin:8px 0 12px}
+#sum.ok{background:#0f3d24;color:#7dffa8}#sum.bad{background:#3d1a14;color:#ffb3a3}#sum.wait{background:#3a3110;color:#ffd27a}
+.st{display:grid;grid-template-columns:42px 1fr;gap:10px;background:#0b202b;border-radius:10px;padding:10px 12px;margin:6px 0;border:2px solid transparent}
+.st.first{border-color:#ff8a6b;background:#2a1712}
+.st .i{font-size:24px;font-weight:900;text-align:center;line-height:30px;border-radius:50%;width:32px;height:32px}
+.ok .i{background:#13532f;color:#7dffa8}.fail .i{background:#5a1f16;color:#ffb3a3}.warn .i,.wait .i{background:#4d3f10;color:#ffd27a}.skip .i{background:#1d2f39;color:#6f8a99}
+.st b{font-size:16px}.st.skip b{color:#7f9aa9}
+.d{font-size:14px;color:#b8cdd8;margin-top:2px;word-break:break-word}
+.a{font-size:15px;color:#ffd27a;margin-top:6px;font-weight:700}
+.here{display:inline-block;margin-left:8px;background:#ff8a6b;color:#2a0d07;font-size:12px;font-weight:900;padding:2px 7px;border-radius:5px;vertical-align:2px}
+.note{font-size:13px;color:#7f9aa9;margin-top:14px}
+#msg{font-size:14px;color:#7dffa8}
+</style></head><body>
+<h1>🔍 Feilsøk RTK</h1>
+<div class="top">
+  <button onclick="copyRep()">📋 KOPIER RAPPORT</button>
+  <button class="sec" onclick="location.href='/ntrip'">⚙ INNST. GNSS / NTRIP</button>
+  <button class="sec" onclick="location.href='/'">← TILBAKE TIL SNOWMAN</button>
+  <span id="msg"></span>
+</div>
+<div id="sum" class="wait">Sjekkar …</div>
+<div id="list"></div>
+<p class="note">Går gjennom heile kjeda frå PC-en til RTK FIX, og blir oppdatert kvart 2. sekund. Det første steget som feilar, er merkt «HER STOPPAR DET» – rett det først, dei neste stega avheng ofte av det. «KOPIER RAPPORT» gir heile resultatet som tekst (utan passord og brukarnamn), klar til å limast inn i ei melding.</p>
+<script>
+const SYM={ok:"✓",fail:"✗",warn:"!",wait:"…",skip:"–"};
+let REP="";
+const esc=(x)=>String(x??"").replace(/[&<>"]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+async function poll(){
+  try{
+    const r=await (await fetch("/api/rtksjekk",{cache:"no-store"})).json();
+    if(!r.ok_api) throw new Error(r.error||"feil");
+    REP=r.report;
+    const first=r.steps.find(s=>s.id===r.first);
+    const sum=document.getElementById("sum");
+    if(r.ok){sum.className="ok";sum.textContent="✓ Alle steg i orden – RTK FIX.";}
+    else if(first&&first.status==="fail"){sum.className="bad";sum.textContent="✗ Stoppar på: "+first.title;}
+    else{sum.className="wait";sum.textContent="… "+(first?first.title+": "+first.detail:"Ventar");}
+    document.getElementById("list").innerHTML=r.steps.map(s=>
+      `<div class="st ${s.status}${s.id===r.first&&s.status==="fail"?" first":""}"><div class="i">${SYM[s.status]||"?"}</div><div>`+
+      `<b>${esc(s.title)}</b>${s.id===r.first&&s.status==="fail"?'<span class="here">HER STOPPAR DET</span>':""}`+
+      (s.detail?`<div class="d">${esc(s.detail)}</div>`:"")+
+      ((s.status==="fail"||s.status==="warn"||s.status==="wait")&&s.action?`<div class="a">→ ${esc(s.action)}</div>`:"")+
+      `</div></div>`).join("");
+  }catch(e){
+    const sum=document.getElementById("sum");sum.className="bad";sum.textContent="SNOWMAN-tenesta svarar ikkje: "+e.message;
+  }
+  setTimeout(poll,2000);
+}
+async function copyRep(){
+  const m=document.getElementById("msg");
+  try{await navigator.clipboard.writeText(REP);m.textContent="✓ Rapporten er kopiert – lim han inn i ei melding.";}
+  catch(e){ // utan utklippstavle (t.d. eldre nettlesar): vis teksten så han kan merkast og kopierast for hand
+    const t=document.createElement("textarea");t.value=REP;t.style.cssText="width:100%;height:220px;margin-top:8px;background:#102733;color:#fff";
+    document.getElementById("list").prepend(t);t.select();m.textContent="Merk teksten og kopier (Ctrl+C).";}
+  setTimeout(()=>m.textContent="",5000);
+}
+poll();
+</script></body></html>

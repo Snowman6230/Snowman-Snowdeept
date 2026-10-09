@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.88"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.89"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -787,6 +787,21 @@ class API(http.server.BaseHTTPRequestHandler):
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
         if u.path=="/tastatur.js":   # tastatur på skjermen (alle sider)
             self.headers_ok(200,"application/javascript"); self.wfile.write((HERE/"tastatur.js").read_bytes()); return
+        if u.path=="/feilsok":   # RTK-feilsøkar (Innst. › GNSS › FEILSØK RTK)
+            self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(Path(__file__).with_name("feilsok.html").read_bytes()); return
+        if u.path=="/api/rtksjekk":   # alle stega frå port til RTK FIX – utan passord/brukarnamn
+            try:
+                import rtksjekk as RS
+                try:
+                    from serial.tools import list_ports
+                    ports=[{"port":p.device,"desc":p.description or ""} for p in list_ports.comports()]
+                except Exception: ports=[]
+                st=dict(STATE)
+                net=None if st.get("ntrip_connected") else RS.net_check(str(CFG.get("caster") or ""),CFG.get("caster_port") or 2101)
+                cfg={k:CFG.get(k) for k in ("serial_port","baud","caster","caster_port","mountpoint","rtcm_drop")}
+                r=RS.check(st,cfg,ports,net); r["report"]=RS.report(r,"v"+VERSION); r["ok_api"]=True
+            except Exception as e: r={"ok_api":False,"error":f"{e}{where(e)}"}
+            self.headers_ok(); self.wfile.write(json.dumps(r,ensure_ascii=False).encode()); return
         if u.path=="/ntrip":
             p=Path(__file__).with_name("ntrip.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return

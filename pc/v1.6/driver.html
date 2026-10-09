@@ -2389,6 +2389,7 @@
         <small id="satNote" style="display: block; margin-top: 10px; color: #9ab3c1"
           >Ekstern GNSS (Leica/RTK) blir lesen automatisk frå den lokale SNOWMAN-tenesta. Mobil-GPS kan brukast til test, men gir ikkje satellittal.</small
         ><small id="satRtk" style="display: block; margin-top: 8px; color: #ffd27a; font-weight: 700"></small
+        ><button class="btn" onclick="location.href = 'feilsok'" title="Går gjennom alle stega frå mottakar til RTK FIX og viser kvar det stoppar">🔍 FEILSØK RTK</button
         ><button
           class="btn"
           onclick="
@@ -2996,7 +2997,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.88";
+      const APP_VERSION = "1.6.89";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));

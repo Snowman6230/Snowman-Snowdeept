@@ -1,6 +1,6 @@
 <!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. --><meta charset="utf-8"><title>SNOWMAN NTRIP v1.2</title>
 <style>body{font:16px Arial;background:#07141c;color:#eef;margin:25px;max-width:900px}input{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:230px}button{padding:11px 18px;margin:8px;background:#1687bd;color:white;border:0;border-radius:7px}button:disabled{opacity:.45}.g{display:grid;grid-template-columns:180px 1fr;gap:4px}.card{background:#0b202b;padding:18px;border-radius:12px;margin:12px 0}.ok{color:#4f6}.bad{color:#f86}select{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:252px}#mtab{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}#mtab td,#mtab th{border-bottom:1px solid #294452;padding:6px;text-align:left}#mtab tr.m:hover{background:#163a4c;cursor:pointer}#mtab tr.sel{background:#1b4a60}</style>
-<h1>SNOWMAN NTRIP / GNSS <button onclick="location.href='/'" style="background:#2e4b5c;font-size:15px;vertical-align:middle">← TILBAKE TIL SNOWMAN</button></h1>
+<h1>SNOWMAN NTRIP / GNSS <button onclick="location.href='/feilsok'" style="background:#7a4fc0;font-size:15px;vertical-align:middle">🔍 FEILSØK RTK</button><button onclick="location.href='/'" style="background:#2e4b5c;font-size:15px;vertical-align:middle">← TILBAKE TIL SNOWMAN</button></h1>
 <div class=card><h3>GNSS / Leica</h3><div class=g>
 <label>COM-port</label><input id=serial_port list=ports placeholder="t.d. COM4"><datalist id=ports></datalist>
 <label>Baud</label><input id=baud value="115200"></div>
@@ -21,7 +21,7 @@
 <textarea id=initCmds rows=3 style="width:100%;max-width:640px;background:#102733;color:#fff;border:1px solid #456;padding:8px;font-family:monospace" placeholder="Éin kommando per linje. Blir sende kvar gong porten blir opna."></textarea>
 <p style="font-size:13px;color:#9ab3c1;margin:4px">Vanlegvis tomt. Svaret frå mottakaren blir vist under «Svar frå mottakar». GeoMax Zenith35 Pro (felttest 9.10.2026): Working Mode = RTK Rover (aldri RTK Base på maskina), RTK Data Source = Bluetooth, utgåande port. Mottakaren svara <code>@GNSS,ADVNULLANTENNA,ERROR</code> på antennenamnet til basen – prøv «1008,1033» i feltet over. Hjelper ikkje det: RTK Data Source = GSM/GPRS (SIM og NTRIP i Zenith-en) eller External (kabel).</p>
 <p id=portinfo style="font-size:13px;color:#9ab3c1;margin:4px"></p>
-<button id=saveBtn onclick=save()>LAGRE / KOPLE TIL</button><button onclick="location.href='/'" style="background:#2e4b5c">← TILBAKE TIL SNOWMAN</button><div id=saveMsg aria-live=polite style="margin:4px 8px;font-weight:bold;min-height:1.3em"></div></div>
+<button id=saveBtn onclick=save()>LAGRE / KOPLE TIL</button><button onclick="location.href='/feilsok'" style="background:#7a4fc0">🔍 FEILSØK RTK</button><button onclick="location.href='/'" style="background:#2e4b5c">← TILBAKE TIL SNOWMAN</button><div id=saveMsg aria-live=polite style="margin:4px 8px;font-weight:bold;min-height:1.3em"></div></div>
 <div class=card><h3>Status</h3><pre id=s>Vent...</pre></div>
 <script src="/tastatur.js"></script>
 <script>
