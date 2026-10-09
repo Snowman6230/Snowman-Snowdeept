@@ -268,6 +268,22 @@ snøproduksjon – og kartlag på hovudkartet. Alt blir tilpassa staden automati
    av modellar, og at oppdateringar alltid blir testa før dei blir sende ut. Lokale data og lokal drift skal
    aldri avhenge av den sentrale motoren.
 
+## 15. RTK i SNOWMAN (avgjerd 2026-10-09, ventar)
+
+Eigaren: «RTK skal vere i SNOWMAN». I dag reknar mottakaren RTK sjølv. SNOWMAN hentar korreksjonane (NTRIP) og les
+resultatet (GGA, kvalitet 4 = FIX).
+
+- **Mål:** SNOWMAN reknar RTK sjølv frå rådata (kode og bølgjefase) frå mottakaren og basedata frå NTRIP.
+- **Mottakaruavhengig (eigaren sitt val):**
+  - Rådata blir lesne som RTCM 3 MSM (1074/1084/1094/1124 o.l.), som mange mottakarar kan sende.
+  - Andre format (u-blox, NovAtel, Septentrio) kan kome seinare.
+- **RTK-motor:** RTKLIB, demo5-utgåva (BSD-2-lisens, kan brukast i proprietær kode med lisenstekst). Han køyrer
+  lokalt og utan nett.
+- **Versjon:** byggjast i `pc/v1.7`. «RTK i mottakaren» blir verande som val. Snødjupne krev framleis FIX.
+- **Krav til mottakaren:** han må kunne sende rådata ut. Zenith35 Pro viser berre NMEA i oppsettet, så det må sjekkast.
+- **Status:** eigaren valde å vente til Zenith-en fungerer med dagens løysing (sjå
+  `claude/felttest-zenith35-2026-10-09.md` i prosjektet).
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |

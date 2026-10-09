@@ -9,6 +9,11 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### Avgjerd – RTK i SNOWMAN (ingen kodeendring)
+- **Avgjerd:** eigaren vil at SNOWMAN skal rekne RTK sjølv, og at det skal vere mottakaruavhengig (rådata som RTCM 3
+  MSM). Planen er RTKLIB demo5 (BSD-2) i `pc/v1.7`, med «RTK i mottakaren» som val.
+- Arbeidet ventar til Zenith35 Pro fungerer med dagens løysing. Sjå docs/VEGEN-VIDARE.md kap. 15.
+
 ### PC-prototype v1.6.88 – hald tilbake antennemeldingar som mottakaren ikkje godtek
 - **Funn:** Zenith35 Pro svarte `@GNSS,ADVNULLANTENNA,ERROR` på korreksjonane. «ADVNULLANTENNA» er antennenamnet til
   basen i RTCM 1008/1033. Det tyder at mottakaren faktisk les korreksjonane frå SNOWMAN over Bluetooth, men ikkje
