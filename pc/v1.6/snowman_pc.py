@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.87"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.88"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -112,6 +112,7 @@ CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint
        "ntrip_version":"auto","ntrip_timeout":20,   # NTRIP 1/2/auto, og vakthund: sekund utan korreksjonar før ny oppkopling
        "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,
        "tiltMode":"auto","tiltFlipPitch":False,"tiltFlipRoll":False,
+       "rtcm_drop":"",  # RTCM-typar som ikkje blir sende til mottakaren, t.d. «1008,1033» (antennenamn mottakaren ikkje godtek)
        "initCmds":"",   # oppstartskommandoar til mottakaren (éin per linje), sende når seriellporten blir opna
        "hudLan":False,
        "frost_client_id":"",   # tomt = SNOWMAN sin innebygde Frost-ID (berre opne data); eit anlegg kan setje sin eigen
@@ -413,6 +414,11 @@ def rtk_hint(st):
     if not out or (ot and time.time()-ot>10):
         return "Korreksjonane kjem frå casteren, men blir ikkje sende vidare til mottakaren – sjekk at mottakarporten er open."
     km=r.get("baseKm"); kmt=f" Basen er {km} km unna." if km is not None else ""
+    rx=str(st.get("rx_text") or ""); rxt=st.get("rx_time") or 0
+    if re.search(r"ANTENNA,ERROR",rx) and time.time()-rxt<60 and not re.search(r"1033",str(CFG.get("rtcm_drop") or "")):
+        return ("Mottakaren svarar «"+rx[:60]+"»: han godtek ikkje antennenamnet til basen (RTCM 1008/1033) og forkastar truleg "
+                "korreksjonane. Skriv «1008,1033» i feltet «Ikkje send desse RTCM-typane til mottakaren» på NTRIP-sida, "
+                "trykk LAGRE / KOPLE TIL og vent 1–2 minutt.")
     if fix=="MANUELL":
         # GGA-kvalitet 7: mottakaren melder ein fast/innlagd posisjon – ikkje ei måling. Typisk Working Mode = Base/Static,
         # eller eit augneblinksbilete medan mottakaren startar opp eller byter modus.
@@ -472,7 +478,8 @@ def ntrip_loop():
                     if wait>tmo: raise ConnectionError(f"Ingen korreksjonar på {wait:.0f} s – koplar til på nytt")
                     continue
                 last_data=now
-                clean=RTCM.feed(data)   # berre heile RTCM-rammer med rett CRC går vidare – aldri tekst frå casteren
+                drop={int(x) for x in re.findall(r"\d{4}",str(CFG.get("rtcm_drop") or ""))}
+                clean=RTCM.feed(data,drop)   # berre heile RTCM-rammer med rett CRC går vidare – aldri tekst frå casteren
                 so=serial_obj   # lokal referanse: serial_loop kan setje serial_obj til None når som helst
                 if clean and so is not None and getattr(so,"is_open",False):
                     # Feil ved skriving til mottakaren er ein MOTTAKARFEIL: NTRIP-sambandet skal halde fram.
@@ -559,7 +566,7 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception: st={}
             self.headers_ok(); self.wfile.write(json.dumps({"launcher":bool(st.get("browser")),"mode":st.get("mode","window"),"system":system_cfg()}).encode()); return
         if u.path=="/api/config":   # NTRIP/GNSS-oppsettet: noverande verdiar til skjemaet (passordet blir aldri sendt)
-            c={k:CFG[k] for k in ("serial_port","baud","caster","caster_port","mountpoint","username","initCmds","ntrip_version","ntrip_timeout")}
+            c={k:CFG.get(k,"") for k in ("serial_port","baud","caster","caster_port","mountpoint","username","initCmds","rtcm_drop","ntrip_version","ntrip_timeout")}
             c["password"]="***" if CFG.get("password") else ""
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"config":c,"simulert":REAL_PORT[0] is not None}).encode()); return
         if u.path=="/api/ntrip/sourcetable":   # lista over mountpoints på casteren (HENT MOUNTPOINTS på NTRIP-sida)
@@ -844,7 +851,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 for k in CFG:
                     if k in d and not (k=="password" and re.fullmatch(r"\*{3,}|•{3,}",str(d[k]))): CFG[k]=d[k]
                 log_changes("NTRIP/mottakar",before,CFG,("serial_port","baud","caster","caster_port","mountpoint","username","password",
-                            "ntrip_version","ntrip_timeout","gga_interval","initCmds"))
+                            "ntrip_version","ntrip_timeout","gga_interval","initCmds","rtcm_drop"))
                 save_cfg(); update(last_error="")
                 if "serial_port" in d: SERIAL_REOPEN.set()   # LAGRE / KOPLE TIL: kople alltid til mottakaren på nytt
                 self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"config":{**CFG,"password":"***" if CFG["password"] else ""}}).encode())

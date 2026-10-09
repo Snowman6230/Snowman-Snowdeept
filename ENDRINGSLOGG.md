@@ -9,6 +9,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.88 – hald tilbake antennemeldingar som mottakaren ikkje godtek
+- **Funn:** Zenith35 Pro svarte `@GNSS,ADVNULLANTENNA,ERROR` på korreksjonane. «ADVNULLANTENNA» er antennenamnet til
+  basen i RTCM 1008/1033. Det tyder at mottakaren faktisk les korreksjonane frå SNOWMAN over Bluetooth, men ikkje
+  godtek antennenamnet. Det tidlegare «LANTENNA» var same feilen, avkorta. Konklusjonen i v1.6.87, at Zenith-en ikkje
+  tek imot korreksjonar over Bluetooth, er difor truleg feil.
+- **Nytt:** feltet «Ikkje send desse RTCM-typane til mottakaren» på NTRIP-sida (`rtcm_drop`, t.d. «1008,1033»).
+  Rammene blir haldne tilbake i `RtcmMonitor.feed(drop=…)`. Statusen viser kva som er halde tilbake.
+  Korreksjonane (1004/1012, 1006, 1230) blir sende som før.
+- **Nytt:** `rtk_hint` kjenner att `…ANTENNA,ERROR` og føreslår «1008,1033».
+- **Endra:** hjelpeteksten om Zenith35 Pro er oppdatert.
+- **Avgjerd:** feltet er tomt som standard. Andre mottakarar treng antenneinformasjonen.
+- Testa:
+  - einingstest: 1008/1033 blir haldne tilbake, 1004/1006/1012 går vidare
+  - feltet blir lagra og lese inn att
+  - `simuler-leica.py --anlegg` gav RTK FIX
+  - Playwright utan JS-feil
+
 ### PC-prototype v1.6.87 – funn frå felttest: Zenith35 Pro og korreksjonar over Bluetooth
 - **Funn (felttest 9.10.2026, Surface + GeoMax Zenith35 Pro):**
   - Posisjon (GGA) kjem stabilt over Bluetooth (utgåande COM4), opp til 26 satellittar.

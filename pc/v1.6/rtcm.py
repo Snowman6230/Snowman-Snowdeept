@@ -91,6 +91,7 @@ class RtcmMonitor:
         self.crc_err = 0
         self.junk = 0  # byte som ikkje høyrde til ei RTCM-ramme (t.d. tekst frå casteren)
         self._jraw = ""
+        self.dropped = {}    # RTCM-typar som vart haldne tilbake frå mottakaren (type → tal), sjå feed(drop=…)
         self.junk_text = ""  # siste lesbare tekst blant desse (t.d. «Server: …» etter «ICY 200 OK») – til diagnose
         self.types = {}
         self.station = None
@@ -113,7 +114,7 @@ class RtcmMonitor:
         if len(t) >= 6 and sum(c != "\x00" for c in raw) >= 0.8 * len(raw):
             self.junk_text = (self.junk_text + " | " + t if self.junk_text else t)[-160:]
 
-    def feed(self, data):
+    def feed(self, data, drop=()):
         """Kontrollerer straumen og returnerer berre heile RTCM 3-rammer med rett CRC (v1.6.83).
         Det er desse – og ikkje rådataa – som blir sende til mottakaren: tekst frå casteren (t.d. «Server:»/«Date:»-linjer
         etter «ICY 200 OK») eller øydelagde byte kunne elles bli tolka som kommandoar av mottakaren («@GNSS,…,ERROR»)."""
@@ -148,6 +149,10 @@ class RtcmMonitor:
             del b[:n + 6]
             self._flush_text()
             self._frame(frame[3:3 + n])
+            t = _bits(frame[3:3 + n], 0, 12) if n >= 2 else None
+            if t in drop:   # t.d. antennenamn (1007/1008/1033) som mottakaren ikkje godtek – blir ikkje sende vidare
+                self.dropped[t] = self.dropped.get(t, 0) + 1
+                continue
             out += frame
         if len(b) > 4096:  # vern mot uendeleg buffer ved søppeldata
             self.junk += len(b) - 1024
@@ -176,6 +181,7 @@ class RtcmMonitor:
         systems = sorted({s for t in self.types for s in [system_of(t)] if s})
         obs = any(system_of(t) for t in self.types)
         r = {"frames": self.frames, "crcErr": self.crc_err, "junk": self.junk, "junkText": self.junk_text,
+             "dropped": {str(k): v for k, v in sorted(self.dropped.items())},
              "types": {str(k): v for k, v in sorted(self.types.items())}, "systems": systems,
              "station": self.station, "age": round(time.time() - self.last, 1) if self.last else None}
         if self.base:
