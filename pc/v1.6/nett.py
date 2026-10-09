@@ -7,7 +7,37 @@ Vanlege årsaker på ein maskin-PC:
   * proxy eller brannmur som stengjer trafikk ut                       → «proxy/brannmur»
   * tenesta svarar med feil (403 MET: avvist, 401/403 Frost: klient-ID) → «avvist»
 """
-import json, socket, ssl, time, urllib.error, urllib.request
+import json, socket, ssl, sys, time, urllib.error, urllib.request
+from pathlib import Path
+
+# Sertifikat: Python på Windows ser berre rotsertifikata som alt ligg i Windows-lageret. Windows hentar
+# manglande rotsertifikat først når ein nettlesar treng dei – derfor kan Edge opne api.met.no medan Python
+# får «CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate». truststore (MIT, vendor/truststore)
+# lèt Windows sjølv kontrollere sertifikatet, akkurat som nettlesaren. Kontrollen blir aldri slått av.
+_VENDOR = str(Path(__file__).resolve().parent / "vendor")
+_CTX, CERTS = None, "Python (standard)"
+
+
+def context():
+    """SSL-kontekst for alle HTTPS-kall i SNOWMAN: systemet sitt sertifikatlager via truststore, elles standard."""
+    global _CTX, CERTS
+    if _CTX is None:
+        try:
+            if _VENDOR not in sys.path:
+                sys.path.append(_VENDOR)
+            import truststore
+            _CTX = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            CERTS = "systemet (truststore)"
+        except Exception as e:
+            _CTX = ssl.create_default_context()
+            CERTS = f"Python (standard – truststore: {str(e)[:80]})"
+    return _CTX
+
+
+def urlopen(req, timeout=10):
+    """urllib.request.urlopen med SNOWMAN sin sertifikatkontroll."""
+    return urllib.request.urlopen(req, timeout=timeout, context=context())
+
 
 TESTS = [("MET vêrvarsel (api.met.no)", "https://api.met.no/weatherapi/locationforecast/2.0/status"),
          ("MET Frost målingar (frost.met.no)", "https://frost.met.no/sources/v0.jsonld?ids=SN18700")]
@@ -52,7 +82,7 @@ def test(ua, frost_id=None, timeout=8):
         if "frost" in url and frost_id:
             h["Authorization"] = "Basic " + base64.b64encode((frost_id + ":").encode()).decode()
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=timeout) as r:
+            with urlopen(urllib.request.Request(url, headers=h), timeout=timeout) as r:
                 r.read(2000)
                 out.append({"name": name, "ok": True, "ms": int((time.time() - t0) * 1000), "status": r.status, "text": "OK"})
         except Exception as e:
@@ -60,4 +90,4 @@ def test(ua, frost_id=None, timeout=8):
                         "status": getattr(e, "code", None), "text": explain(e), "detail": str(e)[:200]})
     proxies = urllib.request.getproxies()
     return {"dns": dns, "tests": out, "proxy": {k: v for k, v in proxies.items() if k in ("http", "https")},
-            "ssl": ssl.OPENSSL_VERSION, "time": time.strftime("%Y-%m-%d %H:%M:%S")}
+            "ssl": ssl.OPENSSL_VERSION, "certs": (context(), CERTS)[1], "time": time.strftime("%Y-%m-%d %H:%M:%S")}

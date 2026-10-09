@@ -9,6 +9,22 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.79 – retting: sertifikatfeil mot MET på Windows
+- **Retta:** «Test samband» på Surface viste `CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate`
+  mot både api.met.no og frost.met.no. DNS var OK, det var ingen proxy, og klokka var rett. Årsaka er at Python på
+  Windows berre ser rotsertifikata som alt ligg i Windows-lageret. Windows hentar manglande rotsertifikat først når
+  ein nettlesar treng dei. Difor kan Edge opne sida medan SNOWMAN blir avvist.
+- **Nytt:** `nett.context()` og `nett.urlopen()`. Alle HTTPS-kall (MET-varsel, Frost, «Test samband» og nedlasting
+  av oppdatering i `start_snowman.py`) lèt no Windows sjølv kontrollere sertifikatet, same som nettlesaren. Dette
+  skjer via biblioteket truststore. Testen viser kva sertifikatlager som er i bruk.
+- **Avgjerd:** Sertifikatkontrollen blir aldri slått av. Vi brukar sertifikatlageret i systemet i staden for å
+  leggje ved ein eigen sertifikatbunt, slik at det òg fungerer bak brannmurar og antivirus som har eigne sertifikat.
+- **Tredjepart:** truststore 0.10.1 (MIT, Seth Michael Larson), lagt urørt i `vendor/truststore/` med lisensen i
+  `vendor/TRUSTSTORE-LICENSE`. Han ligg i mappa sjølv, for oppdateringa køyrer ikkje `pip` på nytt. Han krev
+  Python 3.10 eller nyare, same krav som installasjonen. Manglar han, blir standard Python brukt som før.
+- Testa i isolert kopi med `simuler-leica.py --anlegg`. TLS mot pypi.org fungerer gjennom den nye konteksten.
+  Windows-lageret kan ikkje testast her og må stadfestast på Surface.
+
 ### PC-prototype v1.6.78 – retting: Vêr hentar data sjølv utan GNSS, og test av samband
 - **Retta:** Vêr-knappen opna overlayet, men henta ingen data på Surface. Den sannsynlege årsaka var at GNSS var av:
   `/api/weather` svarte «Ingen posisjon frå GNSS endå» og spurde aldri MET. No blir staden vald i denne rekkjefølgja

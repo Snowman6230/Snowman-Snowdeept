@@ -152,7 +152,8 @@ class Weather:
         if c and c.get("lastMod"):
             req.add_header("If-Modified-Since", c["lastMod"])
         try:
-            with urllib.request.urlopen(req, timeout=8) as r:
+            import nett
+            with nett.urlopen(req, timeout=8) as r:
                 js = json.loads(r.read().decode("utf-8"))
                 exp, lm = r.headers.get("Expires"), r.headers.get("Last-Modified")
             c = {"hours": _parse_met(js), "fetched": time.time(), "lastMod": lm,

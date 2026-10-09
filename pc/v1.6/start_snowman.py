@@ -159,7 +159,11 @@ def oppdater():
         import io, urllib.request, zipfile
         print("Lastar ned siste versjon frå GitHub …")
         try:
-            data = urllib.request.urlopen(ZIP_URL, timeout=60).read()
+            try:
+                import nett                      # sertifikat frå Windows (truststore), same som Vêr
+                data = nett.urlopen(urllib.request.Request(ZIP_URL), timeout=60).read()
+            except ImportError:
+                data = urllib.request.urlopen(ZIP_URL, timeout=60).read()
         except Exception as e:
             return print(f"Fekk ikkje lasta ned ({e}). Sjekk at PC-en er på nett.")
         pcdir, n = HERE.parent, 0

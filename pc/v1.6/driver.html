@@ -2907,7 +2907,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.78";
+      const APP_VERSION = "1.6.79";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -7608,7 +7608,7 @@
             el.innerHTML =
               `<div class="wxNetRes">` +
               r.tests.map((t) => `<div class="${t.ok ? "c-godt" : "c-nei"}"><b>${t.ok ? "✓" : "✗"} ${esc(t.name)}</b> – ${esc(t.text)}${t.ok ? ` (${t.ms} ms)` : ""}${t.detail ? `<br><small>${esc(t.detail)}</small>` : ""}</div>`).join("") +
-              `<div><small>DNS: ${r.dns ? "OK" : "svarar ikkje"} · proxy: ${Object.keys(r.proxy || {}).length ? esc(JSON.stringify(r.proxy)) : "ingen"} · stad: ${esc((r.pos && r.pos.src) || "ingen")} · ${esc(r.ssl)}</small></div></div>`;
+              `<div><small>DNS: ${r.dns ? "OK" : "svarar ikkje"} · proxy: ${Object.keys(r.proxy || {}).length ? esc(JSON.stringify(r.proxy)) : "ingen"} · stad: ${esc((r.pos && r.pos.src) || "ingen")} · sertifikat: ${esc(r.certs || "?")} · ${esc(r.ssl)}</small></div></div>`;
             logClient("action", "Samband-test: " + r.tests.map((t) => (t.ok ? "OK" : "FEIL")).join("/"));
             if (r.tests.every((t) => t.ok)) load();
           } catch (e) {

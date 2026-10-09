@@ -51,7 +51,8 @@ class Frost:
         url = BASE + path + "?" + urllib.parse.urlencode(params, safe="(),: ")
         auth = base64.b64encode((self.cid + ":").encode()).decode()
         req = urllib.request.Request(url, headers={"User-Agent": self.ua, "Authorization": "Basic " + auth})
-        with urllib.request.urlopen(req, timeout=10) as r:
+        import nett
+        with nett.urlopen(req, timeout=10) as r:
             return json.loads(r.read().decode("utf-8"))
 
     def _save(self):
