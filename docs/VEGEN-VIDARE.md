@@ -250,7 +250,7 @@ feilkodar og temperaturar i feltloggen.
 
 ## 14. AI i SNOWMAN (analyse og prototype 2026-10-09)
 
-**Prototype i v1.6.74:** AI-knappen med fem råd frå lokal AI – tidspunkt, snøflytting, hol i spora, kvalitet og
+**Prototype i v1.6.74–75:** AI-knappen med fem råd frå lokal AI, opningstider, tale (av/på), læringslogg og nye funn – tidspunkt, snøflytting, hol i spora, kvalitet og
 snøproduksjon – og kartlag på hovudkartet. Alt blir tilpassa staden automatisk etter GPS. Sjå `AI.md`.
 
 **Vidare (ikkje plassert):**
@@ -261,6 +261,12 @@ snøproduksjon – og kartlag på hovudkartet. Alt blir tilpassa staden automati
 4. Fleire lærande modellar: snødjupne framfor maskina, kalibrering per maskin, drivstoff og slitasje (CAN),
    kva forhold som gir god kvalitet, produksjon mot resultat per kanon (Hydrantstyring).
 5. Seinare: kamera/LiDAR for overflate og hindringar – krev mykje testing.
+6. **Sentral SNOWMAN-AI (når prosjektet er modent – avgjerd frå eigaren 2026-10-09):** først lærer kvar installasjon
+   lokalt. Seinare kan anlegga (etter avtale, av/på) sende anonymiserte opplæringspakker (frå v1.6.75) til ein
+   sentral AI-motor som finn mønster på tvers av anlegg og foreslår forbetringar i SNOWMAN (modellparametrar,
+   nye råd, nye talekommandoar). Krev: databehandlaravtale, samtykke per anlegg, sikker overføring, versjonering
+   av modellar, og at oppdateringar alltid blir testa før dei blir sende ut. Lokale data og lokal drift skal
+   aldri avhenge av den sentrale motoren.
 
 ## Vegplan (bestemt av eigaren 2026-10-06)
 

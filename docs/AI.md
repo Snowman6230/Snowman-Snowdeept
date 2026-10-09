@@ -1,4 +1,4 @@
-# Lokal AI i SNOWMAN (prototype v1.6.74)
+# Lokal AI i SNOWMAN (prototype v1.6.74–75)
 
 AI-knappen (✦ AI) i verktøylinja opnar eit overlay med fem preparéringsråd. Råda kan visast som eigne lag på
 hovudkartet («Vis på kartet»). Laga blir verande når overlayet er lukka, så føraren ser dei medan han køyrer, og
@@ -56,7 +56,46 @@ Test og ekte data blir haldne kvar for seg (eigne profilar og læringsfiler).
 - Etikettar står alltid rett opp, også når kartet roterer med maskina (CSS-variabelen `--aiDeg`).
 - Alt er merkt «AI-FORSLAG · ESTIMAT» (og TEST/DEMO når det gjeld).
 
+## Opningstider (v1.6.75, `opningstid.py`)
+
+Tidspunkt-rådet reknar mot **neste opning** frå opningstidene (data/opningstid.json, AI › Opningstider › Endre):
+
+| Standard | |
+|---|---|
+| Laurdag og søndag | 10–16 |
+| Kveldskøyring | tysdag, onsdag og fredag 18–21 (varierer mellom anlegg – endre manuelt) |
+| Skoleferiar og heilagdagar | 10–16 (i tillegg til kveldskøyring): juleferie 21.12–1.1, vinterferie veke 8 og 9, påskeferie (laurdag før palmesøndag – 2. påskedag), heilagdagar |
+| Stengt | 24.12 og 25.12, og utanfor sesongen (standard 1.12–30.4) |
+| Manuelle unntak | per dato: ekstra opning, andre tider eller stengt – går framfor alt anna |
+
+Heilagdagane blir rekna ut i programmet (påskeformelen) – fungerer utan nett i heile landet. Skoleruta varierer
+mellom fylke og kommunar (t.d. har Vestland både veke 8 og 9), så standarden tek med begge vekene; sjekk skoleruta
+for fylket/kommunen og endre om det trengst. Utanfor opningstidene brukar tidspunkt-rådet kl. 10 (`aiOpen`).
+
+## Tale (v1.6.75)
+
+Av/på i AI-overlayet («🔊 Tale PÅ / 🔇 Tale AV»), standard AV. Når tale er på:
+- **AI-en snakkar:** korte varsel medan maskina køyrer – inn i område med for lite snø, hol i sporet innan 40 m,
+  snøfall eller sterk vind innan ein time. Kvar melding høgst kvart 3. min (vêr éin gong i timen).
+- **Føraren snakkar:** 🎤 «Spør AI» nede til høgre. Forstår spørsmål om snø som manglar, tidspunkt, vêr, hol,
+  kvalitet, snøflytting, opningstid og snødjupna her («hjelp» gir lista).
+- Opplesing: talemotoren i Windows/nettlesaren (norsk stemme om ho er installert) – utan nett.
+  Talegjenkjenning i nettlesaren krev oftast nett; utan blir det skrivefelt med skjermtastatur.
+- Spørsmåla blir lagra som tekst i den lokale læringsloggen (ikkje lyd), så AI-en ser kva førarane vil spørje om.
+
+## Opplæring og nye funn (v1.6.75)
+
+- **Lokal læringslogg** (`data/ai-laering.jsonl`, test for seg): kvar natt blir område med for lite snø (40 m-ruter),
+  hol i spora (20 m-ruter) og treffsikkerheita mot RTK registrerte éin gong per prepareringsdøgn. I tillegg
+  førarens 👍/👎 på kvart råd og talekommandoar (forstått eller ikkje).
+- **Nye funn** (seksjon 6): hol som går igjen same stad, fast underskot same stad (≥ 3 døgn), snømodellen som bommar
+  same vegen, råd som førarane meiner er (lite) nyttige, og spørsmål AI-en ikkje forstår – dei siste er forslag til
+  korleis SNOWMAN kan utviklast vidare.
+- **Opplæringspakke** (⬇ i seksjon 6): anonymisert zip for ein framtidig sentral SNOWMAN-AI – utan posisjonar,
+  trasénamn, talt tekst, førarnamn, lyd og GNSS-spor. Blir **ikkje** sendt automatisk; «Del sentralt» er AV og ikkje
+  bygd. Først skal kvart anlegg lære lokalt.
+
 ## Ikkje med enno
 
-Språkmodell-assistent («Spør SNOWMAN»), røyst, kamera, CAN-data (fresdjupne, slitasje), læring av kva forhold som
+Språkmodell-assistent (fritt språk), kamera, CAN-data (fresdjupne, slitasje), læring av kva forhold som
 gir god kvalitet, og produksjonsdata frå Hydrantstyring. Sjå VEGEN-VIDARE kap. 14.

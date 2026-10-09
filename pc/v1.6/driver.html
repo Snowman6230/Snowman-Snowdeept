@@ -1441,6 +1441,174 @@
         font-size: 12px;
         padding: 6px 9px;
       }
+      /* Tale: mikrofon og snakkeboble */
+      #micBtn {
+        position: absolute;
+        z-index: 1000;
+        right: 14px;
+        bottom: 92px;
+        width: 92px;
+        height: 76px;
+        border-radius: 16px;
+        border: 2px solid #6a5acd;
+        background: #1b1240ee;
+        color: #fff;
+        font-weight: 900;
+        font-size: 13px;
+        box-shadow: 0 4px 14px #0009;
+      }
+      #micBtn span {
+        display: block;
+        font-size: 28px;
+      }
+      #micBtn.on {
+        background: #b0161d;
+        border-color: #fff;
+        animation: micP 1s infinite;
+      }
+      @keyframes micP {
+        50% {
+          box-shadow: 0 0 0 10px #b0161d55;
+        }
+      }
+      #micBtn.hide,
+      #voiceBubble.hide {
+        display: none;
+      }
+      #voiceBubble {
+        position: absolute;
+        z-index: 1000;
+        right: 118px;
+        bottom: 96px;
+        max-width: min(520px, 50vw);
+        background: #1b1240f2;
+        border: 1px solid #6a5acd;
+        color: #fff;
+        border-radius: 12px;
+        padding: 9px 12px;
+        font-size: 15px;
+        box-shadow: 0 4px 14px #0009;
+      }
+      .aiFb button {
+        background: none;
+        border: 1px solid #3d5c6e;
+        border-radius: 6px;
+        padding: 2px 6px;
+        margin-left: 3px;
+        font-size: 13px;
+      }
+      .aiFb {
+        font-size: 11px;
+        color: #9ab3c1;
+      }
+      .aiCat {
+        font-size: 10px;
+        text-transform: uppercase;
+        background: #33505f;
+        border-radius: 4px;
+        padding: 0 5px;
+      }
+      .lv-warn { color: #ffcf5b; }
+      .lv-ok { color: #3ee07a; }
+      .lv-info { color: #b9b2f0; }
+      .aiDl {
+        color: #fff;
+        background: #0a6fd6;
+        border-radius: 6px;
+        padding: 5px 9px;
+        font-weight: 800;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .aiRow button:disabled {
+        opacity: 0.5;
+      }
+      .aiDays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+        margin-top: 6px;
+      }
+      .aiDays span {
+        background: #241316;
+        border-radius: 6px;
+        padding: 3px 4px;
+        font-size: 11px;
+        color: #9ab3c1;
+        text-align: center;
+        min-height: 54px;
+      }
+      .aiDays span.op {
+        background: #0d2f22;
+        color: #3ee07a;
+        font-weight: 800;
+      }
+      .aiDays b {
+        display: block;
+        color: #fff;
+        font-size: 11px;
+      }
+      .aiDays i {
+        display: block;
+        font-style: normal;
+        font-weight: 400;
+        font-size: 9.5px;
+        color: #b9b2f0;
+      }
+      .aiEd {
+        display: grid;
+        gap: 5px;
+        margin-top: 6px;
+        font-size: 12.5px;
+      }
+      .aiEd > b {
+        margin-top: 6px;
+        color: #b9b2f0;
+      }
+      .aiEd label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .aiEd input:not([type="checkbox"]) {
+        flex: 1;
+        background: #0b2231;
+        color: #fff;
+        border: 1px solid #3d5c6e;
+        border-radius: 6px;
+        padding: 5px;
+      }
+      .aiEd input.sm {
+        flex: 0 0 80px;
+      }
+      .aiEd label:not(.ck) {
+        display: grid;
+        grid-template-columns: 150px 1fr auto auto;
+      }
+      .aiEx {
+        display: grid;
+        grid-template-columns: 150px 1fr 1fr 40px;
+        gap: 5px;
+      }
+      .aiEx input {
+        background: #0b2231;
+        color: #fff;
+        border: 1px solid #3d5c6e;
+        border-radius: 6px;
+        padding: 5px;
+      }
+      .aiEd button,
+      .aiEx button {
+        background: #0c2433;
+        color: #fff;
+        border: 1px solid #3d5c6e;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-weight: 800;
+      }
+      .aiEd button.save {
+        background: #2c9c58;
+      }
       .demoTag {
         position: absolute;
         z-index: 950;
@@ -2665,6 +2833,8 @@
       <div id="snk" class="hide"><div class="wxCard" id="snkCard"></div></div>
       <div id="ai" class="hide"><div class="aiCard" id="aiCard"></div></div>
       <div id="aiChips" class="hide"></div>
+      <button id="micBtn" class="hide" onclick="TALE.listen()" title="Snakk til AI-en"><span>🎤</span>Spør AI</button>
+      <div id="voiceBubble" class="hide"></div>
       <div id="traseWarn" class="traseWarn hide"></div>
       <div id="obstWarn" class="obstWarn hide"><div id="obstName"></div><div id="obstDist"></div></div>
       <div id="objDlg" class="hudDlg hide">
@@ -2722,7 +2892,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.74";
+      const APP_VERSION = "1.6.75";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -7814,7 +7984,8 @@
           }
           busy = false;
           drawLayers();
-          if (open) render();
+          let ed = $("aiOpenEd");
+          if (open && !(ed && ed.innerHTML)) render(); // ikkje teikn på nytt midt i redigering av opningstider
         }
         // ---------- kartlag på hovudkartet ----------
         function clear(k) {
@@ -7909,22 +8080,47 @@
         // ---------- overlayet ----------
         function sec(no, key, title, sum, body, layerKey) {
           let tg = layerKey ? `<button class="aiTg ${show[layerKey] ? "on" : ""}" onclick="AIP.layer('${layerKey}')">🗺 ${show[layerKey] ? "På kartet" : "Vis på kartet"}</button>` : "";
-          return `<section class="aiSec ${key}"><div class="aiSh"><span class="aiNo">${no}</span><b>${title}</b><em>${sum}</em>${tg}</div>${body}</section>`;
+          let fb = `<span class="aiFb" title="Var rådet nyttig? Svaret blir lagra lokalt og hjelper AI-en å lære."><button onclick="AIP.feedback('${key}',1,this)">👍</button><button onclick="AIP.feedback('${key}',-1,this)">👎</button></span>`;
+          return `<section class="aiSec ${key}"><div class="aiSh"><span class="aiNo">${no}</span><b>${title}</b><em>${sum}</em>${tg}${fb}</div>${body}</section>`;
         }
         function row(txt, la, lo) {
           return `<div class="aiRow"><span>${txt}</span>${la != null ? `<button onclick="AIP.goTo(${la},${lo})">Vis</button>` : ""}</div>`;
         }
+        function findSec() {
+          let F = R.findings || [],
+            J = R.journal || {};
+          return sec(
+            6,
+            "f",
+            "Nye funn – AI-en lærer",
+            `${F.filter((f) => f.level !== "ok").length} funn · læringslogg ${n0(J.events)} hendingar over ${n0(J.days)} døgn (lokalt)`,
+            F.map((f) => row(`<b class="lv-${f.level}">${f.level === "warn" ? "⚠" : f.level === "ok" ? "✓" : "💡"} ${esc(f.title)}</b> <span class="aiCat">${esc(f.cat)}</span> – ${esc(f.text)}`)).join("") +
+              `<div class="aiRow"><span>Opplæring: alt blir lært og lagra <b>lokalt</b> på denne PC-en. Seinare kan ein anonymisert pakke sendast til ein sentral SNOWMAN-AI som vidareutviklar programmet – berre når anlegget slår det på.</span><a class="aiDl" href="api/ai/eksport" download>⬇ Opplæringspakke</a><button disabled title="Ikkje bygd enno">Del sentralt: AV</button></div>`
+          );
+        }
+        function openSec() {
+          let O = R.opening || {};
+          return sec(
+            "⏰",
+            "o",
+            "Opningstider",
+            O.next ? `neste opning ${dk(O.next[0])}–${kl(O.next[1])} (${esc(O.next[2].join(", "))})` : "ingen opning dei neste 14 dagane",
+            `<div class="aiDays">${(O.upcoming || [])
+              .map((d) => `<span class="${d.open.length ? "op" : ""}" title="${esc(d.why.join(", "))}"><b>${d.wd.slice(0, 3)} ${d.date.slice(8)}.${d.date.slice(5, 7)}</b>${d.open.length ? d.open.map((x) => x[0].slice(0, 2) + "–" + x[1].slice(0, 2)).join("<br>") : "stengt"}<i>${esc(d.why.filter((w) => !/^(måndag|tysdag|onsdag|torsdag|fredag|laurdag|søndag)$/.test(w)).join(", "))}</i></span>`)
+              .join("")}</div><div class="aiRow"><span>Standard: laurdag og søndag 10–16, kveldskøyring tysdag, onsdag og fredag 18–21, skoleferiar (jul, vinterferie veke 8 og 9, påske) og heilagdagar 10–16. Sjekk skoleruta i fylket/kommunen, og endre tider og unntak her.</span><button onclick="AIP.editOpen()">Endre</button></div><div id="aiOpenEd"></div>`
+          );
+        }
         function render() {
           let el = $("aiCard");
           let p = R && R.profile,
-            head = `<div class="aiHead"><h3>✦ AI – PREPARERINGSRÅD<br><small>${p ? `Lokal AI for ${esc(p.name)}${p.zmin != null ? " · " + p.zmin + "–" + p.zmax + " moh." : ""} · lært ${n1(p.days)} døgn vêr${p.leeText ? " · " + esc(p.leeText) : ""}${p.nightT != null ? " · snitt natt " + n1(p.nightT) + " °C" : ""}` : "Lokal AI i SNOWMAN – lærer området maskina er i"}</small></h3><button class="wxX" onclick="AIP.toggle()" title="Lukk (eller trykk AI-knappen igjen)">✕</button></div>`,
+            head = `<div class="aiHead"><h3>✦ AI – PREPARERINGSRÅD<br><small>${p ? `Lokal AI for ${esc(p.name)}${p.zmin != null ? " · " + p.zmin + "–" + p.zmax + " moh." : ""} · lært ${n1(p.days)} døgn vêr${p.leeText ? " · " + esc(p.leeText) : ""}${p.nightT != null ? " · snitt natt " + n1(p.nightT) + " °C" : ""}` : "Lokal AI i SNOWMAN – lærer området maskina er i"}</small></h3><button class="aiTg ${cfg.voiceOn ? "on" : ""}" onclick="TALE.toggle()" title="AI snakkar til føraren, og føraren kan snakke til AI-en (🎤). Av/på.">${cfg.voiceOn ? "🔊 Tale PÅ" : "🔇 Tale AV"}</button><button class="wxX" onclick="AIP.toggle()" title="Lukk (eller trykk AI-knappen igjen)">✕</button></div>`,
             ban = `<div class="aiBan">AI-FORSLAG OG ESTIMAT – FØRAREN AVGJER${R && R.demo ? " · DEMO-VÊR" : ""}${R && R.test ? " · TEST-DATA" : ""}</div>`;
           if (!R) {
             el.innerHTML = head + ban + "<p>Analyserer …</p>";
             return;
           }
           if (!R.ok) {
-            el.innerHTML = head + ban + `<div class="wxWarn">${esc(R.error)}</div>`;
+            el.innerHTML = head + ban + `<div class="wxWarn">${esc(R.error)}</div>` + (R.findings ? findSec() : "") + (R.opening ? openSec() : "");
             return;
           }
           let s = [];
@@ -8016,6 +8212,7 @@
               "quality"
             )
           );
+          s.push(findSec(), openSec());
           let c = R.cal || {},
             l = R.learn || {};
           el.innerHTML =
@@ -8043,7 +8240,268 @@
         function close() {
           if (open) toggle();
         }
-        return { toggle, close, load, layer, goTo, get isOpen() { return open; } };
+        async function feedback(sec, val, btn) {
+          try {
+            await fetch("api/ai/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sec, val, demo }) });
+            btn.parentElement.innerHTML = val > 0 ? "takk 👍" : "takk – AI-en lærer av det";
+          } catch (e) {}
+        }
+        // ---------- opningstider: redigering ----------
+        const DN = [["man", "Måndag"], ["tys", "Tysdag"], ["ons", "Onsdag"], ["tor", "Torsdag"], ["fre", "Fredag"], ["lau", "Laurdag"], ["sun", "Søndag"]];
+        const ivTxt = (a) => (a || []).map((x) => x[0] + "–" + x[1]).join(", ");
+        const ivParse = (t) =>
+          String(t || "")
+            .split(/[,;]/)
+            .map((x) => x.trim())
+            .filter(Boolean)
+            .map((x) => x.replace(/\./g, ":").split(/\s*[–-]\s*/))
+            .filter((x) => x.length === 2)
+            .map(([a, b]) => [a.length <= 2 ? a.padStart(2, "0") + ":00" : a.padStart(5, "0"), b.length <= 2 ? b.padStart(2, "0") + ":00" : b.padStart(5, "0")]);
+        async function editOpen() {
+          let d = await fetch("api/opningstid").then((x) => x.json()),
+            c = d.cfg,
+            ex = c.exceptions || [];
+          const exRow = (e, i) =>
+            `<div class="aiEx"><input type="date" value="${esc(e.date || "")}" data-ex="${i}" data-f="date"><input placeholder="tider, t.d. 10–16 (tomt = stengt)" value="${esc(ivTxt(e.open))}" data-ex="${i}" data-f="open"><input placeholder="merknad" value="${esc(e.note || "")}" data-ex="${i}" data-f="note"><button onclick="this.parentElement.remove()">✕</button></div>`;
+          $("aiOpenEd").innerHTML =
+            `<div class="aiEd"><b>Vekeplan</b>${DN.map(([k, n]) => `<label>${n}<input data-w="${k}" value="${esc(ivTxt(c.weekly[k]))}" placeholder="stengt"></label>`).join("")}
+            <b>Skoleferiar og heilagdagar</b><label>Tider<input id="oeHol" value="${esc(ivTxt(c.holidayHours))}"></label>
+            <label class="ck"><input type="checkbox" id="oeJul" ${c.juleferie ? "checked" : ""}> Juleferie (21.12–1.1)</label>
+            <label class="ck"><input type="checkbox" id="oeVin" ${c.vinterferie ? "checked" : ""}> Vinterferie, veke <input id="oeVinW" class="sm" value="${esc((c.vinterferieWeeks || []).join(", "))}"></label>
+            <label class="ck"><input type="checkbox" id="oePas" ${c.paskeferie ? "checked" : ""}> Påskeferie (laurdag før palmesøndag – 2. påskedag)</label>
+            <label class="ck"><input type="checkbox" id="oeHeil" ${c.heilagdagar ? "checked" : ""}> Heilagdagar (norsk kalender)</label>
+            <b>Sesong og stengde dagar</b><label>Sesong frå (MM-DD)<input id="oeS0" class="sm" value="${esc(c.season[0])}"> til <input id="oeS1" class="sm" value="${esc(c.season[1])}"></label>
+            <label>Alltid stengt (MM-DD)<input id="oeClosed" value="${esc((c.closed || []).join(", "))}"></label>
+            <b>Unntak (eigne dagar: ekstra opning, andre tider, stengt)</b><div id="oeEx">${ex.map(exRow).join("")}</div>
+            <button onclick="AIP.addEx()">+ Legg til dag</button> <button class="save" onclick="AIP.saveOpen()">LAGRE OPNINGSTIDER</button></div>`;
+          AIP._exRow = exRow;
+        }
+        function addEx() {
+          let box = $("oeEx"),
+            div = document.createElement("div");
+          div.innerHTML = AIP._exRow({ date: new Date().toISOString().slice(0, 10), open: [["10:00", "16:00"]] }, box.children.length);
+          box.appendChild(div.firstChild);
+        }
+        async function saveOpen() {
+          let weekly = {};
+          document.querySelectorAll("#aiOpenEd [data-w]").forEach((i) => (weekly[i.dataset.w] = ivParse(i.value)));
+          let ex = [...document.querySelectorAll("#oeEx .aiEx")].map((r) => {
+            let g = (f) => r.querySelector(`[data-f=${f}]`).value;
+            return { date: g("date"), open: ivParse(g("open")), note: g("note") };
+          });
+          let body = {
+            weekly,
+            holidayHours: ivParse($("oeHol").value),
+            juleferie: $("oeJul").checked,
+            vinterferie: $("oeVin").checked,
+            vinterferieWeeks: $("oeVinW").value.split(/[ ,;]+/).filter(Boolean).map(Number),
+            paskeferie: $("oePas").checked,
+            heilagdagar: $("oeHeil").checked,
+            season: [$("oeS0").value.trim(), $("oeS1").value.trim()],
+            closed: $("oeClosed").value.split(/[ ,;]+/).filter(Boolean),
+            exceptions: ex.filter((e) => e.date),
+          };
+          let r = await fetch("api/opningstid", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json());
+          if (!r.ok) return toast(r.error || "Kunne ikkje lagre");
+          logClient("action", "Opningstider lagra");
+          toast("Opningstidene er lagra");
+          $("aiOpenEd").innerHTML = "";
+          load();
+        }
+        return { toggle, close, load, layer, goTo, feedback, editOpen, addEx, saveOpen, data: () => R, get isOpen() { return open; } };
+      })();
+      /* ---------- Tale: AI snakkar til føraren, og føraren snakkar til AI-en ----------
+         Av/på i AI-overlayet («🔊 Tale»). Når tale er på:
+         - AI-en seier korte varsel medan maskina køyrer: inn i område med for lite snø, hol i sporet like ved,
+           og snø/sterk vind som kjem innan ein time (kvar melding høgst kvart 3. min).
+         - Mikrofonknappen 🎤 (nede til høgre): trykk og spør, t.d. «kor mykje snø manglar?», «når bør eg preparere?»,
+           «korleis blir vêret?», «er det hol?», «kva er kvaliteten?», «når opnar vi?». Svaret blir lese opp og vist.
+         Opplesing brukar talemotoren i Windows/nettlesaren (norsk stemme om ho er installert) – fungerer utan nett.
+         Talegjenkjenning i nettlesaren krev oftast nett; utan blir det skrivefelt i staden.
+         Det som blir sagt, blir lagra som tekst i den lokale læringsloggen (ikkje lyd), så AI-en kan lære nye spørsmål. */
+      const TALE = (() => {
+        let last = {},
+          busyL = false,
+          wxd = null,
+          wxAt = 0,
+          rec = null;
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const n0 = (v) => Math.round(v || 0).toLocaleString("nb-NO");
+        const kl = (t) => "klokka " + new Date(t).getHours();
+        const DAYS = ["søndag", "måndag", "tysdag", "onsdag", "torsdag", "fredag", "laurdag"];
+        function voice() {
+          let v = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+          return v.find((x) => /^(nb|no|nn)/i.test(x.lang)) || v.find((x) => /norw|norsk/i.test(x.name)) || null;
+        }
+        function bubble(t, who) {
+          let b = $("voiceBubble");
+          b.innerHTML = `<b>${who === "du" ? "🎤 Du" : "✦ AI"}:</b> ${t}`;
+          b.classList.remove("hide");
+          clearTimeout(b._t);
+          b._t = setTimeout(() => b.classList.add("hide"), 9000);
+        }
+        function say(t, key, gapS) {
+          if (!cfg.voiceOn) return;
+          if (key) {
+            if (Date.now() - (last[key] || 0) < (gapS || 180) * 1000) return;
+            last[key] = Date.now();
+          }
+          bubble(t);
+          try {
+            let u = new SpeechSynthesisUtterance(t.replace(/<[^>]+>/g, "")),
+              v = voice();
+            u.lang = v ? v.lang : "nb-NO";
+            if (v) u.voice = v;
+            u.rate = 1.05;
+            speechSynthesis.speak(u);
+          } catch (e) {}
+        }
+        function ui() {
+          $("micBtn").classList.toggle("hide", !cfg.voiceOn);
+          if (!cfg.voiceOn) $("voiceBubble").classList.add("hide");
+        }
+        function toggle() {
+          cfg.voiceOn = !cfg.voiceOn;
+          persistCfg();
+          logClient("action", "Tale " + (cfg.voiceOn ? "på" : "av"));
+          ui();
+          if (cfg.voiceOn) {
+            say(voice() ? "Tale er på. Trykk på mikrofonen og spør meg." : "Tale er på. Det finst ingen norsk stemme på denne maskina, så eg brukar standardstemma.");
+            if (!AIP.data()) AIP.load();
+          } else speechSynthesis && speechSynthesis.cancel();
+          if (AIP.isOpen) AIP.load();
+        }
+        async function weather() {
+          if (Date.now() - wxAt < 15 * 60 * 1000 && wxd) return wxd;
+          try {
+            wxd = await fetch("api/weather?demo=" + (demo ? 1 : 0) + (pos ? "&lat=" + pos[0] + "&lon=" + pos[1] : "")).then((x) => x.json());
+            wxAt = Date.now();
+          } catch (e) {}
+          return wxd;
+        }
+        // ---------- svar på spørsmål ----------
+        async function answer(q) {
+          let t = q.toLowerCase(),
+            R = AIP.data();
+          if (!R) {
+            await AIP.load();
+            R = AIP.data();
+          }
+          let has = (...w) => w.some((x) => t.includes(x)),
+            a = null,
+            intent = null;
+          if (has("hjelp", "kva kan")) {
+            intent = "hjelp";
+            a = "Du kan spørje: kor mykje snø manglar, når bør eg preparere, korleis blir vêret, er det hol, kva er kvaliteten, kvar bør eg skyve snø, når opnar vi, og kor djup er snøen her.";
+          } else if (has("manglar", "for lite", "produser", "kanon", "underskot")) {
+            intent = "produksjon";
+            let P = R && R.production;
+            a = P && P.areas.length ? `Det manglar om lag ${n0(P.totalVol)} kubikk snø i ${P.areas.length} område. Størst er ${P.areas[0].trase || "eit område"}, som manglar ${P.areas[0].mean} centimeter${P.areas[0].near ? `, ${P.areas[0].near.dist} meter frå ${P.areas[0].near.name}` : ""}.` : "Eg finn ingen område med for lite snø.";
+          } else if (has("opn", "open", "stengt", "stenger", "opningstid")) {
+            intent = "opning";
+            let n = R && R.opening && R.opening.next;
+            a = n ? `Neste opning er ${DAYS[new Date(n[0]).getDay()]} ${kl(n[0])} til ${kl(n[1])}.` : "Eg finn ingen opning dei neste to vekene.";
+          } else if (has("tidspunkt", "start", "preparer", "trakk")) {
+            intent = "tidspunkt";
+            let T = R && R.timing && R.timing.trasear && R.timing.trasear[0];
+            a = T && T.start ? `Start ${T.name} ${kl(T.start)}, så er han ferdig ${kl(T.end)}.${T.bad && T.bad.length ? " Merk: " + T.bad.join(", ") + "." : ""}` : "Eg har ikkje nok data til å tilrå eit tidspunkt.";
+          } else if (has("vêr", "ver ", "vind", "temperatur", "snør", "nedbør", "kaldt")) {
+            intent = "vêr";
+            let W = await weather(),
+              h = W && W.ok && W.now;
+            let deg = (v) => (Math.round(v) < 0 ? "minus " + -Math.round(v) : Math.round(v));
+            a = h ? `Det er ${deg(h.temp)} grader, vind ${Math.round(h.wind)} meter i sekundet${h.dir != null ? " frå " + ["nord", "nordaust", "aust", "søraust", "sør", "sørvest", "vest", "nordvest"][Math.round(h.dir / 45) % 8] : ""}. ${h.symText || ""}. Snøproduksjon er ${({ godt: "godt", marg: "marginalt", nei: "ikkje mogleg", vind: "hindra av vind" })[h.cls]}.` : "Eg har ikkje vêrdata no.";
+          } else if (has("hol", "uprepar")) {
+            intent = "hol";
+            a = R && R.holes && R.holes.length ? `Det er ${R.holes.length} hol i spora. Største er ${n0(R.holes[0].area)} kvadratmeter i ${R.holes[0].trase}.` : "Eg finn ingen hol i spora i natt.";
+          } else if (has("kvalitet", "score", "karakter")) {
+            intent = "kvalitet";
+            a = R && R.quality && R.quality.length ? R.quality.map((x) => `${x.name} ${x.score} prosent`).join(", ") + "." : "Ingen trasear å vurdere.";
+          } else if (has("skyv", "flytt", "skjer")) {
+            intent = "flytting";
+            let m = R && R.moves && R.moves[0];
+            a = m ? `Skyv om lag ${n0(m.vol)} kubikk snø ${m.dist} meter${m.dz > 0 ? " nedover" : ""} i ${m.trase}.` : "Eg har ingen forslag til snøflytting no.";
+          } else if (has("djup", "djupne", "snø her", "kor mykje snø")) {
+            intent = "djupne";
+            a = "Snødjupna her er " + ($("depth").textContent || "ukjend").replace(".", ",") + ". " + ($("depthNote").textContent || "");
+          }
+          let ok = !!a;
+          if (!a) a = "Det forstod eg ikkje. Seg til dømes: kor mykje snø manglar, eller: når bør eg preparere.";
+          say(a);
+          try {
+            fetch("api/ai/voice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: q, intent, ok, demo }) });
+          } catch (e) {}
+          return a;
+        }
+        async function listen() {
+          if (!cfg.voiceOn) return;
+          if (!SR) {
+            // utan talegjenkjenning: skrivefelt (skjermtastaturet kjem opp)
+            let q = window.SKB ? await SKB.ask("Spør AI-en", "") : prompt("Spør AI-en");
+            if (q) {
+              bubble(q, "du");
+              answer(q);
+            }
+            return;
+          }
+          if (busyL) return rec && rec.stop();
+          rec = new SR();
+          rec.lang = "nb-NO";
+          rec.interimResults = false;
+          rec.maxAlternatives = 1;
+          busyL = true;
+          $("micBtn").classList.add("on");
+          bubble("Eg lyttar …");
+          rec.onresult = (e) => {
+            let q = e.results[0][0].transcript;
+            bubble(q, "du");
+            answer(q);
+          };
+          rec.onerror = (e) => bubble(e.error === "network" ? "Talegjenkjenning krev nett. Trykk igjen for å skrive i staden." : "Høyrde ikkje noko. Prøv igjen.");
+          rec.onend = () => {
+            busyL = false;
+            $("micBtn").classList.remove("on");
+          };
+          try {
+            rec.start();
+          } catch (e) {
+            busyL = false;
+            $("micBtn").classList.remove("on");
+          }
+        }
+        // ---------- AI-en snakkar sjølv medan maskina køyrer ----------
+        function inDeficit(R) {
+          let P = R && R.production;
+          if (!P || !pos) return null;
+          let [[s, w], [n, e]] = P.bounds;
+          if (pos[0] < s || pos[0] > n || pos[1] < w || pos[1] > e) return null;
+          let N = P.n,
+            c = Math.floor(((pos[1] - w) / (e - w)) * N),
+            r = Math.floor(((n - pos[0]) / (n - s)) * N),
+            v = (P._g || (P._g = atob(P.grid))).charCodeAt(r * N + c);
+          return v || null;
+        }
+        setInterval(async () => {
+          if (!cfg.voiceOn || cfg.voiceProactive === false || !pos) return;
+          let R = AIP.data();
+          if (!R || !R.ok) return;
+          let v = inDeficit(R);
+          if (v) say(`Her manglar det ${v === 1 ? "litt" : v === 2 ? "20 til 40 centimeter" : "over 40 centimeter"} snø.`, "def", 180);
+          let mlat = 111320,
+            mlon = 111320 * Math.cos((pos[0] * Math.PI) / 180);
+          (R.holes || []).forEach((h, i) => {
+            let d = Math.hypot((h.lat - pos[0]) * mlat, (h.lon - pos[1]) * mlon);
+            if (d < 40) say(`Hol i sporet om lag ${Math.round(d / 5) * 5} meter unna.`, "hol" + i, 300);
+          });
+          let W = await weather();
+          if (W && W.ok && W.hours) {
+            let soon = W.hours.slice(0, 2);
+            if (soon.some((h) => (h.precip || 0) >= 0.5 && h.temp < 1)) say("Snøfall innan ein time.", "snow", 3600);
+            if (soon.some((h) => (h.wind || 0) >= 12)) say("Sterk vind innan ein time. Snøen kan fyke inn i spora.", "wind", 3600);
+          }
+        }, 5000);
+        setTimeout(ui, 0);
+        return { toggle, say, listen, answer };
       })();
       async function openHud() {
         $("hudDlg").classList.remove("hide");

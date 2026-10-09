@@ -109,6 +109,111 @@ class Profiles:
         return r
 
 
+# ------------------------------------------------------------------ læringslogg og nye funn
+class Journal:
+    """Lokal læringslogg for AI-en (data/ai-laering.jsonl, test for seg). Ingenting blir sendt nokon stad.
+
+    Hendingar: «deficit» (område under måldjupna, 40 m-ruter), «holes» (hol i spora, 20 m-ruter), «cal» (treffsikkerheit
+    mot RTK), «feedback» (føraren: nyttig / ikkje nyttig per råd) og «voice» (talekommando: forstått eller ikkje).
+    Rutene er faste UTM-ruter, så det same området blir kjent att natt etter natt. Av dette lagar `findings` «nye funn»:
+    ting som går igjen, ting modellen bommar på, og forslag til korleis SNOWMAN kan bli betre.
+    Seinare kan loggen (anonymisert) sendast til ein sentral SNOWMAN-AI – berre om anlegget slår det på."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.ev = []
+        try:
+            for line in self.path.read_text("utf-8").splitlines():
+                if line.strip():
+                    self.ev.append(json.loads(line))
+        except Exception:
+            pass
+
+    def add(self, kind, data, day=None, unique=False):
+        """Legg til ei hending. unique: berre éi av slaget per prepareringsdøgn (siste vinn ikkje – første blir ståande)."""
+        if unique and any(e["kind"] == kind and e.get("day") == day for e in self.ev):
+            return False
+        e = {"t": int(time.time()), "kind": kind, "day": day, **data}
+        self.ev.append(e)
+        self.ev = self.ev[-20000:]
+        try:
+            with open(self.path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(e, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+        return True
+
+    def stats(self):
+        k = {}
+        for e in self.ev:
+            k[e["kind"]] = k.get(e["kind"], 0) + 1
+        days = {e.get("day") for e in self.ev if e.get("day")}
+        return {"events": len(self.ev), "kinds": k, "days": len(days)}
+
+
+def findings(ev, now=None):
+    """Nye funn frå læringsloggen: kva som går igjen, kva modellen bommar på, og forslag til vidareutvikling."""
+    out = []
+    # hol som går igjen same stad
+    seen = {}
+    for e in ev:
+        if e["kind"] == "holes":
+            for c in e.get("cells", []):
+                seen.setdefault((e.get("trase"), c), set()).add(e.get("day"))
+    rep = {}
+    for (tr, c), days in seen.items():
+        if len(days) >= 2:
+            rep.setdefault(tr, []).append(len(days))
+    for tr, ns in rep.items():
+        out.append({"cat": "drift", "level": "warn", "title": f"Hol går igjen i {tr}",
+                    "text": f"{len(ns)} stad(er) har hatt hol i fleire netter (inntil {max(ns)}). Sjå over køyremønsteret der – "
+                            "kanskje svingar, kantar eller hindringar gjer at spora ikkje møtest."})
+    # fast underskot same stad
+    dseen = {}
+    for e in ev:
+        if e["kind"] == "deficit":
+            for c in e.get("cells", []):
+                dseen.setdefault(c, set()).add(e.get("day"))
+    fast = [c for c, d in dseen.items() if len(d) >= 3]
+    if fast:
+        out.append({"cat": "drift", "level": "warn", "title": "Fast underskot av snø",
+                    "text": f"{len(fast)} område (40 × 40 m) har vore under måldjupna i minst 3 døgn. "
+                            "Vurder fast produksjon der (kanon/lanse), snøgjerde, eller lågare måldjupne."})
+    # modellen bommar systematisk
+    cal = [e for e in ev if e["kind"] == "cal" and e.get("n", 0) >= 30][-6:]
+    if len(cal) >= 3:
+        b = [e["bias"] for e in cal]
+        if all(x > 1 for x in b) or all(x < -1 for x in b):
+            out.append({"cat": "modell", "level": "info", "title": "Snømodellen bommar same vegen",
+                        "text": f"Dei siste {len(b)} samanlikningane med RTK viser {'meir' if b[0] > 0 else 'mindre'} snø enn venta "
+                                f"(snitt {(sum(b) / len(b)):+.1f} cm)".replace(".", ",") + f". Nedbørsfaktoren blir justert automatisk; held det fram, bør "
+                                "høgdejusteringa av nedbøren kalibrerast for anlegget."})
+    # tilbakemelding frå føraren
+    fb = {}
+    for e in ev:
+        if e["kind"] == "feedback":
+            f = fb.setdefault(e.get("sec"), [0, 0])
+            f[0 if e.get("val") > 0 else 1] += 1
+    NAMES = {"p1": "Tidspunkt", "p2": "Snøflytting", "p3": "Hol i spora", "p4": "Kvalitet", "p5": "Snøproduksjon", "f": "Nye funn"}
+    for sec, (up, down) in fb.items():
+        if down >= 3 and down > up:
+            out.append({"cat": "utvikling", "level": "info", "title": f"Rådet «{NAMES.get(sec, sec)}» bør forbetrast",
+                        "text": f"Førarane har sagt «ikkje nyttig» {down} gonger (nyttig {up}). Dette er eit forslag til vidareutvikling."})
+        elif up >= 3 and up > 2 * down:
+            out.append({"cat": "utvikling", "level": "ok", "title": f"Rådet «{NAMES.get(sec, sec)}» er nyttig",
+                        "text": f"{up} × nyttig, {down} × ikkje nyttig."})
+    # tale som ikkje vart forstått → nye kommandoar
+    miss = [e.get("text", "") for e in ev if e["kind"] == "voice" and not e.get("ok")]
+    if len(miss) >= 3:
+        ex = ", ".join(f"«{m[:40]}»" for m in miss[-3:])
+        out.append({"cat": "utvikling", "level": "info", "title": "Nye talekommandoar trengst",
+                    "text": f"{len(miss)} spørsmål vart ikkje forstått, t.d. {ex}. Dette viser kva førarane vil spørje om."})
+    if not out:
+        out.append({"cat": "info", "level": "ok", "title": "Ingen nye funn endå",
+                    "text": "AI-en treng nokre netter med preparering og RTK-målingar før mønster kan kjennast att."})
+    return out
+
+
 # ------------------------------------------------------------------ hjelparar
 def label(mask):
     """Samanhengande område (4-naboar). Returnerer (etikett-rutenett, tal område)."""
@@ -174,13 +279,17 @@ def hour_scores(fc):
     return out
 
 
-def timing(fc, trasear, now_ms, open_hour=9):
-    """Beste starttid per trasé: preparering ferdig før opning, høgast snittscore i timane ho tek."""
+def timing(fc, trasear, now_ms, open_hour=10, opening_ms=None):
+    """Beste starttid per trasé: preparering ferdig før opning, høgast snittscore i timane ho tek.
+    opening_ms: neste opning frå opningstidene (opningstid.py); elles open_hour same dag/neste dag."""
     sc = hour_scores(fc)
-    lt = time.localtime(now_ms / 1000)
-    op = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday, int(open_hour), 0, 0, 0, 0, -1)) * 1000
-    if op <= now_ms + 3600000:
-        op += 86400000
+    if opening_ms:
+        op = opening_ms
+    else:
+        lt = time.localtime(now_ms / 1000)
+        op = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday, int(open_hour), 0, 0, 0, 0, -1)) * 1000
+        if op <= now_ms + 3600000:
+            op += 86400000
     res = []
     for t in trasear:
         dur = max(0.5, (t.get("area") or 10000) / (PREP_SPEED * PREP_WIDTH * PREP_EFF) / 3600.0)

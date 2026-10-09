@@ -9,6 +9,33 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.75 – AI: opningstider, tale med føraren, læringslogg og nye funn
+- **Nytt:** **opningstider** (`opningstid.py`, AI › Opningstider): standard laurdag og søndag 10–16, kveldskøyring
+  tysdag, onsdag og fredag 18–21, og 10–16 i juleferie (21.12–1.1), vinterferie (veke 8 og 9), påskeferie og på
+  heilagdagar (norsk kalender, rekna ut lokalt med påskeformelen). 24. og 25.12 stengt, sesong 1.12–30.4. Alt kan
+  endrast: vekeplan, ferietider, veker, sesong, stengde datoar og **manuelle unntak per dato**. Visast som 14-dagars
+  oversikt. Tidspunkt-rådet reknar no mot neste opning.
+- **Nytt:** **tale** (av/på i AI-overlayet, standard AV): AI-en seier korte varsel medan maskina køyrer (for lite snø,
+  hol like ved, snøfall/sterk vind innan ein time), og føraren kan spørje med 🎤 «Spør AI» (snø som manglar,
+  tidspunkt, vêr, hol, kvalitet, snøflytting, opningstid, snødjupne). Opplesing utan nett; talegjenkjenning krev
+  oftast nett, elles skrivefelt.
+- **Nytt:** **lokal læringslogg** og **nye funn** (seksjon 6): kva som går igjen (hol, underskot same stad), kva
+  modellen bommar på, kva førarane meiner om råda (👍/👎 på kvart råd), og kva dei spør om som AI-en ikkje forstår.
+- **Nytt:** **opplæringspakke** (anonymisert zip) for ein framtidig sentral SNOWMAN-AI. Ingenting blir sendt;
+  «Del sentralt» er AV og ikkje bygd.
+- **Endra:** standard opningstid i tidspunkt-rådet er kl. 10 (før: 9) når det ikkje finst opning i kalenderen.
+- **Avgjerd (eigaren):** standard opningstider som over; kveldskøyring varierer og må kunne endrast manuelt.
+  Tale skal ha av/på. Kvar SNOWMAN-installasjon lærer først lokalt; ein sentral AI-motor kjem når prosjektet er
+  modent (VEGEN-VIDARE kap. 14 punkt 6).
+- **Avgjerd:** vinterferie standard veke 8 og 9, fordi fylke og kommunar har ulike veker (Vestland har begge) og
+  anlegga får gjester frå begge – sjekk skoleruta lokalt. Skolerutene blir ikkje henta automatisk (formata
+  varierer mellom fylka).
+- **Testa:** `python3 opningstid.py` (helg, kveld, vinterferie veke 8/9, skjærtorsdag, julaftan, utanfor sesong),
+  `python3 ai.py`, og i isolert kopi med demo og TEST-data: redigering og lagring av unntak, 👍, åtte
+  talespørsmål (sju forstått), mikrofon og snakkeboble, opplæringspakke utan posisjonar/namn/tekst.
+  Ingen JavaScript-feil. Skjermbilete 7–10 i `docs/prototypar/ai/`. Norsk stemme og talegjenkjenning må testast
+  på maskin-PC-en (testmaskina har ingen stemmer og ikkje nett).
+
 ### PC-prototype v1.6.74 – AI-knapp: lokal AI med fem preparéringsråd
 - **Nytt:** knappen **«✦ AI»** i verktøylinja (etter Vêr) opnar eit overlay med fem råd: **5 snøproduksjon** (øvst),
   **1 tidspunkt å preparere**, **2 snøflytting med skjeret**, **3 hol i spora** og **4 kvalitetsscore per trasé**.

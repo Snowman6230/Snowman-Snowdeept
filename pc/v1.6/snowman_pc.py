@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.74"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.75"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -572,6 +572,35 @@ class API(http.server.BaseHTTPRequestHandler):
             try: r=snowmap_response(q)
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/opningstid":   # AI › Opningstider
+            self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"cfg":OPEN.cfg,"upcoming":OPEN.upcoming(days=21)}).encode()); return
+        if u.path=="/api/ai/eksport":   # opplæringspakke til ein framtidig sentral SNOWMAN-AI (berre lokal nedlasting)
+            try:
+                import zipfile, io, hashlib
+                test=bool(STATE.get("simulated")); J=ai_journal(test)
+                site=AIPROF.d["sites"]; sid=hashlib.sha256(json.dumps(sorted(site)).encode()).hexdigest()[:12] if site else "ukjend"
+                buf=io.BytesIO()
+                with zipfile.ZipFile(buf,"w",zipfile.ZIP_DEFLATED) as z:
+                    z.writestr("LES-MEG.txt","SNOWMAN – opplæringspakke for lokal AI (anonymisert).\nInneheld læringsloggen (hendingar per prepareringsdøgn, utan posisjonar, trasénamn og talt tekst), "
+                               "områdeprofilen utan namn og koordinatar, og statistikk. Ingen førarnamn, ingen lyd, ingen rå GNSS-spor.\n"
+                               "Pakka blir IKKJE sendt automatisk. Ho er laga for ein framtidig sentral SNOWMAN-AI, og skal berre delast etter avtale med anlegget.\n")
+                    anon=lambda e: {k:(v.split("|")[0] if k=="day" and isinstance(v,str) else v) for k,v in e.items() if k not in ("text","cells","trase")}|({"textLen":len(e.get("text",""))} if "text" in e else {})|({"cellCount":len(e["cells"])} if "cells" in e else {})
+                    z.writestr("laering.jsonl","\n".join(json.dumps(anon(e),ensure_ascii=False) for e in J.ev))
+                    z.writestr("profil.json",json.dumps({"site":sid,"test":test,"version":VERSION,
+                        "profiles":[{k:v for k,v in p_.items() if k not in ("name","lat","lon","stations")} for p_ in site.values()]},ensure_ascii=False,indent=1))
+                    names=[t["name"] for t in (TRA.listing() if TRA else [])]
+                    def scrub(x):
+                        for nm in names: x=x.replace(nm,"[trasé]")
+                        return re.sub(r"«[^»]*»","«…»",x)
+                    fd=[{k:(scrub(v) if isinstance(v,str) else v) for k,v in f_.items()} for f_ in AI.findings(J.ev)]
+                    z.writestr("statistikk.json",json.dumps({"journal":J.stats(),"findings":fd},ensure_ascii=False,indent=1))
+                data=buf.getvalue()
+                self.send_response(200); self.send_header("Content-Type","application/zip")
+                self.send_header("Content-Disposition",f'attachment; filename="snowman-ai-opplaering-{time.strftime("%Y%m%d")}{"-TEST" if test else ""}.zip"')
+                self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data)
+            except Exception as e:
+                self.headers_ok(500); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if u.path=="/api/ai":   # AI-knappen: lokale preparéringsråd
             q=urllib.parse.parse_qs(u.query)
             try: r=ai_response(q)
@@ -869,6 +898,26 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/opningstid":   # lagre opningstider (AI › Opningstider)
+            try:
+                before=json.dumps(OPEN.cfg,ensure_ascii=False); c=OPEN.save(json.loads(body or b"{}"))
+                if json.dumps(c,ensure_ascii=False)!=before: LOG.event("Opningstider endra (AI)")
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"cfg":c,"upcoming":OPEN.upcoming(days=21)}).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path in ("/api/ai/feedback","/api/ai/voice"):   # føraren: nyttig/ikkje nyttig, og talekommandoar (lokalt)
+            try:
+                d=json.loads(body or b"{}"); test=bool(STATE.get("simulated")) or bool(d.get("demo"))
+                if AI is None: raise ValueError("Lokal AI er ikkje tilgjengeleg")
+                if self.path.endswith("feedback"):
+                    ai_journal(test).add("feedback",{"sec":str(d.get("sec"))[:8],"val":1 if d.get("val",0)>0 else -1})
+                else:
+                    ai_journal(test).add("voice",{"text":str(d.get("text",""))[:120],"intent":str(d.get("intent"))[:20],"ok":bool(d.get("ok"))})
+                self.headers_ok(); self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if self.path=="/api/ui-config":
             try:
                 d=json.loads(body or b"{}")
@@ -876,7 +925,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 try:
                     old=json.loads(UI_CFG.read_text("utf-8")); oc=old.get("cfg",old); nc=d.get("cfg",d)
                     log_changes("førarskjerm",oc,nc,("mname","machine","blade","bladeN","tiller","tillerN","target","tol","bounds","northUp",
-                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH","kbMode","teleOn","wxGood","wxMarg","wxWind","aiOpen","aiGunRate"))
+                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH","kbMode","teleOn","wxGood","wxMarg","wxWind","aiOpen","aiGunRate","voiceOn","voiceProactive"))
                 except Exception: pass
                 write_atomic(UI_CFG,json.dumps(d,ensure_ascii=False,indent=1))
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
@@ -1008,6 +1057,15 @@ def _production(P,lat0,lon0,X,Y,R=60.0):
     return m,pts
 try: import ai as AI; AIPROF=AI.Profiles(DATA/"ai-profil.json")
 except Exception: AI=AIPROF=None   # lokal AI krev numpy (same som snøkartet)
+import opningstid as OT
+OPEN=OT.Opningstid(DATA/"opningstid.json")   # opningstider (helg, kveld, skoleferiar, heilagdagar, manuelle unntak)
+AIJ={}
+def ai_journal(test):
+    """Læringsloggen til den lokale AI-en (test og ekte for seg)."""
+    if test not in AIJ: AIJ[test]=AI.Journal(DATA/("ai-laering-test.jsonl" if test else "ai-laering.jsonl"))
+    return AIJ[test]
+def _bin(lat,lon,size):
+    z=SF.zone_of(lon); E,N=T.utm_forward(lat,lon,z); return f"{z},{int(E//size)},{int(N//size)}"
 def _ui_cfg():
     try: return (lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8")))
     except Exception: return {}
@@ -1016,7 +1074,7 @@ def ai_response(q):
     if AI is None or SK is None or not T.AVAILABLE: return {"ok":False,"error":"Lokal AI krev terrengmotoren (numpy)."}
     np=SK.np
     demo=q.get("demo",["0"])[0]=="1"; test=bool(STATE.get("simulated")) or demo
-    uc=_ui_cfg(); tgt0=float(uc.get("target",0.8)); tol=float(uc.get("tol",0.1)); openh=float(uc.get("aiOpen",9)); gun=float(uc.get("aiGunRate",AI.GUN_RATE))
+    uc=_ui_cfg(); tgt0=float(uc.get("target",0.8)); tol=float(uc.get("tol",0.1)); openh=float(uc.get("aiOpen",10)); gun=float(uc.get("aiGunRate",AI.GUN_RATE))
     tras=[t for t in (TRA.listing() if TRA else []) if t.get("kind")=="trase"]
     f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
     if tras:
@@ -1028,7 +1086,10 @@ def ai_response(q):
     qq={"half":[str(half)],"demo":["1" if demo else "0"],"cal":["1"],"learn":["1"],"stop":["0"]}
     if clat is not None: qq.update(lat=[str(clat)],lon=[str(clon)])
     ctx=snow_compute(qq)
-    if not ctx.get("ok"): return ctx
+    if not ctx.get("ok"):   # utan varsel eller terreng: vis likevel opningstider og nye funn
+        J=ai_journal(test); nx=OPEN.next_opening()
+        return dict(ctx,ok=False,findings=AI.findings(J.ev),journal=J.stats(),
+                    opening={"next":[int(nx[0].timestamp()*1000),int(nx[1].timestamp()*1000),nx[2]] if nx else None,"upcoming":OPEN.upcoming(days=14)})
     R=ctx["R"]; P=R["P"]; n,step,half=P["n"],P["step"],P["half"]; lat0,lon0=P["lat0"],P["lon0"]; H=P["h"]
     now_ms=ctx["fc"][0]["t"]
     mlat,mlon=111320.0,111320.0*math.cos(math.radians(lat0))
@@ -1046,7 +1107,10 @@ def ai_response(q):
     out={"ok":True,"estimate":True,"demo":ctx["demo"],"test":test,"now":now_ms,"target":tgt0,"tol":tol,"trasear":len(tras),
          "measured":R["M"]["n"],"cal":R["cal"],"pfac":R["pfac"],"learn":{k:v for k,v in R["learn"].items() if k!="prodPts"}}
     # 1 tidspunkt
-    out["timing"]=AI.timing(ctx["fc"],tinfo,time.time()*1000,openh) if tras else {"trasear":[],"scores":[{"t":x["t"],"s":x["score"]} for x in AI.hour_scores(ctx["fc"])[:30]]}
+    nx=OPEN.next_opening()
+    op_ms=nx[0].timestamp()*1000 if nx else None
+    out["opening"]={"next":[int(nx[0].timestamp()*1000),int(nx[1].timestamp()*1000),nx[2]] if nx else None,"upcoming":OPEN.upcoming(days=14)}
+    out["timing"]=AI.timing(ctx["fc"],tinfo,time.time()*1000,openh,op_ms) if tras else {"trasear":[],"opening":op_ms,"scores":[{"t":x["t"],"s":x["score"]} for x in AI.hour_scores(ctx["fc"])[:30]]}
     # objekt (hydrant/kanon) til næraste-avstand
     objs=[o for o in (OBJ.listing() if OBJ else []) if o.get("type") in ("snokanon","hydrant")]
     def nearest(la_,lo_):
@@ -1096,6 +1160,13 @@ def ai_response(q):
         qual.append(qq_)
     out["holes"]=hol; out["quality"]=sorted(qual,key=lambda x:x["score"])
     out["coverTest"]=test
+    # læringslogg: kva som går igjen (éi registrering per prepareringsdøgn) → nye funn
+    J=ai_journal(test); day=time.strftime("%Y-%m-%d",time.localtime(TR.prep_day_start()))
+    if prod: J.add("deficit",{"cells":sorted({_bin(a["lat"],a["lon"],40) for a in prod}),"vol":out["production"]["totalVol"]},day=day,unique=True)
+    for tn in {h["trase"] for h in hol}:
+        J.add("holes",{"trase":tn,"cells":sorted({_bin(h["lat"],h["lon"],20) for h in hol if h["trase"]==tn})},day=day+"|"+tn,unique=True)
+    if R["cal"].get("n",0)>=10: J.add("cal",{k:R["cal"].get(k) for k in ("n","mae","bias","factor")},day=day,unique=True)
+    out["findings"]=AI.findings(J.ev); out["journal"]=J.stats()
     # områdeprofil: lærer staden automatisk
     site=AIPROF.site(lat0,lon0,float(np.nanmin(H)),float(np.nanmax(H)),(ctx["HI"] or {}).get("stations"),test)
     AIPROF.learn(site,ctx["hist"]); out["profile"]=AI.Profiles.summary(site)
