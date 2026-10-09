@@ -9,6 +9,21 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.81 – forklaring når mottakarporten ikkje opnar
+- **Bakgrunn:** På Surface med GeoMax Zenith35 Pro over Bluetooth fekk SNOWMAN berre feilen
+  `could not open port 'COM4': FileNotFoundError(2, 'Systemet finner ikke angitt fil.')`. Porten (UTGÅANDE COM4)
+  var likevel rett. Med ein Bluetooth-port tyder feilen at Windows ikkje får samband med mottakaren.
+- **Nytt:** `serial_explain()` legg ei forklaring på norsk til feilen, med kva føraren kan gjere. Forklaringa er
+  vist både under «Feil» og i Innst. › GNSS. Ho dekkjer:
+  - Windows får ikkje opna porten: mottakaren er av eller langt unna, er kopla til ei anna eining (han tek berre éi
+    Bluetooth-tilkopling om gongen), eller må parast på nytt
+  - porten er oppteken av eit anna program
+  - tidsavbrot på Bluetooth (feil 121)
+  - feil på nettverksport (socket)
+- **Endra:** same mottakarfeil blir no skriven i feltloggen berre når han endrar seg, eller kvart 5. minutt. Før
+  vart han skriven kvart 2. sekund, sidan SNOWMAN prøver å kople til igjen så ofte.
+- Testa med `simuler-leica.py --anlegg` (RTK FIX som før) og forklaringane mot feiltekstane frå Windows.
+
 ### PC-prototype v1.6.80 – Vêr: vel stad sjølv
 - **Nytt:** knappen «📍» i hovudet på Vêr opnar eit stadpanel. Eigaren ønskte å kunne velje staden vêret gjeld for.
   Desse vala finst:

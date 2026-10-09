@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.80"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.81"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -291,6 +291,31 @@ def parse_gga(line):
         update(last_error=f"GGA parse: {e}")
         if time.time()-LOGRATE.get("gga",0)>60: LOGRATE["gga"]=time.time(); LOG.event(f"Kunne ikkje tolke GGA: {e}{where(e)}",err=True)
 
+def serial_explain(e,port):
+    """Kort forklaring på norsk av kvifor mottakarporten ikkje opnar (vist under «Feil» og i Innst. › GNSS)."""
+    low=str(e).lower(); port=port or "porten"
+    bt=False
+    try:
+        from serial.tools import list_ports
+        bt=any(p.device.upper()==str(port).upper() and "bluetooth" in (p.description or "").lower() for p in list_ports.comports())
+    except Exception: pass
+    if "socket://" in low or str(port).startswith("socket://"):
+        return "Får ikkje kontakt med mottakaren over nettverket. Sjekk adresse og port."
+    if "permission" in low or "access is denied" in low or "tilgang" in low or "errno 13" in low:
+        return (f"{port} er oppteken av eit anna program – t.d. eit anna GNSS-program, ein nettlesarfane med "
+                "seriell-/Bluetooth-tilkopling eller ein SNOWMAN som alt køyrer. Lukk det, så koplar SNOWMAN til av seg sjølv.")
+    if "121" in low or "semaphore" in low or "semafor" in low or "timeout" in low or "tidsavbrot" in low:
+        return "Tidsavbrot: mottakaren svarar ikkje på Bluetooth (av, for langt unna eller kopla til ei anna eining)."
+    if "filenotfound" in low or "errno 2" in low or "finner ikke" in low or "cannot find" in low or "no such file" in low:
+        if bt or str(port).upper().startswith("COM"):
+            return (f"Windows får ikkje opna {port}. Med Bluetooth tyder det nesten alltid at PC-en ikkje får samband med mottakaren: "
+                    "1) Sjå at mottakaren er på og nær PC-en. 2) Kople frå alt anna som brukar mottakaren over Bluetooth "
+                    "(telefon, kontrollar, andre program) – han tek berre éi tilkopling om gongen. 3) Hjelper ikkje det: "
+                    "fjern mottakaren i Windows › Bluetooth, par han på nytt og bruk den nye UTGÅANDE porten. "
+                    "Med kabel: sjekk at USB-kabelen sit i og at portnamnet er rett. SNOWMAN prøver igjen av seg sjølv.")
+        return f"Porten {port} finst ikkje. Sjekk kabel og portnamn."
+    return ""
+
 def serial_loop():
     global serial_obj
     while not STOP.is_set():
@@ -345,8 +370,13 @@ def serial_loop():
                 else: time.sleep(.02)
             update(serial_connected=False)   # løkka slutta (port lukka/endra) – aldri «TILKOPLA» utan open port
         except Exception as e:
-            update(serial_connected=False,last_error=f"Serial: {e}")
-            LOG.event(f"Mottakar-feil: {e}{'' if isinstance(e,OSError) else where(e)}",err=True)
+            why=serial_explain(e,CFG.get("serial_port"))
+            update(serial_connected=False,last_error=f"Serial: {e}"+(f" – {why}" if why else ""))
+            # same feil kvart 2. sekund skal ikkje fylle feltloggen: skriv han når han endrar seg, elles kvart 5. min
+            msg=str(e)
+            if msg!=LOGRATE.get("serr_msg") or time.time()-LOGRATE.get("serr",0)>300:
+                LOGRATE["serr_msg"]=msg; LOGRATE["serr"]=time.time()
+                LOG.event(f"Mottakar-feil: {e}{'' if isinstance(e,OSError) else where(e)}"+(f" – {why}" if why else ""),err=True)
             try:
                 if serial_obj: serial_obj.close()
             except: pass
