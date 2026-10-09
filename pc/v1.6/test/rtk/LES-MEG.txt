@@ -1,0 +1,12 @@
+Test av RTK i SNOWMAN (rtkmotor.py) – v1.6.91
+
+Testdata: RTKLIB demo5 test/data/rinex (07590920.05o rover, 30400920.05o base, 07590920.05n baner),
+henta frå https://github.com/rtklibexplorer/RTKLIB (BSD-2). Ikkje lagra i repoet – klon/last ned til ./rtklib/.
+
+1. python3 lagrtcm.py 1077     → base.rtcm3 (1006+1019+1077) og rover.rtcm3 (1077)
+2. python3 replay.py           → motoren åleine: venta 115/115 RTK FIX, spreiing < 1 cm
+3. python3 e2e_kjelder.py      → falsk caster (127.0.0.1:2199) og mottakar (socket://127.0.0.1:7791);
+   start SNOWMAN med SNOWMAN_RTK_REFTIME=2005-04-02 SNOWMAN_RTK_NAVFILE=rtklib/test/data/rinex/07590920.05n,
+   set COM-port socket://127.0.0.1:7791, caster 127.0.0.1:2199, mountpoint TEST, «RTK i SNOWMAN».
+
+NB: RTKLIB sin 1004-kodar gir ein brøkdels syklus-feil på L2 – bruk 1077 (MSM7) til testfiler.

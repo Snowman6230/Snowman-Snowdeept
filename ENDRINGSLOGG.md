@@ -9,6 +9,47 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.91 – RTK-motor i SNOWMAN (RTKLIB)
+- **Nytt:** `rtkmotor.py`. SNOWMAN reknar RTK sjølv, etter eigaren si avgjerd: «RTK og NTRIP skal kun vere i
+  SNOWMAN – Zenith skal ikkje bruke korreksjonsdata».
+  - Basen kjem frå NTRIP-klienten i SNOWMAN. Rådata (RTCM 3 MSM eller 1004/1012) kjem frå mottakaren på same port
+    som NMEA.
+  - Ein demux skil RTCM-rammer (CRC-kontroll) frå NMEA-teksten.
+  - RTKLIB `rtkpos` reknar løysinga: kinematisk, L1+L2, GPS/GLONASS/Galileo/BeiDou, 15° maske, kontinuerleg AR,
+    GLONASS-AR av.
+  - Løysinga blir ei GGA (4 = FIX, 5 = FLOAT, ellipsoidisk høgd med geoideseparasjon 0) som går same veg som før:
+    snødjupne, kart og logg.
+- **Nytt:** innstillinga «Kvar blir RTK rekna?» på NTRIP-sida.
+  - **Standard: I SNOWMAN** (eigaren si avgjerd).
+  - Då blir ingenting sendt til mottakaren, og **GGA frå mottakaren går uredigert til casteren** (`rx_gga`).
+  - «I mottakaren» finst framleis som val.
+- **Nytt:** satellittbaner blir tekne frå rover- og basestraumen (1019/1020/1042/1046). Som reserve hentar SNOWMAN
+  banefil frå IGS/BKG (`fetch_brdc`). Døgnfilene kjem først etter midnatt, så baner frå mottakaren er best.
+- **Nytt:** feilsøkaren har eigne steg i SNOWMAN-modus:
+  - RTK-motoren
+  - rådata frå mottakaren
+  - basedata og baseposisjon
+  - satellittbaner
+
+  `rtk_hint` og NTRIP-statusen viser motoren.
+- **Tredjepart:** pyrtklib 0.2.7 (IPNL-POLYU, MIT) med RTKLIB (T. Takasu, BSD-2). Pakken blir installert automatisk
+  med pip første gong RTK i SNOWMAN er på, sidan oppdateringa ikkje køyrer pip og Windows-filene er 8 MB per
+  Python-versjon. Han er ikkje i `requirements.txt`, slik at installasjonen ikkje stoppar om ein versjon manglar
+  (finst for Python 3.10–3.13 på Windows).
+- **Avgjerd:** bygd i v1.6, ikkje i ei ny v1.7-mappe. Kvar versjonsmappe har eigen `data` og `.venv`, og autostart
+  peikar på v1.6. Ei ny mappe no ville gitt «ikkje installert», tomme innstillingar og terrengmodellar, og autostart
+  til gammal versjon. Versjonsbytet treng ein eigen flyttejobb.
+- **Krav:** mottakaren må sende rådata. GGA åleine kan ikkje gi RTK. Zenith35 Pro viser berre NMEA i oppsettet. I
+  «RTK Base» sender han eigne rådata på External (kabel) – det må testast.
+- **Testa** (testskript i `pc/v1.6/test/rtk/`):
+  - RTKLIB-testdata 0759/3040 (3,3 km): 115/120 FIX direkte, og 115/115 FIX gjennom motoren med RTCM 1077 og
+    NMEA-støy. Spreiing 4,5 mm sidevegs og 10 mm i høgd.
+  - Heile vegen gjennom SNOWMAN med falsk caster og mottakar over TCP: RTK FIX «rekna i SNOWMAN», 0 byte til
+    mottakaren, og casteren fekk GGA-linja frå mottakaren uendra.
+  - `simuler-leica.py --anlegg` gir RTK FIX og snødjupne som før, og feilsøkaren er grøn med `--simulert`.
+  - Playwright utan JS-feil.
+- **Ikkje testa:** ekte mottakar med rådata, og banehenting frå BKG (nettet er stengt her).
+
 ### Avgjerd – RTK og NTRIP berre i SNOWMAN (ingen kodeendring)
 - **Avgjerd (eigaren):** mottakaren (Zenith) skal ikkje rekne RTK. RTK og NTRIP skal berre vere i SNOWMAN.
 - **Konsekvens:** mottakaren må sende rådata (RTCM 3 MSM eller 1004/1012), ikkje berre GGA. Spor:

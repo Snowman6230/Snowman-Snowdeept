@@ -290,6 +290,11 @@ resultatet (GGA, kvalitet 4 = FIX).
   - Spor å teste: Zenith35 Pro sender eigne rådata som RTCM 3 i «RTK Base»-modus, men berre over UHF, GSM eller
     External (kabel). Med kabel kan han truleg vere rådatakjelde for SNOWMAN.
   - Alternativ mottakar: u-blox ZED-F9P.
+- **Status v1.6.91:** RTK-motoren er bygd i v1.6 (`rtkmotor.py`, pyrtklib/RTKLIB) og er standard. Han er testa mot
+  RTKLIB-testdata og heile vegen gjennom SNOWMAN. Det som står att, er ein ekte mottakar med rådata, og eventuelt
+  ei eiga kjelde for satellittbaner i sanntid (t.d. eit NTRIP-mountpoint med 1019/1020).
+- **v1.7-mappe:** krev at data, `.venv` og autostart blir flytta (SNOWMAN.bat, installer, oppstart.py). Det er eit
+  eige steg.
 
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
