@@ -9,6 +9,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.90 – feilsøkaren kjenner att «kommandoport»
+- **Funn (RTK-feilsøkaren på Surface):** Zenith35 Pro svarte `@GNSS,V@,ERROR`. Saman med DN, LANTENNA og
+  ADVNULLANTENNA viser det eit mønster: mottakaren tolkar alle bitar av korreksjonsdataa som kommandoar. Bluetooth-porten
+  er kommandoporten hans, og korreksjonane når aldri RTK-delen («Datalink Status: Disconnected»). Teorien frå v1.6.88
+  om antennenamnet var difor truleg feil.
+- **Endra:** feilsøkaren og `rtk_hint` kjenner att svar på forma `@…,<ord>,ERROR`. Dei seier rett ut at porten er
+  kommandoporten, og tilrår GSM/GPRS i mottakaren eller kabel (External). Hjelpeteksten på NTRIP-sida er retta.
+- **Avgjerd:** feltet «Ikkje send desse RTCM-typane» blir verande, som generelt verktøy.
+- Testa med sjølvtesten (`@GNSS,V@,ERROR` med 1008/1033 haldne tilbake gir framleis «accept», med råd om
+  kommandoport), og med `simuler-leica.py --anlegg` (alle steg grøne) utan JS-feil.
+
 ### PC-prototype v1.6.89 – RTK-feilsøkar
 - **Nytt:** sida «🔍 Feilsøk RTK» (`/feilsok`, ny modul `rtksjekk.py`). Eigaren ønskte eit program som sjekkar alle
   stega for å få RTK. Sida går gjennom heile kjeda og blir oppdatert kvart 2. sekund:

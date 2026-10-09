@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.89"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.90"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -415,10 +415,10 @@ def rtk_hint(st):
         return "Korreksjonane kjem frå casteren, men blir ikkje sende vidare til mottakaren – sjekk at mottakarporten er open."
     km=r.get("baseKm"); kmt=f" Basen er {km} km unna." if km is not None else ""
     rx=str(st.get("rx_text") or ""); rxt=st.get("rx_time") or 0
-    if re.search(r"ANTENNA,ERROR",rx) and time.time()-rxt<60 and not re.search(r"1033",str(CFG.get("rtcm_drop") or "")):
-        return ("Mottakaren svarar «"+rx[:60]+"»: han godtek ikkje antennenamnet til basen (RTCM 1008/1033) og forkastar truleg "
-                "korreksjonane. Skriv «1008,1033» i feltet «Ikkje send desse RTCM-typane til mottakaren» på NTRIP-sida, "
-                "trykk LAGRE / KOPLE TIL og vent 1–2 minutt.")
+    if re.search(r"^@\w+,.*,ERROR",rx) and time.time()-rxt<60:
+        return ("Mottakaren svarar «"+rx[:60]+"»: han tolkar korreksjonane som kommandoar, så porten SNOWMAN brukar er "
+                "kommandoporten hans, ikkje korreksjonsinngangen. La mottakaren hente korreksjonane sjølv (RTK Data Source = "
+                "GSM/GPRS med SIM og NTRIP i mottakaren) eller bruk kabel (External). Sjå 🔍 FEILSØK RTK.")
     if fix=="MANUELL":
         # GGA-kvalitet 7: mottakaren melder ein fast/innlagd posisjon – ikkje ei måling. Typisk Working Mode = Base/Static,
         # eller eit augneblinksbilete medan mottakaren startar opp eller byter modus.

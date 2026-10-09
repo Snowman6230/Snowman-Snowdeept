@@ -231,10 +231,14 @@ def check(st, cfg, ports=None, net=None, now=None):
     recent = rxt and now - rxt < 60
     if not (st.get("serial_connected") and out):
         _step(S, "accept", "Mottakaren godtek korreksjonane", SKIP)
-    elif recent and re.search(r"ANTENNA,ERROR", rx) and not re.search(r"1033", str(cfg.get("rtcm_drop") or "")):
+    elif recent and re.search(r"^@\w+,.*,ERROR", rx):
+        # Kommandoprotokoll (t.d. GeoMax/ComNav «@GNSS,<ord>,ERROR»): mottakaren tolkar bitar av korreksjonane som
+        # kommandoar – sett i felt 9.10.2026 med DN, LANTENNA, ADVNULLANTENNA og V@. Porten er kommandoporten hans.
         _step(S, "accept", "Mottakaren godtek korreksjonane", FAIL, f"Mottakaren svarar «{rx[:70]}» (for {now - rxt:.0f} s sidan).",
-              "Han godtek ikkje antennenamnet til basen. Innst. › GNSS: skriv 1008,1033 i «Ikkje send desse RTCM-typane til mottakaren», "
-              "LAGRE / KOPLE TIL, og vent 1–2 min.")
+              "Mottakaren tolkar korreksjonane som kommandoar: porten SNOWMAN brukar er kommandoporten hans, ikkje "
+              "korreksjonsinngangen. SNOWMAN kan ikkje rette dette. Løysing: la mottakaren hente korreksjonane sjølv "
+              "(RTK Data Source = GSM/GPRS med SIM og NTRIP-oppsett i mottakaren), eller bruk kabel til korreksjonsinngangen "
+              "(External). Posisjonen kan framleis lesast over Bluetooth.")
     elif recent and "ERROR" in rx.upper():
         _step(S, "accept", "Mottakaren godtek korreksjonane", WARN, f"Mottakaren svarar «{rx[:70]}» (for {now - rxt:.0f} s sidan).",
               "Mottakaren avviser noko av det han får. Sjekk at korreksjonsinngangen hans er rett (t.d. RTK Data Source = Bluetooth/External).")
@@ -311,6 +315,8 @@ if __name__ == "__main__":     # sjølvtest: python3 rtksjekk.py
     r = check(base, cfg, ports, None, now)
     print(report(r, "test"))
     assert r["first"] == "accept", r["first"]
+    r2 = check(dict(base, rx_text="@GNSS,V@,ERROR,1*B6"), dict(cfg, rtcm_drop="1008,1033"), ports, None, now)
+    assert r2["first"] == "accept" and "kommandoar" in r2["steps"][11]["action"], r2["first"]
     r = check(dict(base, fix="RTK FIX", corr_age=1.0, base_id="0000", rx_text="", depth_status="OK", depth=0.9), dict(cfg, rtcm_drop="1008,1033"), ports, None, now)
     assert r["ok"], [s for s in r["steps"] if s["status"] != OK]
     r = check(dict(base, serial_connected=False, last_error="Serial: could not open port 'COM4': FileNotFoundError(2, ...)"), cfg, ports, None, now)
