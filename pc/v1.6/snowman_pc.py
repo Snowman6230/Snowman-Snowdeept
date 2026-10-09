@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.73"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.74"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -572,6 +572,12 @@ class API(http.server.BaseHTTPRequestHandler):
             try: r=snowmap_response(q)
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/ai":   # AI-knappen: lokale preparéringsråd
+            q=urllib.parse.parse_qs(u.query)
+            try: r=ai_response(q)
+            except Exception as e:
+                import traceback; traceback.print_exc(); r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/history/coverage":   # trakka område i ein periode eller for éi økt (Historikk › TRAKKA OMRÅDE)
             q=urllib.parse.parse_qs(u.query); per=q.get("period",["day"])[0]; now=time.time()
             try:
@@ -870,7 +876,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 try:
                     old=json.loads(UI_CFG.read_text("utf-8")); oc=old.get("cfg",old); nc=d.get("cfg",d)
                     log_changes("førarskjerm",oc,nc,("mname","machine","blade","bladeN","tiller","tillerN","target","tol","bounds","northUp",
-                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH","kbMode","teleOn","wxGood","wxMarg","wxWind"))
+                                "detail3d","estOn","bgOn","viewMode","demoD","antX","antY","antN","ant2X","ant2Y","surfMem","surfH","kbMode","teleOn","wxGood","wxMarg","wxWind","aiOpen","aiGunRate"))
                 except Exception: pass
                 write_atomic(UI_CFG,json.dumps(d,ensure_ascii=False,indent=1))
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
@@ -1000,6 +1006,100 @@ def _production(P,lat0,lon0,X,Y,R=60.0):
         if abs(x)>P["half"]+R or abs(y)>P["half"]+R: continue
         m|=(X-x)**2+(Y-y)**2<=R*R; pts.append([round(x,1),round(y,1),o.get("type")])
     return m,pts
+try: import ai as AI; AIPROF=AI.Profiles(DATA/"ai-profil.json")
+except Exception: AI=AIPROF=None   # lokal AI krev numpy (same som snøkartet)
+def _ui_cfg():
+    try: return (lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8")))
+    except Exception: return {}
+def ai_response(q):
+    """AI-knappen: fem preparéringsråd frå lokal AI (snøkart, trasear, RTK, vêr). Alt er forslag og ESTIMAT."""
+    if AI is None or SK is None or not T.AVAILABLE: return {"ok":False,"error":"Lokal AI krev terrengmotoren (numpy)."}
+    np=SK.np
+    demo=q.get("demo",["0"])[0]=="1"; test=bool(STATE.get("simulated")) or demo
+    uc=_ui_cfg(); tgt0=float(uc.get("target",0.8)); tol=float(uc.get("tol",0.1)); openh=float(uc.get("aiOpen",9)); gun=float(uc.get("aiGunRate",AI.GUN_RATE))
+    tras=[t for t in (TRA.listing() if TRA else []) if t.get("kind")=="trase"]
+    f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
+    if tras:
+        la=[p[0] for t in tras for p in t["poly"]]; lo=[p[1] for t in tras for p in t["poly"]]
+        clat,clon=(min(la)+max(la))/2,(min(lo)+max(lo))/2
+        half=min(1500.0,max(300.0,max((max(la)-min(la))*111320,(max(lo)-min(lo))*111320*math.cos(math.radians(clat)))/2+80))
+    else:
+        clat,clon,half=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")),600.0
+    qq={"half":[str(half)],"demo":["1" if demo else "0"],"cal":["1"],"learn":["1"],"stop":["0"]}
+    if clat is not None: qq.update(lat=[str(clat)],lon=[str(clon)])
+    ctx=snow_compute(qq)
+    if not ctx.get("ok"): return ctx
+    R=ctx["R"]; P=R["P"]; n,step,half=P["n"],P["step"],P["half"]; lat0,lon0=P["lat0"],P["lon0"]; H=P["h"]
+    now_ms=ctx["fc"][0]["t"]
+    mlat,mlon=111320.0,111320.0*math.cos(math.radians(lat0))
+    xs=-half+np.arange(n)*step; X,Y=np.meshgrid(xs,-xs)
+    ll=lambda r,c: [round(lat0+(half-r*step)/mlat,7),round(lon0+(-half+c*step)/mlon,7)]
+    Tn=snow_total(ctx,0); T24=snow_total(ctx,24)
+    tgt=np.full((n,n),np.nan); tid=np.full((n,n),-1,dtype=int)
+    for i,t in enumerate(tras):
+        a=np.asarray(t["poly"],float); m=TR.inside_mask((a[:,1]-lon0)*mlon,(a[:,0]-lat0)*mlat,X,Y)
+        tgt[m]=t["target"] if t.get("target") is not None else tgt0; tid[m]=i
+    if not tras: tgt[:]=tgt0
+    st=(TRA.status(with_map=True)["status"] if TRA else {})
+    key="pctTest" if test else "pct"
+    tinfo=[dict(id=t["id"],name=t["name"],area=t.get("area"),last=(st.get(t["id"]) or {}).get("last"),pct=(st.get(t["id"]) or {}).get(key,0)) for t in tras]
+    out={"ok":True,"estimate":True,"demo":ctx["demo"],"test":test,"now":now_ms,"target":tgt0,"tol":tol,"trasear":len(tras),
+         "measured":R["M"]["n"],"cal":R["cal"],"pfac":R["pfac"],"learn":{k:v for k,v in R["learn"].items() if k!="prodPts"}}
+    # 1 tidspunkt
+    out["timing"]=AI.timing(ctx["fc"],tinfo,time.time()*1000,openh) if tras else {"trasear":[],"scores":[{"t":x["t"],"s":x["score"]} for x in AI.hour_scores(ctx["fc"])[:30]]}
+    # objekt (hydrant/kanon) til næraste-avstand
+    objs=[o for o in (OBJ.listing() if OBJ else []) if o.get("type") in ("snokanon","hydrant")]
+    def nearest(la_,lo_):
+        b=None
+        for o in objs:
+            d=TR.Local(la_,lo_); x,y=d.xy(np.array([float(o["lat"])]),np.array([float(o["lng"])]))
+            dist=float(math.hypot(x[0],y[0]))
+            if b is None or dist<b["dist"]: b={"name":o.get("name") or TR.OBJ_TYPES[o["type"]][0],"type":o["type"],"dist":round(dist),"lat":float(o["lat"]),"lon":float(o["lng"])}
+        return b
+    # 5 snøproduksjon: underskot etter venta nysnø dei neste 24 t
+    d24,_=AI.deficit_surplus(T24,tgt,tol); dnow,snow_=AI.deficit_surplus(Tn,tgt,tol)
+    labD,defc=AI.clusters(np.nan_to_num(d24)>0.05,d24,step,H,tile_m=80)   # område med minst 5 cm for lite, delt i 80 m-rutar
+    lim={"good":float(uc.get("wxGood",-5)),"marg":float(uc.get("wxMarg",-2)),"wind":float(uc.get("wxWind",12))}
+    prod=[]
+    for c in sorted(defc,key=lambda c:-c["vol"])[:15]:
+        la_,lo_=ll(c["r"],c["c"]); m=labD==c["k"]
+        now_def=float(np.nansum(np.maximum(dnow[m],0)))*step*step
+        w=AI.windows_at(ctx["fc"],c["z"]-ctx["z0"],lim,VER.wetbulb,VER.classify,VER.windows)
+        ti=int(np.bincount(tid[m][tid[m]>=0]).argmax()) if (tid[m]>=0).any() else -1
+        prod.append({"lat":la_,"lon":lo_,"area":c["area"],"vol":c["vol"],"mean":c["mean"],"max":c["max"],"z":c["z"],
+                     "water":round(c["vol"]*AI.SNOW_WATER),"gunHours":round(c["vol"]/max(gun,1),1),
+                     "naturalHelp":round(100*(1-c["vol"]/now_def)) if now_def>c["vol"] else 0,
+                     "trase":tras[ti]["name"] if ti>=0 else None,"near":nearest(la_,lo_),"window":w[0] if w else None})
+    cls=np.zeros((n,n),dtype=np.uint8); dd=np.nan_to_num(d24)
+    cls[dd>0]=1; cls[dd>0.2]=2; cls[dd>0.4]=3
+    out["production"]={"areas":prod,"totalVol":int(sum(c["vol"] for c in defc)),"totalArea":int(sum(c["area"] for c in defc)),
+                       "gunRate":gun,"grid":base64.b64encode(cls.tobytes()).decode(),"n":n,
+                       "bounds":[[lat0-(half+step/2)/mlat,lon0-(half+step/2)/mlon],[lat0+(half+step/2)/mlat,lon0+(half+step/2)/mlon]]}
+    # 2 snøflytting: overskot → underskot i same trasé (no-situasjonen)
+    _,defn=AI.clusters(np.nan_to_num(dnow)>0.05,dnow,step,H,tile_m=60); _,surn=AI.clusters(np.nan_to_num(snow_)>0.05,snow_,step,H,tile_m=60)
+    tidof=lambda c: int(tid[int(round(c["r"])),int(round(c["c"]))])
+    mv=AI.snow_moves(defn,surn,step,{c["k"]:tidof(c) for c in defn},{c["k"]:tidof(c) for c in surn})
+    out["moves"]=[{"from":ll(m_["from"]["r"],m_["from"]["c"]),"to":ll(m_["to"]["r"],m_["to"]["c"]),"vol":m_["vol"],"dist":m_["dist"],"dz":m_["dz"],
+                   "trase":tras[tidof(m_["to"])]["name"] if tras and tidof(m_["to"])>=0 else None,"surplus":m_["from"]["mean"],"deficit":m_["to"]["mean"]} for m_ in mv[:10]]
+    # 3 hol og 4 kvalitet per trasé
+    hol,qual=[],[]
+    for i,t in enumerate(tras):
+        s_=st.get(t["id"]) or {}; mp=s_.get("map")
+        hs=[]
+        if mp:
+            hs,_m=AI.holes(base64.b64decode(mp["all" if test else "real"]),mp["W"],mp["H"],mp["cell"],s_.get(key,0))
+            for h in hs:
+                hol.append({"trase":t["name"],"area":h["area"],"len":h["len"],"lat":round(mp["lat0"]+(mp["y0"]+h["y"])/mp["my"],7),"lon":round(mp["lon0"]+(mp["x0"]+h["x"])/mp["mx"],7)})
+        a=np.asarray(t["poly"],float)
+        qq_=AI.quality(s_.get(key,0),len(hs),Tn[tid==i] if (tid==i).any() else None,t["target"] if t.get("target") is not None else tgt0,tol)
+        qq_.update(name=t["name"],pct=s_.get(key,0),lat=float(a[:,0].mean()),lon=float(a[:,1].mean()),holes=len(hs))
+        qual.append(qq_)
+    out["holes"]=hol; out["quality"]=sorted(qual,key=lambda x:x["score"])
+    out["coverTest"]=test
+    # områdeprofil: lærer staden automatisk
+    site=AIPROF.site(lat0,lon0,float(np.nanmin(H)),float(np.nanmax(H)),(ctx["HI"] or {}).get("stations"),test)
+    AIPROF.learn(site,ctx["hist"]); out["profile"]=AI.Profiles.summary(site)
+    return out
 SNOW_HIST_H=72   # timar vêrhistorikk (Frost) i snøkartet – målingar eldre enn dette får berre endringa sidan då
 SNOW_STOPS=(0,6,12,24,48)
 def _snow_measured(P,lat0,lon0,test):
@@ -1049,6 +1149,16 @@ def _snow_measured(P,lat0,lon0,test):
                newest=float(A[:,4].max()),oldest=float(A[:,4].min()))
     return out
 def snowmap_response(q):
+    ctx=snow_compute(q)
+    if not ctx.get("ok"): return ctx
+    return snowmap_encode(ctx,q)
+def snow_total(ctx,stop):
+    """Estimert totaldjupne (cm) ved stoppet (0 = no, 6/12/24/48 t fram) – NaN der det ikkje er målt."""
+    np=SK.np; R=ctx["R"]; M,run=R["M"],R["run"]
+    if not M["n"]: return np.full(R["P"]["h"].shape,np.nan)
+    cap=run["caps"]["t"]; S=run["snaps"]; ks=ctx["stops"][stop]
+    return np.where(np.isfinite(M["D"])&np.isfinite(cap["w"]),np.maximum(0.0,M["D"]*100.0+(S[ks]["w"]-cap["w"])),np.nan)
+def snow_compute(q):
     f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
     if not T.AVAILABLE or SK is None: return {"ok":False,"error":"Terrengmotoren er ikkje tilgjengeleg (numpy manglar)."}
     np=SK.np
@@ -1081,8 +1191,8 @@ def snowmap_response(q):
     stops={s:min(len(line),know+s) for s in SNOW_STOPS}
     layers=tuple(m["id"]+str(m.get("priority")) for m in TERR.listing() if m.get("active"))
     ck=(round(lat,6),round(lon,6),half,loose,demo,test,usecal,uselearn,W.get("updated") or W.get("age_min"),fc[0]["t"],len(hist),layers,int((SURF.stats(test).get("newest") or 0)//600))
-    c=SNOWMAP_CACHE.get("run")
-    if c and c[0]==ck and time.time()-c[1]<600: R=c[2]
+    c=SNOWMAP_CACHE.get(ck)   # inntil 3 utrekningar (snøkart og AI kan ha ulike utsnitt)
+    if c and time.time()-c[1]<600: R=c[2]
     else:
         P=TERR.patch(lat,lon,half,step)
         if P is None: return {"ok":False,"error":"Terrengmodellen dekkjer ikkje området."}
@@ -1113,7 +1223,15 @@ def snowmap_response(q):
                             spatial=spat if uselearn else None)
         lr.update(snow_learn(test).stats()); lr["cells"]=int(np.isfinite(spat).sum()); lr["prodCells"]=int(prod.sum()); lr["prodPts"]=prodpts
         R={"P":P,"M":M,"run":run,"cal":cal,"pfac":used,"it":it,"learn":lr,"spat":spat}
-        SNOWMAP_CACHE["run"]=(ck,time.time(),R)
+        SNOWMAP_CACHE[ck]=(ck,time.time(),R)
+        while len(SNOWMAP_CACHE)>3: SNOWMAP_CACHE.pop(min(SNOWMAP_CACHE,key=lambda k:SNOWMAP_CACHE[k][1]))
+    return {"ok":True,"R":R,"stops":stops,"line":line,"know":know,"hist":hist,"HI":HI,"W":W,"fc":fc,"test":test,"demo":demo,
+            "lat":lat,"lon":lon,"half":half,"step":step,"z0":z0,"altsrc":altsrc,"centred":centred,"usecal":usecal,"uselearn":uselearn,"loose":loose,"now":now}
+def snowmap_encode(ctx,q):
+    np=SK.np
+    stop=int(float(q.get("stop",["0"])[0] or 0)); stop=stop if stop in SNOW_STOPS else 0
+    R,stops,line,know,hist,HI,W,fc,test=ctx["R"],ctx["stops"],ctx["line"],ctx["know"],ctx["hist"],ctx["HI"],ctx["W"],ctx["fc"],ctx["test"]
+    half,step,z0,altsrc,centred,usecal,uselearn,loose,now=ctx["half"],ctx["step"],ctx["z0"],ctx["altsrc"],ctx["centred"],ctx["usecal"],ctx["uselearn"],ctx["loose"],ctx["now"]
     P,M,run,ok=R["P"],R["M"],R["run"],R["run"]["ok"]
     S=run["snaps"]; ks=stops[stop]; kn=stops[0]
     if stop==0:   # sidan sist målt (eller sidan starten på historikken der det ikkje er målt)

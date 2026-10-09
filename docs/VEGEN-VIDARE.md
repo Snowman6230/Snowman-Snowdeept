@@ -248,6 +248,20 @@ feilkodar og temperaturar i feltloggen.
    mot RTK-målingar. Alltid merkt **ESTIMAT – vêrmodell**, aldri blanda med målt snødjupne.
 5. Kopling til Snowman Hydrantstyring (produksjonsvindauge per hydrant/kanon og høgd).
 
+## 14. AI i SNOWMAN (analyse og prototype 2026-10-09)
+
+**Prototype i v1.6.74:** AI-knappen med fem råd frå lokal AI – tidspunkt, snøflytting, hol i spora, kvalitet og
+snøproduksjon – og kartlag på hovudkartet. Alt blir tilpassa staden automatisk etter GPS. Sjå `AI.md`.
+
+**Vidare (ikkje plassert):**
+1. «Spør SNOWMAN»: språkmodell med lese-verktøy mot SNOWMAN-tenesta (aldri styring), sterk modell over nett og
+   ein mindre lokal modell utan nett. Utskiftbar modul, nøkkel lagra lokalt, berre samandrag ut.
+2. Nattplan og morgonrapport som faste funksjonar (bygd på dei fem råda).
+3. Røyst i førarhuset (norsk talegjenkjenning, også lokalt).
+4. Fleire lærande modellar: snødjupne framfor maskina, kalibrering per maskin, drivstoff og slitasje (CAN),
+   kva forhold som gir god kvalitet, produksjon mot resultat per kanon (Hydrantstyring).
+5. Seinare: kamera/LiDAR for overflate og hindringar – krev mykje testing.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |

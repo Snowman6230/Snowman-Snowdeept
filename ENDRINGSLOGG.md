@@ -9,6 +9,33 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.74 – AI-knapp: lokal AI med fem preparéringsråd
+- **Nytt:** knappen **«✦ AI»** i verktøylinja (etter Vêr) opnar eit overlay med fem råd: **5 snøproduksjon** (øvst),
+  **1 tidspunkt å preparere**, **2 snøflytting med skjeret**, **3 hol i spora** og **4 kvalitetsscore per trasé**.
+  Kvart råd har «Vis» (flyttar kartet dit) og «Vis på kartet».
+- **Nytt:** råda blir **lag på hovudkartet** som blir verande når overlayet er lukka: område med for lite snø er
+  **raudt skravert** (tre nivå) med etikett «❄ MANGLAR x cm · y m³ snø · næraste kanon/hydrant» og stipla linje
+  til han; snøflytting som gul pil «SKYV x m³»; hol som oransje ring; kvalitet som «xx %» ved traseen. Etikettane
+  står alltid rett opp når kartet roterer. Laga blir slått av med knappane nede til venstre.
+- **Nytt:** alt anna går vidare i bakgrunnen (testa: sporet voks medan AI var ope). Vêr og AI deler plass – det
+  eine lukkar det andre. Nye råd kvar 10. min så lenge overlayet eller eit AI-lag er på.
+- **Nytt:** `ai.py` – lokal, lærande modell på PC-en (ikkje språkmodell, ingen skyteneste). **Områdeprofil blir laga
+  automatisk** når SNOWMAN er på ein ny stad (> 5 km frå kjende), og lærer vindrose og nattetemperatur. Saman med
+  nedbørsfaktoren og læringa i snøkartet blir alt tilpassa staden etter GPS – utan oppsett per anlegg.
+  Nytt endepunkt `/api/ai`. Spesifikasjon i `docs/AI.md`.
+- **Nytt:** innstillingar `aiOpen` (opningstid, standard 9) og `aiGunRate` (m³ snø per time per kanon, standard 25 –
+  grovt anslag) i førarskjerm-innstillingane, loggførte ved endring.
+- **Endra:** snøkartet kan halde inntil tre utrekningar samstundes (snøkart og AI kan ha ulike utsnitt).
+- **Endra:** verktøylinja: knappane er litt smalare (70 px) og rada blir aldri kutta i kantane.
+- **Avgjerd (eigaren):** ein lokal AI i SNOWMAN skal lære området han er i, og alt skal tilpassast automatisk når
+  SNOWMAN blir selt til andre delar av Noreg.
+- **Kvifor:** eigaren ville teste AI i SNOWMAN med eigen knapp, dei fem råda, og særleg sjå område med for lite snø
+  mot oppgitt måldjupne på ein måte føraren forstår.
+- **Testa:** `python3 ai.py` (tidspunkt etter snøfall, flytting nedover, hol, kvalitet), og i isolert kopi med
+  DTM1-utsnitt, `simuler-leica.py --anlegg`, TEST-målingar, to TEST-trasear (mål 0,8 og 1,0 m), ei TEST-økt med hol,
+  snøkanon og hydrant, demo-vêr – og utan trasear. Ingen JavaScript-feil. Skjermbilete i `docs/prototypar/ai/`.
+  Kanon-kapasiteten og scorane er ikkje kalibrerte mot verkelegheita.
+
 ### PC-prototype v1.6.73 – Snøkart steg 3–4: totaldjupne, vêr bakover, treffsikkerheit og læring
 - **Nytt (steg 3):** setjing av laus snø, smelting av både ny og eldre snø (graddøgn og regn), og **totaldjupne** =
   sist målt med RTK (snøflate-minnet, fylt mellom spor innan 12 m) + modellendringa sidan. Bleikare farge jo eldre

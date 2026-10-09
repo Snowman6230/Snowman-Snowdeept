@@ -269,13 +269,13 @@
         height: 78px;
         background: #02121bf5;
         display: flex;
-        justify-content: center;
-        gap: 5px;
+        justify-content: safe center;
+        gap: 4px;
         padding: 6px;
         overflow-x: auto;
       }
       .tool {
-        min-width: 76px;
+        min-width: 70px;
         border: 1px solid #3d5c6e;
         border-radius: 10px;
         background: #0d2531;
@@ -1092,6 +1092,12 @@
         border-radius: 3px;
         display: inline-block;
       }
+      .aiIcon {
+        width: 22px;
+        height: 22px;
+        display: block;
+        margin: 0 auto 1px;
+      }
       #wx .wxSk {
         border: 1px solid #5a7d90;
         background: #0a4f8f;
@@ -1101,6 +1107,339 @@
         font-size: 13px;
         height: 36px;
         padding: 0 12px;
+      }
+      /* AI (lokal AI): overlay med fem råd + lag på hovudkartet */
+      #ai {
+        position: absolute;
+        z-index: 1100;
+        top: 76px;
+        right: 12px;
+        bottom: 84px;
+        width: min(700px, 66vw);
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+      }
+      #ai.hide,
+      #aiChips.hide {
+        display: none;
+      }
+      #ai .aiCard {
+        pointer-events: auto;
+        background: #02121bec;
+        border: 1px solid #6a5acd;
+        border-radius: 14px;
+        padding: 12px 14px;
+        color: #e6f2f8;
+        overflow-y: auto;
+        max-height: 100%;
+        box-shadow: 0 8px 30px #0008;
+      }
+      #ai .aiHead {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      #ai .aiHead h3 {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: 1px;
+        flex: 1;
+      }
+      #ai .aiHead small {
+        color: #b9b2f0;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+      #ai .wxX {
+        border: 1px solid #3d5c6e;
+        background: #0c2433;
+        color: #fff;
+        border-radius: 8px;
+        font-weight: 900;
+        font-size: 16px;
+        width: 40px;
+        height: 36px;
+      }
+      #ai .wxWarn {
+        background: #4a3200;
+        color: #ffd27a;
+        border-radius: 8px;
+        padding: 5px 8px;
+        margin-top: 8px;
+        font-weight: 700;
+      }
+      #ai .wxFoot {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #7f9aa9;
+      }
+      .aiBan {
+        background: linear-gradient(90deg, #3b2a8a, #5a3fb8);
+        color: #fff;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-align: center;
+        border-radius: 8px;
+        padding: 5px;
+        margin: 8px 0;
+      }
+      .aiSec {
+        background: #0b2231;
+        border: 1px solid #23465a;
+        border-radius: 10px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+      .aiSec.p5 {
+        border-color: #c2412f;
+        background: #1e1416;
+      }
+      .aiSh {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .aiSh b {
+        font-size: 15px;
+      }
+      .aiSh em {
+        font-style: normal;
+        font-size: 12px;
+        color: #b8cdd8;
+        flex: 1;
+        min-width: 180px;
+      }
+      .aiNo {
+        background: #6a5acd;
+        color: #fff;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 12px;
+      }
+      .p5 .aiNo {
+        background: #c2412f;
+      }
+      .aiTg {
+        border: 1px solid #5a7d90;
+        background: #0c2433;
+        color: #fff;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 12px;
+        padding: 6px 10px;
+      }
+      .aiTg.on {
+        background: #0a6fd6;
+        border-color: #0a6fd6;
+      }
+      .aiRow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        color: #dbe7ee;
+        border-top: 1px solid #1a3a4c;
+        padding: 5px 0;
+      }
+      .aiRow > span {
+        flex: 1;
+      }
+      .aiRow button {
+        border: 1px solid #3d5c6e;
+        background: #0c2433;
+        color: #cfe0ea;
+        border-radius: 6px;
+        font-weight: 800;
+        padding: 4px 9px;
+      }
+      .aiLeg {
+        font-size: 11px;
+        color: #b8cdd8;
+        margin: 5px 0 3px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .aiLeg i {
+        width: 14px;
+        height: 12px;
+        display: inline-block;
+        border-radius: 2px;
+      }
+      .aiStrip {
+        display: flex;
+        gap: 1px;
+        margin-top: 6px;
+      }
+      .aiStrip span {
+        flex: 1;
+        height: 18px;
+        font-size: 9px;
+        color: #fff;
+        text-align: left;
+        padding-left: 1px;
+        border-radius: 2px;
+      }
+      .aiNeed {
+        font-size: 11px;
+        font-weight: 800;
+        border-radius: 5px;
+        padding: 1px 6px;
+        background: #33505f;
+      }
+      .aiNeed.høg {
+        background: #8c3b33;
+      }
+      .aiNeed.middels {
+        background: #7a6420;
+      }
+      .q {
+        font-weight: 900;
+        border-radius: 5px;
+        padding: 1px 6px;
+        background: #33505f;
+        color: #fff;
+      }
+      .q.god {
+        background: #2c9c58;
+      }
+      .q.brukbar {
+        background: #a8862a;
+      }
+      .q.svak {
+        background: #b0392c;
+      }
+      .aiBar {
+        display: inline-block;
+        width: 70px;
+        height: 7px;
+        background: #33505f;
+        border-radius: 4px;
+        vertical-align: middle;
+        overflow: hidden;
+      }
+      .aiBar i {
+        display: block;
+        height: 100%;
+        background: #7fd0ff;
+      }
+      #ai .c-godt { color: #3ee07a; }
+      #ai .c-marg { color: #ffcf5b; }
+      #ai .c-nei { color: #ff7a6b; }
+      /* AI-lag på hovudkartet */
+      .aiIco {
+        background: none;
+        border: 0;
+      }
+      .aiUp {
+        transform: translate(-50%, -50%) rotate(var(--aiDeg, 0deg)) !important;
+      }
+      .aiUp > b,
+      .aiUp > small {
+        display: block;
+        white-space: nowrap;
+      }
+      .aiUp.prod {
+        background: #b0161dee;
+        color: #fff;
+        border: 2px solid #fff;
+        border-radius: 8px;
+        padding: 3px 7px;
+        font-size: 12px;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 2px 8px #0009;
+      }
+      .aiUp.prod small {
+        font-size: 10.5px;
+        opacity: 0.95;
+      }
+      .aiUp.move {
+        background: #ffd400;
+        color: #1a1400;
+        border-radius: 7px;
+        padding: 2px 7px;
+        font-size: 12px;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 2px 8px #0009;
+      }
+      .aiIco.arr .aiArr {
+        display: block;
+        color: #ffd400;
+        font-size: 26px;
+        line-height: 26px;
+        transform-origin: 50% 50%;
+        margin: -13px 0 0 -8px;
+        text-shadow: 0 0 3px #000;
+      }
+      .aiUp.hole {
+        transform: translate(-50%, -50%);
+        text-align: center;
+      }
+      .aiUp.hole i {
+        display: block;
+        width: 34px;
+        height: 34px;
+        margin: 0 auto;
+        border: 4px solid #ff8a00;
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px #0008, 0 0 14px #ff8a00;
+      }
+      .aiUp.hole b {
+        background: #ff8a00;
+        color: #1a0d00;
+        border-radius: 6px;
+        padding: 1px 6px;
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      .aiUp.qual {
+        background: #02121bdd;
+        color: #fff;
+        border: 1px solid #fff6;
+        border-radius: 8px;
+        padding: 3px 8px;
+        font-size: 12px;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
+      }
+      .aiUp.qual .q {
+        margin-left: 6px;
+      }
+      #aiChips {
+        position: absolute;
+        z-index: 1000;
+        left: 12px;
+        bottom: 92px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+        max-width: 60vw;
+      }
+      #aiChips .aiChipT {
+        background: #3b2a8a;
+        color: #fff;
+        font-weight: 900;
+        font-size: 12px;
+        border-radius: 8px;
+        padding: 6px 9px;
+      }
+      #aiChips button {
+        background: #02121bee;
+        color: #fff;
+        border: 1px solid #6a5acd;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 12px;
+        padding: 6px 9px;
       }
       .demoTag {
         position: absolute;
@@ -2276,6 +2615,7 @@
         ><button id="surfBtn" class="tool on" onclick="openSurfMenu(event)" title="Estimat frå tidlegare trakka snøoverflate: vel kor mange timar tilbake, eller AV"><i>≋</i><span id="surfBtnTxt">Flate 24 t</span></button
         ><button class="tool" onclick="openHud()"><i>⧉</i>HUD</button
         ><button id="wxBtn" class="tool" onclick="WX.toggle()" title="Vêr og snøproduksjon (varsel frå MET). Trykk igjen for å lukke – alt anna går vidare i bakgrunnen."><i>❄</i>Vêr</button
+        ><button id="aiBtn" class="tool" onclick="AIP.toggle()" title="Lokal AI: preparéringsråd – tidspunkt, snøflytting, hol i spora, kvalitet og snøproduksjon. Trykk igjen for å lukke."><svg class="aiIcon" viewBox="0 0 24 24"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6z" fill="#c9b8ff"/><path d="M19 14l.9 2.4 2.1.6-2.1.7L19 20l-.9-2.3-2.1-.7 2.1-.6z" fill="#7fd0ff"/><path d="M5 15l.7 1.8 1.6.5-1.6.6L5 20l-.7-2.1-1.6-.6 1.6-.5z" fill="#fff"/></svg>AI</button
         ><button class="tool" onclick="toggleSettings()"><i>⚙</i>Innst.</button
         ><button id="prepBtn" class="tool" onclick="togglePreparing()"><i>▶</i>Start prep</button
         ><button class="tool" onclick="logClient('action', 'Reset spor (knapp)');resetWork()"><i>↺</i>Reset spor</button
@@ -2323,6 +2663,8 @@
       <div id="demoTag" class="demoTag hide">DEMO – SIMULERTE DATA</div>
       <div id="wx" class="hide" aria-live="polite"><div class="wxCard" id="wxCard"></div></div>
       <div id="snk" class="hide"><div class="wxCard" id="snkCard"></div></div>
+      <div id="ai" class="hide"><div class="aiCard" id="aiCard"></div></div>
+      <div id="aiChips" class="hide"></div>
       <div id="traseWarn" class="traseWarn hide"></div>
       <div id="obstWarn" class="obstWarn hide"><div id="obstName"></div><div id="obstDist"></div></div>
       <div id="objDlg" class="hudDlg hide">
@@ -2380,7 +2722,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.73";
+      const APP_VERSION = "1.6.74";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3514,6 +3856,7 @@
         try {
           TRA.uprightLabels(cfg.northUp && manualBear == null ? 0 : bearCont);
         } catch (e) {} // TRA er ikkje klar enno under oppstart
+        $("map").style.setProperty("--aiDeg", (cfg.northUp && manualBear == null ? 0 : bearCont) + "deg"); // AI-merke står rett opp
         $("compass").classList.toggle("locked", !!cfg.northUp);
         $("compassTxt").textContent = cfg.northUp ? "LÅST" : "ROTERER";
       }
@@ -5012,6 +5355,7 @@
         $("demoTag").classList.remove("hide");
         if (WX.open) WX.load(); // vêr-overlayet: byt mellom DEMO og ekte varsel
         if (SNK.isOpen) SNK.load();
+        if (AIP.isOpen) AIP.load();
         renderLegend();
         pts = [];
         coverGroup.clearLayers();
@@ -5055,6 +5399,7 @@
           $("demoTag").classList.add("hide");
           if (WX.open) WX.load(); // vêr-overlayet: byt mellom DEMO og ekte varsel
         if (SNK.isOpen) SNK.load();
+        if (AIP.isOpen) AIP.load();
           currentSession = null;
           last = null;
           lastCoverage = null;
@@ -6994,6 +7339,7 @@
         }
         function toggle() {
           open = !open;
+          if (open && typeof AIP !== "undefined" && AIP.isOpen) AIP.close(); // Vêr og AI deler plass
           $("wx").classList.toggle("hide", !open);
           $("wxBtn").classList.toggle("on", open);
           document.body.classList.toggle("wxOpen", open);
@@ -7438,6 +7784,266 @@
           logClient("action", "Snøkart lukka");
         }
         return { open: show, close, load, get isOpen() { return open; } };
+      })();
+      /* ---------- AI (lokal AI: preparéringsråd) ----------
+         AI-knappen opnar eit overlay med fem råd frå den lokale AI-en i SNOWMAN (ai.py): tidspunkt, snøflytting, hol i
+         spora, kvalitet og snøproduksjon. Råda kan visast som eigne lag på hovudkartet («Vis på kartet») – laga blir
+         verande når overlayet er lukka, så føraren ser dei medan han køyrer. Alt anna går vidare i bakgrunnen.
+         Alt er FORSLAG og ESTIMAT; føraren avgjer. Overlayet og Vêr deler plass – det eine lukkar det andre. */
+      const AIP = (() => {
+        let open = false,
+          R = null,
+          busy = false,
+          dummy = null;
+        const L_ = { prod: null, moves: null, holes: null, quality: null };
+        const NAMES = { prod: "Snøproduksjon", moves: "Snøflytting", holes: "Hol i spora", quality: "Kvalitet" };
+        const show = { prod: true, moves: false, holes: false, quality: false };
+        const DAYS = ["Sun", "Mån", "Tys", "Ons", "Tor", "Fre", "Lau"];
+        const kl = (t) => "kl. " + String(new Date(t).getHours()).padStart(2, "0");
+        const dk = (t) => DAYS[new Date(t).getDay()] + " " + kl(t);
+        const n0 = (v) => (v == null ? "–" : Math.round(v).toLocaleString("nb-NO"));
+        const n1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toFixed(1).replace(".", ",").replace("-", "−"));
+        const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+        async function load() {
+          if (busy) return;
+          busy = true;
+          try {
+            R = await fetch("api/ai?demo=" + (demo ? 1 : 0) + (pos ? "&lat=" + pos[0] + "&lon=" + pos[1] : "")).then((x) => x.json());
+          } catch (e) {
+            R = { ok: false, error: "Fekk ikkje kontakt med SNOWMAN-tenesta" };
+          }
+          busy = false;
+          drawLayers();
+          if (open) render();
+        }
+        // ---------- kartlag på hovudkartet ----------
+        function clear(k) {
+          if (L_[k]) {
+            map.removeLayer(L_[k]);
+            L_[k] = null;
+          }
+        }
+        function icon(html, cls) {
+          // teksten står alltid rett opp for føraren, sjølv om kartet roterer (--aiDeg); pila følgjer kartet
+          return L.divIcon({ className: "aiIco" + (cls === "arr" ? " arr" : ""), html: cls === "arr" ? html : `<div class="aiUp ${cls || ""}">${html}</div>`, iconSize: null });
+        }
+        function drawLayers() {
+          Object.keys(L_).forEach(clear);
+          if (!R || !R.ok) return chips();
+          let tag = R.test || R.demo ? " (TEST)" : "";
+          if (show.prod && R.production) {
+            let P = R.production,
+              g = L.layerGroup(),
+              n = P.n,
+              k = 4,
+              c = document.createElement("canvas");
+            c.width = c.height = n * k;
+            let x = c.getContext("2d"),
+              b = atob(P.grid),
+              C = [null, "rgba(255,140,90,.38)", "rgba(237,32,36,.50)", "rgba(150,0,20,.62)"];
+            for (let i = 0; i < n * n; i++) {
+              let v = b.charCodeAt(i);
+              if (!v) continue;
+              x.fillStyle = C[v];
+              x.fillRect((i % n) * k, Math.floor(i / n) * k, k, k);
+            }
+            // skravur i underskotsområda: «her manglar det snø» – lett å skilje frå målt snødjupne
+            x.globalCompositeOperation = "source-atop";
+            x.strokeStyle = "rgba(255,255,255,.55)";
+            x.lineWidth = 2;
+            for (let s = -n * k; s < n * k; s += 10) {
+              x.beginPath();
+              x.moveTo(s, n * k);
+              x.lineTo(s + n * k, 0);
+              x.stroke();
+            }
+            L.imageOverlay(c.toDataURL(), P.bounds, { interactive: false, opacity: 1 }).addTo(g);
+            P.areas.slice(0, 10).forEach((a, i) => {
+              L.marker([a.lat, a.lon], { icon: icon(`<b>❄ MANGLAR ${a.mean} cm</b><small>${n0(a.vol)} m³ snø${a.near ? " · " + esc(a.near.name) + " " + a.near.dist + " m" : ""}</small>`, "prod"), interactive: false }).addTo(g);
+              if (a.near) L.polyline([[a.lat, a.lon], [a.near.lat, a.near.lon]], { color: "#ffd27a", weight: 2, dashArray: "4 6", interactive: false }).addTo(g);
+            });
+            L_.prod = g.addTo(map);
+          }
+          if (show.moves && R.moves) {
+            let g = L.layerGroup();
+            R.moves.forEach((m) => {
+              L.polyline([m.from, m.to], { color: "#ffd400", weight: 5, opacity: 0.9, dashArray: "10 8", interactive: false }).addTo(g);
+              let br = bearing(m.from, m.to);
+              L.marker(m.to, { icon: icon(`<span class="aiArr" style="transform:rotate(${br}deg)">▲</span>`, "arr"), interactive: false }).addTo(g);
+              L.marker([(m.from[0] + m.to[0]) / 2, (m.from[1] + m.to[1]) / 2], { icon: icon(`<b>SKYV ${n0(m.vol)} m³</b><small>${m.dist} m${m.dz > 0 ? " · nedover" : m.dz < 0 ? " · oppover" : ""}</small>`, "move"), interactive: false }).addTo(g);
+            });
+            L_.moves = g.addTo(map);
+          }
+          if (show.holes && R.holes) {
+            let g = L.layerGroup();
+            R.holes.forEach((h) => L.marker([h.lat, h.lon], { icon: icon(`<i></i><b>HOL ${n0(h.area)} m²</b>`, "hole"), interactive: false }).addTo(g));
+            L_.holes = g.addTo(map);
+          }
+          if (show.quality && R.quality) {
+            let g = L.layerGroup();
+            R.quality.forEach((q) => L.marker([q.lat - 40 / 111320, q.lon], { icon: icon(`<b>${esc(q.name)}</b><span class="q ${q.grade}">${q.score} %</span>`, "qual"), interactive: false }).addTo(g));
+            L_.quality = g.addTo(map);
+          }
+          chips();
+        }
+        function chips() {
+          let on = Object.keys(L_).filter((k) => L_[k]);
+          $("aiChips").innerHTML = on.length
+            ? `<span class="aiChipT">✦ AI-FORSLAG · ESTIMAT${R && (R.test || R.demo) ? " · TEST" : ""}</span>` + on.map((k) => `<button onclick="AIP.layer('${k}',false)">${NAMES[k]} ✕</button>`).join("")
+            : "";
+          $("aiChips").classList.toggle("hide", !on.length);
+        }
+        function layer(k, v) {
+          show[k] = v == null ? !show[k] : v;
+          logClient("action", "AI-lag " + NAMES[k] + (show[k] ? " på" : " av"));
+          drawLayers();
+          if (open) render();
+        }
+        function goTo(la, lo) {
+          followMap = false;
+          map.setView([la, lo], map.getZoom());
+          try {
+            updateFreeUI();
+          } catch (e) {}
+        }
+        // ---------- overlayet ----------
+        function sec(no, key, title, sum, body, layerKey) {
+          let tg = layerKey ? `<button class="aiTg ${show[layerKey] ? "on" : ""}" onclick="AIP.layer('${layerKey}')">🗺 ${show[layerKey] ? "På kartet" : "Vis på kartet"}</button>` : "";
+          return `<section class="aiSec ${key}"><div class="aiSh"><span class="aiNo">${no}</span><b>${title}</b><em>${sum}</em>${tg}</div>${body}</section>`;
+        }
+        function row(txt, la, lo) {
+          return `<div class="aiRow"><span>${txt}</span>${la != null ? `<button onclick="AIP.goTo(${la},${lo})">Vis</button>` : ""}</div>`;
+        }
+        function render() {
+          let el = $("aiCard");
+          let p = R && R.profile,
+            head = `<div class="aiHead"><h3>✦ AI – PREPARERINGSRÅD<br><small>${p ? `Lokal AI for ${esc(p.name)}${p.zmin != null ? " · " + p.zmin + "–" + p.zmax + " moh." : ""} · lært ${n1(p.days)} døgn vêr${p.leeText ? " · " + esc(p.leeText) : ""}${p.nightT != null ? " · snitt natt " + n1(p.nightT) + " °C" : ""}` : "Lokal AI i SNOWMAN – lærer området maskina er i"}</small></h3><button class="wxX" onclick="AIP.toggle()" title="Lukk (eller trykk AI-knappen igjen)">✕</button></div>`,
+            ban = `<div class="aiBan">AI-FORSLAG OG ESTIMAT – FØRAREN AVGJER${R && R.demo ? " · DEMO-VÊR" : ""}${R && R.test ? " · TEST-DATA" : ""}</div>`;
+          if (!R) {
+            el.innerHTML = head + ban + "<p>Analyserer …</p>";
+            return;
+          }
+          if (!R.ok) {
+            el.innerHTML = head + ban + `<div class="wxWarn">${esc(R.error)}</div>`;
+            return;
+          }
+          let s = [];
+          // 5 snøproduksjon – først, det viktigaste
+          let P = R.production,
+            pa = P.areas;
+          s.push(
+            sec(
+              5,
+              "p5",
+              "Snøproduksjon – for lite snø",
+              pa.length ? `${pa.length} område · ${n0(P.totalVol)} m³ snø manglar · mål ${n1(R.target)} m (± ${n1(R.tol)})` : R.measured ? "Ingen område under måldjupna" : "Krev RTK-målingar",
+              pa.length
+                ? `<div class="aiLeg"><i style="background:rgba(255,140,90,.7)"></i>5–20 cm <i style="background:rgba(237,32,36,.8)"></i>20–40 cm <i style="background:rgba(150,0,20,.9)"></i>over 40 cm for lite – skravert raudt på kartet</div>` +
+                    pa
+                      .slice(0, 8)
+                      .map((a) =>
+                        row(
+                          `<b>${esc(a.trase || "Utanfor trasé")}</b> · manglar <b>${a.mean} cm</b> (maks ${a.max}) på ${n0(a.area)} m² · <b>${n0(a.vol)} m³ snø</b> ≈ ${n0(a.water)} m³ vatn · ca. ${n1(a.gunHours)} t med éin kanon${a.near ? ` · næraste ${esc(a.near.name)} ${a.near.dist} m` : ""}${a.window ? ` · <span class="c-${a.window.quality}">vindauge ${dk(a.window.start)}–${kl(a.window.end)} ${a.window.quality === "godt" ? "GODT" : "MARGINALT"}</span>` : " · <span class='c-nei'>ikkje produksjonsvêr neste 48 t</span>"}${a.naturalHelp ? ` · venta nysnø dekkjer ${a.naturalHelp} %` : ""}`,
+                          a.lat,
+                          a.lon
+                        )
+                      )
+                      .join("")
+                : "",
+              "prod"
+            )
+          );
+          // 1 tidspunkt
+          let T = R.timing,
+            sc = T.scores || [];
+          let strip = sc.length
+            ? `<div class="aiStrip">${sc.map((x) => `<span title="${dk(x.t)}: ${x.s}" style="background:${x.s >= 70 ? "#2c9c58" : x.s >= 50 ? "#b8952c" : "#8c3b33"}">${new Date(x.t).getHours() % 6 ? "" : String(new Date(x.t).getHours()).padStart(2, "0")}</span>`).join("")}</div><div class="aiLeg">Grøn = godt å preparere · gul = brukbart · raud = dårleg (nedbør, vind eller våt snø)</div>`
+            : "";
+          s.push(
+            sec(
+              1,
+              "p1",
+              "Tidspunkt å preparere",
+              T.trasear && T.trasear.length ? `opning ${dk(T.opening)} · ${T.trasear.length} trasear` : "Legg inn trasear for råd per trasé",
+              strip +
+                (T.trasear || [])
+                  .map((t) =>
+                    row(
+                      `<b>${esc(t.name)}</b> <span class="aiNeed ${t.need}">behov ${t.need}</span> ${t.start ? `start <b>${dk(t.start)}</b>, ferdig ${kl(t.end)} (${n1(t.hours)} t)` : esc(t.note || "")}${t.good && t.good.length ? ` · <span class="c-godt">✓ ${t.good.map(esc).join(", ")}</span>` : ""}${t.bad && t.bad.length ? ` · <span class="c-marg">✗ ${t.bad.map(esc).join(", ")}</span>` : ""}${t.since != null && t.since >= 0 ? ` · sist preparert for ${n1(t.since)} t sidan` : ""}`
+                    )
+                  )
+                  .join("")
+            )
+          );
+          // 2 snøflytting
+          s.push(
+            sec(
+              2,
+              "p2",
+              "Snøflytting med skjeret",
+              R.moves.length ? `${R.moves.length} forslag · frå overskot til underskot i same trasé` : R.measured ? "Ingen gode flyttingar innan 120 m (oppover maks 40 m)" : "Krev RTK-målingar",
+              R.moves.map((m) => row(`<b>${esc(m.trase || "")}</b> · skyv ca. <b>${n0(m.vol)} m³</b> ${m.dist} m${m.dz > 0 ? " nedover" : m.dz < 0 ? " oppover" : ""} – frå +${m.surplus} cm til −${m.deficit} cm`, m.to[0], m.to[1])).join(""),
+              "moves"
+            )
+          );
+          // 3 hol
+          s.push(
+            sec(
+              3,
+              "p3",
+              "Hol i spora",
+              R.holes.length ? `${R.holes.length} hol i natt${R.coverTest ? " (TEST-økter)" : ""}` : "Ingen hol funne i traseane",
+              R.holes.map((h) => row(`<b>${esc(h.trase)}</b> · uprepart <b>${n0(h.area)} m²</b> (${h.len} m langt)`, h.lat, h.lon)).join(""),
+              "holes"
+            )
+          );
+          // 4 kvalitet
+          s.push(
+            sec(
+              4,
+              "p4",
+              "Kvalitetsscore per trasé",
+              R.quality.length ? R.quality.map((q) => `${esc(q.name)} ${q.score} %`).join(" · ") : "Legg inn trasear",
+              R.quality
+                .map((q) =>
+                  row(
+                    `<b>${esc(q.name)}</b> <span class="q ${q.grade}">${q.score} % · ${q.grade}</span> <span class="aiBar"><i style="width:${q.score}%"></i></span> dekning ${q.parts.dekning} %${q.parts.djupne != null ? ` · djupne ${q.parts.djupne} %` : ""}${q.parts.jamnleik != null ? ` · jamnleik ${q.parts.jamnleik} %` : ""} · hol ${q.holes}${q.issue ? ` · <span class="c-marg">${esc(q.issue)}</span>` : ""}`,
+                    q.lat,
+                    q.lon
+                  )
+                )
+                .join(""),
+              "quality"
+            )
+          );
+          let c = R.cal || {},
+            l = R.learn || {};
+          el.innerHTML =
+            head +
+            ban +
+            s.join("") +
+            `<div class="wxFoot">Lokal AI – køyrer på PC-en, utan nett og utan skyteneste. Byggjer på den gjeldande terrengmodellen, RTK-målingane (${n0(R.measured)} ruter), trasear og anleggsobjekt, vêret frå stasjonane nær GPS-posisjonen og varselet. Lærer staden automatisk: vindrose og temperaturar, nedbørsfaktor${c.factor ? " ×" + n1(c.factor) : ""}${c.n ? ` (snittfeil ± ${n1(c.mae)} cm)` : ""}, og kvar det kjem meir/mindre snø (${n0(l.bins)} ruter lærte; nær snøkanon/hydrant utelate). Kanon-kapasitet ${n0(R.production.gunRate)} m³/t er eit grovt anslag. Måldjupne frå traseen, elles frå Innst. › Mål.</div>`;
+        }
+        function toggle() {
+          open = !open;
+          if (open && typeof WX !== "undefined" && WX.open) WX.toggle(); // Vêr og AI deler plass
+          $("ai").classList.toggle("hide", !open);
+          $("aiBtn").classList.toggle("on", open);
+          document.body.classList.toggle("wxOpen", open || (typeof WX !== "undefined" && WX.open));
+          logClient("action", open ? "AI opna" : "AI lukka");
+          if (open) {
+            render();
+            load();
+          }
+        }
+        // nye råd kvar 10. min så lenge overlayet er ope eller eit AI-lag er på kartet
+        setInterval(() => {
+          if (open || Object.values(L_).some(Boolean)) load();
+        }, 10 * 60 * 1000);
+        function close() {
+          if (open) toggle();
+        }
+        return { toggle, close, load, layer, goTo, get isOpen() { return open; } };
       })();
       async function openHud() {
         $("hudDlg").classList.remove("hide");
