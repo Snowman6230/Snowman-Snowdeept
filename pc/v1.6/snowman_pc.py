@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.77"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.78"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -543,12 +543,12 @@ class API(http.server.BaseHTTPRequestHandler):
             q=urllib.parse.parse_qs(u.query)
             f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
             try:
-                lat,lon=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")); demo=q.get("demo",["0"])[0]=="1"
-                if demo and lat is None: lat,lon=62.3905,6.5810
-                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon frå GNSS endå – vêret blir henta for staden maskina er."}
+                demo=q.get("demo",["0"])[0]=="1"; lat,lon,psrc=where(f("lat"),f("lon"))
+                if demo and lat is None: lat,lon,psrc=62.3905,6.5810,"demo"
+                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon: GNSS er av, og det finst korkje sist kjende posisjon eller terrengmodell. Kopla til GNSS eller legg inn ein terrengmodell."}
                 else:
                     alt,src=terrain_alt(lat,lon,f("alt"))
-                    r=WX.forecast(lat,lon,alt,{"good":f("good"),"marg":f("marg"),"wind":f("wind")},demo=demo); r["altSrc"]=src
+                    r=WX.forecast(lat,lon,alt,{"good":f("good"),"marg":f("marg"),"wind":f("wind")},demo=demo); r["altSrc"]=src; r["posSrc"]=psrc
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/weather/obs":   # «MÅLT NO» i Vêr: siste målingar frå næraste vêrstasjonar (MET Frost), eller DEMO
@@ -556,9 +556,9 @@ class API(http.server.BaseHTTPRequestHandler):
             f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
             try:
                 FROST.cid=(CFG.get("frost_client_id") or "").strip() or FR.CLIENT_ID
-                lat,lon=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")); demo=q.get("demo",["0"])[0]=="1"
+                demo=q.get("demo",["0"])[0]=="1"; lat,lon,psrc=where(f("lat"),f("lon"))
                 if demo and lat is None: lat,lon=62.3905,6.5810
-                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon frå GNSS endå.","stations":[]}
+                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon (GNSS av, ingen terrengmodell).","stations":[]}
                 else:
                     alt,_src=terrain_alt(lat,lon,f("alt"))
                     fixed=re.sub(r"[^A-Za-z0-9,]","",CFG.get("frost_stations") or "") or None
@@ -570,6 +570,14 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/api/snowmap":   # Vêr › Snøkart: ESTIMAT av snøendring i den gjeldande terrengmodellen
             q=urllib.parse.parse_qs(u.query)
             try: r=snowmap_response(q)
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/nettest":   # Vêr › Test samband: MET og Frost, med forklaring på norsk
+            try:
+                import nett
+                r=dict(nett.test(WX.ua,(CFG.get("frost_client_id") or "").strip() or FR.CLIENT_ID),ok=True)
+                lat,lon,psrc=where(); r["pos"]={"lat":lat,"lon":lon,"src":psrc}
+                LOG.event("Samband-test: "+", ".join(f"{t['name']} {'OK' if t['ok'] else 'FEIL'}" for t in r["tests"]))
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/terrain/centre":   # midten av den gjeldande terrengmodellen (når GNSS manglar)
@@ -1021,6 +1029,23 @@ EXPORT={"last":None,"error":"","files":[],"written":0}
 def report_cfg():
     s=O.system_cfg()
     return {"on":s.get("reportExport",True),"dir":s.get("reportDir") or str(DS.default_report_dir())} if FUEL else {"on":False,"dir":""}
+LASTPOS=DATA/"sist-posisjon.json"
+def where(lat=None,lon=None):
+    """Staden Vêr, Frost, snøkart og AI gjeld for: oppgitt → GNSS → sist kjende GNSS-posisjon → midten av terrengmodellen.
+    Returnerer (lat, lon, kjelde) – lat er None om ingenting finst."""
+    if lat is not None and lon is not None: return lat,lon,"oppgitt"
+    if STATE.get("lat") is not None and STATE.get("lon") is not None:
+        try:
+            if time.time()-getattr(where,"_saved",0)>300:   # hugs posisjonen (høgst kvart 5. min)
+                where._saved=time.time(); write_atomic(LASTPOS,json.dumps({"lat":STATE["lat"],"lon":STATE["lon"],"t":int(time.time())}))
+        except Exception: pass
+        return STATE["lat"],STATE["lon"],"GNSS"
+    try:
+        d=json.loads(LASTPOS.read_text("utf-8")); return d["lat"],d["lon"],"sist kjende posisjon ("+time.strftime("%d.%m. kl. %H:%M",time.localtime(d["t"]))+")"
+    except Exception: pass
+    c=terrain_centre() if T.AVAILABLE else None
+    if c: return c[0],c[1],"midten av terrengmodellen"
+    return None,None,None
 def terrain_alt(lat,lon,alt=None):
     """Høgda alle Vêr-funksjonane brukar: frå den gjeldande terrengmodellen (aktive barmark-lag), elles GNSS."""
     if alt is not None: return alt,"oppgitt"
@@ -1087,7 +1112,7 @@ def ai_response(q):
         clat,clon=(min(la)+max(la))/2,(min(lo)+max(lo))/2
         half=min(1500.0,max(300.0,max((max(la)-min(la))*111320,(max(lo)-min(lo))*111320*math.cos(math.radians(clat)))/2+80))
     else:
-        clat,clon,half=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")),600.0
+        clat,clon,_ps=where(f("lat"),f("lon")); half=600.0
     qq={"half":[str(half)],"demo":["1" if demo else "0"],"cal":["1"],"learn":["1"],"stop":["0"]}
     if clat is not None: qq.update(lat=[str(clat)],lon=[str(clon)])
     ctx=snow_compute(qq)
@@ -1241,7 +1266,7 @@ def snow_compute(q):
     half=min(1500.0,max(150.0,f("half",600.0))); stop=int(f("stop",0)); stop=stop if stop in SNOW_STOPS else 0
     loose=min(50.0,max(0.0,f("loose",0.0))); demo=q.get("demo",["0"])[0]=="1"; usecal=q.get("cal",["0"])[0]=="1"; uselearn=q.get("learn",["0"])[0]=="1"
     test=bool(STATE.get("simulated")) or demo
-    lat,lon=f("lat",STATE.get("lat")),f("lon",STATE.get("lon")); centred="maskina"
+    lat,lon,_ps=where(f("lat"),f("lon")); centred="maskina" if _ps in ("GNSS","oppgitt") else (_ps or "maskina")
     if lat is None or TERR.height(lat,lon) is None:
         c=terrain_centre()
         if c is None: return {"ok":False,"error":"Ingen aktiv terrengmodell (barmark). Snøkartet byggjer på den gjeldande terrengmodellen – legg inn eller slå på eit lag under Innst. › Terreng."}

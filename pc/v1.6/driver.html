@@ -866,6 +866,17 @@
         font-size: 12px;
         color: #ffd27a;
       }
+      #wx .wxNetRes {
+        background: #0b2231;
+        border-radius: 8px;
+        padding: 8px;
+        font-size: 13px;
+        display: grid;
+        gap: 6px;
+      }
+      #wx .wxNetRes small {
+        color: #9ab3c1;
+      }
       #wx .wxBar span {
         display: block;
         height: 100%;
@@ -2896,7 +2907,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.77";
+      const APP_VERSION = "1.6.78";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -7470,7 +7481,7 @@
             return;
           }
           if (!R.ok) {
-            el.innerHTML = head() + `<div class="wxWarn">${esc(R.error)}</div><p style="color:#b8cdd8;font-size:13px">Vêrvarselet krev nett første gong. Etterpå blir siste varsel vist også utan nett. Alt anna i SNOWMAN fungerer som før.</p>${R.detail ? `<p style="color:#7f9aa9;font-size:11px">Teknisk: ${esc(R.detail)}</p>` : ""}` + (O && O.ok && O.stations.length ? obsHtml() : "") + foot();
+            el.innerHTML = head() + `<div class="wxWarn">${esc(R.error)}</div><p style="color:#b8cdd8;font-size:13px">Vêrvarselet krev nett første gong. Etterpå blir siste varsel vist også utan nett. Alt anna i SNOWMAN fungerer som før.</p>${R.detail ? `<p style="color:#7f9aa9;font-size:11px">Teknisk: ${esc(R.detail)}</p>` : ""}<p><button class="wxSk" onclick="WX.nettest()">🔌 Test samband</button></p><div id="wxNet"></div>` + (O && O.ok && O.stations.length ? obsHtml() : "") + foot();
             return;
           }
           let H = R.hours.slice(0, 48),
@@ -7563,6 +7574,7 @@
         function head() {
           let p = R && R.ok ? `${n1(R.lat).replace(",", ".")}° N ${n1(R.lon).replace(",", ".")}° Ø${R.alt != null ? " · " + R.alt + " moh." : ""}` : "";
           let a = R && R.ok && !R.demo ? ` · oppdatert for ${R.age_min} min sidan` : "";
+          if (R && R.ok && R.posSrc && R.posSrc !== "GNSS" && R.posSrc !== "oppgitt" && !R.demo) a += ` · stad: ${esc(R.posSrc)} (GNSS av)`;
           let hs = R && R.ok && R.altSrc ? ` · høgd frå ${esc(R.altSrc)}` : "";
           return `<div class="wxHead"><h3>❄ VÊR OG SNØPRODUKSJON<br><small>${p}${a}${hs}</small></h3><button class="wxSk" onclick="SNK.open()" title="Estimert snøendring i terrengmodellen frå varselet – nedbør, temperatur og vind">🗺 Snøkart (estimat)</button><button class="wxX" onclick="WX.toggle()" title="Lukk (eller trykk Vêr-knappen igjen)">✕</button></div>`;
         }
@@ -7585,7 +7597,25 @@
             timer = setInterval(load, 10 * 60 * 1000); // tenesta hentar berre nytt frå MET når varselet er gått ut
           }
         }
-        return { toggle, load, get open() { return open; } };
+        // Test samband til MET og Frost – viser kva som er gale på norsk (nett, DNS, sertifikat, proxy, avvist)
+        async function nettest() {
+          let el = $("wxNet");
+          if (!el) return;
+          el.innerHTML = "<p>Testar samband …</p>";
+          try {
+            let r = await fetch("api/nettest").then((x) => x.json());
+            if (!r.ok) throw new Error(r.error);
+            el.innerHTML =
+              `<div class="wxNetRes">` +
+              r.tests.map((t) => `<div class="${t.ok ? "c-godt" : "c-nei"}"><b>${t.ok ? "✓" : "✗"} ${esc(t.name)}</b> – ${esc(t.text)}${t.ok ? ` (${t.ms} ms)` : ""}${t.detail ? `<br><small>${esc(t.detail)}</small>` : ""}</div>`).join("") +
+              `<div><small>DNS: ${r.dns ? "OK" : "svarar ikkje"} · proxy: ${Object.keys(r.proxy || {}).length ? esc(JSON.stringify(r.proxy)) : "ingen"} · stad: ${esc((r.pos && r.pos.src) || "ingen")} · ${esc(r.ssl)}</small></div></div>`;
+            logClient("action", "Samband-test: " + r.tests.map((t) => (t.ok ? "OK" : "FEIL")).join("/"));
+            if (r.tests.every((t) => t.ok)) load();
+          } catch (e) {
+            el.innerHTML = `<p class="c-nei">Testen feila: ${esc(e.message)}</p>`;
+          }
+        }
+        return { toggle, load, nettest, get open() { return open; } };
       })();
       /* ---------- Snøkart (Vêr › Snøkart) ----------
          ESTIMAT frå vêrmodellen i den gjeldande terrengmodellen:

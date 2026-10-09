@@ -169,14 +169,15 @@ class Frost:
             ids = ",".join(s["id"] for s in src[:8])
             data, t = self._latest(ids)
         except Exception as e:      # offline: siste lagra målingar
-            err = str(e)
+            import nett
+            err, why = str(e), nett.explain(e)
             src = self.cache.get("src", {}).get("list") or []
             for s in src:
                 s["km"] = round(dist_km(lat, lon, s["lat"], s["lon"]), 1) if s.get("lat") is not None else None
             data, t = self.cache.get("obs", {}).get("data"), self.cache.get("obs", {}).get("t", now)
             if data is None:
-                return {"ok": False, "offline": True, "error": "Ingen stasjonsmålingar endå – SNOWMAN får ikkje kontakt med frost.met.no.",
-                        "detail": err, "stations": []}
+                return {"ok": False, "offline": True, "error": "Ingen stasjonsmålingar endå – SNOWMAN får ikkje kontakt med frost.met.no. " + why,
+                        "detail": err, "stations": [], "nett": True}
         res["offline"], res["fetched_min"] = err is not None, round((now - t) / 60)
         by = {}
         for d in data or []:

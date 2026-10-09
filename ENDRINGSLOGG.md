@@ -9,6 +9,21 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.78 – retting: Vêr hentar data sjølv utan GNSS, og test av samband
+- **Retta:** Vêr-knappen opna overlayet, men henta ingen data på Surface. Den sannsynlege årsaka var at GNSS var av:
+  `/api/weather` svarte «Ingen posisjon frå GNSS endå» og spurde aldri MET. No blir staden vald i denne rekkjefølgja
+  (ny funksjon `where()` i `snowman_pc.py`): oppgitt stad → GNSS → sist kjende posisjon (`data/sist-posisjon.json`, lagra
+  kvart 5. min når GNSS er på) → midten av terrengmodellen. Det same gjeld stasjonsmålingar, snøkart og AI.
+  Vêr-hovudet viser kvar staden kjem frå når GNSS er av.
+- **Nytt:** `nett.py` forklarar nettverksfeil på norsk (ikkje nett/DNS, sertifikat/klokke, proxy/brannmur, avvist av
+  tenesta, tidsavbrot). Feilmeldingane frå MET-varsel og Frost brukar denne forklaringa.
+- **Nytt:** knappen «🔌 Test samband» i Vêr når det ikkje er kontakt. Han testar api.met.no og frost.met.no
+  (`/api/nettest`) og viser resultat, DNS, proxy og stad. Er alt OK, blir vêret henta på nytt.
+- **Avgjerd:** Vêr skal fungere utan GNSS. Terrengmodellen er god nok som stad for varsel og stasjonar.
+- Testa i isolert kopi utan GNSS (midten av terrengmodellen), med `simuler-leica.py --anlegg` (GNSS) og etter at
+  simulatoren vart stoppa (sist kjende posisjon). Ekte kall mot MET kan ikkje testast her (nettet er stengt), men
+  feilforklaringa og knappen er testa mot den stengde proxyen.
+
 ### PC-prototype v1.6.77 – retting: maskina står der ho er når kartet er flytt
 - **Retta:** når føraren hadde flytt kartet («Følg maskina» synest), stod maskinteikninga fast midt på skjermen medan
   sporet gjekk vidare. Teikninga ligg utanpå kartet og var alltid midtstilt. No blir ho plassert der maskina faktisk

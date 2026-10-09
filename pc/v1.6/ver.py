@@ -187,18 +187,20 @@ class Weather:
             try:
                 c = self._fetch(lat, lon, alt)
             except Exception as e:
-                err = str(e)
+                import nett
+                err, why = str(e), nett.explain(e)
                 with self.lock:
                     c = next(iter(self.cache.values()), None)   # offline: siste lagra varsel (kan vere for ein annan stad)
             if not c:
-                return {"ok": False, "offline": True, "error": "Ingen vêrdata endå – SNOWMAN får ikkje kontakt med api.met.no (ikkje nett, eller nettet stengjer).",
-                        "detail": err, "attr": ATTR}
+                return {"ok": False, "offline": True, "error": "Ingen vêrdata endå – SNOWMAN får ikkje kontakt med api.met.no. " + why,
+                        "detail": err, "attr": ATTR, "nett": True}
             hours = c["hours"]
             res["offline"] = err is not None
             res["age_min"] = round((now - c.get("fetched", now)) / 60)
             res["updated"] = c.get("updated")
             if err:
                 res["error"] = err
+                res["why"] = why
         cut = (now - 3600) * 1000
         hours = [h for h in hours if h["t"] >= cut][:96]
         for h in hours:
