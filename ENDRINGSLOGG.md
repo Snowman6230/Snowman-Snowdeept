@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### Avgjerd – RTK og NTRIP berre i SNOWMAN (ingen kodeendring)
+- **Avgjerd (eigaren):** mottakaren (Zenith) skal ikkje rekne RTK. RTK og NTRIP skal berre vere i SNOWMAN.
+- **Konsekvens:** mottakaren må sende rådata (RTCM 3 MSM eller 1004/1012), ikkje berre GGA. Spor:
+  - Zenith i «RTK Base» over kabel (External)
+  - alternativt u-blox ZED-F9P
+
+  Sjå docs/VEGEN-VIDARE.md kap. 15.
+
 ### PC-prototype v1.6.90 – feilsøkaren kjenner att «kommandoport»
 - **Funn (RTK-feilsøkaren på Surface):** Zenith35 Pro svarte `@GNSS,V@,ERROR`. Saman med DN, LANTENNA og
   ADVNULLANTENNA viser det eit mønster: mottakaren tolkar alle bitar av korreksjonsdataa som kommandoar. Bluetooth-porten

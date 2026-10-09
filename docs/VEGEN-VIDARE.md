@@ -281,8 +281,15 @@ resultatet (GGA, kvalitet 4 = FIX).
   lokalt og utan nett.
 - **Versjon:** byggjast i `pc/v1.7`. «RTK i mottakaren» blir verande som val. Snødjupne krev framleis FIX.
 - **Krav til mottakaren:** han må kunne sende rådata ut. Zenith35 Pro viser berre NMEA i oppsettet, så det må sjekkast.
-- **Status:** eigaren valde å vente til Zenith-en fungerer med dagens løysing (sjå
+- **Status:** eigaren valde først å vente til Zenith-en fungerte med dagens løysing (sjå
   `claude/felttest-zenith35-2026-10-09.md` i prosjektet).
+- **Avgjerd 2026-10-09 kl. 22.32 (eigaren):** «Ikkje bruk RTK på Zenith, den skal berre sende. RTK og NTRIP skal
+  kun vere i SNOWMAN.»
+  - Merknad: GGA åleine er ein ferdig rekna posisjon og kan ikkje gi RTK. Mottakaren må sende **rådata**
+    (kode og fase), helst som RTCM 3 MSM eller 1004/1012.
+  - Spor å teste: Zenith35 Pro sender eigne rådata som RTCM 3 i «RTK Base»-modus, men berre over UHF, GSM eller
+    External (kabel). Med kabel kan han truleg vere rådatakjelde for SNOWMAN.
+  - Alternativ mottakar: u-blox ZED-F9P.
 
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
