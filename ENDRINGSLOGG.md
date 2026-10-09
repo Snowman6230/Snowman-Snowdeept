@@ -9,6 +9,20 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.76 – rettingar: Tal og 3D/frontrute utan GNSS
+- **Retta:** **Tal** (fart, kurs, spor, areal, tid) forsvann i førar-/horisontvisinga og når 3D-terreng eller
+  frontrute fall tilbake til horisont (t.d. utan GNSS): det vippa kartet vart teikna over boksane. Tal (og AI-lag,
+  mikrofon og snakkeboble) har no eige teiknelag, slik verktøylinja har. Feilen fanst også i v1.6.67.
+- **Retta:** **3D-terreng og frontrute utan GNSS** viste berre eit tomt rutenett/himmel, fordi 3D-visinga treng ein
+  posisjon. No blir midten av den gjeldande terrengmodellen vist (utan maskin), merkt «INGEN GNSS – VISER MIDTEN AV
+  TERRENGMODELLEN». Kartet blir også flytt dit éin gong ved oppstart når GNSS manglar, så **Demo** køyrer på
+  terrengmodellen (før: der kartet tilfeldigvis stod, ofte utanfor modellen – då mangla terrenget i 3D).
+  Nytt endepunkt `/api/terrain/centre`.
+- **Kvifor:** eigaren melde frå med skjermbilete frå maskin-PC-en: 3D-modell og frontrute mangla, og Tal mangla.
+- **Testa:** utan GNSS (ingen mottakar): kart, horisont, 3D-terreng og frontrute – terrengmodellen synest og Tal
+  synest; Demo i 3D køyrer på terrengmodellen. Med `simuler-leica.py --anlegg`: 3D og frontrute som før, samanlikna
+  med v1.6.67. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.75 – AI: opningstider, tale med føraren, læringslogg og nye funn
 - **Nytt:** **opningstider** (`opningstid.py`, AI › Opningstider): standard laurdag og søndag 10–16, kveldskøyring
   tysdag, onsdag og fredag 18–21, og 10–16 i juleferie (21.12–1.1), vinterferie (veke 8 og 9), påskeferie og på

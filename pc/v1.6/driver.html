@@ -1738,8 +1738,12 @@
         }
       }
       .toolbar,
-      .top {
-        transform: translateZ(0); /* eige teiknelag over kart og 3D */
+      .top,
+      .tele,
+      #aiChips,
+      #micBtn,
+      #voiceBubble {
+        transform: translateZ(0); /* eige teiknelag over kart og 3D (elles kan det vippa kartet dekkje dei) */
       }
       #app.terrain3d #t3d {
         display: block;
@@ -2892,7 +2896,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.75";
+      const APP_VERSION = "1.6.76";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3239,6 +3243,33 @@
          Hentar eit terrengutsnitt (300 × 300 m, 1 m rute) rundt maskina frå tenesta og teiknar det med lys og skugge.
          Sporet blir måla på terrenget i snødjupnefargar, med høgdekurver kvar meter (tjukkare kvar 5. m).
          Kameraet følgjer bak maskina. Utan terrengmodell under maskina blir horisontvisinga brukt i staden. */
+      /* Utan GNSS-posisjon (mottakar av eller ikkje tilkopla, og ingen demo): kartet, demoen og 3D-visingane blir lagde
+         midt på den gjeldande terrengmodellen, så føraren ser modellen i staden for eit tomt rutenett. Ingen maskin blir
+         teikna på ein posisjon som ikkje er målt. */
+      const NOGPS = {
+        at: null,
+        name: "",
+        done: false,
+        async check() {
+          if (pos) return (this.at = null);
+          try {
+            let r = await fetch("api/terrain/centre").then((x) => x.json());
+            if (!r.ok) return;
+            this.at = [r.lat, r.lon];
+            this.name = r.name;
+            if (!this.done && !pos) {
+              this.done = true; // éin gong ved oppstart: flytt kartet til terrengmodellen
+              map.setView(this.at, map.getZoom(), { animate: false });
+            }
+            if (VIEWS[viewMode()].gl) {
+              T3D.request(this.at);
+              applyView();
+            }
+          } catch (e) {}
+        },
+      };
+      setTimeout(() => NOGPS.check(), 4000);
+      setInterval(() => !pos && NOGPS.check(), 60000);
       const T3D = (function () {
         const HALF = 150,
           STEP = 1,
@@ -3790,8 +3821,10 @@
           let far = !patch || Math.hypot(...local(p)) > 60;
           if (far && Date.now() - lastReq > (patch ? 1500 : 5000)) fetchPatch(p);
         }
+        // Utan GNSS (og utan demo): vis midten av terrengmodellen, utan maskin (NOGPS, sjå under)
+        const vp = () => pos || NOGPS.at;
         function ready() {
-          return !failed && !!patch && !!pos && !isNaN(hAt(...local(pos)));
+          return !failed && !!patch && !!vp() && !isNaN(hAt(...local(vp())));
         }
         // Byt mellom 3D og horisont når maskina køyrer inn på eller ut av terrengmodellen
         function check() {
@@ -3828,14 +3861,14 @@
           let cv = $("t3d"),
             w = cv.clientWidth,
             h = cv.clientHeight;
-          if (!w || !h || !patch || !pos) return;
+          if (!w || !h || !patch || !vp()) return;
           if (cv.width !== Math.round(w * renderer.getPixelRatio())) {
             renderer.setSize(w, h, false);
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
           }
           buildMachine();
-          let [x, y] = local(pos),
+          let [x, y] = local(vp()),
             hm = hAt(x, y);
           if (isNaN(hm)) hm = sm ? sm.h : hRef;
           if (!sm || Math.hypot(x - sm.x, y - sm.y) > 30) sm = { x, y, h: hm };
@@ -3851,7 +3884,7 @@
             hL = hAt(sm.x - fy * 1.5, sm.y + fx * 1.5);
           let pitch = isNaN(hF - hB) ? 0 : Math.atan((hF - hB) / 5),
             fr = viewMode() === "frontrute";
-          machine.visible = machineOn;
+          machine.visible = machineOn && !!pos; // ingen maskin når det ikkje finst posisjon
           machine.children[0].children.forEach((m) => (m.visible = !fr || m.userData.keep)); // frontrute: berre skjeret og armane synest
           machine.position.set(sm.x, sm.h - hRef, -sm.y);
           machine.rotation.set(pitch, -hd, isNaN(hR - hL) ? 0 : Math.atan((hR - hL) / 3));
@@ -3907,7 +3940,7 @@
             scene.fog.far = 200 + camDist * 2.5;
           }
           dCheck();
-          $("t3dInfo").textContent = "3D-TERRENG · " + patch.layers.join(", ") + " · " + Math.round(sm.h) + " moh.";
+          $("t3dInfo").textContent = (pos ? "3D-TERRENG · " : "INGEN GNSS – VISER MIDTEN AV TERRENGMODELLEN · ") + patch.layers.join(", ") + " · " + Math.round(sm.h) + " moh.";
           renderer.render(scene, camera);
         }
         return {
@@ -4066,7 +4099,7 @@
         persistCfg();
         let z = VIEWS[VIEWS[mode].gl ? "horisont" : mode].zoom; // 3D utan terreng fell tilbake til horisont
         if (z && map.getZoom() < z) map.setZoom(z, { animate: false }); // nært maskina, som frå førarsetet
-        if (VIEWS[mode].gl) T3D.request(pos);
+        if (VIEWS[mode].gl) T3D.request(pos || NOGPS.at);
         applyView();
         if (!quiet) toast(VIEWS[mode].desc + (VIEWS[mode].gl && !T3D.ready() ? " – ingen terrengmodell her, viser horisont" : ""));
       }

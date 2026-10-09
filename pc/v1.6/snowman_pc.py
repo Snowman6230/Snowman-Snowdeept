@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.75"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.76"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -571,6 +571,11 @@ class API(http.server.BaseHTTPRequestHandler):
             q=urllib.parse.parse_qs(u.query)
             try: r=snowmap_response(q)
             except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/terrain/centre":   # midten av den gjeldande terrengmodellen (når GNSS manglar)
+            c=terrain_centre() if T.AVAILABLE else None
+            ms=sorted((m for m in TERR.listing() if m.get("active") and m.get("type")=="barmark"),key=lambda m:-m["priority"]) if T.AVAILABLE else []
+            r={"ok":True,"lat":c[0],"lon":c[1],"name":ms[0]["name"]} if c else {"ok":False}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/opningstid":   # AI › Opningstider
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"cfg":OPEN.cfg,"upcoming":OPEN.upcoming(days=21)}).encode()); return
