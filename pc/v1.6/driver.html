@@ -2896,7 +2896,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.76";
+      const APP_VERSION = "1.6.77";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -4057,6 +4057,9 @@
         $("groomer").style.transform = "translate(-50%, -50%)" + (cfg.view3d ? " rotateX(" + TILT + "deg)" : "") + " rotate(" + g + "deg)";
         $("needle").style.transform = "rotate(" + -bearCont + "deg)";
         try {
+          placeGroomer();
+        } catch (e) {}
+        try {
           TRA.uprightLabels(cfg.northUp && manualBear == null ? 0 : bearCont);
         } catch (e) {} // TRA er ikkje klar enno under oppstart
         $("map").style.setProperty("--aiDeg", (cfg.northUp && manualBear == null ? 0 : bearCont) + "deg"); // AI-merke står rett opp
@@ -5001,8 +5004,33 @@
         g.style.height = vb.h * k + "px";
         g.style.top = cfg.view3d ? "calc(50% + " + SHIFT + "vh)" : "50%";
         g.classList.toggle("tiny", vb.w * k < 120);
+        placeGroomer();
       }
       map.on("zoomend", scaleGroomer);
+      /* Maskinteikninga står midt på skjermen når kartet følgjer maskina. Når føraren har flytta kartet («Følg maskina»
+         synest), må teikninga i staden stå der maskina faktisk er på kartet – elles står ho still medan sporet går.
+         Kartet kan vere rotert og skalert med CSS rundt midten, så punktet blir rotert på same måte. */
+      function placeGroomer() {
+        let g = $("groomer");
+        if (followMap || !pos || cfg.view3d) {
+          g.style.left = "50%";
+          if (!cfg.view3d) g.style.top = "50%";
+          return;
+        }
+        let m = $("map"),
+          r = m.getBoundingClientRect(),
+          pr = (g.offsetParent || document.body).getBoundingClientRect(),
+          p = map.latLngToContainerPoint(pos),
+          sz = map.getSize(),
+          dx = p.x - sz.x / 2,
+          dy = p.y - sz.y / 2,
+          rotated = !(cfg.northUp && manualBear == null),
+          a = rotated ? (-bearCont * Math.PI) / 180 : 0,
+          k = rotated ? 1.42 : 1;
+        g.style.left = r.left + r.width / 2 - pr.left + k * (dx * Math.cos(a) - dy * Math.sin(a)) + "px";
+        g.style.top = r.top + r.height / 2 - pr.top + k * (dx * Math.sin(a) + dy * Math.cos(a)) + "px";
+      }
+      map.on("move zoom viewreset", placeGroomer);
       // Pilene og senterlinja har fast storleik i pikslar. Langt ute blir dei tynnare/skjulte så sporflata synest.
       function zoomDetail() {
         let z = map.getZoom();
@@ -5377,6 +5405,7 @@
           }
         }
         if (followMap) map.panTo(newPos, { animate: false });
+        placeGroomer();
         T3D.update(newPos);
         updateAhead();
         TRA.live();

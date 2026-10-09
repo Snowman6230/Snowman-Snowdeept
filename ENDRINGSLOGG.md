@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.77 – retting: maskina står der ho er når kartet er flytt
+- **Retta:** når føraren hadde flytt kartet («Følg maskina» synest), stod maskinteikninga fast midt på skjermen medan
+  sporet gjekk vidare. Teikninga ligg utanpå kartet og var alltid midtstilt. No blir ho plassert der maskina faktisk
+  er på kartet når kartet ikkje følgjer maskina, også når kartet er rotert. Når kartet følgjer maskina, står ho midt
+  på som før. Gjeld kartvisinga ovanfrå (førar- og horisontvisinga følgjer alltid maskina).
+- **Kvifor:** eigaren melde frå med skjermbilete (v1.6.75): maskina stod på same stad medan sporet flytta seg.
+- **Testa:** demo, kartet dradd bort: maskina følgjer enden av sporet i tre bilete på rad, både med nord opp og med
+  kartet snudd 35°. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.76 – rettingar: Tal og 3D/frontrute utan GNSS
 - **Retta:** **Tal** (fart, kurs, spor, areal, tid) forsvann i førar-/horisontvisinga og når 3D-terreng eller
   frontrute fall tilbake til horisont (t.d. utan GNSS): det vippa kartet vart teikna over boksane. Tal (og AI-lag,
