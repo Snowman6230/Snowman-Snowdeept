@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.79"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.80"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -543,12 +543,13 @@ class API(http.server.BaseHTTPRequestHandler):
             q=urllib.parse.parse_qs(u.query)
             f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
             try:
-                demo=q.get("demo",["0"])[0]=="1"; lat,lon,psrc=where(f("lat"),f("lon"))
+                demo=q.get("demo",["0"])[0]=="1"; lat,lon,psrc,palt,pname=wx_where(f("lat"),f("lon"),demo)
                 if demo and lat is None: lat,lon,psrc=62.3905,6.5810,"demo"
-                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon: GNSS er av, og det finst korkje sist kjende posisjon eller terrengmodell. Kopla til GNSS eller legg inn ein terrengmodell."}
+                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon: GNSS er av, og det finst korkje sist kjende posisjon eller terrengmodell. Vel ein stad (📍 Stad), kopla til GNSS eller legg inn ein terrengmodell."}
                 else:
-                    alt,src=terrain_alt(lat,lon,f("alt"))
+                    alt,src=wx_alt(lat,lon,palt if pname else f("alt"),chosen=bool(pname))
                     r=WX.forecast(lat,lon,alt,{"good":f("good"),"marg":f("marg"),"wind":f("wind")},demo=demo); r["altSrc"]=src; r["posSrc"]=psrc
+                r["place"]=pname; r["placeLat"]=lat; r["placeLon"]=lon
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/weather/obs":   # «MÅLT NO» i Vêr: siste målingar frå næraste vêrstasjonar (MET Frost), eller DEMO
@@ -556,11 +557,11 @@ class API(http.server.BaseHTTPRequestHandler):
             f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null","undefined") else d
             try:
                 FROST.cid=(CFG.get("frost_client_id") or "").strip() or FR.CLIENT_ID
-                demo=q.get("demo",["0"])[0]=="1"; lat,lon,psrc=where(f("lat"),f("lon"))
+                demo=q.get("demo",["0"])[0]=="1"; lat,lon,psrc,palt,pname=wx_where(f("lat"),f("lon"),demo)
                 if demo and lat is None: lat,lon=62.3905,6.5810
-                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon (GNSS av, ingen terrengmodell).","stations":[]}
+                if lat is None or lon is None: r={"ok":False,"error":"Ingen posisjon (GNSS av, ingen terrengmodell, ingen vald stad).","stations":[]}
                 else:
-                    alt,_src=terrain_alt(lat,lon,f("alt"))
+                    alt,_src=wx_alt(lat,lon,palt if pname else f("alt"),chosen=bool(pname))
                     fixed=re.sub(r"[^A-Za-z0-9,]","",CFG.get("frost_stations") or "") or None
                     r=FROST.observations(lat,lon,alt,fixed,demo=demo); r["alt"]=None if alt is None else round(alt)
                     for st in r.get("stations",[]):   # våttemperatur der stasjonen måler luftfukt
@@ -576,7 +577,7 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 import nett
                 r=dict(nett.test(WX.ua,(CFG.get("frost_client_id") or "").strip() or FR.CLIENT_ID),ok=True)
-                lat,lon,psrc=where(); r["pos"]={"lat":lat,"lon":lon,"src":psrc}
+                lat,lon,psrc,_a,pname=wx_where(); r["pos"]={"lat":lat,"lon":lon,"src":pname or psrc}
                 LOG.event("Samband-test: "+", ".join(f"{t['name']} {'OK' if t['ok'] else 'FEIL'}" for t in r["tests"]))
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
@@ -585,6 +586,14 @@ class API(http.server.BaseHTTPRequestHandler):
             ms=sorted((m for m in TERR.listing() if m.get("active") and m.get("type")=="barmark"),key=lambda m:-m["priority"]) if T.AVAILABLE else []
             r={"ok":True,"lat":c[0],"lon":c[1],"name":ms[0]["name"]} if c else {"ok":False}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/ver/stad":   # Vêr › Stad: vald stad, lagra stader, terrengmodellar og staden til maskina
+            w=wx_places(); a,b,c=stad()
+            self.headers_ok(); self.wfile.write(json.dumps({"ok":True,**w,"terreng":wx_terrain_places(),"auto":{"lat":a,"lon":b,"src":c}},ensure_ascii=False).encode()); return
+        if u.path=="/api/ver/stadsok":   # Vêr › Stad: søk i stadnamn (Kartverket) – krev nett
+            q=urllib.parse.parse_qs(u.query)
+            try: r=wx_search(q.get("q",[""])[0])
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r,ensure_ascii=False).encode()); return
         if u.path=="/api/opningstid":   # AI › Opningstider
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"cfg":OPEN.cfg,"upcoming":OPEN.upcoming(days=21)}).encode()); return
         if u.path=="/api/ai/eksport":   # opplæringspakke til ein framtidig sentral SNOWMAN-AI (berre lokal nedlasting)
@@ -911,6 +920,13 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/ver/stad":   # Vêr › Stad: vel, lagre, slett eller tilbake til automatisk (maskina)
+            try:
+                w=wx_place_set(json.loads(body or b"{}"))
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,**w},ensure_ascii=False).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if self.path=="/api/opningstid":   # lagre opningstider (AI › Opningstider)
             try:
                 before=json.dumps(OPEN.cfg,ensure_ascii=False); c=OPEN.save(json.loads(body or b"{}"))
@@ -1030,14 +1046,93 @@ def report_cfg():
     s=O.system_cfg()
     return {"on":s.get("reportExport",True),"dir":s.get("reportDir") or str(DS.default_report_dir())} if FUEL else {"on":False,"dir":""}
 LASTPOS=DATA/"sist-posisjon.json"
-def where(lat=None,lon=None):
+WXPLACE=DATA/"ver-stad.json"   # Vêr › Stad: vald stad og lagra stader (høyrer til anlegget, ikkje i git)
+def wx_places():
+    try: d=json.loads(WXPLACE.read_text("utf-8"))
+    except Exception: d={}
+    return {"valt":d.get("valt"),"lagra":d.get("lagra") or []}
+def wx_place_ok(p):
+    """Rydd ein stad frå klienten: namn, lat, lon (innanfor rimelege grenser), valfri høgd og kjelde."""
+    try:
+        lat,lon=float(p["lat"]),float(p["lon"])
+        if not (-90<=lat<=90 and -180<=lon<=180): return None
+        alt=p.get("alt"); alt=None if alt in (None,"") else float(alt)
+        if alt is not None and not (-500<=alt<=9000): alt=None
+        name=re.sub(r"\s+"," ",str(p.get("name") or "")).strip()[:60] or f"{lat:.4f}, {lon:.4f}"
+        return {"name":name,"lat":round(lat,5),"lon":round(lon,5),"alt":alt,"src":str(p.get("src") or "")[:40]}
+    except Exception: return None
+def wx_place_set(d):
+    """Vel/lagre/slett stad for Vêr. d: {action: vel|auto|lagre|slett, place|name}."""
+    w=wx_places(); a=d.get("action")
+    if a=="auto": w["valt"]=None
+    elif a=="slett":
+        w["lagra"]=[x for x in w["lagra"] if x.get("name")!=d.get("name")]
+        if w["valt"] and w["valt"].get("name")==d.get("name"): w["valt"]=None
+    elif a in ("vel","lagre"):
+        p=wx_place_ok(d.get("place") or {})
+        if not p: raise ValueError("Ugyldig stad (treng namn, breidd og lengd).")
+        w["lagra"]=[p]+[x for x in w["lagra"] if x.get("name")!=p["name"]][:19]   # nyaste først, høgst 20
+        if a=="vel": w["valt"]=p
+    else: raise ValueError("Ukjend handling")
+    write_atomic(WXPLACE,json.dumps(w,ensure_ascii=False,indent=1))
+    LOG.event("Vêr: stad "+(("valt «"+w["valt"]["name"]+"»") if w["valt"] else "automatisk (maskina)")+f" ({a})")
+    return w
+def wx_where(lat=None,lon=None,demo=False):
+    """Staden for Vêr-overlayet: vald stad (Vêr › Stad) går føre maskina. Returnerer (lat, lon, kjelde, høgd|None, namn|None)."""
+    v=None if demo else wx_places()["valt"]
+    if v: return v["lat"],v["lon"],"vald stad",v.get("alt"),v["name"]
+    a,b,c=stad(lat,lon)
+    return a,b,c,None,None
+def wx_alt(lat,lon,alt=None,chosen=False):
+    """Høgd for Vêr: oppgitt → terrengmodellen → (berre for maskina) GNSS. Ein vald stad utanfor terrengmodellen
+    får høgda frå MET sin eigen høgdemodell (None) – aldri GNSS-høgda til maskina som står ein annan stad."""
+    if alt is not None: return alt,"oppgitt for staden"
+    if chosen:
+        try:
+            h=TERR.height(lat,lon) if T.AVAILABLE else None
+            if h: return h["h"],"terrengmodell «"+h["name"]+"»"
+        except Exception: pass
+        return None,"høgdemodellen til MET"
+    return terrain_alt(lat,lon)
+def wx_terrain_places():
+    """Midten av kvart aktive barmark-lag i terrengbiblioteket – ferdige stader å velje i Vêr."""
+    out=[]
+    try:
+        for m in (TERR.listing() if T.AVAILABLE else []):
+            if m.get("active") and m.get("type")=="barmark":
+                la,lo=T.utm_inverse(m["x0"]+m["nx"]*m["dx"]/2,m["y0"]-m["ny"]*m["dy"]/2,m["zone"])
+                out.append({"name":m.get("name") or "terrengmodell","lat":round(la,5),"lon":round(lo,5),"src":"terrengmodell"})
+    except Exception: pass
+    return out
+STADNAMN_URL="https://ws.geonorge.no/stedsnavn/v1/navn"
+def wx_search(text):
+    """Søk i stadnamn frå Kartverket (Sentralt stadnamnregister, CC BY 4.0). Krev nett."""
+    import nett
+    text=(text or "").strip()[:60]
+    if len(text)<2: return {"ok":False,"error":"Skriv minst to bokstavar."}
+    q=urllib.parse.urlencode({"sok":text,"fuzzy":"true","utkoordsys":"4258","treffPerSide":"12","side":"1"})
+    req=urllib.request.Request(STADNAMN_URL+"?"+q,headers={"User-Agent":WX.ua,"Accept":"application/json"})
+    try:
+        with nett.urlopen(req,timeout=8) as r: js=json.loads(r.read().decode("utf-8"))
+    except Exception as e:
+        return {"ok":False,"error":"Stadnamnsøket krev nett. "+nett.explain(e)+" Utan nett: vel ein lagra stad, ein terrengmodell, midten av kartet eller skriv inn koordinatar.","detail":str(e)[:200]}
+    out=[]
+    for n in js.get("navn") or []:
+        rp=n.get("representasjonspunkt") or {}
+        if rp.get("nord") is None or rp.get("øst") is None: continue
+        kom=", ".join(k.get("kommunenavn","") for k in (n.get("kommuner") or []) if k.get("kommunenavn"))
+        nm=n.get("skrivemåte") or ((n.get("stedsnavn") or [{}])[0] or {}).get("skrivemåte") or text   # /navn eller /sted
+        out.append({"name":nm,"lat":round(float(rp["nord"]),5),"lon":round(float(rp["øst"]),5),
+                    "type":n.get("navneobjekttype") or "","kommune":kom,"src":"stadnamn"})
+    return {"ok":True,"hits":out,"attr":"Stadnamn: Kartverket (CC BY 4.0)"}
+def stad(lat=None,lon=None):
     """Staden Vêr, Frost, snøkart og AI gjeld for: oppgitt → GNSS → sist kjende GNSS-posisjon → midten av terrengmodellen.
     Returnerer (lat, lon, kjelde) – lat er None om ingenting finst."""
     if lat is not None and lon is not None: return lat,lon,"oppgitt"
     if STATE.get("lat") is not None and STATE.get("lon") is not None:
         try:
-            if time.time()-getattr(where,"_saved",0)>300:   # hugs posisjonen (høgst kvart 5. min)
-                where._saved=time.time(); write_atomic(LASTPOS,json.dumps({"lat":STATE["lat"],"lon":STATE["lon"],"t":int(time.time())}))
+            if time.time()-getattr(stad,"_saved",0)>300:   # hugs posisjonen (høgst kvart 5. min)
+                stad._saved=time.time(); write_atomic(LASTPOS,json.dumps({"lat":STATE["lat"],"lon":STATE["lon"],"t":int(time.time())}))
         except Exception: pass
         return STATE["lat"],STATE["lon"],"GNSS"
     try:
@@ -1112,7 +1207,7 @@ def ai_response(q):
         clat,clon=(min(la)+max(la))/2,(min(lo)+max(lo))/2
         half=min(1500.0,max(300.0,max((max(la)-min(la))*111320,(max(lo)-min(lo))*111320*math.cos(math.radians(clat)))/2+80))
     else:
-        clat,clon,_ps=where(f("lat"),f("lon")); half=600.0
+        clat,clon,_ps=stad(f("lat"),f("lon")); half=600.0
     qq={"half":[str(half)],"demo":["1" if demo else "0"],"cal":["1"],"learn":["1"],"stop":["0"]}
     if clat is not None: qq.update(lat=[str(clat)],lon=[str(clon)])
     ctx=snow_compute(qq)
@@ -1266,7 +1361,7 @@ def snow_compute(q):
     half=min(1500.0,max(150.0,f("half",600.0))); stop=int(f("stop",0)); stop=stop if stop in SNOW_STOPS else 0
     loose=min(50.0,max(0.0,f("loose",0.0))); demo=q.get("demo",["0"])[0]=="1"; usecal=q.get("cal",["0"])[0]=="1"; uselearn=q.get("learn",["0"])[0]=="1"
     test=bool(STATE.get("simulated")) or demo
-    lat,lon,_ps=where(f("lat"),f("lon")); centred="maskina" if _ps in ("GNSS","oppgitt") else (_ps or "maskina")
+    lat,lon,_ps=stad(f("lat"),f("lon")); centred="maskina" if _ps in ("GNSS","oppgitt") else (_ps or "maskina")
     if lat is None or TERR.height(lat,lon) is None:
         c=terrain_centre()
         if c is None: return {"ok":False,"error":"Ingen aktiv terrengmodell (barmark). Snøkartet byggjer på den gjeldande terrengmodellen – legg inn eller slå på eit lag under Innst. › Terreng."}

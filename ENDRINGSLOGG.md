@@ -9,6 +9,30 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.80 – Vêr: vel stad sjølv
+- **Nytt:** knappen «📍» i hovudet på Vêr opnar eit stadpanel. Eigaren ønskte å kunne velje staden vêret gjeld for.
+  Desse vala finst:
+  - **Maskina (automatisk)** – som før: GNSS, så sist kjende posisjon, så midten av terrengmodellen.
+  - **Lagra stader** – dei siste 20 vala, nyaste først. Kvar stad kan fjernast med ✕.
+  - **Terrengmodellar** – midten av kvart aktive barmark-lag i biblioteket.
+  - **Søk i stadnamn** – Sentralt stadnamnregister hos Kartverket (CC BY 4.0, kjelda er vist). Søket krev nett. Utan
+    nett får føraren forklaring på norsk og blir vist vidare til vala under.
+  - **Midten av kartet** og **koordinatar** («62.28, 6.60» eller «62,28; 6,60», valfritt «, 900» for moh.). Begge
+    fungerer utan nett.
+- Den valde staden blir hugsa i `data/ver-stad.json` (høyrer til anlegget, ikkje i git) til føraren vel «Maskina»
+  igjen. Han gjeld varselet og «Målt no». Hovudet viser «📍 namn», og «ved maskina» blir «ved staden».
+- **Avgjerd:** høgda for ein vald stad kjem frå terrengmodellen når staden ligg inne i han. Elles kjem ho frå den som
+  er oppgitt, eller frå høgdemodellen til MET. GNSS-høgda til maskina blir aldri brukt for ein stad ein annan plass.
+- **Avgjerd:** snøkartet og AI følgjer framleis alltid terrengmodellen og maskina (jf. avgjerda om at terrengmodellen
+  er knytt til alle funksjonane i Vêr). Stadvalet gjeld berre varselet og stasjonsmålingane.
+- **Retta:** stadfunksjonen frå v1.6.78 heitte `where()`, same namn som hjelpefunksjonen som skriv fil og linje i
+  feilloggen, og skugga han. Feilloggen ville då ha fått rot i staden for kodestad. Han heiter no `stad()`.
+- Testa i isolert kopi utan GNSS og med `simuler-leica.py --anlegg`:
+  - alle vala, lagring, sletting, ugyldig innhald og attende til automatisk
+  - Playwright utan JS-feil
+- Ikkje testa mot ekte teneste: stadnamnsøket er testa mot eit lokalt testsvar i Kartverket-formatet, fordi nettet
+  er stengt her.
+
 ### PC-prototype v1.6.79 – retting: sertifikatfeil mot MET på Windows
 - **Retta:** «Test samband» på Surface viste `CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate`
   mot både api.met.no og frost.met.no. DNS var OK, det var ingen proxy, og klokka var rett. Årsaka er at Python på

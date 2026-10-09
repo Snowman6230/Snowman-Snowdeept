@@ -881,6 +881,94 @@
         display: block;
         height: 100%;
       }
+      /* Vêr › Stad */
+      #wx .wxStad {
+        background: #0b2231;
+        border: 1px solid #1f4a63;
+        border-radius: 10px;
+        padding: 8px 10px 10px;
+        margin: 6px 0 10px;
+      }
+      #wx .wxStad h5 {
+        margin: 8px 0 5px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: #9ab3c1;
+      }
+      #wx .wxStad h5:first-child {
+        margin-top: 2px;
+      }
+      #wx .wxPls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      #wx .wxPl {
+        display: inline-flex;
+        align-items: stretch;
+        background: #12344a;
+        border: 1px solid #2a5a76;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      #wx .wxPl.on {
+        background: #0f5a8a;
+        border-color: #7fd0ff;
+      }
+      #wx .wxPl button {
+        background: none;
+        border: 0;
+        color: #fff;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 8px 11px;
+        min-height: 40px;
+        text-align: left;
+        cursor: pointer;
+      }
+      #wx .wxPl button small {
+        display: block;
+        font-size: 11px;
+        font-weight: 400;
+        color: #9ab3c1;
+      }
+      #wx .wxPl b {
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        color: #ff9a8a;
+        border-left: 1px solid #2a5a76;
+        cursor: pointer;
+      }
+      #wx .wxStadRow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+      #wx .wxStadRow input {
+        flex: 1 1 200px;
+        min-width: 0;
+        min-height: 40px;
+        box-sizing: border-box;
+        background: #071a26;
+        color: #fff;
+        border: 1px solid #2a5a76;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font: inherit;
+        font-size: 15px;
+      }
+      #wx .wxStadBtn.valt {
+        background: #0f5a8a;
+        border-color: #7fd0ff;
+      }
+      #wx .wxValt {
+        font-size: 13px;
+        color: #7fd0ff;
+        letter-spacing: 0;
+      }
       /* demo-/testmerket skal alltid synast: flytt det til midten av den frie delen av kartet når Vêr er ope */
       body.wxOpen .demoTag {
         left: calc((100vw - min(640px, 62vw) - 24px) / 2);
@@ -2907,7 +2995,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.79";
+      const APP_VERSION = "1.6.80";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -7379,6 +7467,12 @@
           timer = null,
           busy = false,
           hoverI = null;
+        // Vêr › Stad: føraren kan velje staden vêret gjeld for (lagra stad, terrengmodell, stadnamn, kartmidten, koordinatar)
+        let stadOpen = false,
+          SP = null, // {valt, lagra, terreng, auto}
+          hits = null, // søkeresultat frå stadnamn
+          hitErr = "",
+          cand = []; // stader som er viste i panelet (indeks i onclick)
         const CLS = { godt: ["GODT", "#3ee07a", "Godt"], marg: ["MARGINALT", "#ffcf5b", "Marginalt"], vind: ["FOR MYKJE VIND", "#c99bff", "Vind"], nei: ["IKKJE MOGLEG", "#ff7a6b", "Ikkje"] };
         const DAYS = ["Sun", "Mån", "Tys", "Ons", "Tor", "Fre", "Lau"];
         const lim = () => ({ good: cfg.wxGood ?? -5, marg: cfg.wxMarg ?? -2, wind: cfg.wxWind ?? 12 });
@@ -7474,14 +7568,22 @@
           return `<b>${day(h.t)} ${kl(h.t)}</b>${h.sym ? ` <img src="vendor/vaersymbol/${esc(h.sym)}.svg" alt="" style="width:18px;height:18px;vertical-align:-4px"> ${esc(h.symText)}` : ""} · våttemp. <b>${n1(h.tw)}°</b> · luft ${n1(h.temp)}° · fukt ${Math.round(h.rh)} % · vind ${n1(h.wind)} m/s${h.dir != null ? " frå " + him(h.dir) + " " + pil(h.dir) : ""} · nedbør ${n1(h.precip ?? h.precip6 ?? 0)} mm · <b style="color:${c[1]}">${c[0]}</b>`;
         }
         function render() {
+          // behald det føraren har skrive i stadfelta når kortet blir teikna på nytt (t.d. når varselet blir henta)
+          let kq = $("wxStadQ") && $("wxStadQ").value,
+            kk = $("wxStadK") && $("wxStadK").value;
+          render0();
+          if (kq && $("wxStadQ") && !$("wxStadQ").value) $("wxStadQ").value = kq;
+          if (kk && $("wxStadK") && !$("wxStadK").value) $("wxStadK").value = kk;
+        }
+        function render0() {
           let el = $("wxCard"),
             sy = el.scrollTop;
           if (!R) {
-            el.innerHTML = head() + `<p>Hentar vêrvarsel …</p>`;
+            el.innerHTML = head() + stadHtml() + `<p>Hentar vêrvarsel …</p>`;
             return;
           }
           if (!R.ok) {
-            el.innerHTML = head() + `<div class="wxWarn">${esc(R.error)}</div><p style="color:#b8cdd8;font-size:13px">Vêrvarselet krev nett første gong. Etterpå blir siste varsel vist også utan nett. Alt anna i SNOWMAN fungerer som før.</p>${R.detail ? `<p style="color:#7f9aa9;font-size:11px">Teknisk: ${esc(R.detail)}</p>` : ""}<p><button class="wxSk" onclick="WX.nettest()">🔌 Test samband</button></p><div id="wxNet"></div>` + (O && O.ok && O.stations.length ? obsHtml() : "") + foot();
+            el.innerHTML = head() + stadHtml() + `<div class="wxWarn">${esc(R.error)}</div><p style="color:#b8cdd8;font-size:13px">Vêrvarselet krev nett første gong. Etterpå blir siste varsel vist også utan nett. Alt anna i SNOWMAN fungerer som før.</p>${R.detail ? `<p style="color:#7f9aa9;font-size:11px">Teknisk: ${esc(R.detail)}</p>` : ""}<p><button class="wxSk" onclick="WX.nettest()">🔌 Test samband</button></p><div id="wxNet"></div>` + (O && O.ok && O.stations.length ? obsHtml() : "") + foot();
             return;
           }
           let H = R.hours.slice(0, 48),
@@ -7505,6 +7607,7 @@
             .join("");
           el.innerHTML =
             head() +
+            stadHtml() +
             (R.demo ? `<div class="wxDemo">DEMO – OPPDIKTA VÊRDATA, IKKJE VARSEL</div>` : "") +
             (R.offline ? `<div class="wxWarn">Utan nett – viser lagra varsel, ${R.age_min} min gammalt.</div>` : "") +
             `<div class="wxNow">
@@ -7561,7 +7664,7 @@
               let gam = x.age_min != null && x.age_min > 90;
               return `<div class="wxObs">
                 <span><b>${esc(x.name)}</b><small>${x.masl != null ? x.masl + " moh." : ""}${x.km != null ? " · " + n1(x.km) + " km" : ""}</small></span>
-                <span><b>${n1(x.temp)}°</b><small>${x.tempAtMachine != null ? "≈ " + n1(x.tempAtMachine) + "° ved maskina" : "luft"}</small></span>
+                <span><b>${n1(x.temp)}°</b><small>${x.tempAtMachine != null ? "≈ " + n1(x.tempAtMachine) + "° ved " + (R && R.place ? "staden" : "maskina") : "luft"}</small></span>
                 <span><b>${x.wind != null ? n1(x.wind) + '<i class="wxU"> m/s</i>' : "–"} ${pil(x.dir)}</b><small>${x.dir != null ? "frå " + him(x.dir) : "vind"}${x.gust != null ? " · kast " + n1(x.gust) : ""}</small></span>
                 <span><b${x.tw != null ? ' class="c-' + (x.tw <= lim().good ? "godt" : x.tw <= lim().marg ? "marg" : "nei") + '"' : ""}>${x.tw != null ? n1(x.tw) + "°" : x.rh != null ? Math.round(x.rh) + " %" : "–"}</b><small>${x.tw != null ? "våttemp. · " + Math.round(x.rh) + " %" : "fukt ikkje målt"}</small></span>
                 <span><b>${x.precip != null ? n1(x.precip) : "–"}</b><small>mm siste t${x.snow != null ? " · snø " + Math.round(x.snow) + " cm" : ""}</small></span>
@@ -7569,17 +7672,18 @@
               </div>`;
             })
             .join("");
-          return `<h4>MÅLT NO – NÆRASTE STASJONAR${O.offline ? ' <span class="c-marg">· utan nett, lagra målingar</span>' : ""}</h4><div class="wxObsL">${rows}</div><div class="wxObsN">«Ved maskina» er omrekna til høgda til maskina med 0,65 °C per 100 m – eit anslag, ikkje måling.</div>`;
+          return `<h4>MÅLT NO – NÆRASTE STASJONAR${O.offline ? ' <span class="c-marg">· utan nett, lagra målingar</span>' : ""}</h4><div class="wxObsL">${rows}</div><div class="wxObsN">«Ved ${R && R.place ? "staden" : "maskina"}» er omrekna til høgda ${R && R.place ? "på staden" : "til maskina"} med 0,65 °C per 100 m – eit anslag, ikkje måling.</div>`;
         }
         function head() {
           let p = R && R.ok ? `${n1(R.lat).replace(",", ".")}° N ${n1(R.lon).replace(",", ".")}° Ø${R.alt != null ? " · " + R.alt + " moh." : ""}` : "";
           let a = R && R.ok && !R.demo ? ` · oppdatert for ${R.age_min} min sidan` : "";
-          if (R && R.ok && R.posSrc && R.posSrc !== "GNSS" && R.posSrc !== "oppgitt" && !R.demo) a += ` · stad: ${esc(R.posSrc)} (GNSS av)`;
+          if (R && R.ok && !R.place && R.posSrc && R.posSrc !== "GNSS" && R.posSrc !== "oppgitt" && !R.demo) a += ` · stad: ${esc(R.posSrc)} (GNSS av)`;
           let hs = R && R.ok && R.altSrc ? ` · høgd frå ${esc(R.altSrc)}` : "";
-          return `<div class="wxHead"><h3>❄ VÊR OG SNØPRODUKSJON<br><small>${p}${a}${hs}</small></h3><button class="wxSk" onclick="SNK.open()" title="Estimert snøendring i terrengmodellen frå varselet – nedbør, temperatur og vind">🗺 Snøkart (estimat)</button><button class="wxX" onclick="WX.toggle()" title="Lukk (eller trykk Vêr-knappen igjen)">✕</button></div>`;
+          let nm = R && R.place ? R.place : "Maskina";
+          return `<div class="wxHead"><h3>❄ VÊR OG SNØPRODUKSJON${R && R.place ? ` <span class="wxValt">📍 ${esc(R.place)}</span>` : ""}<br><small>${p}${a}${hs}</small></h3><button class="wxSk wxStadBtn${stadOpen ? " on" : ""}${R && R.place ? " valt" : ""}" onclick="WX.stad()" title="Vel staden vêret gjeld for – maskina (automatisk), lagra stad, terrengmodell, stadnamn, midten av kartet eller koordinatar">📍 ${esc(nm.length > 18 ? nm.slice(0, 17) + "…" : nm)}</button><button class="wxSk" onclick="SNK.open()" title="Estimert snøendring i terrengmodellen frå varselet – nedbør, temperatur og vind">🗺 Snøkart (estimat)</button><button class="wxX" onclick="WX.toggle()" title="Lukk (eller trykk Vêr-knappen igjen)">✕</button></div>`;
         }
         function foot() {
-          return `<div class="wxFoot">${R && R.demo ? "Oppdikta demo-data til visning." : esc((R && R.attr) || "Data frå MET Norway (CC BY 4.0)") + " · Locationforecast for staden og høgda til maskina."} ${esc((R && R.iconAttr) || "Vêrsymbol: MET Norway / Yr (MIT-lisens)")}. Målingar: MET Frost (CC BY 4.0). Våttemperatur etter Stull (2011). Varsel – ikkje måling. Grensene varierer med kanon og vasstemperatur.</div>`;
+          return `<div class="wxFoot">${R && R.demo ? "Oppdikta demo-data til visning." : esc((R && R.attr) || "Data frå MET Norway (CC BY 4.0)") + " · Locationforecast for " + (R && R.place ? "den valde staden." : "staden og høgda til maskina.")} ${esc((R && R.iconAttr) || "Vêrsymbol: MET Norway / Yr (MIT-lisens)")}. Målingar: MET Frost (CC BY 4.0). Våttemperatur etter Stull (2011). Varsel – ikkje måling. Grensene varierer med kanon og vasstemperatur.</div>`;
         }
         function toggle() {
           open = !open;
@@ -7596,6 +7700,122 @@
             load();
             timer = setInterval(load, 10 * 60 * 1000); // tenesta hentar berre nytt frå MET når varselet er gått ut
           }
+        }
+        // ---------- Vêr › Stad ----------
+        function stadHtml() {
+          if (!stadOpen) return "";
+          if (!SP) return `<div class="wxStad"><p>Hentar stader …</p></div>`;
+          cand = [];
+          let chip = (p, extra) => {
+            cand.push(p);
+            let i = cand.length - 1,
+              on = SP.valt && SP.valt.name === p.name && Math.abs(SP.valt.lat - p.lat) < 1e-4 && Math.abs(SP.valt.lon - p.lon) < 1e-4;
+            return `<span class="wxPl${on ? " on" : ""}"><button onclick="WX.vel(${i})" title="${esc(p.lat.toFixed(4))}° N ${esc(p.lon.toFixed(4))}° Ø${p.alt != null ? " · " + Math.round(p.alt) + " moh." : ""}">${esc(p.name)}${extra ? `<small>${esc(extra)}</small>` : ""}</button>${p.del ? `<b onclick="WX.slett(${i})" title="Fjern frå lista">✕</b>` : ""}</span>`;
+          };
+          let au = SP.auto || {};
+          let h = `<div class="wxStad"><h5>STADEN VÊRET GJELD FOR</h5>
+            <div class="wxPls"><span class="wxPl${SP.valt ? "" : " on"}"><button onclick="WX.vel(-1)" title="Følgjer maskina: GNSS → sist kjende posisjon → midten av terrengmodellen">🚜 Maskina (automatisk)<small>${esc(au.src || "ingen posisjon")}</small></button></span></div>`;
+          if (SP.lagra.length) h += `<h5>LAGRA STADER</h5><div class="wxPls">${SP.lagra.map((p) => chip({ ...p, del: true }, p.src === "stadnamn" ? "" : p.src)).join("")}</div>`;
+          if (SP.terreng.length) h += `<h5>TERRENGMODELLAR (midten)</h5><div class="wxPls">${SP.terreng.map((p) => chip(p)).join("")}</div>`;
+          h += `<h5>SØK STADNAMN <small>(Kartverket – krev nett)</small></h5>
+            <div class="wxStadRow"><input id="wxStadQ" type="text" placeholder="t.d. Fjellsætra, Strandafjellet …" autocomplete="off" onkeydown="if(event.key==='Enter')WX.sok()"><button class="wxSk" onclick="WX.sok()">🔎 Søk</button></div>`;
+          if (hitErr) h += `<div class="wxWarn">${esc(hitErr)}</div>`;
+          if (hits) h += hits.length ? `<div class="wxPls">${hits.map((p) => chip(p, [p.type, p.kommune].filter(Boolean).join(" · "))).join("")}</div><div class="wxObsN">Stadnamn: Kartverket (CC BY 4.0)</div>` : `<p class="wxObsN">Ingen treff.</p>`;
+          h += `<h5>ANNA (fungerer utan nett)</h5>
+            <div class="wxStadRow"><button class="wxSk" onclick="WX.kartmidt()" title="Midten av kartet slik det står no – flytt kartet først">⌖ Midten av kartet</button>
+            <input id="wxStadK" type="text" placeholder="breidd, lengd (, moh.)  t.d. 62.28, 6.60, 900" autocomplete="off" onkeydown="if(event.key==='Enter')WX.koord()"><button class="wxSk" onclick="WX.koord()">Bruk</button></div>
+            <div class="wxObsN">Valet blir hugsa til du vel «Maskina» igjen. Snøkartet og AI følgjer alltid terrengmodellen.</div></div>`;
+          return h;
+        }
+        async function stadLoad() {
+          try {
+            SP = await fetch("api/ver/stad").then((x) => x.json());
+          } catch (e) {
+            SP = { valt: null, lagra: [], terreng: [], auto: { src: "fekk ikkje kontakt" } };
+          }
+          if (open) render();
+        }
+        function stad() {
+          stadOpen = !stadOpen;
+          hits = null;
+          hitErr = "";
+          render();
+          if (stadOpen) stadLoad();
+        }
+        async function post(d) {
+          let r = await fetch("api/ver/stad", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d) }).then((x) => x.json());
+          if (!r.ok) throw new Error(r.error || "feil");
+          SP = { ...SP, valt: r.valt, lagra: r.lagra };
+          return r;
+        }
+        async function velP(p) {
+          try {
+            if (p) await post({ action: "vel", place: { name: p.name, lat: p.lat, lon: p.lon, alt: p.alt ?? null, src: p.src || "" } });
+            else await post({ action: "auto" });
+            logClient("action", "Vêr: stad " + (p ? p.name : "maskina (automatisk)"));
+            stadOpen = false;
+            hits = null;
+            R = null;
+            O = null;
+            hoverI = null;
+            render();
+            busy = false;
+            load();
+          } catch (e) {
+            hitErr = "Kunne ikkje velje staden: " + e.message;
+            render();
+          }
+        }
+        const vel = (i) => velP(i < 0 ? null : cand[i]);
+        async function slett(i) {
+          try {
+            await post({ action: "slett", name: cand[i].name });
+            render();
+            if (!SP.valt && R && R.place) { R = null; load(); }
+          } catch (e) {}
+        }
+        async function sok() {
+          let q = ($("wxStadQ") || {}).value || "";
+          hitErr = "";
+          hits = null;
+          render();
+          let inp = $("wxStadQ");
+          if (inp) inp.value = q;
+          try {
+            let r = await fetch("api/ver/stadsok?q=" + encodeURIComponent(q)).then((x) => x.json());
+            if (r.ok) hits = r.hits;
+            else hitErr = r.error;
+          } catch (e) {
+            hitErr = "Fekk ikkje kontakt med SNOWMAN-tenesta";
+          }
+          render();
+          if ($("wxStadQ")) $("wxStadQ").value = q;
+        }
+        function kartmidt() {
+          try {
+            let c = map.getCenter();
+            velP({ name: "Kartpunkt " + c.lat.toFixed(4) + ", " + c.lng.toFixed(4), lat: c.lat, lon: c.lng, src: "kartet" });
+          } catch (e) {
+            hitErr = "Kartet er ikkje klart.";
+            render();
+          }
+        }
+        function koord() {
+          let t = (($("wxStadK") || {}).value || "").trim(),
+            m = t.match(/^\s*(-?\d+(?:[.,]\d+)?)\s*[;,\s]\s*(-?\d+(?:[.,]\d+)?)(?:\s*[;,\s]\s*(-?\d+(?:[.,]\d+)?))?\s*$/);
+          // tillat «62,28; 6,60» og «62.28, 6.60, 900»
+          if (!m) m = t.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)(?:\s*,\s*(-?\d+(?:\.\d+)?))?\s*$/);
+          let f = (x) => (x == null ? null : parseFloat(String(x).replace(",", ".")));
+          let la = m && f(m[1]),
+            lo = m && f(m[2]),
+            al = m && f(m[3]);
+          if (!m || !(la >= 57 && la <= 81 && lo >= -10 && lo <= 35)) {
+            hitErr = "Skriv breidd og lengd i desimalgrader, t.d. «62.28, 6.60» (valfritt «, 900» for moh.). Staden må vere i Noreg.";
+            render();
+            if ($("wxStadK")) $("wxStadK").value = t;
+            return;
+          }
+          velP({ name: la.toFixed(4) + ", " + lo.toFixed(4) + (al != null ? " · " + Math.round(al) + " moh." : ""), lat: la, lon: lo, alt: al, src: "koordinatar" });
         }
         // Test samband til MET og Frost – viser kva som er gale på norsk (nett, DNS, sertifikat, proxy, avvist)
         async function nettest() {
@@ -7615,7 +7835,7 @@
             el.innerHTML = `<p class="c-nei">Testen feila: ${esc(e.message)}</p>`;
           }
         }
-        return { toggle, load, nettest, get open() { return open; } };
+        return { toggle, load, nettest, stad, vel, slett, sok, kartmidt, koord, get open() { return open; } };
       })();
       /* ---------- Snøkart (Vêr › Snøkart) ----------
          ESTIMAT frå vêrmodellen i den gjeldande terrengmodellen:
