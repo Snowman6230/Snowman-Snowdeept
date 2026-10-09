@@ -2996,7 +2996,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.84";
+      const APP_VERSION = "1.6.85";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3144,7 +3144,7 @@
         if (src === "demo") return ["DEMO", "SIMULERT RTK", "Ikkje ekte posisjon"];
         if (src === "gnss" && gnss) {
           let h = gnss.hdop == null ? "--" : gnss.hdop;
-          return [gnss.fix, "SAT " + gnss.satellites + " · HDOP " + h, "Leica/GNSS"];
+          return [gnss.fix, "SAT " + gnss.satellites + " · HDOP " + h, gnss.ntrip_connected ? "GNSS + NTRIP" : "GNSS"];
         }
         if (src === "mobile") return ["MOBIL GPS", $("acc").textContent, "Test – ikkje RTK"];
         return ["GNSS AV", backendOK ? "IKKJE TILKOPLA" : "INGA TENESTE", "Innst. › Kart, GNSS"];
@@ -4830,7 +4830,7 @@
         if (src !== "gnss" && watchId === null && !backendOK) startGPS();
         keepAwake(true);
         setFixBox();
-        toast(src === "gnss" ? "Preparering starta – Leica/GNSS" : "Preparering starta");
+        toast(src === "gnss" ? "Preparering starta – GNSS" : "Preparering starta");
       }
       function toast(t) {
         $("toast").textContent = t;
@@ -5413,7 +5413,7 @@
       /* ---------- Mobil-GPS (test) ---------- */
       function startGPS() {
         if (src === "gnss") {
-          toast("Leica/GNSS er aktiv – mobil-GPS blir ikkje brukt");
+          toast("GNSS-mottakaren er aktiv – mobil-GPS blir ikkje brukt");
           return;
         }
         if (!navigator.geolocation) {

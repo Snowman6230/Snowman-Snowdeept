@@ -9,6 +9,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.85 – forklaring for MANUELL og nøytrale namn
+- **Bakgrunn:** Etter omstart av Zenith35 Pro viste SNOWMAN «MANUELL» (GGA-kvalitet 7). Diagnosen sa då at mottakaren
+  «får korreksjonar men brukar dei ikkje». Det var misvisande, for kvalitet 7 er ein fast eller innlagd posisjon og
+  ikkje ei måling.
+- **Nytt:** `rtk_hint` har eiga forklaring for MANUELL. Ho ber føraren sjekke at Working Mode = RTK Rover (ikkje Base
+  eller Static), og at RTK Data Source er den vegen korreksjonane kjem: Bluetooth frå SNOWMAN, eller GSM/GPRS med
+  eige SIM-kort og NTRIP-oppsett i mottakaren.
+- **Endra:** «Leica/GNSS» i fix-boksen og i meldingane er bytt til «GNSS» eller «GNSS + NTRIP», fordi SNOWMAN er
+  leverandøruavhengig.
+- Testa med `simuler-leica.py --anlegg` (RTK FIX, inga åtvaring). Playwright gav ingen JS-feil.
+
 ### PC-prototype v1.6.84 – skarpare diagnose: mottakaren les ikkje korreksjonane
 - **Bakgrunn:** Med v1.6.83 kom berre reine RTCM-rammer fram til Zenith35 Pro. Teksten frå casteren (`Ntrip-Version`,
   `Server: NTRIP Caster 1.0`, `Date`, `Content-Type`) vart halden tilbake. Mottakaren stod likevel i SBAS, med

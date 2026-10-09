@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.84"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.85"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -395,6 +395,14 @@ def rtk_hint(st):
     if not out or (ot and time.time()-ot>10):
         return "Korreksjonane kjem frå casteren, men blir ikkje sende vidare til mottakaren – sjekk at mottakarporten er open."
     km=r.get("baseKm"); kmt=f" Basen er {km} km unna." if km is not None else ""
+    if fix=="MANUELL":
+        # GGA-kvalitet 7: mottakaren melder ein fast/innlagd posisjon – ikkje ei måling. Typisk Working Mode = Base/Static,
+        # eller eit augneblinksbilete medan mottakaren startar opp eller byter modus.
+        return ("Mottakaren melder MANUELL posisjon (GGA-kvalitet 7) – ein fast eller innlagd posisjon, ikkje ei måling. "
+                "Sjekk på nettsida til mottakaren (Zenith: 192.168.10.1 › Settings) at Working Mode = RTK Rover "
+                "(ikkje RTK Base eller Static), og at RTK Data Source er den vegen korreksjonane kjem: Bluetooth når SNOWMAN "
+                "sender dei, eller GSM/GPRS når mottakaren hentar dei sjølv med eige SIM-kort og NTRIP-oppsett. "
+                "Har mottakaren nett starta på nytt, vent eitt minutt.")
     try: bid=int(str(st.get("base_id") or "").strip())
     except ValueError: bid=None
     if fix!="RTK FLOAT" and bid is not None and 120<=bid<=158:
