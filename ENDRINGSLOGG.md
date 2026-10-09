@@ -9,6 +9,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.83 – berre reine RTCM-rammer til mottakaren
+- **Bakgrunn:** I felttest (basen var 0,82 km unna, korreksjonane gyldige) stod Zenith35 Pro framleis i SBAS. GGA viste
+  base-ID 0121, som er EGNOS-satellitten, ikkje basen. Mottakaren svarte `@GNSS,DN,ERROR`. SNOWMAN sende rådataa frå
+  casteren uendra vidare, og då kom òg 110 byte som ikkje var RTCM. Det kan vere tekstlinjer etter «ICY 200 OK»
+  (t.d. `Server:` og `Date:`). Mottakaren tolka dette som kommandoar.
+- **Endra:** `RtcmMonitor.feed()` returnerer no berre heile RTCM 3-rammer med rett CRC. Det er berre desse som blir
+  sende til mottakaren. Tekst, øydelagde rammer og andre byte blir haldne tilbake.
+- **Nytt:** NTRIP-sida viser tekst frå casteren som ikkje blir send vidare («Tekst frå casteren: …»), til diagnose.
+- **Avgjerd:** mottakaren skal aldri få anna enn kontrollerte korreksjonar frå SNOWMAN. Ei øydelagd ramme er verre
+  enn ei som manglar.
+- Det er ikkje stadfesta at dette åleine gir RTK FIX. Antenna låg inne i bilen, og innstillinga for
+  korreksjonsinngang i mottakaren er ikkje kontrollert.
+- Testa:
+  - einingstest av filteret med casterhovud, øydelagd ramme og oppdelte bitar (berre gyldige rammer går vidare)
+  - `simuler-leica.py --anlegg` (RTK FIX som før)
+  - Playwright utan JS-feil
+
 ### PC-prototype v1.6.82 – kvifor manglar RTK FIX? Diagnose av heile kjeda
 - **Bakgrunn:** Etter at Bluetooth fungerte, viste Zenith35 Pro «SBAS» (GGA-kvalitet 9) med 10 satellittar. NTRIP var
   tilkopla med gyldige RTCM-korreksjonar, men det kom ingen snødjupne, sidan snødjupne krev RTK FIX. Sjølve

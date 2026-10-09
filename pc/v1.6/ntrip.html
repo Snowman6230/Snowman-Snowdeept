@@ -58,7 +58,7 @@ setTimeout(()=>{btn.disabled=false;btn.textContent='LAGRE / KOPLE TIL';btn.style
 // Kontroll av korreksjonane (v1.6.39): er dei gyldige RTCM 3, kva sender basen, kor langt unna er han?
 function rtcmTxt(x){let r=x.rtcm;if(!r)return 'Korreksjonar: --';
 let t=Object.keys(r.types||{}).join(', ')||'--';
-return `Korreksjonar: ${r.frames} gyldige RTCM-rammer · ${r.crcErr} CRC-feil · ${r.junk} byte anna
+return `Korreksjonar: ${r.frames} gyldige RTCM-rammer · ${r.crcErr} CRC-feil · ${r.junk} byte anna (blir ikkje sende til mottakaren)${r.junkText?'\nTekst frå casteren: «'+r.junkText+'»':''}
 Meldingstypar: ${t}
 Satellittsystem frå basen: ${(r.systems||[]).join(', ')||'--'}
 Basestasjon: ${r.station??'--'}${r.baseKm!=null?' · '+r.baseKm+' km unna':''}${r.age!=null?' · siste for '+r.age+' s sidan':''}

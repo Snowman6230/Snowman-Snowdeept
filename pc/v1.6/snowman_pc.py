@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.82"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.83"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -436,17 +436,17 @@ def ntrip_loop():
                     if wait>tmo: raise ConnectionError(f"Ingen korreksjonar på {wait:.0f} s – koplar til på nytt")
                     continue
                 last_data=now
+                clean=RTCM.feed(data)   # berre heile RTCM-rammer med rett CRC går vidare – aldri tekst frå casteren
                 so=serial_obj   # lokal referanse: serial_loop kan setje serial_obj til None når som helst
-                if so is not None and getattr(so,"is_open",False):
+                if clean and so is not None and getattr(so,"is_open",False):
                     # Feil ved skriving til mottakaren er ein MOTTAKARFEIL: NTRIP-sambandet skal halde fram.
                     # (write_timeout=1 hindrar at eit dødt Bluetooth-samband held tråden fast.)
                     try:
-                        so.write(data); update(bytes_rtcm_out=STATE.get("bytes_rtcm_out",0)+len(data),rtcm_out_time=now)
+                        so.write(clean); update(bytes_rtcm_out=STATE.get("bytes_rtcm_out",0)+len(clean),rtcm_out_time=now)
                     except Exception as e:
                         if now-last_wfail>=10:
                             last_wfail=now; update(last_error=f"Serial: klarte ikkje å sende korreksjonar til mottakaren ({e})")
                             LOG.event(f"Mottakar-feil ved sending av RTCM: {e}",err=True)
-                RTCM.feed(data)   # berre kontroll – dataa blir sende uendra til mottakaren
                 if now-last_rtcm_log>=60 and RTCM.frames:
                     st=RTCM.status(STATE.get("lat"),STATE.get("lon"),STATE["bytes_rtcm"]); last_rtcm_log=now
                     LOG.event(f"RTCM: {st['frames']} rammer, {st['crcErr']} CRC-feil, typar {','.join(st['types'])}, base {st['station']} {st.get('baseKm','?')} km – {st['verdict']}")

@@ -90,6 +90,8 @@ class RtcmMonitor:
         self.frames = 0
         self.crc_err = 0
         self.junk = 0  # byte som ikkje høyrde til ei RTCM-ramme (t.d. tekst frå casteren)
+        self._jraw = ""
+        self.junk_text = ""  # siste lesbare tekst blant desse (t.d. «Server: …» etter «ICY 200 OK») – til diagnose
         self.types = {}
         self.station = None
         self.base = None  # (lat, lon)
@@ -97,18 +99,36 @@ class RtcmMonitor:
         self.first = 0.0  # tida for første gyldige ramme etter oppkoplinga
         self.nbytes = 0   # byte motteke på DENNE oppkoplinga (ikkje samla for heile økta)
 
+    def _skip(self, chunk):
+        """Byte som ikkje er RTCM: tel dei og hugs lesbar tekst (vist i statusen, aldri sendt til mottakaren)."""
+        self.junk += len(chunk)
+        self._jraw = (getattr(self, "_jraw", "") + "".join(chr(c) if 32 <= c < 127 else (" " if c in (9, 10, 13) else "\x00") for c in chunk))[-400:]
+
+    def _flush_text(self):
+        """Ein samanhengande bit med ikkje-RTCM er ferdig (ei ramme kom): lagre teksten i han, om han er lesbar."""
+        raw = getattr(self, "_jraw", "")
+        t = " ".join(raw.replace("\x00", " ").split())
+        self._jraw = ""
+        # berre tekst – ikkje restar av øydelagde rammer (få lesbare teikn innimellom binære byte)
+        if len(t) >= 6 and sum(c != "\x00" for c in raw) >= 0.8 * len(raw):
+            self.junk_text = (self.junk_text + " | " + t if self.junk_text else t)[-160:]
+
     def feed(self, data):
+        """Kontrollerer straumen og returnerer berre heile RTCM 3-rammer med rett CRC (v1.6.83).
+        Det er desse – og ikkje rådataa – som blir sende til mottakaren: tekst frå casteren (t.d. «Server:»/«Date:»-linjer
+        etter «ICY 200 OK») eller øydelagde byte kunne elles bli tolka som kommandoar av mottakaren («@GNSS,…,ERROR»)."""
         self.nbytes += len(data)
         self.buf += data
         b = self.buf
+        out = bytearray()
         while True:
             i = b.find(0xD3)
             if i < 0:
-                self.junk += len(b)
+                self._skip(bytes(b))
                 b.clear()
                 break
             if i:
-                self.junk += i
+                self._skip(bytes(b[:i]))
                 del b[:i]
             if len(b) < 3:
                 break
@@ -126,10 +146,13 @@ class RtcmMonitor:
                 del b[:1]
                 continue
             del b[:n + 6]
+            self._flush_text()
             self._frame(frame[3:3 + n])
+            out += frame
         if len(b) > 4096:  # vern mot uendeleg buffer ved søppeldata
             self.junk += len(b) - 1024
             del b[:-1024]
+        return bytes(out)
 
     def _frame(self, p):
         self.frames += 1
@@ -152,7 +175,7 @@ class RtcmMonitor:
         """bytes_in blir ikkje lenger brukt (v1.6.48): vurderinga byggjer på byte motteke på denne oppkoplinga."""
         systems = sorted({s for t in self.types for s in [system_of(t)] if s})
         obs = any(system_of(t) for t in self.types)
-        r = {"frames": self.frames, "crcErr": self.crc_err, "junk": self.junk,
+        r = {"frames": self.frames, "crcErr": self.crc_err, "junk": self.junk, "junkText": self.junk_text,
              "types": {str(k): v for k, v in sorted(self.types.items())}, "systems": systems,
              "station": self.station, "age": round(time.time() - self.last, 1) if self.last else None}
         if self.base:
