@@ -84,6 +84,6 @@ Posisjon: ${x.lat??'--'}, ${x.lon??'--'}${x.serial_connected&&x.gga_age!=null&&x
 RTCM mottatt: ${x.bytes_rtcm} byte · sendt til mottakaren: ${x.bytes_rtcm_out||0} byte
 ${rtcmTxt(x)}
 Mottakaren brukar korreksjonar: ${x.corr_age!=null?'alder '+x.corr_age+' s · base-ID '+(x.base_id??'?')+(/RTK/.test(x.fix||'')?'':' (kan vere SBAS, ikkje RTK)'):'nei (tomt korreksjonsfelt i GGA)'}${x.rtk_hint?'\nUTAN RTK FIX: '+x.rtk_hint:''}
-Svar frå mottakar: ${x.rx_text||'--'}
+Svar frå mottakar: ${x.rx_text||'--'}${x.rx_text&&x.rx_time?' (for '+Math.round(Date.now()/1000-x.rx_time)+' s sidan)':''}
 Feil: ${x.last_error||'Ingen'}`;}catch(e){s.textContent='Tenesta svarar ikkje: '+e}setTimeout(poll,1000)}poll()
 </script>

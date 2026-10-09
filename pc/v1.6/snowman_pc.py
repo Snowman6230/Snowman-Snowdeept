@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.83"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.84"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -366,7 +366,7 @@ def serial_loop():
                             if ok is None: update(nmea_nock=STATE.get("nmea_nock",0)+1)
                         if line.startswith("$") and "GGA" in line: parse_gga(line)
                         elif line.startswith("$"): HEL.feed(line)   # hellingsmålar i antenna, om ho har
-                        elif line and line.isprintable(): update(rx_text=line[:120])   # svar på kommandoar o.l. (t.d. «<OK»)
+                        elif line and line.isprintable(): update(rx_text=line[:120],rx_time=time.time())   # svar på kommandoar o.l. (t.d. «<OK»)
                 else: time.sleep(.02)
             update(serial_connected=False)   # løkka slutta (port lukka/endra) – aldri «TILKOPLA» utan open port
         except Exception as e:
@@ -395,6 +395,16 @@ def rtk_hint(st):
     if not out or (ot and time.time()-ot>10):
         return "Korreksjonane kjem frå casteren, men blir ikkje sende vidare til mottakaren – sjekk at mottakarporten er open."
     km=r.get("baseKm"); kmt=f" Basen er {km} km unna." if km is not None else ""
+    try: bid=int(str(st.get("base_id") or "").strip())
+    except ValueError: bid=None
+    if fix!="RTK FLOAT" and bid is not None and 120<=bid<=158:
+        # Base-ID 120–158 = SBAS-satellitt (EGNOS o.l.): mottakaren les ikkje korreksjonane i det heile. Hadde han lese
+        # dei, ville han brukt basen (DGPS/FLOAT) sjølv med dårleg sikt – så dette er innstillingar, ikkje sikt.
+        return (f"Mottakaren les ikkje korreksjonane frå SNOWMAN ({out//1024} kB sendt): han brukar SBAS-satellitt {bid} "
+                f"i staden for basen.{kmt} Feilen ligg i korreksjonsinngangen på mottakaren, ikkje i sikta eller i SNOWMAN. "
+                "Sjekk på nettsida til mottakaren (Zenith: 192.168.10.1): RTK Data Source = Bluetooth, korreksjonsformat "
+                "RTCM 3 (ikkje CMR/RTCM 2) om det finst, Save Settings og start mottakaren på nytt. Status Info der viser "
+                "om mottakaren ser data på korreksjonsinngangen.")
     if fix=="RTK FLOAT":
         return ("Mottakaren brukar korreksjonane (RTK FLOAT) og reknar seg fram mot FIX – vent 1–3 min med fri sikt."+kmt+
                 " Står han lenge i FLOAT: antenna treng fri sikt mot himmelen (ikkje inne i bil/under tak, unngå bygningar og tre).")

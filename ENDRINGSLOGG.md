@@ -9,6 +9,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-09
 
+### PC-prototype v1.6.84 – skarpare diagnose: mottakaren les ikkje korreksjonane
+- **Bakgrunn:** Med v1.6.83 kom berre reine RTCM-rammer fram til Zenith35 Pro. Teksten frå casteren (`Ntrip-Version`,
+  `Server: NTRIP Caster 1.0`, `Date`, `Content-Type`) vart halden tilbake. Mottakaren stod likevel i SBAS, med
+  base-ID 0121 (EGNOS).
+- **Nytt:** `rtk_hint` kjenner att ein base-ID mellom 120 og 158, som er ein SBAS-satellitt. Då seier SNOWMAN rett ut
+  at mottakaren ikkje les korreksjonane i det heile, og at feilen ligg i korreksjonsinngangen på mottakaren, ikkje i
+  sikta. Ein mottakar som les RTCM frå basen, brukar basen (DGPS/FLOAT) sjølv med dårleg sikt.
+- **Nytt:** «Svar frå mottakar» viser kor gammalt svaret er. Eit gammalt `@GNSS,…,ERROR` blir ikkje lenger forveksla
+  med eit nytt.
+- Testa med `simuler-leica.py --anlegg` (RTK FIX, inga åtvaring) og `rtk_hint` med base-ID 0121 og 0000.
+
 ### PC-prototype v1.6.83 – berre reine RTCM-rammer til mottakaren
 - **Bakgrunn:** I felttest (basen var 0,82 km unna, korreksjonane gyldige) stod Zenith35 Pro framleis i SBAS. GGA viste
   base-ID 0121, som er EGNOS-satellitten, ikkje basen. Mottakaren svarte `@GNSS,DN,ERROR`. SNOWMAN sende rådataa frå
