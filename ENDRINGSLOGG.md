@@ -7,6 +7,36 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-10
+
+### PC-prototype v1.6.92 – driftsleiar-vising på mobil
+- **Nytt:** sida `leiar.html` på `/leiar`. Eigaren bad om ein visingsapp for driftsleiar og tilsette. Ho er laga for
+  mobil, med tre faner:
+  - **Maskiner:** status (preparerer/står/demo/simulert), RTK-status, snødjupne no mot mål, trasé, fart,
+    satellittar, prep-tid, køyrd, areal og varsel. Fleire maskiner kan leggjast til med IP-adressa. Lista blir
+    hugsa på mobilen.
+  - **Kart:** maskinene med retning, trasear og snødjupna som er målt i prepareringsdøgnet. Fargane er dei same som i
+    rapporten. Ikkje trakka del av traseen er grå.
+  - **Dagen:** prep-tid, areal, km, snødjupne (snitt og minst), drivstoff, og prosent preparert per trasé. Tidlegare
+    døgn kan veljast, og PDF og CSV kan lastast ned.
+- **Nytt:** `/api/leiar` (kort status) og `/api/leiar/dag` (dagsrapport med kart, mellomlagra i 20 s). Båe er berre
+  lesing og inneheld aldri innstillingar, innloggingar eller rådata frå mottakaren.
+- **Endra:** mobilporten 8766 («HUD på mobil») slepp no òg til driftsleiar-sida, dagsrapporten (JSON, PDF, CSV),
+  Leaflet og lokale kartfliser. Alt anna er framleis stengt (403), og POST er alltid stengt.
+- **Endra:** HUD-dialogen har knappen «VIS QR FOR DRIFTSLEIAR». `/api/info` og `/api/hudlan` gir `leiar_url`.
+- **Endra:** førarskjermen sender posisjonen til tenesta saman med HUD-tilstanden. Då ser driftsleiaren maskina på
+  kartet også i demo. Utan ferske data blir sist kjende posisjon vist, merka med tid.
+- **Avgjerd:** visinga brukar same lokale nett som HUD på mobil, og treng ingen sky. Tilgang heimanfrå krev deling via
+  internett og kjem saman med deling mellom maskiner (v1.8). Det står på sida.
+- **Avgjerd:** bygd i v1.6 (same grunn som v1.6.91: data, `.venv` og autostart høyrer til versjonsmappa).
+- **Testa:**
+  - `simuler-leica.py` med oppdikta økter og trasear frå `lag-eksempel.py`, flytta til i dag. Alle tre fanene er
+    sjekka på 390 px mobilbreidd med Playwright, utan JS-feil.
+  - Ei maskin som ikkje svarar, blir vist som «INGEN KONTAKT» og kan fjernast.
+  - `/api/config` og `/api/status` gir 403 på port 8766.
+  - QR-knappen i HUD-dialogen byter mellom HUD- og driftsleiar-adressa.
+- **Ikkje testa:** ekte mobil og fleire ekte maskiner i same nett.
+
 ## 2026-10-09
 
 ### PC-prototype v1.6.91 – RTK-motor i SNOWMAN (RTKLIB)

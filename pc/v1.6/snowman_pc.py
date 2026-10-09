@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.91"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.92"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -158,6 +158,35 @@ def hud_state():
     out["reason"]="" if age<5 else ("Mottakaren har slutta å sende posisjon" if STATE.get("serial_connected") and STATE.get("gga_time")
                                       else "Ingen GNSS-data og førarskjermen er ikkje open")
     return out
+LEIAR_KEYS=("src","demo","fix","sats","speed","heading","depth","depthNote","change","last","preparing","elapsed",
+            "distance","area","target","tol","trase","warn","warnLevel","age","t","reason")
+def leiar_state():
+    """Driftsleiar-visinga (/leiar): kort og berre lesing. Same tal som HUD-en, pluss posisjon og maskinnamn.
+    Inneheld aldri innstillingar, innloggingar eller rådata frå mottakaren."""
+    h=hud_state(); out={k:h.get(k) for k in LEIAR_KEYS}
+    now=time.time(); drv=dict(HUD); fresh_drv=now-drv.get("t",0)<15
+    gnss_ok=STATE.get("serial_connected") and STATE.get("lat") is not None and now-STATE.get("gga_time",0)<5
+    if h.get("src")=="gnss" and gnss_ok: lat,lon=STATE.get("lat"),STATE.get("lon")
+    elif fresh_drv: lat,lon=drv.get("lat"),drv.get("lon")
+    else:
+        try: p=json.loads(LASTPOS.read_text("utf-8")); lat,lon=p.get("lat"),p.get("lon"); out["posOld"]=True; out["posT"]=int(p.get("t",0))*1000
+        except Exception: lat=lon=None
+    try: uc=json.loads(UI_CFG.read_text("utf-8")); c=uc.get("cfg",uc)
+    except Exception: c={}
+    out.update(ok=True,version=VERSION,machine=c.get("mname") or "Trakkemaskin",bounds=c.get("bounds") or [0.3,0.5,0.8,1.2,1.6],
+               lat=lat,lon=lon,simulated=bool(STATE.get("simulated")),now=int(now*1000))
+    return out
+LEIAR_DAG={}   # dagsrapport med kart til driftsleiar-visinga: same tal som rapporten, mellomlagra litt (tung utrekning)
+def leiar_dag(date=None):
+    if FUEL is None: raise RuntimeError("Dagsrapport krev numpy: "+TRA_ERR)
+    k=date or "i dag"; c=LEIAR_DAG.get(k)
+    if c and time.time()-c[0]<(20 if k=="i dag" else 300): return c[1]
+    r=FUEL.report(date,maps=True)
+    r.pop("sessions",None)   # økt-ID-ar og detaljar trengst ikkje på mobilen
+    r["ok"]=True; r["trasearAlle"]=[{k2:t.get(k2) for k2 in ("id","name","kind","level","color","poly","target")} for t in TRA.listing()] if TRA else []
+    LEIAR_DAG[k]=(time.time(),r)
+    if len(LEIAR_DAG)>8: LEIAR_DAG.pop(next(iter(LEIAR_DAG)))
+    return r
 LOCK=threading.Lock()
 STOP=threading.Event()
 serial_obj=None
@@ -840,9 +869,19 @@ class API(http.server.BaseHTTPRequestHandler):
             return
         if u.path=="/api/hud":
             self.headers_ok(); self.wfile.write(json.dumps(hud_state()).encode()); return
+        if u.path=="/leiar":   # driftsleiar-vising (mobil): berre lesing
+            self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write((HERE/"leiar.html").read_bytes()); return
+        if u.path=="/api/leiar":
+            try: r=leiar_state()
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r,ensure_ascii=False).encode()); return
+        if u.path=="/api/leiar/dag":
+            try: r=leiar_dag(urllib.parse.parse_qs(u.query).get("date",[None])[0])
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r,ensure_ascii=False).encode()); return
         if u.path=="/api/info":
             self.headers_ok(); self.wfile.write(json.dumps({"lan_ip":lan_ip(),"hud_lan":HUDLAN["srv"] is not None,
-                "hud_port":HUD_PORT,"hud_url":f"http://{lan_ip()}:{HUD_PORT}/hud"}).encode()); return
+                "hud_port":HUD_PORT,"hud_url":f"http://{lan_ip()}:{HUD_PORT}/hud","leiar_url":f"http://{lan_ip()}:{HUD_PORT}/leiar"}).encode()); return
         if u.path=="/hud":
             p=Path(__file__).with_name("hud.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
@@ -1166,7 +1205,7 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 on=bool(json.loads(body or b"{}").get("enable")); err=set_hud_lan(on); CFG["hudLan"]=on and not err; save_cfg()
                 self.headers_ok(); self.wfile.write(json.dumps({"ok":not err,"error":err,"hud_lan":HUDLAN["srv"] is not None,
-                    "hud_url":f"http://{lan_ip()}:{HUD_PORT}/hud"}).encode())
+                    "hud_url":f"http://{lan_ip()}:{HUD_PORT}/hud","leiar_url":f"http://{lan_ip()}:{HUD_PORT}/leiar","lan_ip":lan_ip()}).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
@@ -1197,9 +1236,12 @@ def lan_ip():
     except Exception: return "127.0.0.1"
 
 class HUDOnly(API):
+    # Berre lesing: HUD, driftsleiar-visinga (/leiar) med dagsrapport og kart. Ingen innstillingar, ingen styring.
+    OPEN=("/","/hud","/api/hud","/api/hud/stream","/vendor/snowman-icon.png","/leiar","/api/leiar","/api/leiar/dag",
+          "/api/report/days","/api/report/pdf","/api/report/csv","/vendor/leaflet.js","/vendor/leaflet.css")
     def do_GET(self):
         u=urllib.parse.urlparse(self.path)
-        if u.path in ("/","/hud","/api/hud","/api/hud/stream","/vendor/snowman-icon.png"):
+        if u.path in self.OPEN or re.fullmatch(r"/tiles/\d{1,2}/\d{1,8}/\d{1,8}",u.path):
             if u.path=="/": self.path="/hud"
             return API.do_GET(self)
         self.send_response(403); self.end_headers()

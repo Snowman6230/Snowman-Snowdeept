@@ -2922,6 +2922,7 @@
         <div id="hudLanBox" class="hide">
           <div class="qrwrap"><div id="hudQR"></div></div>
           <div id="hudUrl" class="hudUrl"></div>
+          <button id="qrWhich" class="btn" style="margin-top: 6px" onclick="qrSwap()">VIS QR FOR DRIFTSLEIAR</button>
           <div class="history" style="font-size: 12px">
             1. Mobilen må vere på same nett som PC-en – t.d. PC-en kopla til mobilen sitt delte nett.<br />
             2. Skann koden eller skriv adressa i nettlesaren på mobilen.<br />
@@ -2997,7 +2998,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.91";
+      const APP_VERSION = "1.6.92";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -8837,10 +8838,13 @@
         $("hudLanBtn").classList.toggle("on", !!i.hud_lan);
         $("hudLanBox").classList.toggle("hide", !i.hud_lan);
         if (i.hud_lan) {
-          $("hudUrl").textContent = i.hud_url;
+          hudInfo = i;
+          let u = qrLeiar && i.leiar_url ? i.leiar_url : i.hud_url;
+          $("hudUrl").textContent = (qrLeiar ? "Driftsleiar: " : "HUD: ") + u;
+          $("qrWhich").textContent = qrLeiar ? "VIS QR FOR HUD" : "VIS QR FOR DRIFTSLEIAR";
           try {
             let q = qrcode(0, "M");
-            q.addData(i.hud_url);
+            q.addData(u);
             q.make();
             $("hudQR").innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
           } catch (e) {
@@ -8848,6 +8852,13 @@
           }
           if (/^127\./.test(i.lan_ip)) $("hudUrl").textContent += " – PC-en er ikkje på eit nettverk";
         }
+      }
+      // Same port viser også driftsleiar-visinga (/leiar): kart, trasear og dagsrapport – berre lesing
+      let qrLeiar = false,
+        hudInfo = null;
+      function qrSwap() {
+        qrLeiar = !qrLeiar;
+        if (hudInfo) showHudLan(hudInfo);
       }
       async function toggleHudLan() {
         let on = $("hudLanBtn").textContent.endsWith("AV");
@@ -8884,6 +8895,9 @@
             area: Math.round(total * (toolsFull ? cfg.tiller : cfg.tillerN)),
             elapsed: $("elapsed").textContent,
             ahead: aheadEst, // estimat framfor maskina (null = ingen målingar i nærleiken); frå tidlegare flate også før Start prep
+            // posisjon til driftsleiar-visinga (/leiar) – særleg i demo, der GNSS-posisjonen ikkje finst i tenesta
+            lat: pos ? L.latLng(pos).lat : null,
+            lon: pos ? L.latLng(pos).lng : null,
           };
           fetch("api/hud", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(st) }).catch(() => {});
         }

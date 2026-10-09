@@ -36,6 +36,16 @@ START FRÅ TERMINALEN (Linux)
   Kioskmodus (val 4): berre SNOWMAN på skjermen. Knappen «Vanleg skjerm» nede går ut,
   «Kioskmodus» går tilbake. PIN-kode for å gå ut kan setjast under Innst. › System.
 
+DRIFTSLEIAR PÅ MOBIL (v1.6.92) – berre lesing
+- Driftsleiar og tilsette kan følgje maskina på mobilen: http://<IP-en til PC-en>:8766/leiar
+  (HUD › HUD PÅ MOBIL: PÅ › «VIS QR FOR DRIFTSLEIAR» gir QR-kode til sida).
+- MASKINER: status, RTK, snødjupne no, trasé, fart, prep-tid og varsel. Fleire maskiner kan leggjast
+  til med IP-adressa (blir hugsa på mobilen).
+- KART: maskinene, trasear og snødjupna som er målt i dag. DAGEN: prep-tid, areal, snødjupne,
+  prosent preparert per trasé, drivstoff, og PDF/CSV-rapport for i dag og tidlegare døgn.
+- Ingenting på sida kan endre eller styre SNOWMAN. Demo og simulator er alltid merka.
+- Mobilen må vere på same nett som maskina. Tilgang heimanfrå kjem med deling mellom maskiner (v1.8).
+
 KONTROLL (v1.6.7) – Innst. › Kontroll
 - Kontrollmåling: stopp maskina, stikk snøsonda ned under antenna (eller stå på barmark
   og skriv 0), vent på RTK FIX og trykk LAGRE. Ta minst 3 på ulike stader.

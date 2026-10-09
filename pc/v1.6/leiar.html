@@ -1,0 +1,1046 @@
+<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. -->
+<html lang="nn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#06121a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>SNOWMAN Driftsleiar</title>
+    <link rel="icon" type="image/png" href="vendor/snowman-icon.png" />
+    <link rel="apple-touch-icon" href="vendor/snowman-icon.png" />
+    <link rel="stylesheet" href="vendor/leaflet.css" />
+    <style>
+      /* SNOWMAN Driftsleiar – mobilvising for driftsleiar og tilsette. Berre lesing: ingenting her kan styre maskina. */
+      :root {
+        --bg: #06121a;
+        --panel: #0d1f2b;
+        --panel2: #132a38;
+        --line: #1f3b4c;
+        --fg: #e8f1f6;
+        --dim: #8fa3ad;
+        --hi: #4db8ff;
+        --ok: #27d84d;
+        --warn: #ffb020;
+        --bad: #ff5b4b;
+        --nav: 62px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: Arial, Helvetica, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      body {
+        padding-bottom: calc(var(--nav) + env(safe-area-inset-bottom));
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+        background: rgba(6, 18, 26, 0.96);
+        border-bottom: 1px solid var(--line);
+      }
+      header img {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 17px;
+        letter-spacing: 0.06em;
+        font-weight: 900;
+      }
+      header h1 small {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        color: var(--hi);
+      }
+      #live {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--dim);
+        text-align: right;
+      }
+      #live i {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--dim);
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+      #live.on i {
+        background: var(--ok);
+        box-shadow: 0 0 6px var(--ok);
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 14px 16px 24px;
+      }
+      .tab {
+        display: none;
+      }
+      .tab.show {
+        display: block;
+      }
+      nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        display: flex;
+        height: calc(var(--nav) + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+        background: #081822;
+        border-top: 1px solid var(--line);
+      }
+      nav button {
+        flex: 1;
+        border: 0;
+        background: none;
+        color: var(--dim);
+        font: 700 12px Arial, sans-serif;
+        letter-spacing: 0.08em;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+      }
+      nav button b {
+        font-size: 21px;
+        line-height: 1;
+      }
+      nav button.on {
+        color: var(--hi);
+      }
+      h2 {
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        color: var(--dim);
+        margin: 18px 0 8px;
+        font-weight: 800;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      .mhead {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .mhead h3 {
+        margin: 0;
+        font-size: 18px;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .pill {
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        padding: 4px 8px;
+        border-radius: 99px;
+        background: var(--panel2);
+        color: var(--dim);
+        white-space: nowrap;
+      }
+      .pill.ok {
+        background: rgba(39, 216, 77, 0.16);
+        color: var(--ok);
+      }
+      .pill.warn {
+        background: rgba(255, 176, 32, 0.16);
+        color: var(--warn);
+      }
+      .pill.bad {
+        background: rgba(255, 91, 75, 0.16);
+        color: var(--bad);
+      }
+      .depth {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin: 12px 0 4px;
+      }
+      .depth b {
+        font-size: 46px;
+        font-weight: 900;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .depth span {
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .note {
+        font-size: 13px;
+        color: var(--dim);
+        min-height: 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .grid div {
+        background: var(--panel2);
+        border-radius: 8px;
+        padding: 8px 9px;
+        min-width: 0;
+      }
+      .grid small {
+        display: block;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: var(--dim);
+        font-weight: 700;
+      }
+      .grid span {
+        display: block;
+        font-size: 15px;
+        font-weight: 700;
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .warnline {
+        margin-top: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: rgba(255, 91, 75, 0.14);
+        color: var(--bad);
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--dim);
+      }
+      .lnk {
+        background: none;
+        border: 0;
+        color: var(--dim);
+        font-size: 12px;
+        text-decoration: underline;
+        padding: 4px;
+      }
+      .test {
+        color: var(--warn);
+        font-weight: 800;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 44px;
+        padding: 0 16px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel2);
+        color: var(--fg);
+        font: 700 14px Arial, sans-serif;
+        letter-spacing: 0.04em;
+        text-decoration: none;
+      }
+      .btn.pri {
+        background: var(--hi);
+        border-color: var(--hi);
+        color: #04131c;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      input,
+      select {
+        min-height: 44px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #081822;
+        color: var(--fg);
+        padding: 0 12px;
+        font-size: 16px;
+        flex: 1;
+        min-width: 0;
+      }
+      .help {
+        font-size: 13px;
+        color: var(--dim);
+        line-height: 1.5;
+      }
+      .help code {
+        color: var(--fg);
+      }
+      /* Kart */
+      #tabKart.show {
+        display: block;
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: var(--top, 58px);
+        bottom: calc(var(--nav) + env(safe-area-inset-bottom));
+        padding: 0;
+        max-width: none;
+      }
+      #map {
+        position: absolute;
+        inset: 0;
+        background: #0b1a24;
+      }
+      .mapbar {
+        position: absolute;
+        z-index: 600;
+        left: 10px;
+        right: 10px;
+        top: 10px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        pointer-events: none;
+      }
+      .mapbar .btn {
+        pointer-events: auto;
+        min-height: 38px;
+        padding: 0 12px;
+        font-size: 13px;
+        background: rgba(13, 31, 43, 0.92);
+      }
+      .mapbar .btn.on {
+        border-color: var(--hi);
+        color: var(--hi);
+      }
+      .legend {
+        position: absolute;
+        z-index: 600;
+        left: 10px;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(6, 18, 26, 0.9);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1.7;
+      }
+      .legend i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        vertical-align: -2px;
+        margin: 0 3px 0 6px;
+      }
+      .legend i:first-of-type {
+        margin-left: 0;
+      }
+      .mk {
+        background: none;
+        border: 0;
+      }
+      .mk div {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .mk span {
+        position: absolute;
+        left: 50%;
+        top: 22px;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font: 800 11px Arial, sans-serif;
+        color: #fff;
+        background: rgba(6, 18, 26, 0.85);
+        padding: 2px 6px;
+        border-radius: 5px;
+      }
+      .depthImg {
+        image-rendering: pixelated;
+      }
+      .leaflet-container {
+        font-family: Arial, sans-serif;
+      }
+      /* Dag */
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      @media (min-width: 560px) {
+        .tiles {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      .tiles div {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .tiles small {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        color: var(--dim);
+        font-weight: 700;
+      }
+      .tiles b {
+        display: block;
+        font-size: 24px;
+        margin-top: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+      .tiles b em {
+        font-style: normal;
+        font-size: 13px;
+        color: var(--dim);
+        font-weight: 600;
+      }
+      .trase {
+        padding: 12px 0;
+        border-top: 1px solid var(--line);
+      }
+      .trase:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+      .trase:last-child {
+        padding-bottom: 0;
+      }
+      .tname {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        font-size: 15px;
+      }
+      .tname i {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        flex: none;
+      }
+      .tname em {
+        margin-left: auto;
+        font-style: normal;
+        font-size: 18px;
+        font-variant-numeric: tabular-nums;
+      }
+      .bar {
+        height: 8px;
+        border-radius: 4px;
+        background: var(--panel2);
+        margin: 8px 0 6px;
+        overflow: hidden;
+        position: relative;
+      }
+      .bar b,
+      .bar u {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: 4px;
+      }
+      .bar u {
+        background: repeating-linear-gradient(45deg, rgba(255, 176, 32, 0.55) 0 4px, transparent 4px 8px);
+      }
+      .bar b {
+        background: var(--ok);
+      }
+      .tmeta {
+        font-size: 12px;
+        color: var(--dim);
+        line-height: 1.5;
+      }
+      .empty {
+        text-align: center;
+        color: var(--dim);
+        padding: 30px 10px;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .err {
+        color: var(--bad);
+      }
+    </style>
+  </head>
+  <body>
+    <header id="hdr">
+      <img src="vendor/snowman-icon.png" alt="" />
+      <h1>SNOWMAN<small>DRIFTSLEIAR</small></h1>
+      <div id="live"><i></i><span>Koplar til …</span></div>
+    </header>
+
+    <main>
+      <!-- MASKINER -->
+      <section id="tabMask" class="tab show">
+        <div id="machines"></div>
+        <h2>LEGG TIL MASKIN</h2>
+        <div class="card">
+          <div class="row">
+            <input id="addUrl" type="url" inputmode="url" placeholder="t.d. 10.0.0.122" autocomplete="off" />
+            <button class="btn pri" onclick="addMachine()">LEGG TIL</button>
+          </div>
+          <p class="help" style="margin: 10px 0 0">
+            Skriv IP-adressa til ei anna maskin. Ho står under <b>HUD › HUD PÅ MOBIL</b> på førarskjermen i den maskina. Maskina må ha «HUD på mobil» slått PÅ.
+          </p>
+        </div>
+        <p class="help">
+          Visinga fungerer når mobilen er på same nett som maskina (Wi-Fi i maskina eller mobilen sitt delte nett). Du kan berre sjå – ingenting her styrer maskina.
+          Tilgang heimanfrå krev deling via internett, som kjem saman med deling mellom maskiner (v1.8).
+        </p>
+      </section>
+
+      <!-- KART -->
+      <section id="tabKart" class="tab">
+        <div id="map"></div>
+        <div class="mapbar">
+          <button id="bDepth" class="btn on" onclick="toggleDepth()">Snødjupne i dag</button>
+          <button class="btn" onclick="fitAll()">⌖ Vis alt</button>
+          <select id="mapMachine" class="btn" style="flex: 0 1 auto; pointer-events: auto" onchange="pickMachine(this.value)"></select>
+        </div>
+        <div id="legend" class="legend"></div>
+      </section>
+
+      <!-- DAG -->
+      <section id="tabDag" class="tab">
+        <div class="row">
+          <select id="dagMachine" onchange="pickMachine(this.value)"></select>
+          <select id="dagDate" onchange="loadDay(true)"></select>
+        </div>
+        <div id="dag"><div class="empty">Hentar dagsrapport …</div></div>
+        <div class="row" style="margin-top: 14px">
+          <a id="pdfLnk" class="btn" href="#" target="_blank" rel="noopener">⬇ PDF-rapport</a>
+          <a id="csvLnk" class="btn" href="#" target="_blank" rel="noopener">⬇ CSV (Excel)</a>
+        </div>
+        <p class="help">Prepareringsdøgnet går frå kl. 12 til kl. 12 neste dag. Demo og simulator er aldri med i summane, og er merka TEST.</p>
+      </section>
+    </main>
+
+    <nav>
+      <button id="nMask" class="on" onclick="show('Mask')"><b>🚜</b>MASKINER</button>
+      <button id="nKart" onclick="show('Kart')"><b>🗺</b>KART</button>
+      <button id="nDag" onclick="show('Dag')"><b>📊</b>DAGEN</button>
+    </nav>
+
+    <script src="vendor/leaflet.js"></script>
+    <script>
+      "use strict";
+      /* ---------- Oppsett ---------- */
+      const $ = (id) => document.getElementById(id),
+        COLORS = ["#ed2024", "#ff9412", "#e9ed16", "#27d84d", "#08cbea", "#075de5"], // same som førarskjermen
+        NEUTRAL = "#7fb2d6",
+        UNPREP = [52, 80, 95],
+        STORE = "snowman-leiar-maskiner",
+        STALE_S = 15;
+      const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]),
+        num = (v, d = 1) => (v == null || !isFinite(v) ? "–" : (+v).toFixed(d).replace(".", ",")),
+        LOC = ["nn-NO", "nb-NO", "no"],
+        hm = (ms) => (ms ? new Date(ms).toLocaleTimeString(LOC, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "–");
+
+      // Maskina som serverer sida er alltid med (base ""). Andre maskiner blir hugsa på denne mobilen.
+      let extra = [];
+      try {
+        extra = JSON.parse(localStorage.getItem(STORE) || "[]").filter((x) => typeof x === "string");
+      } catch (e) {}
+      const own = location.protocol.startsWith("http") ? [""] : [];
+      let M = {}, // base → { data, err, t }
+        sel = "",
+        tab = "Mask";
+      const bases = () => own.concat(extra);
+      function saveExtra() {
+        try {
+          localStorage.setItem(STORE, JSON.stringify(extra));
+        } catch (e) {}
+      }
+      function normUrl(s) {
+        s = String(s || "").trim();
+        if (!s) return null;
+        if (!/^https?:\/\//i.test(s)) s = "http://" + s;
+        try {
+          let u = new URL(s);
+          if (!u.port) u.port = "8766";
+          return u.origin;
+        } catch (e) {
+          return null;
+        }
+      }
+      function addMachine() {
+        let u = normUrl($("addUrl").value);
+        if (!u) return alert("Skriv ei gyldig adresse, t.d. 10.0.0.122");
+        if (u === location.origin || extra.includes(u)) return alert("Den maskina er alt med.");
+        extra.push(u);
+        saveExtra();
+        $("addUrl").value = "";
+        pollAll();
+      }
+      function removeMachine(b) {
+        if (!confirm("Fjerne denne maskina frå lista på mobilen?")) return;
+        extra = extra.filter((x) => x !== b);
+        delete M[b];
+        saveExtra();
+        if (sel === b) sel = bases()[0] || "";
+        renderMachines();
+        renderSelects();
+        drawMachines();
+      }
+      async function getJSON(url, ms = 4000) {
+        let c = new AbortController(),
+          t = setTimeout(() => c.abort(), ms);
+        try {
+          let r = await fetch(url, { signal: c.signal, cache: "no-store" });
+          if (!r.ok) throw new Error(r.status === 403 ? "Maskina har ikkje driftsleiar-visinga (krev SNOWMAN v1.6.92 eller nyare)" : "HTTP " + r.status);
+          return await r.json();
+        } finally {
+          clearTimeout(t);
+        }
+      }
+
+      /* ---------- Faner ---------- */
+      function show(t) {
+        tab = t;
+        for (let k of ["Mask", "Kart", "Dag"]) {
+          $("tab" + k).classList.toggle("show", k === t);
+          $("n" + k).classList.toggle("on", k === t);
+        }
+        if (t === "Kart") {
+          initMap();
+          setTimeout(() => {
+            map.invalidateSize();
+            if (!fitted) fitAll();
+          }, 50);
+        }
+        if (t !== "Mask") loadDay();
+        try {
+          localStorage.setItem(STORE + "-fane", t);
+        } catch (e) {}
+      }
+      function setTop() {
+        document.documentElement.style.setProperty("--top", $("hdr").offsetHeight + "px");
+      }
+      addEventListener("resize", setTop);
+
+      /* ---------- Status for maskinene (kvart 3. sekund) ---------- */
+      function status(d, stale) {
+        if (!d) return ["INGEN KONTAKT", "bad"];
+        if (stale || d.fix === "AV") return ["INGA DATA", ""];
+        if (d.demo) return ["DEMO", "warn"];
+        if (d.simulated) return ["SIMULERT", "warn"];
+        if (d.preparing) return ["PREPARERER", "ok"];
+        return (d.speed || 0) > 3 ? ["KØYRER", "ok"] : ["STÅR", ""];
+      }
+      function depthCol(v, b) {
+        b = b || [0.3, 0.5, 0.8, 1.2, 1.6];
+        let i = b.findIndex((x) => v < x);
+        return COLORS[i < 0 ? 5 : i];
+      }
+      function fixCls(f) {
+        return /FIX/.test(f || "") && !/FLOAT/.test(f) ? "ok" : /FLOAT|DGPS|SBAS/.test(f || "") ? "warn" : "bad";
+      }
+      async function pollOne(b) {
+        try {
+          let d = await getJSON(b + "/api/leiar", 2800);
+          M[b] = { data: d, err: "", t: Date.now() };
+        } catch (e) {
+          M[b] = Object.assign(M[b] || {}, { err: e.name === "AbortError" ? "Svarar ikkje" : e.message || String(e) });
+          if (M[b].t && Date.now() - M[b].t > 30000) M[b].data = M[b].data && Object.assign({}, M[b].data, { gone: true });
+        }
+      }
+      let busy = false;
+      async function pollAll() {
+        if (busy) return; // ei maskin som ikkje svarar skal ikkje hope opp førespurnader
+        busy = true;
+        try {
+          await Promise.all(bases().map(pollOne));
+        } finally {
+          busy = false;
+        }
+        if (!M[sel] && bases().length) sel = bases()[0];
+        let okN = bases().filter((b) => M[b] && !M[b].err).length;
+        $("live").className = okN ? "on" : "";
+        $("live").querySelector("span").textContent = okN
+          ? (bases().length > 1 ? okN + "/" + bases().length + " maskiner · " : "") + new Date().toLocaleTimeString(LOC, { hourCycle: "h23" })
+          : "Ingen kontakt";
+        renderMachines();
+        renderSelects();
+        if (map) drawMachines();
+      }
+      function renderMachines() {
+        let h = bases()
+          .map((b) => {
+            let m = M[b] || {},
+              d = m.data,
+              stale = !d || m.err || d.gone || (d.age != null && d.age > STALE_S),
+              [st, cls] = status(m.err && !d ? null : d, stale);
+            if (!d)
+              return (
+                '<div class="card"><div class="mhead"><h3>' + esc(b ? b.replace(/^https?:\/\//, "") : "Denne maskina") + '</h3><span class="pill bad">' + st + "</span></div>" +
+                '<div class="note" style="margin-top:10px">' + esc(m.err || "Koplar til …") + "</div>" +
+                (b ? '<div class="foot"><span></span><button class="lnk" onclick="removeMachine(\'' + esc(b) + "')\">Fjern</button></div>" : "") +
+                "</div>"
+              );
+            let dep = !stale && d.depth != null,
+              tag = d.demo || d.simulated ? ' <span class="test">' + (d.demo ? "DEMO" : "SIMULERT") + "</span>" : "",
+              tgt = d.target != null && dep ? d.depth - d.target : null,
+              tol = d.tol || 0.1,
+              tgtTxt =
+                tgt == null ? "" : Math.abs(tgt) <= tol ? "✓ på mål " + num(d.target, 2) + " m" : tgt < 0 ? "▼ " + num(-tgt, 2) + " m under mål" : "▲ " + num(tgt, 2) + " m over mål";
+            return (
+              '<div class="card"><div class="mhead"><h3>' + esc(d.machine) + "</h3>" +
+              '<span class="pill ' + (stale ? "" : fixCls(d.fix)) + '">' + esc(stale ? "–" : d.fix || "–") + "</span>" +
+              '<span class="pill ' + cls + '">' + st + "</span></div>" +
+              '<div class="depth"><b style="color:' + (dep ? depthCol(d.depth, d.bounds) : "var(--dim)") + '">' + (dep ? num(d.depth, 2) : "–") + "</b><span>m snødjupne" + tag + "</span></div>" +
+              '<div class="note">' + esc(dep ? tgtTxt || d.depthNote || "" : stale ? d.reason || "Ingen ferske data" : d.depthNote || "Ikkje målt") + "</div>" +
+              '<div class="grid">' +
+              "<div><small>TRASÉ</small><span>" + esc(d.trase || "–") + "</span></div>" +
+              "<div><small>FART</small><span>" + (stale ? "–" : num(d.speed, 1) + " km/t") + "</span></div>" +
+              "<div><small>SATELLITTAR</small><span>" + (stale || d.sats == null ? "–" : d.sats) + "</span></div>" +
+              "<div><small>PREP-TID</small><span>" + esc(d.preparing ? d.elapsed || "–" : "–") + "</span></div>" +
+              "<div><small>KØYRD</small><span>" + (d.preparing && d.distance != null ? num(d.distance / 1000, 2) + " km" : "–") + "</span></div>" +
+              "<div><small>AREAL</small><span>" + (d.preparing && d.area != null ? num(d.area / 1000, 1) + " daa" : "–") + "</span></div>" +
+              "</div>" +
+              (d.warn && !stale ? '<div class="warnline">⚠ ' + esc(d.warn) + "</div>" : "") +
+              '<div class="foot"><span>' +
+              (m.err ? '<span class="err">' + esc(m.err) + "</span>" : stale ? "Sist data " + ago(d.now - (d.age || 0) * 1000) : "Oppdatert no") +
+              " · v" + esc(d.version) + "</span>" +
+              (b ? "<button class=\"lnk\" onclick=\"removeMachine('" + esc(b) + "')\">Fjern</button>" : "") +
+              "</div></div>"
+            );
+          })
+          .join("");
+        $("machines").innerHTML = h || '<div class="empty">Ingen maskiner. Legg til ei maskin nedanfor.</div>';
+      }
+      function ago(ms) {
+        let s = Math.max(0, (Date.now() - ms) / 1000);
+        return s < 90 ? Math.round(s) + " s sidan" : s < 5400 ? Math.round(s / 60) + " min sidan" : s < 172800 ? Math.round(s / 3600) + " t sidan" : new Date(ms).toLocaleDateString(LOC);
+      }
+      function name(b) {
+        let d = M[b] && M[b].data;
+        return d ? d.machine : b ? b.replace(/^https?:\/\//, "") : "Denne maskina";
+      }
+      function renderSelects() {
+        let opts = bases()
+          .map((b) => '<option value="' + esc(b) + '"' + (b === sel ? " selected" : "") + ">" + esc(name(b)) + "</option>")
+          .join("");
+        for (let id of ["mapMachine", "dagMachine"]) {
+          let e = $(id);
+          if (e.dataset.o !== opts) {
+            e.innerHTML = opts;
+            e.dataset.o = opts;
+          }
+          e.style.display = bases().length > 1 ? "" : "none";
+        }
+      }
+      function pickMachine(b) {
+        sel = b;
+        renderSelects();
+        DAY = null;
+        dayKey = "";
+        loadDays();
+        loadDay(true);
+      }
+
+      /* ---------- Kart ---------- */
+      let map = null,
+        mkLayer,
+        traLayer,
+        depLayer,
+        depthOn = true,
+        fitted = false;
+      function initMap() {
+        if (map) return;
+        map = L.map("map", { zoomControl: false, attributionControl: true }).setView([62.39, 6.58], 14);
+        L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png", {
+          maxZoom: 20,
+          maxNativeZoom: 18,
+          attribution: "© Kartverket",
+        }).addTo(map);
+        traLayer = L.layerGroup().addTo(map);
+        depLayer = L.layerGroup().addTo(map);
+        mkLayer = L.layerGroup().addTo(map);
+        drawMachines();
+        drawDay();
+      }
+      function arrow(col) {
+        return (
+          '<svg width="34" height="34" viewBox="-17 -17 34 34"><circle r="15" fill="rgba(6,18,26,.75)" stroke="' + col + '" stroke-width="2.5"/>' +
+          '<path d="M0,-10 L7,8 L0,4 L-7,8 Z" fill="' + col + '"/></svg>'
+        );
+      }
+      function drawMachines() {
+        if (!map) return;
+        mkLayer.clearLayers();
+        for (let b of bases()) {
+          let d = M[b] && M[b].data;
+          if (!d || d.lat == null || d.lon == null) continue;
+          let stale = d.gone || (d.age != null && d.age > STALE_S) || M[b].err,
+            [st, cls] = status(d, stale),
+            col = stale ? "#8fa3ad" : cls === "ok" ? "#27d84d" : cls === "warn" ? "#ffb020" : "#4db8ff",
+            ic = L.divIcon({
+              className: "mk",
+              iconSize: [0, 0],
+              html: '<div style="transform:translate(-50%,-50%) rotate(' + (d.heading || 0) + 'deg)">' + arrow(col) + "</div><span>" + esc(d.machine) + "</span>",
+            });
+          L.marker([d.lat, d.lon], { icon: ic, interactive: true })
+            .bindPopup(
+              "<b>" + esc(d.machine) + "</b><br>" + st + (d.depth != null && !stale ? "<br>Snødjupne " + num(d.depth, 2) + " m" : "") +
+                (d.posOld ? "<br><small>Sist kjende posisjon " + (d.posT ? ago(d.posT) : "") + "</small>" : "")
+            )
+            .addTo(mkLayer);
+        }
+      }
+      function fitAll() {
+        if (!map) return;
+        let b = L.latLngBounds([]);
+        mkLayer.eachLayer((l) => b.extend(l.getLatLng()));
+        traLayer.eachLayer((l) => l.getBounds && b.extend(l.getBounds()));
+        depLayer.eachLayer((l) => l.getBounds && b.extend(l.getBounds()));
+        if (b.isValid()) {
+          map.fitBounds(b.pad(0.15), { maxZoom: 18 });
+          fitted = true;
+        }
+      }
+      function toggleDepth() {
+        depthOn = !depthOn;
+        $("bDepth").classList.toggle("on", depthOn);
+        drawDay();
+      }
+      const bitsOf = (b64) => {
+          let s = atob(b64 || ""),
+            u = new Uint8Array(s.length);
+          for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+          return u;
+        },
+        bit = (u, i) => (u[i >> 3] >> (7 - (i & 7))) & 1,
+        rgb = (hx) => [1, 3, 5].map((j) => parseInt(hx.substr(j, 2), 16));
+      // Rutenett frå rapporten (rad 0 = sørkanten) → bilete på kartet. Same fargar som rapporten på førarskjermen.
+      function gridOverlay(G, colOf) {
+        let cv = document.createElement("canvas");
+        cv.width = G.W;
+        cv.height = G.H;
+        let cx = cv.getContext("2d"),
+          img = cx.createImageData(G.W, G.H),
+          px = img.data,
+          any = false;
+        for (let r = 0; r < G.H; r++)
+          for (let c = 0; c < G.W; c++) {
+            let col = colOf(r * G.W + c);
+            if (!col) continue;
+            let o = ((G.H - 1 - r) * G.W + c) * 4;
+            px[o] = col[0];
+            px[o + 1] = col[1];
+            px[o + 2] = col[2];
+            px[o + 3] = col[3] == null ? 200 : col[3];
+            any = true;
+          }
+        if (!any) return null;
+        cx.putImageData(img, 0, 0);
+        let bb = [
+          [G.lat0 + G.y0 / G.my, G.lon0 + G.x0 / G.mx],
+          [G.lat0 + (G.y0 + G.H * G.cell) / G.my, G.lon0 + (G.x0 + G.W * G.cell) / G.mx],
+        ];
+        return L.imageOverlay(cv.toDataURL(), bb, { interactive: false, className: "depthImg" });
+      }
+      function drawDay() {
+        if (!map) return;
+        traLayer.clearLayers();
+        depLayer.clearLayers();
+        let r = DAY,
+          d = M[sel] && M[sel].data,
+          bounds = (d && d.bounds) || [0.3, 0.5, 0.8, 1.2, 1.6],
+          PAL = COLORS.map(rgb),
+          NEU = rgb(NEUTRAL),
+          sim = false,
+          trase = false;
+        if (!r) return legend(bounds, false, false);
+        for (let t of r.trasearAlle || []) {
+          if (!t.poly || t.poly.length < 3) continue;
+          L.polygon(t.poly, {
+            color: t.color || "#ffd33f",
+            weight: 2,
+            fill: t.kind === "forbode",
+            fillOpacity: 0.12,
+            dashArray: t.kind === "forbode" ? "6 5" : null,
+            interactive: false,
+          }).addTo(traLayer);
+        }
+        if (depthOn) {
+          let dc = (dep, i) => (dep && dep[i] !== 255 ? PAL[COLORS.indexOf(depthCol(dep[i] / 50, bounds))] : NEU);
+          for (let t of r.trasear || []) {
+            let G = t.map;
+            if (!G) continue;
+            trase = true;
+            sim = sim || !!G.depthSim;
+            let ins = bitsOf(G.ins),
+              cov = bitsOf(G.depthSim ? G.covAll : G.cov),
+              dep = G.depth ? bitsOf(G.depth) : null;
+            let o = gridOverlay(G, (i) => (!bit(ins, i) ? null : bit(cov, i) ? dc(dep, i) : UNPREP.concat(150)));
+            if (o) o.addTo(depLayer);
+          }
+          if (!trase && r.area && !r.area.empty) {
+            let A = r.area,
+              age = bitsOf(A.age),
+              dep = A.depth ? bitsOf(A.depth) : null;
+            sim = !!A.depthSim || !!A.onlyTest;
+            let o = gridOverlay(A, (i) => (age[i] !== 255 ? dc(dep, i) : null));
+            if (o) o.addTo(depLayer);
+          }
+        }
+        legend(bounds, trase, sim);
+      }
+      function legend(b, trase, sim) {
+        let lab = ["< " + num(b[0])].concat(b.slice(1).map((x, i) => num(b[i]) + "–" + num(x)), ["> " + num(b[4])]);
+        $("legend").innerHTML =
+          "<b>Snødjupne (m)</b> " + COLORS.map((c, i) => "<i style='background:" + c + "'></i>" + lab[i]).join(" ") +
+          "<br><i style='background:" + NEUTRAL + "'></i>trakka, ikkje målt" +
+          (trase ? " <i style='background:rgb(" + UNPREP.join(",") + ")'></i>ikkje trakka" : "") +
+          (sim ? "<br><span class='test'>SIMULERT SNØ (TEST) – ikkje ekte måling</span>" : "") +
+          (DAY ? "" : "<br><span style='color:var(--dim)'>Ingen dagsdata frå maskina enno</span>");
+      }
+
+      /* ---------- Dagsrapport (prepareringsdøgn) ---------- */
+      let DAY = null,
+        dayKey = "",
+        dayT = 0,
+        daysFor = null;
+      async function loadDays() {
+        if (daysFor === sel) return;
+        try {
+          let r = await getJSON(sel + "/api/report/days");
+          daysFor = sel;
+          let today = new Date(Date.now() - 12 * 3600e3).toLocaleDateString("sv-SE"),
+            ds = (r.days || []).filter((x) => x !== today);
+          $("dagDate").innerHTML =
+            '<option value="">I dag (sidan kl. 12)</option>' +
+            ds.map((x) => '<option value="' + x + '">' + new Date(x + "T12:00").toLocaleDateString(LOC, { weekday: "short", day: "numeric", month: "short" }) + "</option>").join("");
+        } catch (e) {}
+      }
+      async function loadDay(force) {
+        if (!bases().length) return;
+        loadDays();
+        let date = $("dagDate").value,
+          key = sel + "|" + date;
+        if (!force && key === dayKey && Date.now() - dayT < 30000) return;
+        dayKey = key;
+        dayT = Date.now();
+        let q = date ? "?date=" + date : "";
+        $("pdfLnk").href = sel + "/api/report/pdf" + q;
+        $("csvLnk").href = sel + "/api/report/csv" + q;
+        if (force) $("dag").innerHTML = '<div class="empty">Hentar dagsrapport …</div>';
+        try {
+          let r = await getJSON(sel + "/api/leiar/dag" + q, 20000);
+          if (!r.ok) throw new Error(r.error || "Feil");
+          if (key !== dayKey) return;
+          DAY = r;
+        } catch (e) {
+          if (key !== dayKey) return;
+          DAY = null;
+          $("dag").innerHTML = '<div class="empty err">Fekk ikkje dagsrapporten: ' + esc(e.message || e) + "</div>";
+          drawDay();
+          return;
+        }
+        renderDay();
+        drawDay();
+        if (tab === "Kart" && !fitted) fitAll();
+      }
+      function renderDay() {
+        let r = DAY,
+          T = r.total,
+          X = r.test || {},
+          tiles = [
+            ["PREP-TID", T.prepMin >= 60 ? Math.floor(T.prepMin / 60) + "<em> t </em>" + (T.prepMin % 60) + "<em> min</em>" : T.prepMin + "<em> min</em>"],
+            ["AREAL KØYRD", num(T.areaDaa) + "<em> daa</em>"],
+            ["KØYRD", num(T.km, 1) + "<em> km</em>"],
+            ["SNØDJUPNE SNITT", num(T.depthAvg, 2) + "<em> m</em>"],
+            ["SNØDJUPNE MINST", num(T.depthMin, 2) + "<em> m</em>"],
+            ["DRIVSTOFF FYLT", num(T.litres) + "<em> l</em>"],
+          ],
+          h =
+            "<h2>" + esc(name(sel)).toUpperCase() + " · " + new Date(r.from).toLocaleDateString(LOC, { weekday: "long", day: "numeric", month: "long" }).toUpperCase() + "</h2>" +
+            '<div class="tiles">' + tiles.map((x) => "<div><small>" + x[0] + "</small><b>" + x[1] + "</b></div>").join("") + "</div>";
+        if (X.n) h += '<p class="help test">TEST/DEMO: ' + X.n + " økt" + (X.n === 1 ? "" : "er") + " (" + X.prepMin + " min, " + num(X.areaDaa) + " daa) – ikkje med i summane.</p>";
+        let trs = r.trasear || [];
+        h += "<h2>TRASEAR</h2>";
+        if (!trs.length) h += '<div class="card empty">Ingen trasear er lagde inn på denne maskina.<br>Legg dei inn under Innst. › Trasear på førarskjermen.</div>';
+        else
+          h +=
+            '<div class="card">' +
+            trs
+              .map((t) => {
+                let tst = t.pctTest > t.pct + 0.05,
+                  dOk = t.target != null && t.depthMin != null ? (t.depthMin >= t.target ? "ok" : "bad") : "";
+                return (
+                  '<div class="trase"><div class="tname"><i style="background:' + esc(t.color) + '"></i>' + esc(t.name) + "<em>" + num(t.pct, 0) + " %</em></div>" +
+                  '<div class="bar">' + (tst ? '<u style="width:' + Math.min(100, t.pctTest) + '%"></u>' : "") + '<b style="width:' + Math.min(100, t.pct) + '%"></b></div>' +
+                  '<div class="tmeta">' + num(t.coveredDaa) + " av " + num(t.areaDaa) + " daa · sist preparert " + hm(t.last) +
+                  (t.depthAvg != null ? " · snø snitt " + num(t.depthAvg, 2) + ' m, minst <span style="color:var(--' + dOk + ')">' + num(t.depthMin, 2) + " m</span>" : "") +
+                  (t.target != null ? " · mål " + num(t.target, 2) + " m" : "") +
+                  (tst ? '<br><span class="test">TEST: ' + num(t.pctTest, 0) + " % medrekna demo/simulator</span>" : "") +
+                  "</div></div>"
+                );
+              })
+              .join("") +
+            "</div>";
+        let f = r.fuel || [];
+        if (f.length)
+          h +=
+            '<h2>DRIVSTOFF</h2><div class="card">' +
+            f
+              .map(
+                (x) =>
+                  '<div class="tmeta" style="padding:4px 0"><b style="color:var(--fg)">' + hm(x.t) + "</b> · " + num(x.litres) + " l" + (x.full ? " (full tank)" : "") +
+                  (x.lph ? " · " + num(x.lph) + " l/t" : "") + (x.lpdaa ? " · " + num(x.lpdaa, 2) + " l/daa" : "") + "</div>"
+              )
+              .join("") +
+            "</div>";
+        $("dag").innerHTML = h;
+      }
+
+      /* ---------- Start ---------- */
+      setTop();
+      sel = bases()[0] || "";
+      pollAll();
+      setInterval(pollAll, 3000);
+      setInterval(() => tab !== "Mask" && loadDay(), 15000);
+      try {
+        let t = localStorage.getItem(STORE + "-fane");
+        if (t === "Kart" || t === "Dag") show(t);
+      } catch (e) {}
+    </script>
+  </body>
+</html>
