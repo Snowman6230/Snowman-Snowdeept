@@ -7,6 +7,37 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-11
+
+### PC-prototype v1.6.93 – berre lesing mot mottakaren
+- **Avgjerd (eigaren):** SNOWMAN skal berre **lese** frå mottakaren, som standard. Ideen kom frå GPS-motoren
+  («Snowman-GPS-motor»), som eigaren sende til analyse. Valet om at SNOWMAN sender korreksjonane, blir verande
+  (eigaren: «Ja, men behald valet»).
+- **Analyse av GPS-motoren:** han er ein NMEA-lesar (GGA/RMC/GSA) som berre les, og han er ikkje ein RTK-motor.
+  Han blir ikkje teken inn som han er:
+  - han kastar rådata
+  - han kan ikkje rekne RTK
+  - han overlappar med lesaren i SNOWMAN
+  - han har engelske kommentarar og manglar Alpindata-hovud
+
+  Ideen om berre lesing er teken inn. Fart og kurs frå RMC, og VDOP frå GSA, er notert som moglege forbetringar.
+- **Nytt:** tre val under «Kvar blir RTK rekna?»:
+  1. **I SNOWMAN** (standard, berre lesing): rådata frå mottakaren, RTK-motoren reknar.
+  2. **I mottakaren – han hentar korreksjonane sjølv** (SIM/radio, berre lesing): SNOWMAN koplar ikkje til casteren,
+     sidan same konto ikkje kan vere innlogga to stader.
+  3. **I mottakaren – SNOWMAN sender korreksjonane:** skriv til mottakaren, som før v1.6.91. Oppsett med `rtk_mode`
+     «mottakar» frå v1.6.91 blir lese som dette valet.
+- **Nytt:** i berre-lesing blir porten opna med DTR/RTS av og utan flytkontroll. Han blir pakka inn i `LesePort`, som
+  stoppar all skriving. Oppstartskommandoar og «ikkje send RTCM-typar» gjeld berre i val 3. Statusen viser
+  «porten: BERRE LESING».
+- **Nytt:** feilsøkaren og `rtk_hint` har eigne steg og råd for val 2.
+- Testa (`test/rtk/lesetest.py`: falsk mottakar som tel byte og falsk caster):
+  - val 1: mottakaren fekk 0 byte, sjølv med oppstartskommando lagt inn, og NTRIP var tilkopla
+  - val 2: mottakaren fekk 0 byte, og SNOWMAN kopla ikkje til casteren
+  - val 3: korreksjonane og kommandoen kom fram som før
+  - `LesePort.write` blir stoppa
+  - `simuler-leica.py --anlegg` (`--simulert`): RTK FIX, snødjupne OK, feilsøkaren grøn, Playwright utan JS-feil
+
 ## 2026-10-10
 
 ### PC-prototype v1.6.92 – driftsleiar-vising på mobil

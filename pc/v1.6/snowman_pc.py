@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.92"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.93"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -112,7 +112,8 @@ CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint
        "ntrip_version":"auto","ntrip_timeout":20,   # NTRIP 1/2/auto, og vakthund: sekund utan korreksjonar før ny oppkopling
        "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,
        "tiltMode":"auto","tiltFlipPitch":False,"tiltFlipRoll":False,
-       "rtk_mode":"snowman",   # kvar RTK blir rekna: "snowman" (RTK-motoren i SNOWMAN – eigaren si avgjerd) eller "mottakar"
+       "rtk_mode":"snowman",   # "snowman" (RTK i SNOWMAN, berre lesing – standard), "mottakar_sjolv" (mottakaren hentar
+                                # korreksjonane sjølv med SIM/radio, berre lesing) eller "mottakar_send" (SNOWMAN sender korreksjonane)
        "rtcm_drop":"",  # RTCM-typar som ikkje blir sende til mottakaren, t.d. «1008,1033» (antennenamn mottakaren ikkje godtek)
        "initCmds":"",   # oppstartskommandoar til mottakaren (éin per linje), sende når seriellporten blir opna
        "hudLan":False,
@@ -350,7 +351,21 @@ def serial_explain(e,port):
 # ---------- RTK i SNOWMAN (v1.6.91): RTKLIB-motor, rådata frå mottakaren + basen frå NTRIP ----------
 import rtkmotor as RM
 MOTOR=[None]   # RtkMotor når rtk_mode = "snowman" og motoren er klar
-def rtk_snowman(): return str(CFG.get("rtk_mode") or "snowman")=="snowman"
+RTK_MODES=("snowman","mottakar_sjolv","mottakar_send")
+def rtk_mode():
+    m=str(CFG.get("rtk_mode") or "snowman")
+    return "mottakar_send" if m=="mottakar" else (m if m in RTK_MODES else "snowman")   # "mottakar" (v1.6.91) = sende korreksjonar
+def rtk_snowman(): return rtk_mode()=="snowman"
+def may_write():
+    """Berre lesing er standard (eigaren 2026-10-11): SNOWMAN skriv berre til mottakaren når «SNOWMAN sender korreksjonane» er valt."""
+    return rtk_mode()=="mottakar_send"
+class LesePort:
+    """Mottakarporten i berre-lesing: alt som les går gjennom, all skriving blir stoppa. Då kan ikkje ein feil i SNOWMAN
+    (eller ein seinare endring) sende noko til mottakaren ved eit uhell."""
+    def __init__(self,port): self._p=port
+    def write(self,data): raise PermissionError("Berre lesing: SNOWMAN sender ingenting til mottakaren")
+    def flush(self): pass
+    def __getattr__(self,k): return getattr(self._p,k)
 def motor_solution(gga,info):
     """Løysing frå RTK-motoren → same veg som GGA frå mottakaren (snødjupne, kart, logg)."""
     update(rtk_src="snowman",rtk_ratio=round(info.get("ratio",0),1))
@@ -400,17 +415,29 @@ def serial_loop():
                 time.sleep(3); continue
             # serial_for_url: vanleg port (COM3, /dev/ttyUSB0) eller simulator over TCP (socket://127.0.0.1:7777)
             # write_timeout: skriving til ein Bluetooth-port som har mista sambandet skal ikkje kunne henge for alltid
-            serial_obj=serial.serial_for_url(CFG["serial_port"], baudrate=int(CFG["baud"]), timeout=.2, write_timeout=1)
-            update(serial_connected=True, port=CFG["serial_port"], baud=int(CFG["baud"]), last_error="")
-            LOG.event(f"Mottakar tilkopla: {CFG['serial_port']} @ {CFG['baud']}")
-            # Oppstartskommandoar til mottakaren (valfritt, avhengig av merke – GeoMax Zenith35 Pro treng ingen)
-            for cmd in str(CFG.get("initCmds") or "").splitlines():
-                if cmd.strip():
-                    serial_obj.write((cmd.strip()+"\r\n").encode("ascii","ignore")); LOG.event("Sendt til mottakar: "+cmd.strip()); time.sleep(0.3)
-            buf=b""; opened=(CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds")); bad_n=0; gnss_lost=False
+            # Berre lesing (standard): DTR/RTS av før opning, ingen flytkontroll – mottakaren får ingen styresignal frå SNOWMAN
+            sp=serial.serial_for_url(CFG["serial_port"], baudrate=int(CFG["baud"]), timeout=.2, write_timeout=1, do_not_open=True)
+            wr=may_write()
+            if not wr:
+                for k in ("rtscts","xonxoff","dsrdtr"):
+                    try: setattr(sp,k,False)
+                    except Exception: pass
+                for k in ("dtr","rts"):
+                    try: setattr(sp,k,False)
+                    except Exception: pass
+            sp.open()
+            serial_obj=sp if wr else LesePort(sp)
+            update(serial_connected=True, port=CFG["serial_port"], baud=int(CFG["baud"]), last_error="", serial_readonly=not wr)
+            LOG.event(f"Mottakar tilkopla: {CFG['serial_port']} @ {CFG['baud']}"+("" if wr else " – berre lesing"))
+            # Oppstartskommandoar: berre når SNOWMAN har lov å sende til mottakaren («SNOWMAN sender korreksjonane»)
+            if wr:
+                for cmd in str(CFG.get("initCmds") or "").splitlines():
+                    if cmd.strip():
+                        serial_obj.write((cmd.strip()+"\r\n").encode("ascii","ignore")); LOG.event("Sendt til mottakar: "+cmd.strip()); time.sleep(0.3)
+            buf=b""; opened=(CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"),wr); bad_n=0; gnss_lost=False
             SERIAL_REOPEN.clear(); last_rx=time.time()
             while not STOP.is_set() and serial_obj.is_open:
-                if (CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"))!=opened:   # endra i oppsettet: opne på nytt
+                if (CFG["serial_port"],int(CFG["baud"]),CFG.get("initCmds"),may_write())!=opened:   # endra i oppsettet: opne på nytt
                     LOG.event("Mottakaroppsett endra – opnar porten på nytt"); serial_obj.close()
                     update(serial_connected=False); serial_obj=None; break
                 if SERIAL_REOPEN.is_set():   # LAGRE / KOPLE TIL, eller NTRIP får ikkje skrive til porten
@@ -483,6 +510,12 @@ def rtk_hint(st):
     Byggjer på GGA-kvaliteten og korreksjonsfelta i GGA (alder, base-ID) og byte sende til mottakaren."""
     fix=st.get("fix") or ""
     if fix=="RTK FIX" or fix=="SIMULERT": return ""
+    if rtk_mode()=="mottakar_sjolv":
+        if not st.get("serial_connected"): return "Mottakaren er ikkje tilkopla – sjå «Feil»."
+        if fix=="RTK FLOAT": return "Mottakaren reknar seg fram mot FIX – vent 1–3 min med fri sikt."
+        return (f"Mottakaren står i {fix or 'ukjend'}: han hentar korreksjonane sjølv, og dei kjem ikkje fram. Sjekk på mottakaren "
+                "(t.d. Zenith: 192.168.10.1): RTK Data Source = GSM/GPRS (SIM-kort, caster, mountpoint, konto) eller UHF (radio frå basen), "
+                "og Status Info › Datalink Status. SNOWMAN sender ingenting til mottakaren i denne modusen.")
     if rtk_snowman():   # RTK blir rekna i SNOWMAN – sjå 🔍 FEILSØK RTK for alle stega
         m=st.get("motor") or {}
         if not m: return "RTK i SNOWMAN: motoren startar ("+str(st.get("rtk_motor") or "…")+")."
@@ -541,7 +574,10 @@ def ntrip_loop():
     while not STOP.is_set():
         stream=None
         try:
-            if not (CFG["caster"] and CFG["mountpoint"]):
+            if not (CFG["caster"] and CFG["mountpoint"]) or rtk_mode()=="mottakar_sjolv":
+                # «Mottakaren hentar korreksjonane sjølv»: SNOWMAN koplar ikkje til casteren (same konto kan ikkje vere
+                # innlogga to stader samstundes)
+                if STATE.get("ntrip_connected"): update(ntrip_connected=False)
                 time.sleep(1); continue
             gga=STATE.get("rx_gga") or STATE.get("last_gga") or None   # uredigert GGA frå mottakaren
             stream=NK.open_stream(CFG["caster"],CFG["caster_port"],CFG["mountpoint"],CFG["username"],CFG["password"],
@@ -553,6 +589,7 @@ def ntrip_loop():
             last_data=time.time(); last_gga_sent=0
             while not STOP.is_set():
                 if nkey()!=opened: raise ConnectionError("NTRIP-oppsettet er endra – koplar til på nytt")
+                if rtk_mode()=="mottakar_sjolv": raise ConnectionError("Mottakaren hentar korreksjonane sjølv – NTRIP i SNOWMAN er kopla frå")
                 now=time.time()
                 gga=STATE.get("rx_gga") or STATE.get("last_gga","")   # uredigert GGA frå mottakaren til casteren
                 if gga and now-last_gga_sent>=float(CFG["gga_interval"]):
@@ -569,7 +606,7 @@ def ntrip_loop():
                 so=serial_obj   # lokal referanse: serial_loop kan setje serial_obj til None når som helst
                 if clean and rtk_snowman():   # RTK i SNOWMAN: basen går til motoren – ingenting blir sendt til mottakaren
                     if MOTOR[0] is not None: MOTOR[0].base_feed(clean)
-                elif clean and so is not None and getattr(so,"is_open",False):
+                elif clean and may_write() and so is not None and getattr(so,"is_open",False):
                     # Feil ved skriving til mottakaren er ein MOTTAKARFEIL: NTRIP-sambandet skal halde fram.
                     # (write_timeout=1 hindrar at eit dødt Bluetooth-samband held tråden fast.)
                     try:
@@ -615,7 +652,7 @@ class API(http.server.BaseHTTPRequestHandler):
         u=urllib.parse.urlparse(self.path)
         if u.path=="/api/status":
             st=dict(STATE); gt=st.get("gga_time"); st["gga_age"]=None if not gt else round(time.time()-gt,1)
-            st["rtk_mode"]=CFG.get("rtk_mode") or "snowman"
+            st["rtk_mode"]=rtk_mode()
             if MOTOR[0] is not None: st["motor"]=MOTOR[0].status()
             try: st["rtk_hint"]=rtk_hint(st)
             except Exception: st["rtk_hint"]=""
@@ -896,7 +933,7 @@ class API(http.server.BaseHTTPRequestHandler):
                     from serial.tools import list_ports
                     ports=[{"port":p.device,"desc":p.description or ""} for p in list_ports.comports()]
                 except Exception: ports=[]
-                st=dict(STATE); st["rtk_mode"]=CFG.get("rtk_mode") or "snowman"
+                st=dict(STATE); st["rtk_mode"]=rtk_mode()
                 if MOTOR[0] is not None: st["motor"]=MOTOR[0].status()
                 net=None if st.get("ntrip_connected") else RS.net_check(str(CFG.get("caster") or ""),CFG.get("caster_port") or 2101)
                 cfg={k:CFG.get(k) for k in ("serial_port","baud","caster","caster_port","mountpoint","rtcm_drop")}

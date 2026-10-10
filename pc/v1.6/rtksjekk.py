@@ -187,7 +187,11 @@ def check(st, cfg, ports=None, net=None, now=None):
     # ---------- 6. Internett og caster ----------
     caster, cport = str(cfg.get("caster") or ""), cfg.get("caster_port") or 2101
     direct = not caster and fix in ("RTK FIX", "RTK FLOAT", "SIMULERT")   # mottakaren hentar korreksjonane sjølv (GSM/radio)
-    if direct:
+    if st.get("rtk_mode") == "mottakar_sjolv":
+        _step(S, "net", "Internett og caster", SKIP, "Mottakaren hentar korreksjonane sjølv (SIM/radio) – SNOWMAN koplar ikkje til "
+              "casteren og sender ingenting til mottakaren (berre lesing).")
+        caster = ""   # stega for korreksjonar via SNOWMAN gjeld ikkje
+    elif direct:
         _step(S, "net", "Internett og caster", SKIP, f"Ingen caster i SNOWMAN – mottakaren har {fix}, så korreksjonane kjem "
               "direkte til han (t.d. GSM/SIM eller radio). Stega for korreksjonar via SNOWMAN gjeld ikkje.")
     elif not caster:
@@ -271,6 +275,16 @@ def check(st, cfg, ports=None, net=None, now=None):
         _step(S, "motor", "RTK-motoren i SNOWMAN", SKIP, "Simulatoren sender ferdig rekna RTK (GGA) – rådata trengst ikkje i test.")
     elif st.get("rtk_mode") == "snowman":
         _snowman_steps(S, st, r, now)
+    elif st.get("rtk_mode") == "mottakar_sjolv":
+        bid = str(st.get("base_id") or "").strip()
+        if not have_pos:
+            _step(S, "use", "Mottakaren får korreksjonar sjølv", SKIP)
+        elif fix in ("RTK FIX", "RTK FLOAT"):
+            _step(S, "use", "Mottakaren får korreksjonar sjølv", OK, f"Korreksjonsalder {st.get('corr_age')} s · base-ID {bid or '?'}")
+        else:
+            _step(S, "use", "Mottakaren får korreksjonar sjølv", FAIL, f"Status {fix}" + (f" · base-ID {bid}" if bid else ", tomt korreksjonsfelt i GGA"),
+                  "Korreksjonane kjem ikkje fram til mottakaren. Sjekk på mottakaren: RTK Data Source = GSM/GPRS (SIM med data, caster, "
+                  "mountpoint og konto lagt inn i mottakaren) eller UHF (radio frå basen), og «Datalink Status» (t.d. Zenith: Status Info).")
     else:
         # ---------- 11. Korreksjonar til mottakaren ----------
         out, ot = st.get("bytes_rtcm_out") or 0, st.get("rtcm_out_time")
@@ -400,4 +414,9 @@ if __name__ == "__main__":     # sjølvtest: python3 rtksjekk.py
     r = check(sm, cfg, ports, None, now)
     assert r["ok"], [(x["id"], x["status"]) for x in r["steps"] if x["status"] not in (OK, SKIP)]
     print(report(r, "snowman-test"))
+    ms = dict(base, rtk_mode="mottakar_sjolv", fix="GPS", ntrip_connected=False, rtcm={}, bytes_rtcm_out=0, rx_text="")
+    r = check(ms, cfg, ports, None, now)
+    assert r["first"] == "use", r["first"]
+    r = check(dict(ms, fix="RTK FIX", corr_age=1.0, base_id="0000", depth_status="OK", depth=1.0), cfg, ports, None, now)
+    assert r["ok"], [(x["id"], x["status"]) for x in r["steps"] if x["status"] not in (OK, SKIP)]
     print("OK")
