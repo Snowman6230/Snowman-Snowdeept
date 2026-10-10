@@ -1,6 +1,6 @@
 # Terrain Engine – spesifikasjon
 
-SNOWMAN by Alpindata · Analyse 2026-10-04 · Status: **v1.6 ferdig** (bibliotek, GeoTIFF, Topocad DTM, barmark, snødjupne) · v1.7 planlagt
+SNOWMAN by Alpindata · Analyse 2026-10-04 · Status: **v1.6 ferdig** (bibliotek, GeoTIFF, Topocad DTM, eigen LiDAR LAS/LAZ/XYZ, barmark, snødjupne) · oppdatert 2026-10-11 (v1.6.95)
 
 Terrain Engine reknar ut ekte snødjupne ved å samanlikne den kalibrerte høgda til maskina (RTK-GNSS)
 med ein terrengmodell av barmark. Dokumentet skildrar korleis terreng blir lagt inn, bytt ut og brukt.
@@ -51,9 +51,9 @@ v1.6 tek berre **barmark**, men biblioteket blir bygd slik at dei andre typane k
 | | Format | Krav |
 |---|---|---|
 | ✅ **Tilrådd** | **GeoTIFF (.tif)** – terrengmodell | Barmark, 0,25–1 m rute, EUREF89 UTM 32 eller 33, NN2000 |
-| ✅ Godteke | **Topocad DTM (.dtm)** – trekantmodell (v1.6.3) | Blir gjort om til 0,5 m rutenett. EPSG frå fila (eller tolka frå namnet). Høgdesystem står ikkje i fila – stadfest NN2000 |
-| ✅ Godteke | **LAS/LAZ** – punktsky | Bakkepunkt (klasse 2) blir brukte; blir gjort om til rutenett ved import |
-| ✅ Godteke | **XYZ/CSV** | Kolonnar austing, nording, høgd i same koordinatsystem |
+| ✅ Godteke | **Topocad DTM (.dtm)** – trekantmodell (v1.6.3) | Blir gjort om til 0,5 m rutenett. EPSG frå fila (eller tolka frå namnet). Høgdesystem står ikkje i fila – vel ved import |
+| ✅ Godteke | **LAS/LAZ** – eigen LiDAR (v1.6.95) | Bakkepunkt (klasse 2) → snitt per rute; uklassifisert → snitt av punkta under 0,4 m over lågaste punkt. Støy (7, 18) fjerna. 0,25–2 m etter punkttettleik. LAZ via laspy + lazrs (installert første gong) |
+| ✅ Godteke | **XYZ/CSV/TXT** (v1.6.95) | Austing, nording, høgd per linje (N E H blir bytt om automatisk, desimalkomma med semikolon). Sona frå filnamnet («_utm32») eller posisjonen til maskina |
 | ⛔ Ikkje godteke | OBJ, PLY, bilete | Manglar koordinatar / ikkje høgdedata |
 
 Kjelde utan eiga skanning: Kartverket DTM 1 m frå hoydedata.no (GeoTIFF, EUREF89 UTM 33, NN2000).
@@ -63,8 +63,14 @@ Merk: hoydedata.no er stengt fredag kl. 16 – måndag kl. 07.
 
 - **UTM-sone 32 eller 33.** Sunnmøre ligg i sone 32, men Kartverket leverer ofte nasjonale produkt i sone 33.
   Motoren må rekne GNSS-posisjonen om til sona kvart lag er lagra i.
-- **Høgdesystem.** Terreng er i NN2000. Leica kan levere NN2000 *eller* ellipsoidisk høgd – skilnad ca. 40 m på
-  Sunnmøre. Eiga innstilling under Kalibrering: «GNSS-høgd: NN2000 / ellipsoidisk». Tilrådd: still inn Leica til NN2000.
+- **Høgdesystem.** Terreng er i NN2000. Ellipsoidisk høgd ligg ca. 45 m over NN2000 på Sunnmøre (HREF2018B: 44,8 m i
+  Sykkylven, 45,1 m på Fjellsætra). **Frå v1.6.95 går GNSS-høgda alltid via geoiden** (avgjerd: «berre geoide»):
+  NN2000 = (høgd + geoideseparasjon i GGA) − N frå Kartverket-modellen der maskina er. Det er rett for RTK rekna i
+  SNOWMAN (ellipsoidisk, separasjon 0) og for mottakarar som sender høgd over eigen geoide med separasjonen ved sida.
+  Høgdevalet i Kalibrering er fjerna. Lokale avvik blir retta med høgdekorreksjonen mot kjent punkt eller eigen LiDAR.
+- **Høgdesystem i terrengfiler.** Eiga drone-/GNSS-skanning har ofte ellipsoidiske høgder. Står ikkje høgdesystemet i
+  fila, vel føraren ved import: NN2000, eller ellipsoidisk → gjort om til NN2000 med geoiden for kvar rute. Analysen
+  samanliknar med aktive lag: ca. 0 m skilnad = NN2000, ca. geoidehøgda = ellipsoidisk (føreslått automatisk).
 
 ## 5. Ytelse, utrekning og vising
 
@@ -193,6 +199,7 @@ og læring per vindretning. Parameterane er litteraturverdiar og blir justerte a
 | **v1.6.7** | Kontrollmålingar (kjend snødjupne) og kontrollpunkt (kjend terrenghøgd), justering av høgdeoffset |
 | **v1.6.23** | Trasear og forbodne område: teikne, omriss frå terrengmodell, prosent preparert, varsel |
 | Neste | Kartverket DTM 1 m for Fjellsætra. Test av UTM 32/33 og NN2000 |
-| **v1.7** | Anleggspakke, LAS/LAZ- og XYZ-import |
+| **v1.6.95** | Eigen LiDAR: LAS/LAZ/XYZ-import, val av høgdesystem med omrekning frå ellipsoidisk, samanlikning med andre lag. Høgda alltid via geoiden |
+| **v1.7** | Anleggspakke |
 | **v1.8** | Trasear og anleggsobjekt (registrering, dekningsgrad, varsel, rapport per trasé) |
 | Seinare | Sjå `docs/VEGEN-VIDARE.md`: maskingeometri (fres/skjer), IMU, to antenner, målflate og snøflate |

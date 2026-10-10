@@ -40,6 +40,8 @@ def geoid_n(lat, lon):
 ap = argparse.ArgumentParser()
 ap.add_argument("portfil", nargs="?")
 ap.add_argument("--terreng", action="store_true", help="høgd frå testterreng + fasit-snø")
+ap.add_argument("--ellipsoidisk", action="store_true",
+                help="send ellipsoidisk høgd med geoideseparasjon 0 (som RTK-motoren i SNOWMAN) i staden for NN2000 + separasjon")
 ap.add_argument("--anlegg", action="store_true", help="køyr over øvste aktive lag i terrengbiblioteket, med simulert snø")
 ap.add_argument("--antenne", type=float, default=2.8, help="antennehøgd over snøoverflata (m)")
 ap.add_argument("--helling", action="store_true", help="send hellingsmåling frå «antenna» ($PASHR)")
@@ -256,9 +258,11 @@ while True:
             alt = 905.31 + 0.01 * math.sin(t)
     lat += random.gauss(0, 0.01) / mlat; lon += random.gauss(0, 0.01) / mlon
     # Som ein ekte mottakar med geoide: høgda i GGA er NN2000, og geoidehøgda er Kartverket-modellen der maskina er.
-    # Då gir alle tre høgdevala i Innst. › Kalibrering same svar (før v1.6.47 stod det fast 40,0 m, og valet
-    # «Kartverket geoidemodell» – som Zenith-oppsettet brukar – gav 5 m feil og «FEIL – SJEKK HØGDESYSTEM»).
+    # SNOWMAN reknar alltid NN2000 = (høgd + separasjon) − N (v1.6.95). --ellipsoidisk sender som RTK-motoren i
+    # SNOWMAN: ellipsoidisk høgd og separasjon 0 – skal gi same snødjupne.
     sep = geoid_n(lat, lon)
+    if a.ellipsoidisk and sep is not None:
+        alt, sep = alt + sep, 0.0
     body = f"GNGGA,{time.strftime('%H%M%S')}.00,{dm(lat,2)},N,{dm(lon,3)},E,{q},19,0.6,{alt:.3f},M,{sep:.3f},M,1.0,0001"
     send(f"${body}*{cs(body)}\r\n".encode())
     if a.helling and grad is not None:

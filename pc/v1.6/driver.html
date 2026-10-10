@@ -2551,19 +2551,13 @@
           <div class="history" style="font-size: 12px">Mål loddrett med maskina på flat mark. Antennehøgda i sjølve mottakaren (t.d. Zenith) skal då vere 0.</div>
           <div class="row"><span>Høgdekorreksjon frå kontrollmåling (m) – normalt 0</span><input id="zOff" type="number" step=".001" /></div>
           <div class="history" style="font-size: 12px">Blir sett automatisk med JUSTER HØGDEKORREKSJON under Kontroll. Positivt tal gjer snødjupna mindre. Ikkje gjett.</div>
-          <div class="rowWide">
-            <div>Kva høgd sender mottakaren?</div
-            ><select id="heightMode" style="width: 100%" onchange="$('geoidRow').classList.toggle('hide', this.value !== 'ellipsoid')">
-              <option value="nn2000">Høgd over havet (NN2000) frå mottakaren</option>
-              <option value="geoide">Rå GPS-høgd → Kartverket-modellen (tilrådd)</option>
-              <option value="ellipsoid">Rå GPS-høgd → fast tal (berre om modellen manglar)</option>
-            </select>
-          </div>
           <div class="history" style="font-size: 12px">
-            Usikker? Vel <b>Kartverket-modellen</b>. Kontroller så på NTRIP-sida (LEICA / CPOS / NTRIP-OPPSETT) at <b>NN2000-høgd</b>
-            stemmer med høgda på kartet der du står (innanfor nokre få dm).
+            <b>Høgdesystem: alltid geoide.</b> SNOWMAN gjer GPS-høgda om til høgd over havet (NN2000) med Kartverket sin geoidemodell
+            (HREF2018B) der maskina er: NN2000 = ellipsoidisk høgd − geoidehøgd. Det er rett for alle mottakarar og for RTK rekna i
+            SNOWMAN. Kontroller på NTRIP-sida at <b>NN2000-høgd</b> stemmer med kartet, og bruk JUSTER HØGDEKORREKSJON mot eit
+            kjent punkt eller eigen LiDAR-modell for å fjerne lokale avvik.
           </div>
-          <div id="geoidRow" class="row hide"><span>Skilnad mellom rå GPS-høgd og havnivå (m) – ca. 45 på Sunnmøre</span><input id="geoidN" type="number" step=".001" /></div>
+          <div id="heightOld" class="history hide" style="font-size: 12px; color: #ffd27a"></div>
           <button class="btn" onclick="saveCalibration()">LAGRE KALIBRERING (BRUKAST TIL SNØDJUPNE)</button>
           <div id="calInfo" class="history">Kalibrering ikkje lagra i SNOWMAN-tenesta.</div>
           <h3>HELLING</h3>
@@ -2660,7 +2654,8 @@
           <table class="fmt">
             <tr><td>✅ <b>Tilrådd</b></td><td><b>GeoTIFF (.tif)</b> – barmark, 0,25–1 m rute, EUREF89 UTM 32 eller 33, NN2000</td></tr>
             <tr><td>✅ Godteke</td><td><b>Topocad DTM (.dtm)</b> – trekantmodell, blir gjort om til 0,5 m rutenett</td></tr>
-            <tr><td>🕓 v1.7</td><td>LAS/LAZ (punktsky, bakkepunkt) og XYZ/CSV</td></tr>
+            <tr><td>✅ Godteke</td><td><b>Eigen LiDAR: LAS/LAZ</b> – punktsky, bakkepunkt (klasse 2) blir til rutenett (0,25–2 m etter punkttettleik)</td></tr>
+            <tr><td>✅ Godteke</td><td><b>XYZ/CSV/TXT</b> – austing nording høgd per linje (sona i filnamnet, t.d. «_utm32», eller nær maskina)</td></tr>
             <tr><td>⛔ Nei</td><td>OBJ, PLY, bilete – manglar koordinatar</td></tr>
           </table>
           <div class="history" style="font-size: 12px">
@@ -2691,7 +2686,15 @@
           </div>
           <div id="terrImport" class="hide">
             <div class="row"><span>Namn på laget</span><input id="terrName" type="text" style="width: 190px" /></div>
-            <label id="vdConfirmRow" class="chk hide"><input id="vdConfirm" type="checkbox" /> Eg har sjekka at høgdene er NN2000</label>
+            <div id="vdConfirmRow" class="rowWide hide">
+              <div>Kva høgder har fila? (står ikkje i fila)</div
+              ><select id="vdChoice" style="width: 100%">
+                <option value="">– vel høgdesystem –</option>
+                <option value="nn2000">NN2000 – høgd over havet (t.d. hoydedata.no, landmålar)</option>
+                <option value="ell">Ellipsoidiske – rå GPS-høgd (EUREF89), t.d. eiga drone-/GNSS-skanning → gjer om med geoiden</option>
+              </select>
+              <div id="vdCmp" class="history" style="font-size: 12px"></div>
+            </div>
             <button class="btn" onclick="importTerrain()">IMPORTER TIL BIBLIOTEKET</button>
             <button class="btn" onclick="resetWizard()">AVBRYT</button>
           </div>
@@ -2998,7 +3001,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.94";
+      const APP_VERSION = "1.6.95";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -6095,15 +6098,16 @@
         let c = TERR.calibration;
         if (c) {
           ["antZ", "zOff"].forEach((k) => c[k] != null && ($(k).value = cfg[k] = c[k]));
-          $("heightMode").value = c.heightMode || "nn2000";
           $("tiltMode").value = c.tiltMode || "auto";
           $("tiltFlipPitch").checked = !!c.tiltFlipPitch;
           $("tiltFlipRoll").checked = !!c.tiltFlipRoll;
           TILT_SENT = TERR.tiltSentences || [];
-          $("geoidN").value = c.geoidN ?? "";
-          $("geoidRow").classList.toggle("hide", $("heightMode").value !== "ellipsoid");
+          $("heightOld").classList.toggle("hide", !c.heightOld);
+          $("heightOld").textContent = c.heightOld
+            ? "⚠️ Det gamle høgdevalet («" + c.heightOld + "») er erstatta av geoide. Kontroller høgdekorreksjonen mot eit kjent punkt og lagre kalibreringa på nytt."
+            : "";
           $("calInfo").innerHTML = c.calibrated
-            ? "✅ Kalibrering lagra: antennehøgd " + c.antZ + " m, høgdekorreksjon " + c.zOff + " m, høgd " + (c.heightMode === "ellipsoid" ? "rå GPS-høgd − fast tal " + c.geoidN + " m" : c.heightMode === "geoide" ? "rå GPS-høgd − Kartverket-modellen (HREF2018B)" : "høgd over havet (NN2000) frå mottakaren")
+            ? "✅ Kalibrering lagra: antennehøgd " + c.antZ + " m, høgdekorreksjon " + c.zOff + " m, høgd via geoiden (Kartverket HREF2018B)"
             : "⚠️ Kalibrering ikkje lagra – snødjupne blir ikkje vist før ho er lagra.";
         }
         renderTerrain();
@@ -6225,6 +6229,7 @@
         if (r.ok) {
           lines.unshift('<div class="chk ok">✅ ' + esc(i.format) + " · " + esc(i.crs) + " · høgdesystem " + esc(i.vdatum) + " · " + i.res + " m rute</div>");
           lines.push('<div class="chk">' + i.nx + " × " + i.ny + " ruter · " + i.area_km2 + " km² · høgd " + Math.round(i.hmin) + "–" + Math.round(i.hmax) + " m · " + Math.round(i.valid * 100) + " % med data</div>");
+          if (i.points) lines.push('<div class="chk">' + i.points.toLocaleString("nb-NO") + " punkt i skya · " + (i.ground ? i.usedPoints.toLocaleString("nb-NO") + " bakkepunkt brukte" : "punkta nærast botnen i kvar rute brukte (ikkje klassifisert)") + (i.noise ? " · " + i.noise.toLocaleString("nb-NO") + " støypunkt fjerna" : "") + "</div>");
           if (pos) {
             let inside = pointInPoly(pos, i.outline);
             lines.push(inside ? '<div class="chk ok">✅ Dekkjer posisjonen til maskina</div>' : '<div class="chk warn">⚠️ Fila dekkjer ikkje posisjonen til maskina</div>');
@@ -6235,7 +6240,12 @@
           $("terrName").value = replaceId ? "" : fname.replace(/\.[^.]+$/, "") + (cropped ? " (utsnitt)" : "");
           $("terrName").placeholder = replaceId ? "(behald namnet)" : "";
           $("vdConfirmRow").classList.toggle("hide", i.vdatum === "NN2000");
-          $("vdConfirm").checked = false;
+          $("vdChoice").value = (i.cmp && i.cmp.guess) || "";
+          $("vdCmp").textContent = i.cmp
+            ? "Samanlikna med «" + i.cmp.layer + "»: " + (i.cmp.median > 0 ? "+" : "") + i.cmp.median + " m (median av " + i.cmp.n + " punkt)" +
+              (i.geoidN != null ? " · geoidehøgda her er " + i.geoidN + " m" : "") +
+              (i.cmp.guess === "ell" ? " → ser ut som ellipsoidiske høgder." : i.cmp.guess === "nn2000" ? " → ser ut som NN2000." : " → sjekk fila.")
+            : i.geoidN != null ? "Tips: ellipsoidiske høgder ligg ca. " + i.geoidN + " m over NN2000 her." : "";
           $("terrImport").classList.remove("hide");
           outlineGroup.addLayer(L.polygon(i.outline, { color: "#4db8ff", weight: 3, fill: true, fillOpacity: 0.08, interactive: false }));
           if (!cropped) map.fitBounds(L.latLngBounds(i.outline).pad(0.1));
@@ -7229,11 +7239,11 @@
       })();
       async function importTerrain() {
         if (!pendingToken) return;
-        if (pendingInfo.vdatum !== "NN2000" && !$("vdConfirm").checked) return toast("Stadfest høgdesystemet først");
+        if (pendingInfo.vdatum !== "NN2000" && !$("vdChoice").value) return toast("Vel høgdesystem for fila først");
         try {
           let prios = (TERR.layers || []).map((l) => l.priority),
             prio = pendingCropped && prios.length && !replaceId ? Math.min(...prios) - 10 : undefined; // utsnitt av stor fil = grunnlag nedst
-          let r = await api("api/terrain/import", { token: pendingToken, name: $("terrName").value.trim(), type: $("terrType").value, replace: replaceId, vdatumConfirmed: $("vdConfirm").checked, priority: prio });
+          let r = await api("api/terrain/import", { token: pendingToken, name: $("terrName").value.trim(), type: $("terrType").value, replace: replaceId, vdatumConfirmed: pendingInfo.vdatum !== "NN2000" && !!$("vdChoice").value, heights: pendingInfo.vdatum === "NN2000" ? "nn2000" : $("vdChoice").value, priority: prio });
           toast((replaceId ? "Erstatta: " : "Lagt til: ") + r.layer.name);
           resetWizard();
           loadTerrain();
@@ -7449,11 +7459,8 @@
       }
       async function saveCalibration() {
         save();
-        let hm = $("heightMode").value,
-          gN = parseFloat($("geoidN").value);
-        if (hm === "ellipsoid" && isNaN(gN)) return toast("Fyll inn geoidehøgd N");
         try {
-          await api("api/calibration", { antZ: cfg.antZ, zOff: cfg.zOff, heightMode: hm, geoidN: isNaN(gN) ? null : gN, calibrated: true });
+          await api("api/calibration", { antZ: cfg.antZ, zOff: cfg.zOff, calibrated: true });
           toast("Kalibrering lagra");
           loadTerrain();
         } catch (e) {

@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.94"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.95"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -67,8 +67,9 @@ def start_log(note):
     name=LOG.start(note)
     try:
         LOG.event(f"Oppstart: SNOWMAN v{VERSION} · {platform.platform()} · Python {platform.python_version()}")
-        LOG.event(f"Kalibrering: antennehøgd {CFG['antZ']} m, høgdekorreksjon {CFG['zOff']} m, høgdeval {CFG['heightMode']}"
-                  f"{', fast geoidehøgd '+str(CFG['geoidN']) if CFG.get('heightMode')=='ellipsoid' else ''}, lagra {bool(CFG.get('calibrated'))}")
+        LOG.event(f"Kalibrering: antennehøgd {CFG['antZ']} m, høgdekorreksjon {CFG['zOff']} m, høgd via geoiden (Kartverket), "
+                  f"lagra {bool(CFG.get('calibrated'))}"
+                  +(f" (høgdevalet «{HEIGHT_OLD[0]}» er erstatta av geoide – kontroller høgdekorreksjonen)" if HEIGHT_OLD[0] else ""))
         LOG.event(f"Helling: {CFG.get('tiltMode')}, snu fram/bak {bool(CFG.get('tiltFlipPitch'))}, snu side {bool(CFG.get('tiltFlipRoll'))}")
         LOG.event(f"Mottakar: port {CFG['serial_port'] or '-'} @ {CFG['baud']}, berre lesing (SNOWMAN sender aldri noko til mottakaren)")
         LOG.event(f"NTRIP: {CFG['caster'] or '-'}:{CFG['caster_port']}/{CFG['mountpoint'] or '-'}, versjon {CFG.get('ntrip_version')}, "
@@ -110,7 +111,7 @@ STATE = {
 CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint":"",
        "username":"","password":"","gga_interval":5,
        "ntrip_version":"auto","ntrip_timeout":20,   # NTRIP 1/2/auto, og vakthund: sekund utan korreksjonar før ny oppkopling
-       "antZ":2.8,"zOff":0.0,"heightMode":"nn2000","geoidN":None,"calibrated":False,
+       "antZ":2.8,"zOff":0.0,"heightMode":"geoide","calibrated":False,
        "tiltMode":"auto","tiltFlipPitch":False,"tiltFlipRoll":False,
        "rtk_mode":"snowman",   # "snowman" (RTK i SNOWMAN – standard) eller "mottakar_sjolv" (mottakaren hentar korreksjonane
                                 # sjølv med SIM/radio). SNOWMAN sender ALDRI noko til mottakaren (eigaren 2026-10-11).
@@ -121,6 +122,9 @@ def load_cfg():
     try: CFG.update({k:v for k,v in json.loads(CFG_FILE.read_text("utf-8")).items() if k in CFG})
     except FileNotFoundError: pass
     except Exception as e: print("Kunne ikkje lese config:",e)
+    if CFG.get("heightMode")!="geoide":   # v1.6.95: berre geoide – eldre val (nn2000/ellipsoid) blir gjort om
+        HEIGHT_OLD[0]=CFG.get("heightMode"); CFG["heightMode"]="geoide"
+HEIGHT_OLD=[None]
 REAL_PORT=[None]   # seriellporten til ekte mottakar; simulatorporten blir aldri lagra i innstillingane
 def save_cfg():
     d=dict(CFG)
@@ -293,7 +297,7 @@ def parse_gga(line):
         # Hellingskorreksjon: finn punktet der maskina står (under midten) og høgda ned til snøflata
         cal=CFG; mlat,mlon=lat,lon; tilt={"src":"av"}
         gN=T.GEOID.n(lat,lon) if T.AVAILABLE else None   # Kartverket-geoiden der antenna er
-        if CFG.get("heightMode")=="geoide": cal=dict(CFG,_N=gN)
+        cal=dict(CFG,_N=gN)   # høgda er alltid NN2000 = ellipsoidisk − N (v1.6.95, berre geoide)
         if T.AVAILABLE and lat is not None and lon is not None:
             g,tilt=HEL.gradient(lat,lon,alt,h,v,TERR,CFG)
             tilt["ant"]=sorted(HEL.sentences)   # kva hellingsmeldingar antenna har sendt
@@ -312,7 +316,7 @@ def parse_gga(line):
         update(last_gga=line.strip(), fix=fix,
                satellites=int(p[7] or 0), hdop=float(p[8]) if p[8] else None,
                altitude=alt, geoid_sep=sep, lat=lat, lon=lon, tilt=tilt, geoid_model=None if gN is None else round(gN,3),
-               h_nn2000=None if T.nn2000_height(alt,sep,lat,lon,CFG) is None else round(T.nn2000_height(alt,sep,lat,lon,CFG),3),
+               h_nn2000=None if (alt is None or gN is None) else round(alt+(sep or 0)-gN,3),
                h_ell=None if alt is None else round(alt+(sep or 0),3), corr_age=corr_age, base_id=base_id,
                terrain=ter, depth=None if depth is None else round(depth,3), depth_status=dstat, depth_detail=det)
         update(speed=round(v,2), course=None if h is None else round(h))
@@ -600,7 +604,7 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/api/terrain":
             self.headers_ok(); self.wfile.write(json.dumps({"available":T.AVAILABLE,"error":T.IMPORT_ERROR,
                 "types":T.TYPES,"layers":TERR.listing() if T.AVAILABLE else [],
-                "calibration":{k:CFG[k] for k in ("antZ","zOff","heightMode","geoidN","calibrated","tiltMode","tiltFlipPitch","tiltFlipRoll")},
+                "calibration":dict({k:CFG[k] for k in ("antZ","zOff","heightMode","calibrated","tiltMode","tiltFlipPitch","tiltFlipRoll")},heightOld=HEIGHT_OLD[0]),
                 "tiltSentences":sorted(HEL.sentences)}).encode()); return
         if u.path=="/api/log":
             r=LOG.status(); r.update(ok=True,logs=LOG.listing(),always=bool(O.system_cfg().get("logAlways")))
@@ -927,7 +931,7 @@ class API(http.server.BaseHTTPRequestHandler):
                         if not b: break
                         out.write(b); left-=len(b)
                 if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
-                r=TERR.analyse(f,name)
+                r=TERR.analyse(f,name,hint=(STATE.get("lat"),STATE.get("lon")))
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"errors":[str(e)],"warnings":[],"info":{}}).encode())
@@ -1046,15 +1050,17 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 d=json.loads(body or b"{}")
                 if self.path=="/api/calibration":
-                    before=dict(CFG); ks=("antZ","zOff","heightMode","geoidN","calibrated","tiltMode","tiltFlipPitch","tiltFlipRoll")
+                    before=dict(CFG); ks=("antZ","zOff","calibrated","tiltMode","tiltFlipPitch","tiltFlipRoll")   # høgdeval finst ikkje lenger: alltid geoide
                     for k in ks:
                         if k in d: CFG[k]=d[k]
                     log_changes("kalibrering",before,CFG,ks)
+                    if d.get("calibrated"): HEIGHT_OLD[0]=None   # ny kalibrering lagra med geoide
                     save_cfg(); r={"ok":True}
                 elif not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
                 elif self.path=="/api/terrain/import":
                     r={"ok":True,"layer":TERR.import_pending(d.get("token"),d.get("name","").strip(),d.get("type","barmark"),
-                        d.get("priority"),d.get("replace") or None,d.get("source",""),bool(d.get("vdatumConfirmed")))}
+                        d.get("priority"),d.get("replace") or None,d.get("source",""),bool(d.get("vdatumConfirmed")),
+                        d.get("heights") if d.get("heights") in ("nn2000","ell") else None)}
                 elif self.path=="/api/terrain/update":
                     r={"ok":True,"layer":TERR.update(d["id"],name=d.get("name"),active=d.get("active"),priority=d.get("priority"))}
                 else:
@@ -1083,7 +1089,7 @@ class API(http.server.BaseHTTPRequestHandler):
         if self.path=="/api/log":
             try:
                 d=json.loads(body or b"{}"); a=d.get("action")
-                if a=="start": start_log(f"SNOWMAN v{VERSION}, port {CFG['serial_port'] or '-'}, antZ {CFG['antZ']}, zOff {CFG['zOff']}, høgd {CFG['heightMode']}")
+                if a=="start": start_log(f"SNOWMAN v{VERSION}, port {CFG['serial_port'] or '-'}, antZ {CFG['antZ']}, zOff {CFG['zOff']}, høgd via geoiden")
                 elif a=="stop": LOG.stop()
                 elif a=="delete": LOG.delete_all()
                 if "always" in d: O.save_system(logAlways=bool(d["always"]))

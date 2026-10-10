@@ -301,7 +301,7 @@ resultatet (GGA, kvalitet 4 = FIX).
 | Versjon | Innhald |
 |---|---|
 | **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
-| **v1.7** | Anleggspakke, fleire terrengfiler på ein gong, LAS/LAZ/XYZ, trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
+| **v1.7** | Anleggspakke, fleire terrengfiler på ein gong (LAS/LAZ/XYZ kom i v1.6.95), trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). |
 | **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
@@ -312,5 +312,5 @@ Maskingeometrien blir flytt fram til v1.7 om feltprøva viser at målinga ved an
 
 ## 7. Anna
 
-- LAS/LAZ-import (punktsky) om terrengdata kjem i det formatet.
+- ~~LAS/LAZ-import (punktsky)~~ – ferdig i v1.6.95 (eigen LiDAR, val av høgdesystem).
 - Målflate og snøflate (kor mykje snø som skal flyttast, snøvolum).

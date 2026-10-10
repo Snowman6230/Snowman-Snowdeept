@@ -9,6 +9,56 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-11
 
+### PC-prototype v1.6.95 – høgda alltid via geoiden, og eigen LiDAR i terrengmodellen
+- **Avgjerd (eigaren):** «Det skal berre vere geoide, ikkje ellipsoide.» Og: Kartverket-modellen er ein modell –
+  eigen LiDAR som ein har samla inn sjølv, må også kunne brukast i modellen.
+- **Retta (alvorleg):** RTK-motoren i SNOWMAN (v1.6.91) gir ellipsoidisk høgd med geoideseparasjon 0. Med høgdevalet
+  «Høgd over havet (NN2000) frå mottakaren», som var standard, vart ellipsoidehøgda tolka som NN2000. Det gir om lag
+  45 m feil høgd, og det vart ikkje alltid fanga som FEIL, sidan maskina då ligg *over* terrenget.
+- **Endra:** høgdevalet i Kalibrering er fjerna. SNOWMAN reknar no alltid
+  NN2000 = (høgd + geoideseparasjon i GGA) − N frå Kartverket-modellen (HREF2018B) der maskina er.
+  Det er rett både for RTK rekna i SNOWMAN (ellipsoidisk, separasjon 0) og for mottakarar som sender høgd over sin
+  eigen geoide med separasjonen ved sida. Utanfor geoidemodellen blir snødjupna ikkje vist (GEOIDEHØGD MANGLAR).
+  - Gamle oppsett (`nn2000`/`ellipsoid`) blir gjorde om til `geoide`. Kalibreringa viser ei åtvaring om å kontrollere
+    høgdekorreksjonen til ho er lagra på nytt. Oppstartsblokka i feltloggen seier det same.
+  - Lokale avvik mellom modellen og terrenget blir framleis tekne med høgdekorreksjonen (JUSTER HØGDEKORREKSJON mot
+    kjent punkt eller eigen LiDAR).
+- **Nytt:** eigen LiDAR inn i terrengbiblioteket (`punktsky.py`). Det var planlagt til v1.7 og er no flytta fram.
+  - Formata er LAS (lese direkte, minnekartlagt), LAZ og XYZ/CSV/TXT. LAZ blir lese med laspy (BSD-2) + lazrs (MIT),
+    som blir installerte med pip første gong ei LAZ-fil blir opna, som pyrtklib. Dei står ikkje i requirements.txt.
+  - Bakkepunkt (klasse 2) blir snittet i kvar rute. Utan klassifisering blir snittet av punkta mindre enn 0,4 m over
+    lågaste punkt i ruta brukt. Lågaste punkt åleine låg 10 cm for lågt i 14° bratt testterreng. Støy (klasse 7 og 18)
+    blir alltid fjerna.
+  - Oppløysinga blir vald etter punkttettleiken (0,25–2 m, minst ca. 2 bakkepunkt per rute, høgst 10 mill. ruter).
+    Små hol blir fylte frå naborutene.
+  - Koordinatsystemet blir lese frå GeoKey eller WKT i fila. Står det ikkje der, blir det lese frå filnamnet
+    («_utm32», «25833» o.l.) eller ut frå posisjonen til maskina, med åtvaring. XYZ med nording først og desimalkomma
+    med semikolon blir handtert.
+- **Nytt:** val av høgdesystem ved import når fila ikkje seier det: **NN2000** eller **Ellipsoidiske (rå GPS-høgd,
+  EUREF89)**. Ellipsoidiske høgder blir gjorde om til NN2000 med geoiden for kvar rute. Dette er vanleg for eiga
+  drone- eller GNSS-skanning.
+  - Gjeld alle format (også GeoTIFF og Topocad) og erstattar avkryssinga «Eg har sjekka at høgdene er NN2000».
+- **Nytt:** ved analyse blir ein ny modell samanlikna med aktive barmarkslag der dei overlappar.
+  - Ligg han ca. 0 m frå dei, ser høgdene ut som NN2000. Ligg han om lag geoidehøgda over (ca. 45 m), ser dei
+    ellipsoidiske ut. Valet blir då føreslått, og tala blir viste.
+  - Anna avvik gir åtvaring om å sjekke høgdesystem, einingar og koordinatsystem.
+- **Nytt:** `simuler-leica.py --ellipsoidisk` sender som RTK-motoren (ellipsoidisk høgd, separasjon 0).
+- **Nytt:** `test/lidar/testlidar.py` – syntetiske LAS/LAZ/XYZ frå testterrenget med tre, støy og ellipsoidiske
+  høgder, mot fasit.
+- **Testa:**
+  - `testlidar.py`: alle OK.
+    - LAS klassifisert: median 1,6 cm, 95 % 5 cm (tre og støy fjerna).
+    - Uklassifisert: 1,3 cm.
+    - Ellipsoidisk → NN2000: 1,6 cm, og samanlikninga gjetta «ellipsoidisk» (+44,77 m = geoidehøgda).
+    - XYZ: 3,1 cm.
+    - LAZ: 1,6 cm.
+    - Snødjupne 0,805 m mot fasit 0,800 m med både ellipsoidisk høgd og NN2000 + separasjon.
+  - `simuler-leica.py --terreng` mot fasit gjennom SNOWMAN-tenesta (testterreng importert via API): snittavvik
+    0,000 m, maks 0,022 m. Same resultat med `--ellipsoidisk`.
+  - Gamalt oppsett med `nn2000` blir `geoide` med åtvaring, og åtvaringa forsvinn når kalibreringa er lagra.
+  - Førarbiletet i Chromium: ingen JavaScript-feil. LAS-analysen viser «Samanlikna med «Testterreng»: +44.77 m … →
+    ser ut som ellipsoidiske høgder», og valet er sett til Ellipsoidiske.
+
 ### PC-prototype v1.6.94 – SNOWMAN sender aldri noko til mottakaren
 - **Avgjerd (eigaren):** «SNOWMAN skal aldri sende noko til GPS-antenna. Berre ta imot.» Dette erstattar avgjerda i
   v1.6.93 om å behalde valet der SNOWMAN sender korreksjonane.

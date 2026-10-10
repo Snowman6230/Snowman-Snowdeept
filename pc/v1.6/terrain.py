@@ -422,7 +422,8 @@ class TerrainLibrary:
             return sorted(self.layers.values(), key=lambda m: -m["priority"])
 
     # --- opplasting ---
-    def analyse(self, tmp_path, filename):
+    def analyse(self, tmp_path, filename, hint=None):
+        """hint = (lat, lon) til maskina: brukt når ei punktsky manglar koordinatsystem."""
         ext = Path(filename).suffix.lower()
         if ext in (".tif", ".tiff"):
             grid, info, errors, warns = analyse_geotiff(tmp_path, filename=filename)
@@ -430,20 +431,93 @@ class TerrainLibrary:
                 return self._keep_big(tmp_path, filename, info, warns)
         elif ext == ".dtm":
             grid, info, errors, warns = analyse_topocad(tmp_path)
-        elif ext in (".las", ".laz", ".xyz", ".csv", ".txt"):
-            grid, info, errors, warns = None, {"format": ext[1:].upper()}, [
-                f"{ext[1:].upper()} blir støtta frå v1.7. Bruk GeoTIFF (.tif) inntil vidare, t.d. frå hoydedata.no."], []
+        elif ext in (".las", ".laz", ".xyz", ".csv", ".txt"):   # eigen LiDAR / punkt (v1.6.95)
+            import punktsky as PS
+            grid, info, errors, warns = PS.analyse_pointcloud(tmp_path, filename, hint, utm_inverse,
+                                                              lambda e: CRS_NAME.get(e, f"EPSG:{e}"))
+            if grid is not None:
+                info["outline"] = _outline(info)
         else:
             grid, info, errors, warns = None, {"format": ext[1:].upper() or "ukjent"}, [
                 "Formatet blir ikkje godteke. Bruk GeoTIFF (.tif) med barmark i EUREF89 UTM 32/33 og NN2000."], []
         token = None
         if grid is not None:
+            self._compare(grid, info, warns)
             token = uuid.uuid4().hex
             with self.lock:
                 self.pending = {k: v for k, v in self.pending.items() if time.time() - v["t"] < 3600}
                 self.pending[token] = {"grid": grid, "info": info, "warns": warns, "file": filename, "t": time.time()}
         info.pop("outline_utm", None)
         return {"ok": grid is not None, "token": token, "file": filename, "info": info, "errors": errors, "warnings": warns}
+
+    def _compare(self, grid, info, warns, samples=400):
+        """Samanlikn den nye modellen med aktive barmarkslag der dei overlappar, og med geoidehøgda der han ligg.
+        Skilnad ≈ 0 → høgdene er NN2000. Skilnad ≈ geoidehøgda (ca. 45 m på Sunnmøre) → høgdene er ellipsoidiske.
+        Resultatet blir vist ved import, så føraren kan velje rett høgdesystem."""
+        try:
+            ny, nx = grid.shape
+            cy, cx = (info["y0"] - ny * info["dy"] / 2), (info["x0"] + nx * info["dx"] / 2)
+            la, lo = utm_inverse(cx, cy, info["zone"])
+            N = GEOID.n(la, lo)
+            if N is not None:
+                info["geoidN"] = round(N, 2)
+            if not self.layers:
+                return
+            rng = np.random.default_rng(1)  # fast frø: same fil gir same samanlikning
+            rr, cc = np.nonzero(np.isfinite(grid))
+            if not len(rr):
+                return
+            pick = rng.choice(len(rr), size=min(samples, len(rr)), replace=False)
+            diffs, names = [], {}
+            for k in pick:
+                r, c = int(rr[k]), int(cc[k])
+                E, Nn = info["x0"] + (c + 0.5) * info["dx"], info["y0"] - (r + 0.5) * info["dy"]
+                la, lo = utm_inverse(E, Nn, info["zone"])
+                t = self.height(la, lo)
+                if t:
+                    diffs.append(float(grid[r, c]) - t["h"])
+                    names[t["name"]] = names.get(t["name"], 0) + 1
+            if len(diffs) < 20:
+                return
+            d = float(np.median(diffs))
+            spread = float(np.percentile(np.abs(np.asarray(diffs) - d), 90))
+            ref = max(names, key=names.get)
+            guess = None
+            if abs(d) < 2:
+                guess = "nn2000"
+            elif N is not None and abs(d - N) < 2:
+                guess = "ell"
+            info["cmp"] = {"layer": ref, "median": round(d, 2), "spread": round(spread, 2), "n": len(diffs), "guess": guess}
+            if guess == "ell":
+                warns.append(f"Modellen ligg {d:.1f} m over «{ref}» – nesten lik geoidehøgda ({N:.1f} m). Høgdene ser ut til å vere "
+                             "ellipsoidiske (rå GPS-høgd). Vel «Ellipsoidiske» ved import, så blir dei gjorde om til NN2000.")
+            elif guess == "nn2000":
+                warns.append(f"Modellen ligg {d:+.2f} m frå «{ref}» (median av {len(diffs)} punkt) – høgdene ser ut til å vere NN2000.")
+            else:
+                warns.append(f"Modellen ligg {d:+.1f} m frå «{ref}». Det passar verken med NN2000 eller ellipsoidisk høgd – "
+                             "sjekk høgdesystem, einingar og koordinatsystem før import.")
+        except Exception as e:  # samanlikninga er berre ei hjelp – aldri ein grunn til at analysen feilar
+            warns.append(f"Kunne ikkje samanlikne med andre lag: {e}")
+
+    @staticmethod
+    def geoid_grid(info, step_m=100.0):
+        """Geoidehøgda N for kvar rute i rutenettet (Kartverket-modellen, grovt utval + bilineær interpolasjon)."""
+        ny, nx, dx, dy = info["ny"], info["nx"], info["dx"], info["dy"]
+        kx, ky = max(2, int(nx * dx / step_m) + 2), max(2, int(ny * dy / step_m) + 2)
+        xs = np.linspace(info["x0"] + dx / 2, info["x0"] + (nx - 0.5) * dx, kx)
+        ys = np.linspace(info["y0"] - dy / 2, info["y0"] - (ny - 0.5) * dy, ky)
+        coarse = np.empty((ky, kx))
+        for j, y in enumerate(ys):
+            for i, x in enumerate(xs):
+                la, lo = utm_inverse(x, y, info["zone"])
+                v = GEOID.n(la, lo)
+                if v is None:
+                    raise ValueError("Delar av modellen ligg utanfor geoidemodellen til Kartverket – kan ikkje gjere om til NN2000.")
+                coarse[j, i] = v
+        cx = np.linspace(0, kx - 1, nx)
+        cyy = np.linspace(0, ky - 1, ny)
+        rows = np.array([np.interp(cx, np.arange(kx), coarse[j]) for j in range(ky)])          # ky × nx
+        return np.array([np.interp(cyy, np.arange(ky), rows[:, i]) for i in range(nx)]).T.astype(np.float32)  # ny × nx
 
     # --- store filer (t.d. Kartverket DTM1 «som kildedata», fleire GB): behald fila og klipp ut eit utsnitt ---
     BIG_TTL = 3 * 3600
@@ -484,11 +558,19 @@ class TerrainLibrary:
                 self.pending[token] = {"grid": grid, "info": info, "warns": warns, "file": b["file"], "t": time.time()}
         return {"ok": grid is not None, "token": token, "file": b["file"], "info": info, "errors": errors, "warnings": warns, "cropped": True}
 
-    def import_pending(self, token, name, ltype="barmark", priority=None, replace_id=None, source="", vdatum_confirmed=False):
+    def import_pending(self, token, name, ltype="barmark", priority=None, replace_id=None, source="", vdatum_confirmed=False,
+                       heights=None):
+        """heights: "nn2000" (høgdene er NN2000) eller "ell" (ellipsoidiske, EUREF89 – blir gjorde om med geoiden)."""
         with self.lock:
-            p = self.pending.pop(token, None)
+            p = self.pending.get(token)
             if not p:
                 raise ValueError("Analysen er utgått – last opp fila på nytt.")
+            if heights == "ell":  # eigen skanning med rå GPS-høgd: NN2000 = ellipsoidisk − N
+                p["grid"] = p["grid"] - self.geoid_grid(p["info"])
+                i = p["info"]
+                i.update(vdatum="NN2000 (gjort om frå ellipsoidisk med geoiden)",
+                         hmin=float(np.nanmin(p["grid"])), hmax=float(np.nanmax(p["grid"])))
+            self.pending.pop(token, None)
             if ltype not in TYPES:
                 raise ValueError("Ukjend type terreng.")
             if replace_id:
@@ -512,7 +594,7 @@ class TerrainLibrary:
             np.save(d / "grid.npy", p["grid"])
             i = p["info"]
             vd = i["vdatum"]
-            if vd != "NN2000" and vdatum_confirmed:
+            if vd != "NN2000" and not vd.startswith("NN2000") and vdatum_confirmed:
                 vd = "NN2000 (stadfesta)"  # føraren har stadfest høgdesystemet ved import
             self.layers[lid] = {
                 "id": lid, "name": name or Path(p["file"]).stem, "type": ltype, "file": p["file"], "source": source,
@@ -654,39 +736,28 @@ class Geoid:
 GEOID = Geoid(Path(__file__).resolve().parent / "geoide" / "no_kv_HREF2018B_NN2000_EUREF89.tif")
 
 
-def nn2000_height(alt, sep, lat, lon, cal):
-    """NN2000-høgd for antenna etter innstillinga «GNSS-høgd frå mottakaren», eller None."""
+def nn2000_height(alt, sep, lat, lon, cal=None):
+    """NN2000-høgd for antenna, eller None. Alltid via geoiden (v1.6.95, eigaren: «Det skal berre vere geoide»):
+    ellipsoidisk høgd = høgd + geoideseparasjon i GGA (rett anten mottakaren sender ellipsoidisk høgd med separasjon 0,
+    som RTK-motoren i SNOWMAN, eller høgd over sin eigen geoide med separasjonen ved sida), og NN2000 = ellipsoidisk − N
+    frå Kartverket-modellen der maskina er. cal blir ikkje lenger brukt (eldre kall)."""
     if alt is None:
         return None
-    mode = cal.get("heightMode")
-    if mode == "geoide":  # mottakaren gir ellipsoidisk høgd (alt + sep) – Kartverket-modellen gir N der maskina er
-        N = GEOID.n(lat, lon)
-        return None if N is None else alt + (sep or 0.0) - N
-    if mode == "ellipsoid":
-        if sep is None or cal.get("geoidN") in (None, ""):
-            return None
-        return alt + sep - float(cal["geoidN"])
-    return alt
+    N = GEOID.n(lat, lon)
+    return None if N is None else alt + (sep or 0.0) - N
 
 
 def snow_depth(gga_alt, gga_sep, fix, terrain, cal):
-    """Rekn ut snødjupne. cal: antZ, zOff, heightMode ('nn2000'|'geoide'|'ellipsoid'), geoidN, _N (geoidemodell), calibrated.
-    Returnerer (djupne eller None, status, detaljar)."""
+    """Rekn ut snødjupne. cal: antZ, zOff, _N (geoidehøgd frå Kartverket-modellen der maskina er), calibrated.
+    Høgda er alltid NN2000 = (høgd + separasjon i GGA) − N. Returnerer (djupne eller None, status, detaljar)."""
     if terrain is None:
         return None, "OUTSIDE", {}
     if gga_alt is None:
         return None, "NO_HEIGHT", {}
-    if cal.get("heightMode") == "geoide":
-        N = cal.get("_N")  # geoidehøgd frå Kartverket-modellen der maskina er (sett av tenesta)
-        if N is None:
-            return None, "NO_GEOID", {}
-        H = gga_alt + (gga_sep or 0.0) - N
-    elif cal.get("heightMode") == "ellipsoid":
-        if gga_sep is None or cal.get("geoidN") in (None, ""):
-            return None, "NO_GEOID", {}
-        H = gga_alt + gga_sep - float(cal["geoidN"])  # ellipsoidisk høgd − geoidehøgd = NN2000
-    else:
-        H = gga_alt
+    N = cal.get("_N")
+    if N is None:
+        return None, "NO_GEOID", {}
+    H = gga_alt + (gga_sep or 0.0) - N
     surface = H - float(cal.get("antZ", 0)) - float(cal.get("zOff", 0))  # høgd der maskina står (snøoverflata)
     raw = surface - terrain["h"]
     det = {"H": round(H, 3), "surface": round(surface, 3), "terrain": round(terrain["h"], 3), "raw": round(raw, 3)}
