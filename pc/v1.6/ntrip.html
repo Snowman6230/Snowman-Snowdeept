@@ -1,10 +1,10 @@
 <!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. --><meta charset="utf-8"><title>SNOWMAN NTRIP v1.2</title>
 <style>body{font:16px Arial;background:#07141c;color:#eef;margin:25px;max-width:900px}input{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:230px}button{padding:11px 18px;margin:8px;background:#1687bd;color:white;border:0;border-radius:7px}button:disabled{opacity:.45}.g{display:grid;grid-template-columns:180px 1fr;gap:4px}.card{background:#0b202b;padding:18px;border-radius:12px;margin:12px 0}.ok{color:#4f6}.bad{color:#f86}select{background:#102733;color:#fff;border:1px solid #456;padding:9px;margin:4px;width:252px}#mtab{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}#mtab td,#mtab th{border-bottom:1px solid #294452;padding:6px;text-align:left}#mtab tr.m:hover{background:#163a4c;cursor:pointer}#mtab tr.sel{background:#1b4a60}</style>
 <h1>SNOWMAN NTRIP / GNSS <button onclick="location.href='/feilsok'" style="background:#7a4fc0;font-size:15px;vertical-align:middle">🔍 FEILSØK RTK</button><button onclick="location.href='/'" style="background:#2e4b5c;font-size:15px;vertical-align:middle">← TILBAKE TIL SNOWMAN</button></h1>
-<div class=card><h3>GNSS / Leica</h3><div class=g>
+<div class=card><h3>GNSS-mottakar (berre lesing)</h3><div class=g>
 <label>COM-port</label><input id=serial_port list=ports placeholder="t.d. COM4"><datalist id=ports></datalist>
 <label>Baud</label><input id=baud value="115200"></div>
-<h3>CPOS / NTRIP</h3><div class=g>
+<h3>NTRIP (korreksjonar til RTK-motoren i SNOWMAN)</h3><div class=g>
 <label>Caster</label><input id=caster placeholder="caster-adresse">
 <label>Port</label><input id=caster_port value="2101">
 <label>Mountpoint</label><div><input id=mountpoint><button type=button onclick=mounts() style="margin:4px;padding:9px 14px">HENT MOUNTPOINTS</button></div>
@@ -15,15 +15,9 @@
 <label>Ny oppkopling etter</label><div><input id=ntrip_timeout type=number min=5 max=120 style="width:80px"> sekund utan korreksjonar</div></div>
 <div id=mlist></div>
 <h3>Kvar blir RTK rekna?</h3>
-<select id=rtk_mode style="width:520px"><option value="snowman">I SNOWMAN – mottakaren sender rådata · berre lesing (standard)</option><option value="mottakar_sjolv">I mottakaren – han hentar korreksjonane sjølv (SIM/radio) · berre lesing</option><option value="mottakar_send">I mottakaren – SNOWMAN sender korreksjonane til han (skriv til mottakaren)</option></select>
-<p style="font-size:13px;color:#9ab3c1;margin:4px"><b>Berre lesing</b> (dei to første): SNOWMAN opnar porten utan å kunne skrive, med DTR/RTS av – mottakaren får aldri noko frå SNOWMAN. Berre det siste valet sender korreksjonar og oppstartskommandoar til mottakaren. «Mottakaren hentar sjølv»: SNOWMAN koplar ikkje til casteren (same konto kan ikkje vere innlogga to stader).</p>
-<p style="font-size:13px;color:#9ab3c1;margin:4px"><b>I SNOWMAN:</b> SNOWMAN reknar RTK sjølv (RTKLIB) frå basen (NTRIP) og <b>rådata</b> frå mottakaren – RTCM 3 MSM (1074/1077/1084/1087 …) eller 1004/1012, helst med satellittbaner (1019/1020/1042/1046). GGA åleine kan ikkje gi RTK. Ingenting blir sendt til mottakaren. GGA frå mottakaren går uredigert til casteren. Første gong blir RTKLIB installert automatisk (krev nett).</p>
-<h3>Ikkje send desse RTCM-typane til mottakaren (valfritt – berre når SNOWMAN sender korreksjonane)</h3>
-<input id=rtcm_drop placeholder="t.d. 1008,1033" style="max-width:260px">
-<p style="font-size:13px;color:#9ab3c1;margin:4px">Vanlegvis tomt. Kan brukast om ein mottakar ikkje godtek enkelte meldingstypar (t.d. antennenamn i 1008/1033). Korreksjonane (1004/1012, 1006, 1230) blir sende som før.</p>
-<h3>Oppstartskommandoar til mottakaren (valfritt – berre når SNOWMAN sender korreksjonane)</h3>
-<textarea id=initCmds rows=3 style="width:100%;max-width:640px;background:#102733;color:#fff;border:1px solid #456;padding:8px;font-family:monospace" placeholder="Éin kommando per linje. Blir sende kvar gong porten blir opna."></textarea>
-<p style="font-size:13px;color:#9ab3c1;margin:4px">Vanlegvis tomt. Svaret frå mottakaren blir vist under «Svar frå mottakar». GeoMax Zenith35 Pro (felttest 9.10.2026): Working Mode = RTK Rover (aldri RTK Base på maskina), RTK Data Source = Bluetooth, utgåande port. Mottakaren svara <code>@GNSS,DN/LANTENNA/ADVNULLANTENNA/V@,ERROR</code>: han tolkar korreksjonane som kommandoar, så Bluetooth-porten er kommandoporten hans. Bruk RTK Data Source = GSM/GPRS (SIM og NTRIP i Zenith-en) eller External (kabel); posisjonen kan framleis lesast over Bluetooth.</p>
+<select id=rtk_mode style="width:520px"><option value="snowman">I SNOWMAN – mottakaren sender rådata (standard)</option><option value="mottakar_sjolv">I mottakaren – han hentar korreksjonane sjølv (SIM/radio)</option></select>
+<p style="font-size:13px;color:#9ab3c1;margin:4px"><b>Berre lesing – alltid:</b> SNOWMAN sender aldri noko til mottakaren. Porten blir opna utan å kunne skrive, med DTR/RTS av. Korreksjonane frå NTRIP går berre til RTK-motoren i SNOWMAN, og GGA frå mottakaren går uredigert til casteren.</p>
+<p style="font-size:13px;color:#9ab3c1;margin:4px"><b>I SNOWMAN:</b> SNOWMAN reknar RTK sjølv (RTKLIB) frå basen (NTRIP) og <b>rådata</b> frå mottakaren – RTCM 3 MSM (1074/1077/1084/1087 …) eller 1004/1012, helst med satellittbaner (1019/1020/1042/1046). GGA åleine kan ikkje gi RTK. Første gong blir RTKLIB installert automatisk (krev nett).<br><b>Mottakaren hentar sjølv:</b> mottakaren får korreksjonar over eige SIM-kort eller radio frå basen; SNOWMAN les berre posisjonen og koplar ikkje til casteren (same konto kan ikkje vere innlogga to stader).</p>
 <p id=portinfo style="font-size:13px;color:#9ab3c1;margin:4px"></p>
 <button id=saveBtn onclick=save()>LAGRE / KOPLE TIL</button><button onclick="location.href='/feilsok'" style="background:#7a4fc0">🔍 FEILSØK RTK</button><button onclick="location.href='/'" style="background:#2e4b5c">← TILBAKE TIL SNOWMAN</button><div id=saveMsg aria-live=polite style="margin:4px 8px;font-weight:bold;min-height:1.3em"></div></div>
 <div class=card><h3>Status</h3><pre id=s>Vent...</pre></div>
@@ -50,7 +44,7 @@ document.getElementById('portinfo').textContent=p.length?'Portar på PC-en: '+p.
 let saving=false;
 async function save(){if(saving)return;saving=true;let btn=document.getElementById('saveBtn'),msg=document.getElementById('saveMsg');
 btn.disabled=true;btn.textContent='LAGRAR …';btn.style.background='#4a6878';msg.className='';msg.textContent='';
-let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password','initCmds','rtcm_drop','rtk_mode','ntrip_version','ntrip_timeout'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;x.ntrip_timeout=Math.max(5,+x.ntrip_timeout||20);if(!x.password||document.getElementById('password').dataset.saved)delete x.password;
+let x={};for(let id of ['serial_port','baud','caster','caster_port','mountpoint','username','password','rtk_mode','ntrip_version','ntrip_timeout'])x[id]=document.getElementById(id).value;x.baud=+x.baud;x.caster_port=+x.caster_port;x.ntrip_timeout=Math.max(5,+x.ntrip_timeout||20);if(!x.password||document.getElementById('password').dataset.saved)delete x.password;
 try{let r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x)}),j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
 let d=new Date(),kl=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 btn.textContent='✓ LAGRA';btn.style.background='#1f8a4c';msg.className='ok';msg.textContent='✓ Lagra kl. '+kl+'. Koplar til mottakar og caster …';
@@ -65,8 +59,8 @@ setTimeout(()=>{btn.disabled=false;btn.textContent='LAGRE / KOPLE TIL';btn.style
 // Kontroll av korreksjonane (v1.6.39): er dei gyldige RTCM 3, kva sender basen, kor langt unna er han?
 function rtcmTxt(x){let r=x.rtcm;if(!r)return 'Korreksjonar: --';
 let t=Object.keys(r.types||{}).join(', ')||'--';
-return `Korreksjonar: ${r.frames} gyldige RTCM-rammer · ${r.crcErr} CRC-feil · ${r.junk} byte anna (blir ikkje sende til mottakaren)${r.junkText?'\nTekst frå casteren: «'+r.junkText+'»':''}
-Meldingstypar: ${t}${Object.keys(r.dropped||{}).length?'\nHaldne tilbake frå mottakaren: '+Object.entries(r.dropped).map(([k,v])=>k+' ('+v+')').join(', '):''}
+return `Korreksjonar: ${r.frames} gyldige RTCM-rammer · ${r.crcErr} CRC-feil · ${r.junk} byte anna${r.junkText?'\nTekst frå casteren: «'+r.junkText+'»':''}
+Meldingstypar: ${t}
 Satellittsystem frå basen: ${(r.systems||[]).join(', ')||'--'}
 Basestasjon: ${r.station??'--'}${r.baseKm!=null?' · '+r.baseKm+' km unna':''}${r.age!=null?' · siste for '+r.age+' s sidan':''}
 Vurdering: ${(/^OK/.test(r.verdict||'')&&/RTK/.test(x.fix||''))?'OK: gyldige RTCM-korreksjonar, og mottakaren brukar dei ('+x.fix+').':(r.verdict||'--')}`}
@@ -88,8 +82,8 @@ Høgd frå mottakar: ${x.altitude??'--'} m (geoidehøgd i meldinga: ${x.geoid_se
 Ellipsoidisk høgd: ${x.h_ell??'--'} m · Kartverket-geoide N: ${x.geoid_model??'--'} m
 NN2000-høgd (med kalibreringa): ${x.h_nn2000??'--'} m
 Posisjon: ${x.lat??'--'}, ${x.lon??'--'}${x.serial_connected&&x.gga_age!=null&&x.gga_age>=3?'  – INGEN NY POSISJON PÅ '+Math.round(x.gga_age)+' s':''}${x.nmea_bad?'\nNMEA med feil sjekksum (forkasta): '+x.nmea_bad:''}${x.nmea_nock?'\nNMEA utan sjekksum: '+x.nmea_nock:''}
-RTK blir rekna i: ${x.rtk_mode==='snowman'?'SNOWMAN (RTK-motor)':x.rtk_mode==='mottakar_sjolv'?'mottakaren (hentar korreksjonane sjølv)':'mottakaren (SNOWMAN sender korreksjonane)'} · porten: ${x.serial_readonly?'BERRE LESING':'les og skriv'}${x.rtk_mode==='snowman'?'\nRTK-motor: '+(x.motor?('klar · rådata frå mottakar '+x.motor.rover_obs+' epokar ('+(Object.keys(x.motor.rover_types||{}).join(', ')||'ingen RTCM')+') · baseepokar '+x.motor.base_obs+' · baner '+x.motor.eph+(x.motor.eph_file?' (+'+x.motor.eph_file+' frå fil)':'')+' · løysing '+x.motor.last_name+(x.motor.last_ratio!=null?' ratio '+x.motor.last_ratio:'')+' · FIX '+x.motor.fix+' / FLOAT '+x.motor.float):(x.rtk_motor||'startar …')):''}
-RTCM mottatt: ${x.bytes_rtcm} byte · sendt til mottakaren: ${x.bytes_rtcm_out||0} byte
+RTK blir rekna i: ${x.rtk_mode==='mottakar_sjolv'?'mottakaren (hentar korreksjonane sjølv)':'SNOWMAN (RTK-motor)'} · porten: BERRE LESING${x.rtk_mode==='snowman'?'\nRTK-motor: '+(x.motor?('klar · rådata frå mottakar '+x.motor.rover_obs+' epokar ('+(Object.keys(x.motor.rover_types||{}).join(', ')||'ingen RTCM')+') · baseepokar '+x.motor.base_obs+' · baner '+x.motor.eph+(x.motor.eph_file?' (+'+x.motor.eph_file+' frå fil)':'')+' · løysing '+x.motor.last_name+(x.motor.last_ratio!=null?' ratio '+x.motor.last_ratio:'')+' · FIX '+x.motor.fix+' / FLOAT '+x.motor.float):(x.rtk_motor||'startar …')):''}
+RTCM mottatt: ${x.bytes_rtcm} byte (til RTK-motoren – ingenting til mottakaren)
 ${rtcmTxt(x)}
 Mottakaren brukar korreksjonar: ${x.corr_age!=null?'alder '+x.corr_age+' s · base-ID '+(x.base_id??'?')+(/RTK/.test(x.fix||'')?'':' (kan vere SBAS, ikkje RTK)'):'nei (tomt korreksjonsfelt i GGA)'}${x.rtk_hint?'\nUTAN RTK FIX: '+x.rtk_hint:''}
 Svar frå mottakar: ${x.rx_text||'--'}${x.rx_text&&x.rx_time?' (for '+Math.round(Date.now()/1000-x.rx_time)+' s sidan)':''}

@@ -2,9 +2,11 @@
 """RTK-feilsøkar: går gjennom heile kjeda frå PC til RTK FIX, steg for steg, og seier kvar det stoppar og kva føraren
 skal gjere. Vist på sida /feilsok (Innst. › GNSS › FEILSØK RTK og GNSS-panelet).
 
-Kjeda:  mottakarport → data frå mottakaren → satellittar → mottakarmodus
+Kjeda:  mottakarport (berre lesing) → data frå mottakaren → satellittar → mottakarmodus
         → internett → caster → innlogging/mountpoint → korreksjonar → basen → avstand
-        → korreksjonar til mottakaren → mottakaren godtek dei → mottakaren brukar dei → RTK FIX → snødjupne
+        → RTK i SNOWMAN: motor → rådata frå mottakaren → basedata → satellittbaner
+          (eller: mottakaren hentar korreksjonane sjølv)  → RTK FIX → snødjupne
+SNOWMAN sender aldri noko til mottakaren (eigaren 2026-10-11).
 
 Kvart steg: {"id","title","status": ok|warn|fail|wait|skip, "detail" (tal), "action" (kva gjere)}.
 Leverandøruavhengig: tips for bestemte mottakarar (t.d. GeoMax Zenith) står som døme, ikkje som krav.
@@ -112,6 +114,7 @@ def check(st, cfg, ports=None, net=None, now=None):
     gga_age = (now - st["gga_time"]) if st.get("gga_time") else None
     err = str(st.get("last_error") or "")
     sim = bool(st.get("simulated"))
+    mode = "mottakar_sjolv" if st.get("rtk_mode") == "mottakar_sjolv" else "snowman"   # SNOWMAN sender aldri noko til mottakaren
 
     # ---------- 1. Mottakarporten ----------
     pdesc = next((p.get("desc", "") for p in ports if str(p.get("port", "")).upper() == port.upper()), None)
@@ -172,7 +175,7 @@ def check(st, cfg, ports=None, net=None, now=None):
     # ---------- 5. Mottakarmodus ----------
     if not have_pos:
         _step(S, "mode", "Mottakaren er rover", SKIP, "Ventar på posisjon.")
-    elif fix == "MANUELL" and st.get("rtk_mode") == "snowman":
+    elif fix == "MANUELL" and mode == "snowman":
         _step(S, "mode", "Mottakaren er rover", OK, "Mottakaren står som base/fast posisjon – det går bra når RTK blir rekna i SNOWMAN "
               "(han treng berre sende rådata).")
     elif fix == "MANUELL":
@@ -187,7 +190,7 @@ def check(st, cfg, ports=None, net=None, now=None):
     # ---------- 6. Internett og caster ----------
     caster, cport = str(cfg.get("caster") or ""), cfg.get("caster_port") or 2101
     direct = not caster and fix in ("RTK FIX", "RTK FLOAT", "SIMULERT")   # mottakaren hentar korreksjonane sjølv (GSM/radio)
-    if st.get("rtk_mode") == "mottakar_sjolv":
+    if mode == "mottakar_sjolv":
         _step(S, "net", "Internett og caster", SKIP, "Mottakaren hentar korreksjonane sjølv (SIM/radio) – SNOWMAN koplar ikkje til "
               "casteren og sender ingenting til mottakaren (berre lesing).")
         caster = ""   # stega for korreksjonar via SNOWMAN gjeld ikkje
@@ -271,11 +274,11 @@ def check(st, cfg, ports=None, net=None, now=None):
     else:
         _step(S, "dist", "Avstand til basen", OK, f"{km} km")
 
-    if st.get("rtk_mode") == "snowman" and sim:
+    if mode == "snowman" and sim:
         _step(S, "motor", "RTK-motoren i SNOWMAN", SKIP, "Simulatoren sender ferdig rekna RTK (GGA) – rådata trengst ikkje i test.")
-    elif st.get("rtk_mode") == "snowman":
+    elif mode == "snowman":
         _snowman_steps(S, st, r, now)
-    elif st.get("rtk_mode") == "mottakar_sjolv":
+    else:   # mottakar_sjolv: mottakaren hentar korreksjonane sjølv – SNOWMAN berre les
         bid = str(st.get("base_id") or "").strip()
         if not have_pos:
             _step(S, "use", "Mottakaren får korreksjonar sjølv", SKIP)
@@ -285,62 +288,6 @@ def check(st, cfg, ports=None, net=None, now=None):
             _step(S, "use", "Mottakaren får korreksjonar sjølv", FAIL, f"Status {fix}" + (f" · base-ID {bid}" if bid else ", tomt korreksjonsfelt i GGA"),
                   "Korreksjonane kjem ikkje fram til mottakaren. Sjekk på mottakaren: RTK Data Source = GSM/GPRS (SIM med data, caster, "
                   "mountpoint og konto lagt inn i mottakaren) eller UHF (radio frå basen), og «Datalink Status» (t.d. Zenith: Status Info).")
-    else:
-        # ---------- 11. Korreksjonar til mottakaren ----------
-        out, ot = st.get("bytes_rtcm_out") or 0, st.get("rtcm_out_time")
-        if not (st.get("serial_connected") and r.get("frames")):
-            _step(S, "send", "Korreksjonar sende til mottakaren", SKIP)
-        elif not out or (ot and now - ot > 10):
-            _step(S, "send", "Korreksjonar sende til mottakaren", FAIL,
-                  f"{out} byte sendt" + (f", siste for {now - ot:.0f} s sidan" if ot else "") + (f" · {err}" if "send" in err.lower() else ""),
-                  "SNOWMAN får ikkje skrive til porten. Sambandet er truleg dødt – SNOWMAN opnar porten på nytt; start mottakaren på nytt om det varer.")
-        else:
-            dr = r.get("dropped") or {}
-            _step(S, "send", "Korreksjonar sende til mottakaren", OK, f"{out // 1024} kB sendt" +
-                  (" · halde tilbake: " + ", ".join(f"{k} ({v})" for k, v in dr.items()) if dr else ""))
-
-        # ---------- 12. Mottakaren godtek korreksjonane ----------
-        rx, rxt = str(st.get("rx_text") or ""), st.get("rx_time") or 0
-        recent = rxt and now - rxt < 60
-        if not (st.get("serial_connected") and out):
-            _step(S, "accept", "Mottakaren godtek korreksjonane", SKIP)
-        elif recent and re.search(r"^@\w+,.*,ERROR", rx):
-            # Kommandoprotokoll (t.d. GeoMax/ComNav «@GNSS,<ord>,ERROR»): mottakaren tolkar bitar av korreksjonane som
-            # kommandoar – sett i felt 9.10.2026 med DN, LANTENNA, ADVNULLANTENNA og V@. Porten er kommandoporten hans.
-            _step(S, "accept", "Mottakaren godtek korreksjonane", FAIL, f"Mottakaren svarar «{rx[:70]}» (for {now - rxt:.0f} s sidan).",
-                  "Mottakaren tolkar korreksjonane som kommandoar: porten SNOWMAN brukar er kommandoporten hans, ikkje "
-                  "korreksjonsinngangen. SNOWMAN kan ikkje rette dette. Løysing: la mottakaren hente korreksjonane sjølv "
-                  "(RTK Data Source = GSM/GPRS med SIM og NTRIP-oppsett i mottakaren), eller bruk kabel til korreksjonsinngangen "
-                  "(External). Posisjonen kan framleis lesast over Bluetooth.")
-        elif recent and "ERROR" in rx.upper():
-            _step(S, "accept", "Mottakaren godtek korreksjonane", WARN, f"Mottakaren svarar «{rx[:70]}» (for {now - rxt:.0f} s sidan).",
-                  "Mottakaren avviser noko av det han får. Sjekk at korreksjonsinngangen hans er rett (t.d. RTK Data Source = Bluetooth/External).")
-        else:
-            _step(S, "accept", "Mottakaren godtek korreksjonane", OK, "Ingen feilsvar frå mottakaren." + (f" Siste svar: «{rx[:50]}»" if rx else ""))
-
-        # ---------- 13. Mottakaren brukar korreksjonane ----------
-        bid = str(st.get("base_id") or "").strip()
-        try:
-            bidn = int(bid)
-        except ValueError:
-            bidn = None
-        if not have_pos or not out:
-            _step(S, "use", "Mottakaren brukar korreksjonane", SKIP)
-        elif fix in ("RTK FIX", "RTK FLOAT"):
-            _step(S, "use", "Mottakaren brukar korreksjonane", OK, f"Korreksjonsalder {st.get('corr_age')} s · base-ID {bid or '?'}")
-        elif bidn is not None and 120 <= bidn <= 158:
-            _step(S, "use", "Mottakaren brukar korreksjonane", FAIL,
-                  f"Mottakaren brukar SBAS-satellitt {bidn} i staden for basen (status {fix}).",
-                  "Mottakaren les ikkje korreksjonane som korreksjonar. Sjekk på mottakaren: RTK Data Source = same veg som SNOWMAN "
-                  "(Bluetooth/External), Working Mode = RTK Rover, og «Datalink Status» (t.d. Zenith: Status Info). Sjå òg steget over.")
-        elif st.get("corr_age") is None:
-            _step(S, "use", "Mottakaren brukar korreksjonane", FAIL, f"Status {fix}, tomt korreksjonsfelt i GGA.",
-                  "Mottakaren brukar ikkje korreksjonane. Sjekk korreksjonsinngangen på mottakaren (RTK Data Source), og steget over. "
-                  "Alternativ: la mottakaren hente korreksjonane sjølv (GSM/SIM), eller bruk kabel (External).")
-        else:
-            _step(S, "use", "Mottakaren brukar korreksjonane", WARN, f"Status {fix} · korreksjonsalder {st.get('corr_age')} s · base-ID {bid}",
-                  "Mottakaren brukar korreksjonar, men berre som DGPS. Vent, og sjekk sikta.")
-
 
     # ---------- 14. RTK-løysing ----------
     if fix == "RTK FIX" or fix == "SIMULERT":
@@ -380,31 +327,22 @@ def report(res, version=""):
 if __name__ == "__main__":     # sjølvtest: python3 rtksjekk.py
     now = time.time()
     base = {"serial_connected": True, "port": "COM4", "baud": 115200, "gga_time": now - 0.5, "fix": "GPS", "satellites": 27, "hdop": 0.5,
-            "ntrip_connected": True, "ntrip_proto": "NTRIP 1", "bytes_rtcm": 1480730, "bytes_rtcm_out": 911683, "rtcm_out_time": now - 1,
+            "ntrip_connected": True, "ntrip_proto": "NTRIP 1", "bytes_rtcm": 1480730,
             "rtcm": {"frames": 11580, "crcErr": 0, "types": {"1004": 1, "1006": 1, "1008": 1, "1012": 1, "1033": 1}, "systems": ["GLONASS", "GPS"],
                      "station": 0, "baseKm": 11.25, "age": 0.2},
-            "rx_text": "@GNSS,ADVNULLANTENNA,ERROR,1*33", "rx_time": now - 10, "corr_age": None, "base_id": None}
-    cfg = {"serial_port": "COM4", "baud": 115200, "caster": "gpsbase.dyndns.org", "caster_port": 2101, "mountpoint": "TH", "rtcm_drop": ""}
+            "corr_age": None, "base_id": None}
+    cfg = {"serial_port": "COM4", "baud": 115200, "caster": "gpsbase.dyndns.org", "caster_port": 2101, "mountpoint": "TH"}
     ports = [{"port": "COM3", "desc": "Standard Serial over Bluetooth link (COM3)"}, {"port": "COM4", "desc": "Standard Serial over Bluetooth link (COM4)"}]
-    r = check(base, cfg, ports, None, now)
+    motor = {"ready": True, "rover_obs": 0, "rover_types": {}, "base_obs": 50, "base_age": 0.5, "eph": 0, "base_pos": [1, 2, 3]}
+    # Felttilstanden 9.10.: Zenith sender berre GGA → RTK i SNOWMAN stoppar på «rådata»
+    r = check(dict(base, motor=dict(motor)), cfg, ports, None, now)
     print(report(r, "test"))
-    assert r["first"] == "accept", r["first"]
-    r2 = check(dict(base, rx_text="@GNSS,V@,ERROR,1*B6"), dict(cfg, rtcm_drop="1008,1033"), ports, None, now)
-    assert r2["first"] == "accept" and "kommandoar" in r2["steps"][11]["action"], r2["first"]
-    r = check(dict(base, fix="RTK FIX", corr_age=1.0, base_id="0000", rx_text="", depth_status="OK", depth=0.9), dict(cfg, rtcm_drop="1008,1033"), ports, None, now)
-    assert r["ok"], [s for s in r["steps"] if s["status"] != OK]
+    assert r["first"] == "raw", r["first"]
     r = check(dict(base, serial_connected=False, last_error="Serial: could not open port 'COM4': FileNotFoundError(2, ...)"), cfg, ports, None, now)
     assert r["first"] == "open", r["first"]
-    r = check(dict(base, fix="MANUELL"), cfg, ports, None, now)
-    assert r["first"] == "mode"
     r = check(dict(base, ntrip_connected=False, rtcm={}), cfg, ports, {"dns": False, "err": "getaddrinfo failed"}, now)
     assert r["first"] == "net"
-    r = check(dict(base, rx_text="", base_id="0121"), dict(cfg, rtcm_drop="1008,1033"), ports, None, now)
-    assert r["first"] == "use", r["first"]
-    r = check(dict(base, fix="RTK FIX", ntrip_connected=False, rtcm={}, bytes_rtcm_out=0, rx_text="", depth_status="OK", depth=1.0),
-              dict(cfg, caster=""), ports, None, now)
-    assert r["ok"], [(s["id"], s["status"]) for s in r["steps"] if s["status"] not in (OK, SKIP)]
-    sm = dict(base, rtk_mode="snowman", fix="MANUELL", motor={"ready": True, "rover_obs": 0, "rover_types": {}, "base_obs": 50, "base_age": 0.5, "eph": 0, "base_pos": [1, 2, 3]})
+    sm = dict(base, rtk_mode="snowman", fix="MANUELL", motor=dict(motor))
     r = check(sm, cfg, ports, None, now)
     assert r["first"] == "raw", r["first"]
     sm["motor"].update(rover_obs=300, rover_age=0.2, rover_types={"1077": 300})
@@ -414,9 +352,12 @@ if __name__ == "__main__":     # sjølvtest: python3 rtksjekk.py
     r = check(sm, cfg, ports, None, now)
     assert r["ok"], [(x["id"], x["status"]) for x in r["steps"] if x["status"] not in (OK, SKIP)]
     print(report(r, "snowman-test"))
-    ms = dict(base, rtk_mode="mottakar_sjolv", fix="GPS", ntrip_connected=False, rtcm={}, bytes_rtcm_out=0, rx_text="")
+    ms = dict(base, rtk_mode="mottakar_sjolv", fix="GPS", ntrip_connected=False, rtcm={})
     r = check(ms, cfg, ports, None, now)
     assert r["first"] == "use", r["first"]
+    r = check(dict(ms, fix="MANUELL"), cfg, ports, None, now)
+    assert r["first"] == "mode", r["first"]
     r = check(dict(ms, fix="RTK FIX", corr_age=1.0, base_id="0000", depth_status="OK", depth=1.0), cfg, ports, None, now)
     assert r["ok"], [(x["id"], x["status"]) for x in r["steps"] if x["status"] not in (OK, SKIP)]
+    assert not any(x["id"] in ("send", "accept") for x in r["steps"])   # ingen steg om å sende til mottakaren
     print("OK")

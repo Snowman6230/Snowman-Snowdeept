@@ -9,6 +9,32 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-11
 
+### PC-prototype v1.6.94 – SNOWMAN sender aldri noko til mottakaren
+- **Avgjerd (eigaren):** «SNOWMAN skal aldri sende noko til GPS-antenna. Berre ta imot.» Dette erstattar avgjerda i
+  v1.6.93 om å behalde valet der SNOWMAN sender korreksjonane.
+- **Fjerna:**
+  - valet «I mottakaren – SNOWMAN sender korreksjonane»
+  - all sending av RTCM til mottakaren
+  - oppstartskommandoar (`initCmds`)
+  - «Ikkje send desse RTCM-typane» (`rtcm_drop`)
+  - teljing av byte sende til mottakaren
+  - steg og råd i feilsøkaren om å sende korreksjonar
+
+  Gamle oppsett med `rtk_mode` «mottakar» eller «mottakar_send» blir lese som «snowman».
+- **Endra:** mottakarporten blir alltid opna med DTR/RTS av, utan flytkontroll, og pakka inn i `LesePort`. Den kan
+  ikkje skrive. Korreksjonane frå NTRIP går berre til RTK-motoren i SNOWMAN. GGA frå mottakaren går framleis uredigert
+  til casteren, men det går til casteren og ikkje til mottakaren.
+- Det er to vegar att:
+  1. **I SNOWMAN** (standard): rådata frå mottakaren.
+  2. **Mottakaren hentar korreksjonane sjølv** (SIM/radio): SNOWMAN koplar ikkje til casteren.
+- Testa (falsk mottakar som tel byte):
+  - mottakaren fekk 0 byte i alle modusar, også når «mottakar_send», «mottakar», `initCmds` og `rtcm_drop` vart sende
+    inn direkte
+  - konfigurasjonen inneheld ikkje lenger sendefelta
+  - `rtksjekk.py` sin sjølvtest er ny, utan sendesteg
+  - `simuler-leica.py --anlegg` (`--simulert`) gav RTK FIX og snødjupne, og feilsøkaren var grøn
+  - Playwright utan JS-feil
+
 ### PC-prototype v1.6.93 – berre lesing mot mottakaren
 - **Avgjerd (eigaren):** SNOWMAN skal berre **lese** frå mottakaren, som standard. Ideen kom frå GPS-motoren
   («Snowman-GPS-motor»), som eigaren sende til analyse. Valet om at SNOWMAN sender korreksjonane, blir verande
