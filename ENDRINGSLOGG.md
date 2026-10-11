@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-11
 
+### PC-prototype v1.6.97 – statusteksten under snødjupna er lesbar
+- **Retta:** teksten under SNØDJUPNE (t.d. «IKKJE MÅLT», «IKKJE MÅLT – KREV RTK FIX») var liten gul skrift som låg
+  utanfor boksen, rett oppå det lyse kartet og snøen. Han var vanskeleg å lese (meldt av eigaren med skjermbilete).
+- **Endra:** teksten står no i eit mørkt merke med gul kant, på eiga linje under talet, med 13 px skrift (10 px på
+  smal skjerm). Merket ligg over kartet, og er gøymt når teksten er tom. Målt snødjupne får same merke i lys gråblå.
+- **Testa** i Chromium på PC-breidd (1280 px) og mobilbreidd (420 px): merket står på eiga linje og er lesbart.
+
 ### PC-prototype v1.6.96 – mobil-GPS kan slåast av
 - **Retta:** knappen «START MOBIL-GPS (TEST)» kunne berre slå mobil-GPS på. Det fanst ingen måte å slå han av
   utan å starte SNOWMAN på nytt (meldt av eigaren med skjermbilete av GNSS-panelet).

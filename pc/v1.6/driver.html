@@ -542,6 +542,10 @@
         .depth b {
           font-size: 26px;
         }
+        .depth small {
+          font-size: 10px;
+          padding: 1px 6px;
+        }
         .rtk {
           padding: 4px 6px;
           margin-right: 2px;
@@ -600,13 +604,27 @@
         background-size: 40px 40px;
       }
       .depth small {
-        display: block;
-        font-size: 10px;
+        /* v1.6.97: teksten ligg ofte utanfor boksen, oppå kartet – mørk bakgrunn så han er lesbar på lyst kart/snø */
+        position: relative;
+        z-index: 1300;
+        display: table; /* eiga linje, men berre så brei som teksten */
+        margin: 2px auto 0;
+        padding: 2px 10px;
+        border-radius: 7px;
+        background: #07141ce6;
+        border: 1px solid #ffcf5b80;
+        font-size: 13px;
         font-weight: 800;
-        color: #ffcf5b;
+        letter-spacing: 0.3px;
+        color: #ffd27a;
+        white-space: nowrap;
+      }
+      .depth small:empty {
+        display: none;
       }
       .depth.measured small {
-        color: #9ab3c1;
+        color: #c9dbe5;
+        border-color: #9ab3c180;
       }
       .tabs {
         flex-wrap: wrap;
@@ -2993,7 +3011,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.96";
+      const APP_VERSION = "1.6.97";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
