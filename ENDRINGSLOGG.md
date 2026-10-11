@@ -9,6 +9,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-11
 
+### PC-prototype v1.6.96 – mobil-GPS kan slåast av
+- **Retta:** knappen «START MOBIL-GPS (TEST)» kunne berre slå mobil-GPS på. Det fanst ingen måte å slå han av
+  utan å starte SNOWMAN på nytt (meldt av eigaren med skjermbilete av GNSS-panelet).
+- **Endra:** knappen i GNSS-panelet og i Innst. › Kart er no ein av/på-knapp: «START MOBIL-GPS (TEST)» ↔
+  «STOPP MOBIL-GPS (TEST)».
+  - Når han blir slått av, sluttar SNOWMAN å følgje mobilposisjonen. Statusen går tilbake til GNSS AV / Ingen, og
+    seine posisjonar frå nettlesaren blir ikkje brukte.
+  - Slått av for hand blir han ikkje starta automatisk att ved «Start prep».
+  - GNSS-panelet blir ikkje lenger lukka når ein trykkjer på knappen, så ein ser at statusen endrar seg.
+- **Testa** i Chromium med simulert mobilposisjon: på → «MOBIL GPS / Mobil», av → «GNSS AV / Ingen», på igjen
+  fungerer. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.95 – høgda alltid via geoiden, og eigen LiDAR i terrengmodellen
 - **Avgjerd (eigaren):** «Det skal berre vere geoide, ikkje ellipsoide.» Og: Kartverket-modellen er ein modell –
   eigen LiDAR som ein har samla inn sjølv, må også kunne brukast i modellen.

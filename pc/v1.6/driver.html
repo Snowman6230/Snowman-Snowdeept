@@ -2390,15 +2390,7 @@
           >Ekstern GNSS (Leica/RTK) blir lesen automatisk frå den lokale SNOWMAN-tenesta. Mobil-GPS kan brukast til test, men gir ikkje satellittal.</small
         ><small id="satRtk" style="display: block; margin-top: 8px; color: #ffd27a; font-weight: 700"></small
         ><button class="btn" onclick="location.href = 'feilsok'" title="Går gjennom alle stega frå mottakar til RTK FIX og viser kvar det stoppar">🔍 FEILSØK RTK</button
-        ><button
-          class="btn"
-          onclick="
-            startGPS();
-            toggleSatStatus();
-          "
-        >
-          START MOBIL-GPS (TEST)
-        </button>
+        ><button class="btn mobGpsBtn" onclick="toggleGPS()">START MOBIL-GPS (TEST)</button>
       </div>
       <div id="legend" class="legend"></div>
       <div id="tele" class="tele">
@@ -2504,7 +2496,7 @@
           ><button class="btn" onclick="centerMap()">SENTRER</button
           ><button class="btn" onclick="location.href = 'ntrip'">LEICA / CPOS / NTRIP-OPPSETT</button
           ><button class="btn" onclick="window.open('hud', 'snowmanHUD')">OPNE HUD-VISING (FRONTRUTE)</button
-          ><button class="btn" onclick="startGPS()">START MOBIL-GPS (TEST)</button>
+          ><button class="btn mobGpsBtn" onclick="toggleGPS()">START MOBIL-GPS (TEST)</button>
           <div id="gnssInfo" class="history">Ingen kontakt med lokal SNOWMAN-teneste.</div>
           <h3>ANLEGG OG KARTKJELDE</h3>
           <div class="row"><span>Anlegg</span><input id="siteName" type="text" placeholder="t.d. Fjellsætra" style="width: 190px" /></div>
@@ -3001,7 +2993,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.95";
+      const APP_VERSION = "1.6.96";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3227,6 +3219,7 @@
         if (watchId !== null) {
           navigator.geolocation.clearWatch(watchId); // ekstern GNSS har forrang framfor mobil-GPS
           watchId = null;
+          gpsButtons();
         }
         src = "gnss";
         lastGnssAt = Date.now();
@@ -4832,7 +4825,7 @@
         startClock(currentSession.start);
         $("prepBtn").classList.add("prepOn");
         $("prepBtn").innerHTML = "<i>■</i>Stopp prep";
-        if (src !== "gnss" && watchId === null && !backendOK) startGPS();
+        if (src !== "gnss" && watchId === null && !backendOK && !gpsUserOff) startGPS();
         keepAwake(true);
         setFixBox();
         toast(src === "gnss" ? "Preparering starta – GNSS" : "Preparering starta");
@@ -5416,6 +5409,32 @@
       }
 
       /* ---------- Mobil-GPS (test) ---------- */
+      // Knappen slår mobil-GPS av og på (v1.6.96). Slått av for hand = blir ikkje starta automatisk ved «Start prep».
+      let gpsUserOff = false;
+      function gpsButtons() {
+        document.querySelectorAll(".mobGpsBtn").forEach((b) => {
+          b.textContent = watchId !== null ? "STOPP MOBIL-GPS (TEST)" : "START MOBIL-GPS (TEST)";
+          b.classList.toggle("on", watchId !== null);
+        });
+      }
+      function toggleGPS() {
+        if (watchId !== null) stopGPS();
+        else {
+          gpsUserOff = false;
+          startGPS();
+        }
+      }
+      function stopGPS() {
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        gpsUserOff = true;
+        lastMob = null;
+        if (src === "mobile") src = "none";
+        setFixBox();
+        renderSat();
+        gpsButtons();
+        toast("Mobil-GPS er slått av");
+      }
       function startGPS() {
         if (src === "gnss") {
           toast("GNSS-mottakaren er aktiv – mobil-GPS blir ikkje brukt");
@@ -5432,10 +5451,12 @@
         }
         $("fix").textContent = "GPS STARTAR";
         watchId = navigator.geolocation.watchPosition(gpsOK, gpsErr, { enableHighAccuracy: true, maximumAge: 500, timeout: 20000 });
+        gpsButtons();
+        renderSat();
       }
       let lastMob = null;
       function gpsOK(p) {
-        if (src === "gnss") return;
+        if (src === "gnss" || watchId === null) return; // slått av: sein posisjon frå nettlesaren blir ikkje brukt
         src = "mobile";
         let c = p.coords,
           np = [c.latitude, c.longitude],
