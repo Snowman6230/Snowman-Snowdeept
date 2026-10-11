@@ -15,6 +15,7 @@
         --bad: #ff4d3d;
         --dim: #8fa3ad;
         --hi: #4db8ff;
+        --alert: #ffe14d;
       }
       body.night {
         /* Natt: dempa raudt/rav som ikkje øydelegg nattsynet */
@@ -24,6 +25,7 @@
         --bad: #ff2a1a;
         --dim: #8a3a1a;
         --hi: #ff9a5a;
+        --alert: #ffc23d;
       }
       * {
         box-sizing: border-box;
@@ -117,7 +119,7 @@
       }
       #bottom #ahead small {
         display: block;
-        font-size: 2.6vh;
+        font-size: 3vh;
         margin-left: 0;
         color: var(--warn);
         letter-spacing: 0.08em;
@@ -139,7 +141,7 @@
       }
       .side small {
         display: block;
-        font-size: 2.4vh;
+        font-size: 3vh;
         letter-spacing: 0.06em;
         color: var(--dim);
       }
@@ -159,21 +161,35 @@
         font-size: 3.6vh;
         color: var(--warn);
       }
-      /* Varsel: hindring i køyrebana (nedteljing) eller forbode område */
+      /* Varsel: hindring i køyrebana (nedteljing) eller forbode område.
+         v1.6.98: eigen stil som ikkje kan forvekslast med «under mål» (raud): lys gul tekst i tjukk raud ramme. Gult er
+         den sterkaste fargen i refleksen på frontruta; raudt åleine er svakast. Skrifta blir minka så lange namn får plass. */
       #warn {
         position: absolute;
+        z-index: 5;
         left: 50%;
-        top: 14vh;
+        top: 10vh;
         transform: translateX(-50%);
         font-size: 11vh;
         font-weight: 900;
-        color: var(--bad);
+        color: var(--alert);
+        border: 1.1vh solid var(--bad);
+        border-radius: 1.6vh;
+        padding: 0.4vh 2vw;
+        background: #000;
         white-space: nowrap;
         text-align: center;
         letter-spacing: 0.03em;
+        line-height: 1.1;
       }
       #warn.near {
         animation: blink 0.5s steps(2) infinite;
+      }
+      #warn .wn {
+        font-size: 1em;
+      }
+      body.warning #depthLabel {
+        visibility: hidden; /* varselet går føre: ikkje to linjer oppå kvarandre */
       }
       @keyframes blink {
         50% {
@@ -385,11 +401,42 @@
         let a = h.ahead;
         $("ahead").classList.toggle("hide", !a);
         if (a) $("ahead").innerHTML = "<small>FRAMFOR · ESTIMERT" + (h.demo ? " (DEMO)" : "") + (a.ageH != null ? " · TIDL. FLATE" : "") + "</small>≈" + fmt(a.mean) + " m<small>minst " + fmt(a.min) + " m" + (a.ageH != null ? " · " + (a.ageH < 1 ? "&lt; 1" : Math.round(a.ageH)) + " t" : "") + "</small>";
-        $("warn").textContent = h.warn || "";
-        $("warn").classList.toggle("hide", !h.warn);
-        $("warn").classList.toggle("near", h.warnLevel === "near");
+        setWarn(h.warn, h.warnLevel);
         $("course").textContent = (h.heading ?? "--") + "°";
       }
+      // Varsel: minkar skrifta til teksten får plass i breidda (lange namn på hindringar)
+      let warnText = null;
+      function setWarn(t, level) {
+        let w = $("warn");
+        document.body.classList.toggle("warning", !!t);
+        w.classList.toggle("hide", !t);
+        w.classList.toggle("near", level === "near");
+        if (!t) {
+          warnText = null;
+          return;
+        }
+        if (t === warnText) return;
+        warnText = t;
+        // «⚠ NAMN · 6 m»: avstanden (eller STOPP!) står alltid i full storleik – berre namnet blir minka om det er langt
+        let i = t.lastIndexOf(" · "),
+          name = i > 0 ? t.slice(0, i) : t,
+          dist = i > 0 ? t.slice(i) : "",
+          esc = (x) => x.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+        w.innerHTML = '<span class="wn">' + esc(name) + "</span>" + esc(dist);
+        let n = w.firstChild,
+          max = window.innerWidth * 0.96;
+        n.style.fontSize = "1em";
+        if (w.offsetWidth > max) {
+          let rest = w.offsetWidth - n.offsetWidth,
+            k = Math.max(0.35, (max - rest) / n.offsetWidth);
+          n.style.fontSize = k.toFixed(3) + "em";
+        }
+      }
+      window.addEventListener("resize", () => {
+        let t = warnText;
+        warnText = null;
+        if (t) setWarn(t, $("warn").classList.contains("near") ? "near" : "");
+      });
       function show(h) {
         let stale = h.age == null || h.age > 5;
         $("stale").classList.toggle("hide", !stale);

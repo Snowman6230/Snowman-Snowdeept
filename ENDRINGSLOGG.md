@@ -9,6 +9,26 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-11
 
+### PC-prototype v1.6.98 – HUD: tydelegare varsel om hindringar på frontruta
+- **Bakgrunn:** eigaren spurde om varsel om objekt som er lagde inn, kjem på HUD-en, og om skrift og fargar passar til
+  refleks frå mobil på frontruta.
+  - Varselet fanst: hindringar i køyrebana blir varsla frå 10 m før skjeret, og blinkar under 3 m. Forbodne område blir
+    òg varsla.
+  - Gjennomgang på mobil i liggjande format viste tre feil.
+- **Retta:**
+  1. Varselet var raudt, same farge som snødjupna når ho er «UNDER MÅL». Dei var lette å forveksle, og raudt er den
+     svakaste fargen i refleksen.
+  2. Lange namn vart kutta i kanten, så avstanden (eller «STOPP!») kunne forsvinne.
+  3. Varselet låg oppå linja «SNØDJUPNE · MÅL …».
+- **Endra:**
+  - Varselet står no med lys gul tekst i tjukk raud ramme på svart, som skil seg frå alt anna. Gult er den sterkaste
+    fargen i refleksen. I nattmodus er teksten rav.
+  - Avstanden («6 m» / «STOPP!») står alltid i full storleik. Berre namnet blir minka når det er langt.
+  - Linja «SNØDJUPNE · MÅL» blir gøymd medan varselet står.
+  - Minste skrift på HUD (forklaringane i sidefelta og «framfor») er auka frå 2,4–2,6 til 3 % av skjermhøgda.
+- **Testa** i Chromium på mobilstorleik (844 × 390, liggjande), dag og natt: kort namn, langt namn med «STOPP!»,
+  varselet fell innanfor skjermen og overlappar ikkje anna.
+
 ### PC-prototype v1.6.97 – statusteksten under snødjupna er lesbar
 - **Retta:** teksten under SNØDJUPNE (t.d. «IKKJE MÅLT», «IKKJE MÅLT – KREV RTK FIX») var liten gul skrift som låg
   utanfor boksen, rett oppå det lyse kartet og snøen. Han var vanskeleg å lese (meldt av eigaren med skjermbilete).
