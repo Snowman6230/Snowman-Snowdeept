@@ -7,6 +7,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-22
+
+### Dokumentasjon – varsling av feilkodar frå CAN (ingen kode)
+- **Bakgrunn:** eigaren spurde om SNOWMAN kan varsle om feilkodar når han seinare blir kopla til CAN-bussen.
+- **Avgjerd (eigaren):** feilkodar og varsling skal med i CAN-planen og i vegplanen.
+- **Nytt i `docs/PB600-CAN.md`:** kap. 8b – aktive feilkodar (J1939 DM1: SPN/FMI/OC og lampestatus), eigne
+  grenseverdiar (kjølevatn, oljetrykk, drivstoff, AdBlue, partikkelfilter), servicepåminning frå driftstimar, kvar
+  varsla havnar (skjerm/HUD, feltlogg, rapport, driftsleiar), og avgrensingar: lagra feil (DM2) kan ikkje hentast fordi
+  SNOWMAN aldri sender; PistenBully sine eigne kodar og Cummins-tekstar må skaffast. Opne punkt 16–18.
+- **Endra i `docs/VEGEN-VIDARE.md`:** kap. 12 har fått avsnitt om feilkodar og varsling; vegplanen nemner feilkodar
+  under CAN-bus.
+
 ## 2026-10-11
 
 ### PC-prototype v1.6.98 – HUD: tydelegare varsel om hindringar på frontruta

@@ -224,6 +224,17 @@ Frontskjeret har truleg ikkje absolutte posisjonsgivarar.
 og koplingar i SNOWMAN: fres aktiv avgjer preparert areal, målt drivstoff i rapporten, fresposisjon i kartet,
 feilkodar og temperaturar i feltloggen.
 
+**Feilkodar og varsling (lagt til 2026-10-22, eigaren):** når SNOWMAN er kopla til CAN, skal han varsle om feil.
+Detaljar i `PB600-CAN.md` kap. 8b.
+- Aktive feilkodar frå motoren (J1939 DM1: SPN, FMI, kor mange gongar) og lampestatus (raud stopp, gul varsel,
+  motorlampe). Raud stopplampe gir raudt varsel med éin gong på skjerm og HUD, anna gir gult varsel.
+- Eigne grenseverdiar: kjølevatn, oljetrykk, lågt drivstoff og AdBlue, partikkelfilter som regenererer, og påminning
+  om service etter driftstimar.
+- Alt blir logga med tid og posisjon i feltloggen og rapporten, og går til driftsleiar (`/leiar` og serveren i v1.8).
+- Avgrensingar: berre *aktive* feil (lagra feil, DM2, må etterspørjast, og SNOWMAN sender aldri). PistenBully sine
+  eigne feilkodar er truleg ikkje standard J1939. Tekst og tiltak for Cummins-kodane krev feilkodelista frå Cummins.
+- Maskina sin eigen skjerm er alltid primærvarslinga. SNOWMAN supplerer og dokumenterer.
+
 ## 13. Vêr, snøproduksjon, snøanslag og webkamera (analyse 2026-10-08, prototype 2026-10-09)
 
 **Prototype i v1.6.68:** Vêr-knappen med overlay for snøproduksjon (MET Locationforecast, våttemperatur, vindauge,
@@ -306,7 +317,7 @@ resultatet (GGA, kvalitet 4 = FIX).
 | **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
 | Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
-| Seinare | CAN-bus (drivstoff, motordata, vinsj – ulikt for PistenBully og Prinoth) – forundersøking for PB600 i kap. 12 og `PB600-CAN.md`. LiDAR for snødjupne framfor maskina. |
+| Seinare | CAN-bus (drivstoff, motordata, feilkodar med varsling, vinsj – ulikt for PistenBully og Prinoth) – forundersøking for PB600 i kap. 12 og `PB600-CAN.md`. LiDAR for snødjupne framfor maskina. |
 
 Maskingeometrien blir flytt fram til v1.7 om feltprøva viser at målinga ved antenna er for upresis.
 

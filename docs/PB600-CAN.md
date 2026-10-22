@@ -153,7 +153,48 @@ Eige lag `maskindata` (ny modul) som:
    `tillerActive`; og berre om dei finst: `bladeLiftPosition`, `bladeTilt`, `bladeAngle`.
 4. Koplar dataa til resten av SNOWMAN: **fres aktiv** avgjer preparert areal (betre enn fartsgrensa på 40 km/t),
    **målt drivstoff** erstattar estimatet i rapporten, fresedjupn/sideposisjon gir rett plassering av fresa i kartet,
-   feilkodar og temperaturar i feltloggen.
+   feilkodar og temperaturar i feltloggen, med varsling (sjå kap. 8b).
+
+## 8b. Feilkodar og varsling (DM1) – plan, ingen kode
+
+Lagt til 2026-10-22 etter spørsmål frå eigaren: kan SNOWMAN varsle om feilkodar når han er kopla til CAN?
+Svar: ja, for aktive feilkodar som motorstyringa sender sjølv **[S]/[O]**. Alt under er berre lytting.
+
+**Kva SNOWMAN kan lese**
+
+| Kva | J1939 | Merke | Merknad |
+|---|---|---|---|
+| Aktive feilkodar | DM1, PGN 65226 / 0xFECA | [S] | Blir sendt av seg sjølv (normalt kvart sekund) når det finst aktive feil. Fleire feil → fleirpakke via BAM (TP.CM 60416 / TP.DT 60160). |
+| Lampestatus | DM1 byte 1–2 | [S] | Motorlampe (MIL), raud stopplampe, gul varsellampe, «protect» – og om lampa blinkar. |
+| Kvar feil | DM1, 4 byte per feil | [S] | **SPN** (19 bit, kva komponent), **FMI** (5 bit, kva type feil), **OC** (7 bit, kor mange gongar). |
+| Eldre/lagra feil | DM2, PGN 65227 | [S] | **Kan ikkje hentast**: må etterspørjast (request, PGN 59904), og SNOWMAN sender aldri. SNOWMAN lagar i staden eigen historikk frå han koplar seg på. |
+| Partikkelfilter | DPFC1 (PGN 64892) m.fl. | [S] – kontroller PGN/SPN mot J1939-71 | Regenerering aktiv / treng regenerering, sotnivå. |
+| PistenBully-feilkodar (t.d. «7,2,043») | proprietære | [O] | Kjem frå maskinstyringa, truleg ikkje standard J1939. Må finnast i logg eller fåast frå Kässbohrer. |
+
+**Varsling i SNOWMAN**
+
+| Hending | Varsel |
+|---|---|
+| Raud stopplampe i DM1 | Raudt varsel med éin gong på skjerm og HUD, med SPN-tekst |
+| Gul varsellampe / ny feilkode | Gult varsel, kan kvitterast av føraren (berre i SNOWMAN – aldri på maskina) |
+| Feilkode borte frå DM1 | Logg «løyst» med varigheit |
+| Eigne grenseverdiar (innstillbare) | Kjølevasstemperatur, oljetrykk, lågt drivstoff, lågt AdBlue (t.d. under 15 % før nattøkt), DPF-regenerering i gang («ikkje stans motoren») |
+| Driftstimar passerer serviceintervall | Påminning om service (intervall per maskin i innstillingane) |
+
+**Kvar varselet havnar**
+- Feltloggen: tid, GNSS-posisjon, SPN/FMI/OC, lampestatus, kva maskina gjorde (fart, preparering på/av).
+- Rapporten: feilkodar per økt og per maskin.
+- Driftsleiar: i driftsleiarvisinga på mobil (`/leiar`, v1.6.92) og via serveren i v1.8 (varsel med maskin, posisjon og tid).
+
+**Tekst til feilkodane**
+- SPN-namn frå ein tabell i SNOWMAN (standard J1939) **[S]**.
+- Nøyaktig feilskildring og tiltak for Cummins X12 krev Cummins si feilkodeliste **[O]** – må skaffast og leggjast inn som tabell.
+- Ukjend kode blir vist som «SPN 1234 / FMI 3» – aldri gjetta tekst.
+
+**Reglar**
+- Maskina sin eigen skjerm er alltid primærvarslinga. SNOWMAN supplerer og dokumenterer.
+- SNOWMAN kvitterer eller slettar aldri feilkodar på maskina (det ville kravd sending).
+- Feilkodar med posisjon og tid kan seie noko om føraren → same personvernreglar som feltloggen (VEGEN-VIDARE kap. 10).
 
 ## 9. Opne punkt – å finne (eigaren si liste)
 
@@ -168,3 +209,6 @@ Eige lag `maskindata` (ny modul) som:
 | 9–13 | Proprietære meldingar: fresedjupn, løft, sideposisjon, turtal/aktiv | [O] metode i kap. 5 (eller Kässbohrer) |
 | 14 | Absolutte posisjonsgivarar på frontskjer | Ikkje funne i dokumentasjon – truleg nei [H] |
 | 15 | USB-CAN-adapter | PEAK PCAN-USB opto-decoupled tilrådd [D] |
+| 16 | Sender motoren DM1 på bussen vi lyttar på? | [O] – første CAN-logg, gjerne med ein kjend feil aktiv |
+| 17 | Cummins X12 feilkodeliste (SPN/FMI → tekst og tiltak) | Be Kässbohrer/Cummins-forhandlar |
+| 18 | PistenBully sine eigne feilkodar på CAN? | [O] / Kässbohrer |
