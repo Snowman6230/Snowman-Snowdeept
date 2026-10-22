@@ -345,7 +345,10 @@ og plottar detaljar i kart og 3D-modell og sender oppdateringar ut til heile mas
 - v1.8: publisering ut, forslag inn frå maskinene, enkel kontorside for 2D-redigering.
 - v1.9: full kontordel i driftsportalen – 3D-redigering, import, oppgåver og rapportar for heile flåten.
 
-## 17. Lisens: éin lisens skal ikkje kunne brukast på fleire maskiner (analyse 2026-10-22, ikkje bestemt)
+## 17. Lisens: éin lisens skal ikkje kunne brukast på fleire maskiner (analyse 2026-10-22, utsett)
+
+**Status:** eigaren vurderer dette seinare (2026-10-22). Ingen avgjerd og ingen kode før eigaren har teke stilling til
+dei tre opne punkta nedst i kapitlet.
 
 **Spørsmål frå eigaren:** korleis unngå at eit anlegg kjøper éin lisens og brukar han på fleire maskiner?
 
@@ -378,11 +381,13 @@ maskin. Avgrens til t.d. 2 flyttingar per år utan å kontakte Alpindata.
 - Avgrensa modus: kart og posisjon virkar; snødjupne, deling, rapportar og oppdateringar krev gyldig lisens.
 - Demo/prøvelisens (t.d. 30 dagar) for nye kundar, tydeleg merkt.
 
-**Ope til eigaren**
-1. Lisensmodell: per maskin, per anlegg med tal maskiner, eller abonnement per år?
-2. Lisenstenesta: Alpindata sin eigen server (same som kap. 6, VPS) eller ei ferdig teneste (t.d. Keygen, LemonSqueezy –
-   prisar og vilkår må sjekkast)?
-3. Når repoet skal gjerast privat.
+**Ope til eigaren – avgjerast seinare**
+
+| # | Spørsmål | Alternativ | Status |
+|---|---|---|---|
+| 1 | Lisensmodell | Per maskin · per anlegg med tal maskiner · abonnement per år | Ventar på eigaren |
+| 2 | Lisensteneste | Alpindata sin eigen server (same som kap. 6, VPS) · ferdig teneste (t.d. Keygen, LemonSqueezy – prisar og vilkår må sjekkast) | Ventar på eigaren |
+| 3 | Når repoet skal gjerast privat | Seinast før første sal (v2.0) – tilrådd tidlegare | Ventar på eigaren |
 
 **Plassering:** lag 1, 2, 5 og 6 i v1.9 (står alt i vegplanen som «lisens og aktivering per maskin»), lag 3 når
 serveren kjem i v1.8, lag 4 når GNSS-boksen er valt og testa.

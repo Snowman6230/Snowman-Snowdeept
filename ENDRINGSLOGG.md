@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-22
 
+### Dokumentasjon – lisens: tre opne avgjerder lagra til seinare
+- **Avgjerd (eigaren):** lisensspørsmåla blir vurderte seinare. VEGEN-VIDARE kap. 17 er merkt «utsett», og dei tre
+  opne punkta (lisensmodell, lisensteneste, når repoet blir privat) står som tabell med status «ventar på eigaren».
+
 ### Dokumentasjon – kontor og maskin, og lisens per maskin (ingen kode)
 - **Avgjerd (eigaren):** SNOWMAN skal skilje mellom kontor og maskin. Kontoret legg inn og plottar detaljar i kart og
   3D, og publiserer oppdateringar ut til maskinparken. Ført inn som VEGEN-VIDARE kap. 16 og i vegplanen (v1.7–v1.9).
