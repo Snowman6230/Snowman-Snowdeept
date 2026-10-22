@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-22
 
+### Dokumentasjon – kontor og maskin, og lisens per maskin (ingen kode)
+- **Avgjerd (eigaren):** SNOWMAN skal skilje mellom kontor og maskin. Kontoret legg inn og plottar detaljar i kart og
+  3D, og publiserer oppdateringar ut til maskinparken. Ført inn som VEGEN-VIDARE kap. 16 og i vegplanen (v1.7–v1.9).
+- **Analyse (ikkje bestemt):** korleis hindre at éin lisens blir brukt på fleire maskiner – VEGEN-VIDARE kap. 17.
+  Tiltak i lag: aktivering med signert lisensfil bunden til maskin-ID, offline-frist, lisensplassar på serveren,
+  GNSS-boksen som nøkkel, lisens-ID i alle data, avtale og pris. Merknad: repoet er offentleg og bør gjerast privat,
+  og kundane bør få bygd versjon, før sal. Tryggleiksfunksjonar blir aldri låste av lisensen.
+
 ### Dokumentasjon – varsling av feilkodar frå CAN (ingen kode)
 - **Bakgrunn:** eigaren spurde om SNOWMAN kan varsle om feilkodar når han seinare blir kopla til CAN-bussen.
 - **Avgjerd (eigaren):** feilkodar og varsling skal med i CAN-planen og i vegplanen.

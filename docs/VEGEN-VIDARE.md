@@ -307,14 +307,94 @@ resultatet (GGA, kvalitet 4 = FIX).
 - **v1.7-mappe:** krev at data, `.venv` og autostart blir flytta (SNOWMAN.bat, installer, oppstart.py). Det er eit
   eige steg.
 
+## 16. Kontor og maskin (bestemt av eigaren 2026-10-22)
+
+**Avgjerd:** SNOWMAN skal skilje mellom **kontor** (planlegging og redigering) og **maskin** (førar). Kontoret legg inn
+og plottar detaljar i kart og 3D-modell og sender oppdateringar ut til heile maskinparken. Byggjer vidare på kap. 2
+(anleggspakke) og kap. 6 (server og utsending).
+
+**Kvifor**
+- Ulike oppgåver: kontoret planlegg med stor skjerm, mus og 3D; føraren skal sjå, måle og bli varsla – ikkje teikne.
+- Éi sanning: anleggsdataa blir endra éin stad, ikkje ulikt på kvar maskin.
+- Tryggleik: hindringar og forbodne område har éin ansvarleg, og endringar kan sporast og rullast tilbake.
+
+**Rolledeling**
+
+| | Kontor | Maskin |
+|---|---|---|
+| Teikne/redigere i 2D og 3D | Ja: trasear, hindringar, forbodne område, kontrollpunkt, rettleiingslinjer, snøkanonar, måldjupne, målflate | Nei |
+| Importere | Ja: terreng (LAS/LAZ/GeoTIFF), GIS-omriss (GeoJSON/SOSI/DXF), kartfliser | Nei |
+| Sjå snødjupne, spor og flåten | Heile anlegget og historikk | Eigen og delt (v1.8) |
+| Melde frå | – | «Ny hindring her», merknad/bilete, sendt som **forslag** som kontoret godkjenner |
+| Oppgåver og beskjedar | Sende ut | Ta imot og kvittere |
+| Rapportar og drivstoff | Alle maskiner | Eigne økter |
+
+**Utsending til maskinparken** (reglane frå kap. 6 gjeld)
+- Kontoret **publiserer** ein ny versjon av anleggspakka; serveren sender han ut. Maskinene hentar sjølve når dei har dekning.
+- Trasear og hindringar blir tekne i bruk med éin gong. Nytt terreng blir ikkje bytt under preparering.
+- Versjonsnummer på anleggspakka frå starten (v1.7). Kontoret ser kva versjon kvar maskin har, og kan rulle tilbake.
+- Endringslogg: kven endra kva, og når.
+
+**Teknisk**
+- Eitt program, to roller – same kjerne, kart og 3D. Kontoret er ein rolle med redigeringsverktøy (administratorrolla i kap. 10).
+- Kontordelen køyrer som nettside på serveren frå v1.8, så han kan brukast frå kva PC som helst på anlegget.
+- Plotting i 3D: eit klikk i 3D-terrenget blir festa til terrenghøgda (krev eige arbeid).
+
+**Plassering**
+- v1.7: anleggspakke med versjonsnummer (formatet kontoret seinare redigerer).
+- v1.8: publisering ut, forslag inn frå maskinene, enkel kontorside for 2D-redigering.
+- v1.9: full kontordel i driftsportalen – 3D-redigering, import, oppgåver og rapportar for heile flåten.
+
+## 17. Lisens: éin lisens skal ikkje kunne brukast på fleire maskiner (analyse 2026-10-22, ikkje bestemt)
+
+**Spørsmål frå eigaren:** korleis unngå at eit anlegg kjøper éin lisens og brukar han på fleire maskiner?
+
+**Viktig føresetnad – før sal:** repoet er i dag **offentleg**, og SNOWMAN er Python-kjeldekode. Då kan kven som helst
+kopiere programmet og fjerne ein lisenskontroll. Før første sal (v2.0) bør:
+- repoet gjerast **privat**,
+- kundane få ein **ferdig bygd versjon** (t.d. PyInstaller/Nuitka), ikkje kjeldekode,
+- lisenskontrollen ha ein del som ligg på Alpindata sin server, der kunden ikkje kan endre han.
+
+Ingen lisenskontroll på kundens eigen PC er umogleg å omgå. Målet er at det skal vere **meir tungvint å jukse enn å
+betale** – og at det viktigaste (deling, anleggsdata, oppdateringar, support) berre fungerer med gyldig lisens.
+
+**Tiltak i lag (tilråding)**
+
+| Lag | Tiltak | Kva det hindrar |
+|---|---|---|
+| 1. Aktivering per maskin | Lisensnøkkel blir aktivert mot Alpindata sin lisensteneste. Maskina får ei **signert lisensfil** (t.d. Ed25519) bunden til ein **maskin-ID** (PC-ID + GNSS-boksen). Signaturen kan ikkje forfalskast utan Alpindata sin private nøkkel. | Kopiering av lisensfila til ein annan PC |
+| 2. Offline-frist | Maskina må sjekke inn med lisenstenesta minst kvar 30. dag (innstillbart). Utan kontakt: åtvaring, deretter avgrensa modus. | At ei deaktivert/flytta lisens held fram å virke |
+| 3. Plassar på serveren (v1.8) | Anleggsserveren godtek berre så mange maskiner som lisensen gjeld for. Maskin utan gyldig lisens får ikkje anleggsdata, deling eller oppdateringar. | Fleire maskiner på same lisens i same flåte |
+| 4. GNSS-boksen som «nøkkel» | Lisensen følgjer GNSS-boksen Alpindata leverer. ID-en til mottakaren (u-blox ZED-F9P har unik chip-ID) blir lagra i lisensen. Kan setjast opp ved levering slik at SNOWMAN berre les ID-en, utan å sende til mottakaren **[H] – må testast**. | Ny maskin utan å kjøpe boks og lisens |
+| 5. Synleg i data | Kvar måling, økt og rapport er merkt med lisens-ID og maskin-ID. Same lisens frå to stader samstundes blir oppdaga på serveren. | Skjult dobbelbruk |
+| 6. Avtale og pris | Lisensavtale med rett til kontroll. Pris per anlegg + per maskin, med rabatt for fleire maskiner – så det lønner seg å lisensiere alle. | Gjer juks lite lønnsamt |
+
+**Flytting av lisens:** når ein PC eller GNSS-boks blir bytt, frigjer kontoret lisensen i portalen og aktiverer på ny
+maskin. Avgrens til t.d. 2 flyttingar per år utan å kontakte Alpindata.
+
+**Rettferdig og trygg handheving**
+- Lisensen blir **aldri** stoppa midt i ei preparering. Åtvaring først; avgrensing tidlegast ved neste oppstart.
+- **Tryggleiksfunksjonar** (posisjon, hindringsvarsel, forbodne område) blir aldri låste av lisensen.
+- Avgrensa modus: kart og posisjon virkar; snødjupne, deling, rapportar og oppdateringar krev gyldig lisens.
+- Demo/prøvelisens (t.d. 30 dagar) for nye kundar, tydeleg merkt.
+
+**Ope til eigaren**
+1. Lisensmodell: per maskin, per anlegg med tal maskiner, eller abonnement per år?
+2. Lisenstenesta: Alpindata sin eigen server (same som kap. 6, VPS) eller ei ferdig teneste (t.d. Keygen, LemonSqueezy –
+   prisar og vilkår må sjekkast)?
+3. Når repoet skal gjerast privat.
+
+**Plassering:** lag 1, 2, 5 og 6 i v1.9 (står alt i vegplanen som «lisens og aktivering per maskin»), lag 3 når
+serveren kjem i v1.8, lag 4 når GNSS-boksen er valt og testa.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
 |---|---|
 | **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
-| **v1.7** | Anleggspakke, fleire terrengfiler på ein gong (LAS/LAZ/XYZ kom i v1.6.95), trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
-| **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). |
-| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin, driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
+| **v1.7** | Anleggspakke med versjonsnummer (kap. 16), fleire terrengfiler på ein gong (LAS/LAZ/XYZ kom i v1.6.95), trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
+| **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). Kontor publiserer, maskiner sender forslag, enkel kontorside i 2D (kap. 16). Lisensplassar på serveren (kap. 17). |
+| **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin (kap. 17), full kontordel med 3D-redigering og import (kap. 16), driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
 | Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
 | Seinare | CAN-bus (drivstoff, motordata, feilkodar med varsling, vinsj – ulikt for PistenBully og Prinoth) – forundersøking for PB600 i kap. 12 og `PB600-CAN.md`. LiDAR for snødjupne framfor maskina. |
