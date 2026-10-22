@@ -9,30 +9,6 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-22
 
-### Dokumentasjon – lisens: tre opne avgjerder lagra til seinare
-- **Avgjerd (eigaren):** lisensspørsmåla blir vurderte seinare. VEGEN-VIDARE kap. 17 er merkt «utsett», og dei tre
-  opne punkta (lisensmodell, lisensteneste, når repoet blir privat) står som tabell med status «ventar på eigaren».
-
-### Dokumentasjon – kontor og maskin, og lisens per maskin (ingen kode)
-- **Avgjerd (eigaren):** SNOWMAN skal skilje mellom kontor og maskin. Kontoret legg inn og plottar detaljar i kart og
-  3D, og publiserer oppdateringar ut til maskinparken. Ført inn som VEGEN-VIDARE kap. 16 og i vegplanen (v1.7–v1.9).
-- **Analyse (ikkje bestemt):** korleis hindre at éin lisens blir brukt på fleire maskiner – VEGEN-VIDARE kap. 17.
-  Tiltak i lag: aktivering med signert lisensfil bunden til maskin-ID, offline-frist, lisensplassar på serveren,
-  GNSS-boksen som nøkkel, lisens-ID i alle data, avtale og pris. Merknad: repoet er offentleg og bør gjerast privat,
-  og kundane bør få bygd versjon, før sal. Tryggleiksfunksjonar blir aldri låste av lisensen.
-
-### Dokumentasjon – varsling av feilkodar frå CAN (ingen kode)
-- **Bakgrunn:** eigaren spurde om SNOWMAN kan varsle om feilkodar når han seinare blir kopla til CAN-bussen.
-- **Avgjerd (eigaren):** feilkodar og varsling skal med i CAN-planen og i vegplanen.
-- **Nytt i `docs/PB600-CAN.md`:** kap. 8b – aktive feilkodar (J1939 DM1: SPN/FMI/OC og lampestatus), eigne
-  grenseverdiar (kjølevatn, oljetrykk, drivstoff, AdBlue, partikkelfilter), servicepåminning frå driftstimar, kvar
-  varsla havnar (skjerm/HUD, feltlogg, rapport, driftsleiar), og avgrensingar: lagra feil (DM2) kan ikkje hentast fordi
-  SNOWMAN aldri sender; PistenBully sine eigne kodar og Cummins-tekstar må skaffast. Opne punkt 16–18.
-- **Endra i `docs/VEGEN-VIDARE.md`:** kap. 12 har fått avsnitt om feilkodar og varsling; vegplanen nemner feilkodar
-  under CAN-bus.
-
-## 2026-10-22
-
 ### PC-prototype v1.6.99 – RTK-motoren les u-blox UBX (RXM-RAWX og RXM-SFRBX)
 - **Bakgrunn:** roveren i planen for eigen base er ein ZED-F9P. Som rover sender han rådata som UBX RXM-RAWX og banene
   som RXM-SFRBX. Motoren las berre RTCM 3. Eigaren sette fire krav før UBX kunne reknast som ferdig:
@@ -84,6 +60,28 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
   - rover på 5–10 Hz mot base på 1 Hz (testdataa har 30 s mellom epokane)
 - **Avgrensing:** med RTCM-rover og feil PC-klokke finst det ingen full GPS-veke å rette etter. Då må klokka på PC-en
   vere rett, og feilsøkaren seier ifrå.
+
+### Dokumentasjon – lisens: tre opne avgjerder lagra til seinare
+- **Avgjerd (eigaren):** lisensspørsmåla blir vurderte seinare. VEGEN-VIDARE kap. 17 er merkt «utsett», og dei tre
+  opne punkta (lisensmodell, lisensteneste, når repoet blir privat) står som tabell med status «ventar på eigaren».
+
+### Dokumentasjon – kontor og maskin, og lisens per maskin (ingen kode)
+- **Avgjerd (eigaren):** SNOWMAN skal skilje mellom kontor og maskin. Kontoret legg inn og plottar detaljar i kart og
+  3D, og publiserer oppdateringar ut til maskinparken. Ført inn som VEGEN-VIDARE kap. 16 og i vegplanen (v1.7–v1.9).
+- **Analyse (ikkje bestemt):** korleis hindre at éin lisens blir brukt på fleire maskiner – VEGEN-VIDARE kap. 17.
+  Tiltak i lag: aktivering med signert lisensfil bunden til maskin-ID, offline-frist, lisensplassar på serveren,
+  GNSS-boksen som nøkkel, lisens-ID i alle data, avtale og pris. Merknad: repoet er offentleg og bør gjerast privat,
+  og kundane bør få bygd versjon, før sal. Tryggleiksfunksjonar blir aldri låste av lisensen.
+
+### Dokumentasjon – varsling av feilkodar frå CAN (ingen kode)
+- **Bakgrunn:** eigaren spurde om SNOWMAN kan varsle om feilkodar når han seinare blir kopla til CAN-bussen.
+- **Avgjerd (eigaren):** feilkodar og varsling skal med i CAN-planen og i vegplanen.
+- **Nytt i `docs/PB600-CAN.md`:** kap. 8b – aktive feilkodar (J1939 DM1: SPN/FMI/OC og lampestatus), eigne
+  grenseverdiar (kjølevatn, oljetrykk, drivstoff, AdBlue, partikkelfilter), servicepåminning frå driftstimar, kvar
+  varsla havnar (skjerm/HUD, feltlogg, rapport, driftsleiar), og avgrensingar: lagra feil (DM2) kan ikkje hentast fordi
+  SNOWMAN aldri sender; PistenBully sine eigne kodar og Cummins-tekstar må skaffast. Opne punkt 16–18.
+- **Endra i `docs/VEGEN-VIDARE.md`:** kap. 12 har fått avsnitt om feilkodar og varsling; vegplanen nemner feilkodar
+  under CAN-bus.
 
 ## 2026-10-11
 
