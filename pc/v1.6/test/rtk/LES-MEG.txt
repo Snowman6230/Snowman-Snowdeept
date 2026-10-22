@@ -10,3 +10,20 @@ henta frå https://github.com/rtklibexplorer/RTKLIB (BSD-2). Ikkje lagra i repoe
    set COM-port socket://127.0.0.1:7791, caster 127.0.0.1:2199, mountpoint TEST, «RTK i SNOWMAN».
 
 NB: RTKLIB sin 1004-kodar gir ein brøkdels syklus-feil på L2 – bruk 1077 (MSM7) til testfiler.
+
+UBX (u-blox RXM-RAWX + RXM-SFRBX, t.d. ZED-F9P) – v1.6.99
+4. python3 lagubx.py           → rover.ubx: same rover som RAWX, banene som GPS LNAV-underrammer (SFRBX).
+                                  Kvar bane blir kontrollert med RTKLIB decode_frame før ho blir skriven.
+5. python3 testubx.py          → dei fire krava, kvart scenario i eigen prosess (RTKLIB-klokka gjeld heile prosessen):
+     1 Demux: ufullstendige rammer (1 byte, tilfeldige bitar, 64 byte, alt i éin), oppstart midt i ei ramme,
+       øydelagd ramme, UBX + RTCM + NMEA om kvarandre → alle rammer att, NMEA heil, tom buffer
+     2 UBX-rover gir same FIX og same posisjon (≤ 2 mm) som RTCM-rover gjennom same motor
+     3 Tid: same epoke (alder 0), base éi epoke seint (alder 30 s, eldre blir ikkje brukt),
+       PC-klokke 21 år feil utan ref_time (retta etter GPS-tida frå RAWX)
+     4 SFRBX → felles nav: basen utan 1019 og inga BRDC-fil; banene samanlikna felt for felt mot RINEX;
+       banar som kom før første RAWX (feil veke frå PC-klokka) blir retta
+   Venta: «ALT OK».
+6. python3 e2e_ubx.py          → heile SNOWMAN: falsk F9P over TCP (USB-bitar) og falsk caster, utan REFTIME.
+   Venta: RTK FIX rekna i SNOWMAN frå «UBX RAWX», banene frå SFRBX, feilsøkaren åtvarar om PC-klokka.
+
+NB: rtklib/ kan vere ei lenkje til ein klon av rtklibexplorer/RTKLIB (berre test/data trengst).

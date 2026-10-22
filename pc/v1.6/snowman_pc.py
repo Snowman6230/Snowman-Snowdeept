@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.98"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.99"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -510,11 +510,13 @@ def rtk_hint(st):
     if rtk_snowman():   # RTK blir rekna i SNOWMAN – sjå 🔍 FEILSØK RTK for alle stega
         m=st.get("motor") or {}
         if not m: return "RTK i SNOWMAN: motoren startar ("+str(st.get("rtk_motor") or "…")+")."
-        if not m.get("rover_obs"): return ("RTK i SNOWMAN: mottakaren sender ikkje rådata (RTCM 3 MSM eller 1004/1012) – berre GGA. "
+        if not m.get("rover_obs"): return ("RTK i SNOWMAN: mottakaren sender ikkje rådata (RTCM 3 MSM/1004/1012 eller u-blox UBX RAWX) – berre GGA. "
                                            "Slå på rådata-utgang på mottakaren, på same port som SNOWMAN les.")
+        td=m.get("tdiff")
+        if td is not None and abs(td)>30: return f"RTK i SNOWMAN: basen og mottakaren har {td:.0f} s ulik tid – basedataa blir ikkje brukte. Sjå 🔍 FEILSØK RTK."
         if not m.get("base_obs"): return "RTK i SNOWMAN: ingen basedata frå NTRIP endå."
-        if m.get("eph",0)<4 and not m.get("eph_file"): return ("RTK i SNOWMAN: manglar satellittbaner. Slå på baner (RTCM 1019/1020/1042/1046) "
-                                                               "i rådata frå mottakaren, eller bruk eit mountpoint som sender dei.")
+        if m.get("eph",0)<4 and not m.get("eph_file"): return ("RTK i SNOWMAN: manglar satellittbaner. Slå på baner (RTCM 1019/1020/1042/1046 "
+                                                               "eller UBX RXM-SFRBX) i rådata frå mottakaren, eller bruk eit mountpoint som sender dei.")
         return f"RTK i SNOWMAN: motoren reknar ({m.get('last_name')}, ratio {m.get('last_ratio')}). Vent med fri sikt."
     return ""
 

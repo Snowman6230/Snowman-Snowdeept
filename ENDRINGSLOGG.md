@@ -31,6 +31,60 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 - **Endra i `docs/VEGEN-VIDARE.md`:** kap. 12 har fått avsnitt om feilkodar og varsling; vegplanen nemner feilkodar
   under CAN-bus.
 
+## 2026-10-22
+
+### PC-prototype v1.6.99 – RTK-motoren les u-blox UBX (RXM-RAWX og RXM-SFRBX)
+- **Bakgrunn:** roveren i planen for eigen base er ein ZED-F9P. Som rover sender han rådata som UBX RXM-RAWX og banene
+  som RXM-SFRBX. Motoren las berre RTCM 3. Eigaren sette fire krav før UBX kunne reknast som ferdig:
+  1. Demuxen skal tole ufullstendige rammer over fleire USB-lesingar utan å miste synkroniseringa.
+  2. `raw_t` og `rtcm_t` skal gi observasjonar og baner som motoren kan bruke.
+  3. Rådata frå rover og base skal tidsjusterast rett.
+  4. SFRBX-banene skal faktisk kome inn i den felles nav-strukturen.
+- **Nytt:** demuxen kjenner att UBX-rammer (B5 62, lengd, Fletcher-kontrollsum) i tillegg til RTCM 3 (CRC-24Q). Tekst
+  (NMEA) går vidare som før.
+  - Ei ramme som ikkje er heil, ventar i bufferen til neste lesing.
+  - Ein rammestart med feil kontrollsum blir rekna som tekst éin byte om gongen, så neste ekte ramme blir funnen utan
+    at noko går tapt.
+  - Lengste UBX-ramme er 8 192 byte. Lengre «lengd» blir rekna som falsk rammestart.
+- **Nytt:** UBX-rammene går til ein eigen `raw_t`-avkodar (RTKLIB `input_ubx`). RAWX-epokar går inn i same utrekning
+  som RTCM-epokar. Banene frå SFRBX (og frå 1019/1020 frå roveren) blir kopierte til den felles nav-strukturen:
+  GPS/Galileo/BeiDou i `eph`, Galileo F/NAV i andre halvdel og GLONASS i `geph`.
+- **Retta (funne under testen):** GPS-banene har veke modulo 1024, både i SFRBX og i RTCM 1019. RTKLIB vel veka ut
+  frå PC-klokka og justerer 1019 i tillegg ± 1 veke mot referansetida. Med feil klokke (eller gamle opptak) fekk
+  banene 1023–1024 veker feil, og det vart ingen løysing.
+  - Den eksisterande RTCM-testen skjulte dette ved å filtrere bort 1019.
+  - Ein bane med toe meir enn ei halv veke frå GNSS-tida blir no flytta heile veker til rett periode. Det gjeld baner
+    frå base, rover og SFRBX, og òg baner som kom før tida var kjend.
+- **Nytt:** RAWX har full GPS-veke. Avvik PC-klokka meir enn 60 s frå GPS-tida, blir RTKLIB si klokke (`timeset`) og
+  referansetida til basestraumen (RTCM har berre tid i veka) retta etter mottakaren. Feilsøkaren åtvarar då om at
+  PC-klokka er feil.
+- **Nytt:** alderen på basedataa (tid rover − tid base) blir vist (`tdiff`). Basedata eldre enn 30 s blir ikkje
+  brukte (same grense som RTKLIB). Er avviket over ein time, seier feilsøkaren at klokka eller veka er feil.
+- **Endra:** hjelpetekstane i feilsøkaren, i `rtk_hint` og på NTRIP-sida nemner UBX RAWX/SFRBX og innstillinga av
+  ZED-F9P. Innstillinga gjerast éin gong i u-center og blir lagra i mottakaren, sidan SNOWMAN ikkje sender kommandoar.
+- **Testa** (`test/rtk/testubx.py`, `lagubx.py`, `e2e_ubx.py`). Testdataa er RTKLIB 0759/3040 med roveren koda som
+  RAWX og banene som GPS LNAV-underrammer i SFRBX. Kodinga er kontrollert med RTKLIB `decode_frame`.
+  1. **Demux:** 324/324 rammer, NMEA heil og tom buffer, med bitar på 1 byte, tilfeldige 1–700 byte, 64 byte og alt i
+     éin. Straumen starta midt i ei ramme og hadde ei øydelagd ramme.
+  2. **UBX mot RTCM:** RTCM-rover 115/115 FIX og UBX-rover 115/115 FIX. Største posisjonsavvik i dei 115 felles
+     epokane var 1 mm.
+  3. **Tid:**
+     - Same epoke gir alder 0. Løysingstida er roverepoka.
+     - Base éi epoke seint gir alder 30 s, og eldre data blir ikkje brukte.
+     - Med PC-klokka 21 år frå dataa og utan `ref_time` blir klokka retta, og resultatet er 113/113 FIX.
+  4. **SFRBX → nav:** utan 1019 frå basen og utan BRDC-fil kom 28/28 baner fram, og dei var like RINEX felt for felt.
+     113/113 FIX. Baner som kom før første RAWX, fekk veka retta (28) og gav 113/113 FIX.
+  - **Heile SNOWMAN:** falsk F9P over TCP i USB-bitar og falsk caster utan 1019 gav «RTK FIX», rekna i SNOWMAN frå
+    UBX RAWX. Feilsøkaren åtvara om PC-klokka.
+  - `replay.py` (RTCM) gav som før 115/115 FIX. Simulatoren gav RTK FIX. Ingen JS-feil på NTRIP-sida, i feilsøkaren
+    eller på førarskjermen.
+- **Ikkje testa:**
+  - ekte ZED-F9P
+  - Galileo, BeiDou og GLONASS frå SFRBX (testdataa har berre GPS)
+  - rover på 5–10 Hz mot base på 1 Hz (testdataa har 30 s mellom epokane)
+- **Avgrensing:** med RTCM-rover og feil PC-klokke finst det ingen full GPS-veke å rette etter. Då må klokka på PC-en
+  vere rett, og feilsøkaren seier ifrå.
+
 ## 2026-10-11
 
 ### PC-prototype v1.6.98 – HUD: tydelegare varsel om hindringar på frontruta

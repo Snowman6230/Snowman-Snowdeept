@@ -47,6 +47,14 @@ def net_check(host, port, timeout=3.0):
     return res
 
 
+def _dur(s):
+    """Tid i lesbar form: 75 s, 12 min, 5 t, 3 døgn, 21 år."""
+    for lim, div, unit in ((120, 1, "s"), (7200, 60, "min"), (172800, 3600, "t"), (63072000, 86400, "døgn")):
+        if s < lim:
+            return f"{s / div:.0f} {unit}"
+    return f"{s / 31557600:.0f} år"
+
+
 def _step(steps, sid, title, status, detail="", action=""):
     steps.append({"id": sid, "title": title, "status": status, "detail": detail, "action": action})
     return status
@@ -71,20 +79,30 @@ def _snowman_steps(S, st, r, now):
     ra = m.get("rover_age")
     types = ", ".join(sorted(m.get("rover_types") or {})) or "ingen"
     if not m.get("rover_obs"):
-        _step(S, "raw", "Rådata frå mottakaren", FAIL, f"Ingen rådata endå (RTCM-typar frå mottakaren: {types}).",
-              "Mottakaren må sende RÅDATA som RTCM 3 – MSM (1074/1084/1094/1124 eller 1077 …) eller 1004/1012 – på same port som "
-              "SNOWMAN les. GGA åleine kan ikkje gi RTK. (Zenith35 Pro: i «RTK Base»-modus sender han eigne rådata ut på "
-              "External/kabel – prøv det.)")
+        _step(S, "raw", "Rådata frå mottakaren", FAIL, f"Ingen rådata endå (meldingar frå mottakaren: {types}).",
+              "Mottakaren må sende RÅDATA på same port som SNOWMAN les: RTCM 3 – MSM (1074/1084/1094/1124 eller 1077 …) eller "
+              "1004/1012 – eller u-blox UBX RXM-RAWX (+ RXM-SFRBX for banene), som ZED-F9P. GGA åleine kan ikkje gi RTK. "
+              "(ZED-F9P: slå på RXM-RAWX og RXM-SFRBX på USB i u-center og lagre i mottakaren – SNOWMAN sender ingen kommandoar. "
+              "Zenith35 Pro: i «RTK Base»-modus sender han eigne rådata ut på External/kabel – prøv det.)")
     elif ra is not None and ra > 5:
         _step(S, "raw", "Rådata frå mottakaren", FAIL, f"Siste rådata for {ra:.0f} s sidan.", "Sambandet til mottakaren er brote eller rådata er slått av.")
     else:
-        _step(S, "raw", "Rådata frå mottakaren", OK, f"{m.get('rover_obs')} epokar · typar {types}")
+        co = m.get("clock_off")
+        _step(S, "raw", "Rådata frå mottakaren", WARN if co else OK,
+              f"{m.get('rover_obs')} epokar · {m.get('rover_fmt') or 'RTCM 3'} · meldingar {types}"
+              + (f" · PC-klokka gjekk {_dur(abs(co))} {'for fort' if co > 0 else 'for seint'} – retta etter mottakaren" if co else ""),
+              "Klokka på PC-en er feil. SNOWMAN brukar GNSS-tida frå mottakaren, så RTK verkar, men still klokka (Windows: "
+              "Innstillingar › Tid › Synkroniser no)." if co else "")
     ba = m.get("base_age")
     if not m.get("base_obs"):
         _step(S, "baseobs", "Basedata til motoren", FAIL if r.get("frames") else WAIT,
               "Ingen observasjonsepokar frå basen er avkoda endå.", "Sjå stega om NTRIP og korreksjonar over.")
     elif ba is not None and ba > 10:
         _step(S, "baseobs", "Basedata til motoren", FAIL, f"Siste baseepoke for {ba:.0f} s sidan.", "Mobilnettet heng – SNOWMAN koplar til på nytt.")
+    elif m.get("tdiff") is not None and abs(m["tdiff"]) > 30:
+        _step(S, "baseobs", "Basedata til motoren", FAIL, f"Basen og mottakaren har {m['tdiff']:.0f} s ulik tid – basedataa blir ikkje brukte.",
+              "Over ein time: klokka på PC-en er feil og mottakaren sender RTCM (utan full GPS-veke). Still klokka, eller bruk "
+              "UBX RAWX frå mottakaren. Under ein time: basedataa kjem for seint – sjå mobilnettet.")
     elif not m.get("base_pos"):
         _step(S, "baseobs", "Basedata til motoren", WAIT if (m.get("base_obs") or 0) < 30 else FAIL,
               f"{m.get('base_obs')} epokar, men baseposisjonen (RTCM 1005/1006) er ikkje komen endå.",

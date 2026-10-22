@@ -11,3 +11,8 @@ data/
 
 # Geoidemodellen frå Kartverket (CC BY 4.0) skal vere med
 !pc/v1.6/geoide/*.tif
+
+# RTK-testdata blir laga lokalt (test/rtk/LES-MEG.txt) – ikkje i repoet
+pc/v1.6/test/rtk/rtklib
+pc/v1.6/test/rtk/*.rtcm3
+pc/v1.6/test/rtk/*.ubx

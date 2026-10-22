@@ -2,14 +2,20 @@
 """RTK i SNOWMAN: SNOWMAN reknar RTK sjølv frå rådata – mottakaren berre måler (eigaren 2026-10-09: «RTK og NTRIP
 skal kun vere i SNOWMAN»).
 
-    NTRIP (basen, RTCM 3) ──► base-avkodar ──┐
-                                             ├──► RTKLIB rtkpos ──► GGA (kvalitet 4 FIX / 5 FLOAT) ──► resten av SNOWMAN
-    mottakar (rådata RTCM 3) ► rover-avkodar ┘
-         └─ NMEA (GGA) frå mottakaren blir framleis lese, men brukt berre når RTK-motoren ikkje har løysing
+    NTRIP (basen, RTCM 3) ─────────────► base-avkodar (rtcm_t) ──┐
+                                                                  ├──► RTKLIB rtkpos ──► GGA (4 FIX / 5 FLOAT) ──► SNOWMAN
+    mottakar ─► Demux ─┬─ RTCM 3 ──────► rover-avkodar (rtcm_t) ──┤
+                       ├─ UBX RAWX/SFRBX ► rover-avkodar (raw_t) ──┘   (v1.6.99)
+                       └─ tekst (NMEA) ─► resten av SNOWMAN som før
+    Satellittbaner frå alle tre kjeldene (1019/1020/1042/1046 og SFRBX) blir samla i éin felles nav-struktur.
 
-Krav til mottakaren: han må sende RÅDATA som RTCM 3 – MSM (1074/1084/1094/1124 …) eller 1004/1012 – på same port som
-SNOWMAN les. GGA åleine er ein ferdig rekna posisjon og kan ikkje gi RTK. Satellittbaner (1019/1020/1042/1046) blir
-tekne frå rover- eller basestraumen; manglar dei, kan ei BRDC-fil lastast inn (load_nav).
+Krav til mottakaren: han må sende RÅDATA på same port som SNOWMAN les – anten RTCM 3 (MSM 1074/1077/1084 … eller
+1004/1012) eller u-blox UBX RXM-RAWX (+ RXM-SFRBX for banene), som ZED-F9P sender som rover. GGA åleine er ein ferdig
+rekna posisjon og kan ikkje gi RTK. Manglar banene i straumane, kan ei BRDC-fil lastast inn (load_nav).
+
+Tid: RTCM har berre tid i veka, og GPS-banene (SFRBX) berre veka modulo 1024 – RTKLIB vel veka ut frå PC-klokka.
+UBX RAWX har full GPS-veke frå mottakaren. Er PC-klokka feil, blir RTKLIB si klokke, basen si referansetid og banene
+retta etter mottakaren (sjå _gnss_time), så rover, base og baner alltid har same veke.
 
 Motoren er RTKLIB (T. Takasu, BSD-2) via pyrtklib (IPNL-POLYU, MIT). pyrtklib blir installert med pip første gong
 (sjå ensure_lib), sidan oppdateringa av SNOWMAN ikkje køyrer pip.
@@ -62,46 +68,94 @@ def ensure_lib(install=True, log=None):
             return False
 
 
+UBX_MAX = 8192                     # lengste UBX-melding som blir godteken (RAWX med 255 signal er ca. 8 200 byte)
+
+
+def ubx_ck(body):
+    """Fletcher-kontrollsum i UBX (over klasse, id, lengd og innhald)."""
+    a = b = 0
+    for x in body:
+        a = (a + x) & 0xFF
+        b = (b + a) & 0xFF
+    return bytes((a, b))
+
+
 class Demux:
-    """Skil ein straum frå mottakaren i RTCM 3-rammer (med rett CRC) og tekst (NMEA o.l.)."""
+    """Skil ein straum frå mottakaren i RTCM 3-rammer (CRC-24Q), UBX-rammer (Fletcher) og tekst (NMEA o.l.).
+
+    Straumen kjem i bitar av vilkårleg storleik (USB/seriell). Ei ramme som ikkje er heilt komen, blir verande i bufferen
+    til neste lesing. Ein rammestart med feil kontrollsum blir rekna som tekst éin byte om gongen, så synkroniseringa
+    blir funnen att på neste ekte ramme utan at gyldige rammer eller tekst går tapt."""
 
     def __init__(self):
         self.buf = bytearray()
+        self.bad = 0                       # rammestartar med feil kontrollsum (statistikk)
 
     def feed(self, data):
+        """Returnerer ([(«rtcm»|«ubx», ramme), …], tekst)."""
         b = self.buf
         b += data
         frames, text = [], bytearray()
         i = 0
         while i < len(b):
-            if b[i] != 0xD3:
-                j = b.find(0xD3, i)
-                j = len(b) if j < 0 else j
+            c = b[i]
+            if c != 0xD3 and c != 0xB5:
+                j1, j2 = b.find(0xD3, i), b.find(0xB5, i)
+                j = min(x for x in (j1, j2, len(b)) if x >= 0)
                 text += b[i:j]
                 i = j
                 continue
+            if c == 0xB5:                          # UBX: B5 62 klasse id lengd(2, LE) innhald ck_a ck_b
+                if len(b) - i < 2:
+                    break
+                if b[i + 1] != 0x62:
+                    text.append(c)
+                    i += 1
+                    continue
+                if len(b) - i < 6:
+                    break
+                n = b[i + 4] | (b[i + 5] << 8)
+                if n > UBX_MAX:                    # ikkje ein ekte rammestart
+                    text.append(c)
+                    i += 1
+                    continue
+                if len(b) - i < n + 8:
+                    break                          # vent på resten av ramma
+                fr = bytes(b[i:i + n + 8])
+                if ubx_ck(fr[2:n + 6]) == fr[n + 6:]:
+                    frames.append(("ubx", fr))
+                    i += n + 8
+                else:
+                    self.bad += 1
+                    text.append(c)
+                    i += 1
+                continue
+            # RTCM 3: D3 000000ll llllllll innhald crc(3)
             if len(b) - i < 3:
                 break
             n = ((b[i + 1] & 0x03) << 8) | b[i + 2]
-            if b[i + 1] & 0xFC:            # ikkje ein rammestart
-                text.append(b[i])
+            if b[i + 1] & 0xFC:                    # ikkje ein rammestart
+                text.append(c)
                 i += 1
                 continue
             if len(b) - i < n + 6:
-                break                      # vent på resten av ramma
+                break                              # vent på resten av ramma
             fr = bytes(b[i:i + n + 6])
             if crc24q(fr[:n + 3]) == int.from_bytes(fr[n + 3:], "big"):
-                frames.append(fr)
+                frames.append(("rtcm", fr))
                 i += n + 6
             else:
-                text.append(b[i])
+                self.bad += 1
+                text.append(c)
                 i += 1
         del b[:i]
-        if len(b) > 8192:                  # vern mot uendeleg buffer
-            del b[:-2048]
+        if len(b) > 4 * UBX_MAX:               # vern mot uendeleg buffer (kan ikkje skje med gyldige rammer)
+            del b[:-UBX_MAX]
         return frames, bytes(text)
 
 
+UBX_NAMES = {(0x02, 0x15): "UBX-RAWX", (0x02, 0x13): "UBX-SFRBX", (0x01, 0x07): "UBX-PVT", (0x01, 0x3C): "UBX-RELPOSNED"}
+MAX_BASE_AGE = 30.0                         # s – eldre basedata blir ikkje brukte (same som RTKLIB maxtdiff)
 QUAL = {1: 4, 2: 5, 3: 2, 4: 2, 5: 1}      # RTKLIB SOLQ_* → GGA-kvalitet (FIX, FLOAT, SBAS→DGPS, DGPS, SINGLE)
 STATNAME = {0: "INGA", 1: "FIX", 2: "FLOAT", 3: "SBAS", 4: "DGPS", 5: "SINGLE", 6: "PPP"}
 
@@ -129,11 +183,15 @@ class RtkMotor:
         self.ready = False
         self.stats = {"base_obs": 0, "rover_obs": 0, "eph": 0, "sol": 0, "fix": 0, "float": 0, "single": 0,
                       "none": 0, "last_stat": None, "last_ratio": None, "last_sol": 0.0, "base_time": 0.0,
-                      "rover_time": 0.0, "base_pos": None, "rover_types": {}, "base_types": {}, "err": ""}
+                      "rover_time": 0.0, "base_pos": None, "rover_types": {}, "base_types": {}, "err": "",
+                      "rover_fmt": None, "eph_rover": 0, "eph_fixed": 0, "clock_off": None, "tdiff": None,
+                      "ubx_bad": 0}
         self.base_obs = None
         self.base_n = 0
         self.base_t = None
         self.hdop = None
+        self.t_gnss = None                 # siste GPS-tid frå mottakaren (UBX RAWX har full veke)
+        self.t_ref = None                  # tida til eit opptak (ref_time ved avspeling)
 
     def start(self, install=True, ref_time=None):
         """Last RTKLIB og set opp motoren. Returnerer True når han er klar.
@@ -158,7 +216,9 @@ class RtkMotor:
             self.rb = R.rtcm_t()
             R.init_rtcm(self.rb)                            # basestraumen (frå NTRIP)
             self.rv = R.rtcm_t()
-            R.init_rtcm(self.rv)                            # roverstraumen (frå mottakaren)
+            R.init_rtcm(self.rv)                            # roverstraumen (frå mottakaren), RTCM 3
+            self.ru = R.raw_t()
+            R.init_raw(self.ru, R.STRFMT_UBX)               # roverstraumen (frå mottakaren), u-blox UBX
             self.nav = self.rb.nav                          # felles satellittbaner (base, rover og ev. BRDC-fil)
             self.base_obs = R.Arr1Dobsd_t(128)
             self.navfile = None
@@ -169,6 +229,8 @@ class RtkMotor:
                 t0 = R.epoch2time(ep)
                 self.rb.time = t0
                 self.rv.time = t0
+                self.ru.time = t0
+                self.t_ref = t0
             self.ready = True
         return True
 
@@ -211,6 +273,11 @@ class RtkMotor:
                     self.stats["base_time"] = time.time()
                 elif ret == 2:
                     self.stats["eph"] += 1
+                    k = self.rb.ephsat - 1 + (R.MAXSAT if getattr(self.rb, "ephset", 0) else 0)
+                    if self.rb.ephsat > 0 and R.satsys(self.rb.ephsat, R.Arr1Dint(1)) != R.SYS_GLO:
+                        sec = self._week_shift(self.nav.eph[k])  # 1019 har veke modulo 1024, som SFRBX
+                        if sec:
+                            self._shift(self.nav.eph[k], sec)
                 elif ret == 5:                              # baseposisjon (1005/1006)
                     p = [self.rb.sta.pos[k] for k in range(3)]
                     if sum(abs(x) for x in p) > 1e6:
@@ -225,16 +292,23 @@ class RtkMotor:
 
     # ---------- roveren (frå mottakaren) ----------
     def rover_bytes(self, data):
-        """Rå straum frå mottakaren: returnerer teksten (NMEA) som SNOWMAN skal lese som før; RTCM går til motoren."""
+        """Rå straum frå mottakaren: returnerer teksten (NMEA) som SNOWMAN skal lese som før.
+        RTCM 3- og UBX-rammer går til RTK-motoren."""
         frames, text = self.demux.feed(data)
-        for fr in frames:
-            n = ((fr[1] & 3) << 8) | fr[2]
-            t = _bits(fr[3:3 + n], 0, 12) if n >= 2 else 0
-            self.stats["rover_types"][str(t)] = self.stats["rover_types"].get(str(t), 0) + 1
-            self.rover_feed(fr)
+        self.stats["ubx_bad"] = self.demux.bad
+        for kind, fr in frames:
+            if kind == "rtcm":
+                n = ((fr[1] & 3) << 8) | fr[2]
+                t = str(_bits(fr[3:3 + n], 0, 12)) if n >= 2 else "0"
+                self.rover_feed(fr)
+            else:
+                t = UBX_NAMES.get((fr[2], fr[3]), "UBX-%02X-%02X" % (fr[2], fr[3]))
+                self.rover_feed_ubx(fr)
+            self.stats["rover_types"][t] = self.stats["rover_types"].get(t, 0) + 1
         return text
 
     def rover_feed(self, data):
+        """RTCM 3 frå mottakaren."""
         if not self.ready:
             return
         sols = []
@@ -242,31 +316,126 @@ class RtkMotor:
             for c in data:
                 ret = R.input_rtcm3(self.rv, c)
                 if ret == 1:
-                    self.stats["rover_obs"] += 1
-                    self.stats["rover_time"] = time.time()
-                    s = self._solve()
-                    if s:
-                        sols.append(s)
+                    self._rover_epoch(self.rv.obs, "RTCM 3", sols)
                 elif ret == 2:                              # satellittbane frå mottakaren → felles nav
-                    s = self.rv.ephsat
-                    if s > 0:
-                        try:
-                            self.nav.eph[s - 1] = self.rv.nav.eph[s - 1]
-                        except Exception:
-                            pass
-                        self.stats["eph"] += 1
+                    self._copy_eph(self.rv.nav, self.rv.ephsat, getattr(self.rv, "ephset", 0))
+        self._emit(sols)
+
+    def rover_feed_ubx(self, data):
+        """u-blox UBX frå mottakaren: RXM-RAWX (observasjonar) og RXM-SFRBX (navigasjonsdata → baner)."""
+        if not self.ready:
+            return
+        sols = []
+        with self.lock:
+            for c in data:
+                ret = R.input_ubx(self.ru, c)
+                if ret == 1:
+                    if self.ru.obs.n:
+                        self._gnss_time(self.ru.obs.data[0].time)
+                    self._rover_epoch(self.ru.obs, "UBX RAWX", sols)
+                elif ret == 2:                              # heil bane frå SFRBX → felles nav
+                    self._copy_eph(self.ru.nav, self.ru.ephsat, self.ru.ephset)
+        self._emit(sols)
+
+    def _emit(self, sols):
         for g, info in sols:
             if self.on_solution:
                 self.on_solution(g, info)
 
-    def _solve(self):
-        nr = min(self.rv.obs.n, 128)
+    def _rover_epoch(self, obs, fmt, sols):
+        self.stats["rover_obs"] += 1
+        self.stats["rover_time"] = time.time()
+        self.stats["rover_fmt"] = fmt
+        s = self._solve(obs)
+        if s:
+            sols.append(s)
+
+    # ---------- tid og baner ----------
+    def _gnss_time(self, t):
+        """Ny epoke med full GPS-tid frå mottakaren (UBX). Rett opp klokka om PC-en tek feil:
+        1) RTKLIB si klokke (timeget) – avgjer veka for banene (SFRBX har veke modulo 1024) og for RTCM utan referanse
+        2) referansetida til basestraumen – RTCM har berre tid i veka
+        3) baner som alt er lagra med feil veke (1024 veker for mykje eller for lite)"""
+        first = self.t_gnss is None
+        self.t_gnss = t
+        off = R.timediff(R.utc2gpst(R.timeget()), t)
+        if abs(off) > 60.0:                                 # PC-klokka avvik meir enn eitt minutt frå GNSS-tida
+            R.timeset(R.gpst2utc(t))
+            if abs(off) > abs(self.stats["clock_off"] or 0):
+                self.stats["clock_off"] = round(off)        # største avvik som er retta (til feilsøkaren)
+            first = True
+        if self.rb.time.time == 0 or abs(R.timediff(self.rb.time, t)) > 86400.0:
+            self.rb.time = t
+        if first:
+            self._fix_weeks()
+
+    def _week_shift(self, e):
+        """Kor mange sekund banen e må flyttast (heile veker) for å liggje rundt GNSS-tida (0 = rett).
+        Ein kringkasta bane har toe innanfor nokre timar frå no. Er han meir enn ei halv veke unna, er veka vald
+        frå feil klokke – typisk 1024 veker feil (SFRBX/1019 har veke modulo 1024), ± 1 veke frå RTKLIB si eiga
+        justering mot referansetida i RTCM."""
+        ref = self.t_gnss if self.t_gnss is not None else self.t_ref
+        if ref is None or not e.sat:
+            return 0.0
+        d = R.timediff(ref, e.toe)
+        if abs(d) < 302400.0:
+            return 0.0
+        return round(d / 604800.0) * 604800.0
+
+    def _shift(self, e, sec):
+        e.toe = R.timeadd(e.toe, sec)
+        e.toc = R.timeadd(e.toc, sec)
+        e.ttr = R.timeadd(e.ttr, sec)
+        e.week += int(round(sec / 604800.0))
+        self.stats["eph_fixed"] += 1
+
+    def _fix_weeks(self):
+        for i in range(2 * R.MAXSAT):                       # GPS/Galileo/BeiDou … (andre halvdel: Galileo F/NAV)
+            e = self.nav.eph[i]
+            if e.sat:
+                sec = self._week_shift(e)
+                if sec:
+                    self._shift(e, sec)
+
+    def _copy_eph(self, src, sat, eset=0):
+        """Kopier ei ny bane frå ein roverstraum til den felles nav-strukturen som rtkpos brukar."""
+        if not sat or sat < 1:
+            return
+        prn = R.Arr1Dint(1)
+        sys_ = R.satsys(sat, prn)
+        try:
+            if sys_ == R.SYS_GLO:
+                if not 1 <= prn[0] <= self.nav.ng:
+                    return
+                self.nav.geph[prn[0] - 1] = src.geph[prn[0] - 1]
+            else:
+                k = sat - 1 + (R.MAXSAT if eset else 0)     # Galileo F/NAV ligg i andre halvdel
+                self.nav.eph[k] = src.eph[k]
+                sec = self._week_shift(self.nav.eph[k])
+                if sec:
+                    self._shift(self.nav.eph[k], sec)
+        except Exception as e:
+            self.stats["err"] = f"Bane frå mottakaren: {e}"
+            return
+        self.stats["eph"] += 1
+        self.stats["eph_rover"] += 1
+
+    def _solve(self, obs):
+        nr = min(obs.n, 128)
         if nr == 0:
             return None
         nb = self.base_n if self.base_t is not None else 0
+        if nb:
+            # Alder på basedataa: tid rover − tid base. Same epoke gir 0; basen er normalt 1 Hz og roveren opp til 10 Hz.
+            dt = R.timediff(obs.data[0].time, self.base_t)
+            self.stats["tdiff"] = round(dt, 3)
+            if abs(dt) > MAX_BASE_AGE:
+                self.stats["err"] = (f"Basen og roveren har {dt:.0f} s ulik tid – "
+                                     + ("sjekk klokka/veka" if abs(dt) > 3600 else "basedataa er for gamle"))
+                nb = 0
         arr = R.Arr1Dobsd_t(nr + nb)
         for i in range(nr):
-            arr[i] = self.rv.obs.data[i]
+            arr[i] = obs.data[i]
             arr[i].rcv = 1
         for i in range(nb):
             arr[nr + i] = self.base_obs[i]
