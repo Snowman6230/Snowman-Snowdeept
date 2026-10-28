@@ -115,7 +115,9 @@ def _snowman_steps(S, st, r, now):
     if ne >= 4:
         _step(S, "eph", "Satellittbaner", OK, f"{ne} baner frå straumane" + (f" · {nf} frå fil" if nf else ""))
     elif nf:
-        _step(S, "eph", "Satellittbaner", WARN, f"Berre frå fil ({nf} baner) · {st.get('rtk_nav') or ''}",
+        ge = m.get("glo_ext") or 0
+        _step(S, "eph", "Satellittbaner", WARN, f"Berre frå fil ({nf} baner"
+              + (f", {ge} GLONASS-baner rekna fram i tid" if ge else "") + f") · {st.get('rtk_nav') or ''}",
               "Døgnfila frå IGS kan vere gammal. Best: slå på baner (RTCM 1019/1020/1042/1046) i rådata frå mottakaren.")
     else:
         _step(S, "eph", "Satellittbaner", FAIL, "Ingen satellittbaner (verken mottakar, base eller fil).",

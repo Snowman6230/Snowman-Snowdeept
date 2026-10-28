@@ -65,7 +65,7 @@ def main():
     print(f"Postar: mottakar {n_r}, base {n_b} · tid {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(post[0][0]))}"
           f" – {time.strftime('%H:%M:%S', time.localtime(post[-1][0]))}")
     print({k: s[k] for k in ("rover_obs", "base_obs", "eph", "eph_file", "fix", "float", "single", "none", "tdiff",
-                             "rover_types", "base_types", "err", "sats")})
+                             "rover_types", "base_types", "err", "sats", "glo_ext")})
     return 0
 
 

@@ -9,6 +9,32 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.106 – GLONASS: banene blir rekna fram i tid, og autokalibrering mellom mottakarmerke
+- **Bakgrunn:** opptaket frå 28.10 kl. 19:43 (Reach RS+, 5 min) og banefila frå SNOWMAN-PC-en vart spela av med
+  `spel_opptak.py`.
+  1. **GLONASS-baner:** BKG oppdaterte fila ofte (sist 19:40), men dei nyaste GLONASS-banene i ho var frå 18:15 UTC, altså
+     35–60 min gamle. RTKLIB godtek berre ±30 min, så GLONASS fall ut («GLONASS 0/6»).
+  2. **Falske FIX:** med GLONASS-heiltal av (glomodear 0) var GLONASS-fasen likevel med i flytløysinga, med ein ukjend
+     skilnad mellom Trimble (TH) og u-blox (Reach) på 6–19 cm i dobbeldifferansane («large residual» kvar epoke).
+     Opptaket gav 26 RTK FIX, og **alle 26 var 1–2 m feil**. Det er farleg: ein falsk FIX gir feil snødjupn.
+- **Nytt:** `extend_glonass` reknar den nyaste GLONASS-banen for kvar satellitt fram til +15, 30 … 90 min (integrert
+  med RTKLIB `geph2pos`, ny posisjon, fart og klokke). Målt mot ekte baner i fila: banefeil 1–3 m etter 30 min, 2–12 m
+  etter 60 min og 8–38 m etter 90 min. I RTK blir feilen om lag banefeil × basestand / 20 000 km: under 1 mm ved 0,5 km
+  og om lag 1 cm ved 5 km. Klokkefeilen fell bort i dobbeldifferansen. Framrekna baner tek plassen til baner som er
+  meir enn 2 t eldre enn den nyaste. Kontroll: posisjon frå framrekna bane mot direkte integrasjon gir 2 mm avvik.
+  Feilsøkaren viser kor mange baner som er rekna fram.
+- **Endra:** GLONASS-heiltal med autokalibrering (glomodear 2). RTKLIB estimerer skilnaden mellom mottakarmerka.
+- **Resultat på opptaket (300 epokar):**
+  - v1.6.104: 0 FIX, 60 FLOAT, 240 INGA
+  - v1.6.105 (SNR-maske): 26 FIX (alle falske), 274 FLOAT, 0 INGA
+  - v1.6.106: 0 FIX, 300 FLOAT, 0 INGA, og ingen falske FIX
+  - Med ratio-grense 2 i staden for 3 kom 13 FIX innanfor 0,6 cm av kvarandre, så rett FIX ser ut til å kome med
+    lengre tid. Grensa blir verande 3 for tryggleik.
+- **Lærdom:** ein L1-mottakar (Reach RS+) med 4–6 sterke GPS-satellittar treng lang tid til sikker FIX. Ein
+  L1/L2-mottakar (Zenith35, ZED-F9P) er vegen til rask og sikker FIX i maskina.
+- **Testa:** `replay.py` 115/115 FIX, `testrekkjefolgje.py` ALT OK, `testubx.py` ALT OK, `rtksjekk.py` OK, og
+  felt-opptaket som over.
+
 ### PC-prototype v1.6.105 – SNR-maske 35 dBHz for roveren
 - **Bakgrunn (opptak 28.10 kl. 19:43, Reach RS+ over Bluetooth, 1 Hz, 4 min):** 279 av 336 epokar gav ingen løysing,
   og feilmeldinga var «large residual (sat=29-31 L1 v=14.990)». Analyse av opptaket per satellitt:

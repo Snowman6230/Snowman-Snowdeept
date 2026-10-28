@@ -168,6 +168,63 @@ def _nmea(body):
     return f"${body}*{cs:02X}"
 
 
+GLO_EXT_MIN = 90        # min – GLONASS-baner blir rekna fram i tid så langt (sjå extend_glonass)
+GLO_EXT_STEP = 15       # min mellom framrekna baner
+
+
+def _gpos(g, t):
+    rs, dts, var = R.Arr1Ddouble(3), R.Arr1Ddouble(1), R.Arr1Ddouble(1)
+    R.geph2pos(t, g, rs, dts, var)
+    return [rs[0], rs[1], rs[2]]
+
+
+def extend_glonass(nav):
+    """Rekn GLONASS-banene i ei BRDC-fil fram i tid (v1.6.106). Returnerer talet på nye baner.
+
+    Bakgrunn (felttest 28.10): BRDC-fila frå BKG vart oppdatert ofte, men dei nyaste GLONASS-banene i ho var 35–60 min
+    gamle. RTKLIB godtek berre GLONASS-baner innanfor ±30 min (MAXDTOE_GLO), så GLONASS fall ut av RTK.
+    GLONASS-banene er tilstandsvektorar (posisjon, fart, akselerasjon) som RTKLIB integrerer frå toe. Her blir den
+    nyaste banen for kvar satellitt integrert fram til toe + 15, 30 … 90 min og lagra som nye baner med same
+    akselerasjon og klokkemodell. Målt mot ekte baner i fila: banefeil ≤ ca. 40 m etter 90 min. I RTK (dobbeldifferanse)
+    blir feilen omtrent banefeil × basestand / 20 000 km: under 1 mm ved 0,5 km og ca. 1 cm ved 5 km.
+    Klokkefeilen til satellitten fell heilt bort i dobbeldifferansen. Gjeld berre korte basestandar (lokal base).
+
+    Nye baner tek plassen til dei eldste banene for same satellitt (meir enn 2 t eldre enn den nyaste), sidan nav_t
+    ikkje kan veksast trygt frå Python. Finst det ikkje nok gamle plassar, blir det færre framrekna baner."""
+    by = {}
+    for i in range(nav.ng):
+        g = nav.geph[i]
+        if g.sat:
+            by.setdefault(g.sat, []).append(i)
+    made = 0
+    for sat, idx in by.items():
+        idx.sort(key=lambda i: nav.geph[i].toe.time)
+        newest = nav.geph[idx[-1]]
+        t_new = newest.toe
+        free = [i for i in idx if newest.toe.time - nav.geph[i].toe.time > 7200]
+        for k in range(1, GLO_EXT_MIN // GLO_EXT_STEP + 1):
+            if not free:
+                break
+            dt = k * GLO_EXT_STEP * 60.0
+            t = R.timeadd(t_new, dt)
+            p0 = _gpos(newest, R.timeadd(t, -0.5))
+            p1 = _gpos(newest, R.timeadd(t, 0.5))
+            pc = _gpos(newest, t)
+            slot = free.pop(0)
+            nav.geph[slot] = newest                      # kopi: frekvens, helse, akselerasjon, klokkemodell
+            e = nav.geph[slot]
+            for j in range(3):
+                e.pos[j] = pc[j]
+                e.vel[j] = p1[j] - p0[j]
+            e.taun = newest.taun - newest.gamn * dt      # same klokke: -taun' + gamn·(t−toe') = -taun + gamn·(t−toe)
+            e.toe = t
+            e.tof = t
+            e.iode = (newest.iode + k) % 128
+            nav.geph[slot] = e
+            made += 1
+    return made
+
+
 class RtkMotor:
     """RTK-utrekning i SNOWMAN. Trådsikker: basen kjem frå NTRIP-tråden, roveren frå mottakartråden."""
 
@@ -186,7 +243,7 @@ class RtkMotor:
                       "none": 0, "last_stat": None, "last_ratio": None, "last_sol": 0.0, "base_time": 0.0,
                       "rover_time": 0.0, "base_pos": None, "rover_types": {}, "base_types": {}, "err": "",
                       "rover_fmt": None, "eph_rover": 0, "eph_fixed": 0, "clock_off": None, "tdiff": None,
-                      "ubx_bad": 0, "sats": None}
+                      "ubx_bad": 0, "sats": None, "glo_ext": 0}
         self._diag_t = 0.0
         self.base_obs = None
         self.base_n = 0
@@ -209,7 +266,10 @@ class RtkMotor:
             opt.navsys = R.SYS_GPS | R.SYS_GLO | R.SYS_GAL | R.SYS_CMP
             opt.elmin = 15.0 * math.pi / 180.0              # 15° elevasjonsmaske
             opt.modear = 1                                  # ARMODE_CONT – løyser heiltal kontinuerleg
-            opt.glomodear = 0                               # GLONASS-heiltal av: trygt mellom ulike mottakarmerke
+            # GLONASS: autokalibrering av skilnaden mellom mottakarmerke (RTKLIB glomodear=2, v1.6.106). Med «av» (0)
+            # vart GLONASS-fasen med i flytløysinga med ukjend skilnad (Trimble-base mot u-blox i Reach: 6–19 cm i
+            # dobbeldifferansane), og opptaket frå 28.10 gav 26 FIX der alle var 1–2 m feil. Med 2: ingen falske FIX.
+            opt.glomodear = 2
             opt.thresar[0] = 3.0                            # ratio-test for FIX
             # SNR-maske for roveren (v1.6.105): felttest 28.10 med Reach RS+ – satellittar under ~30 dBHz hadde 2–5 m
             # kodestøy og fasebrot, gav «large residual» og tok ned heile løysinga. Masken blir berre slått på når
@@ -249,6 +309,10 @@ class RtkMotor:
             return 0
         tmp = R.nav_t()
         R.readrnx(path, 0, "", R.obs_t(), tmp, R.sta_t())
+        try:
+            self.stats["glo_ext"] = extend_glonass(tmp)
+        except Exception as e:
+            self.stats["err"] = f"GLONASS-baner fram i tid: {e}"[:200]
         with self.lock:
             if tmp.n or tmp.ng:
                 self.navfile = tmp
