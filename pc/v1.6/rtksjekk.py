@@ -121,6 +121,25 @@ def _snowman_steps(S, st, r, now):
         _step(S, "eph", "Satellittbaner", FAIL, "Ingen satellittbaner (verken mottakar, base eller fil).",
               "Slå på utsending av baner (RTCM 1019 GPS, 1020 GLONASS, 1046 Galileo, 1042 BeiDou) på mottakaren, eller bruk eit "
               "mountpoint som sender dei. SNOWMAN prøver òg å hente banefil frå IGS (krev nett).")
+    # Felles satellittar i utrekninga (v1.6.101): per system – rover, base, felles og felles med gyldig bane
+    sd = m.get("sats")
+    if isinstance(sd, dict) and sd and "feil" not in sd:
+        main = [k for k in ("GPS", "GLONASS", "Galileo", "BeiDou") if k in sd and sd[k]["base"]]
+        txt = " · ".join(f"{k} {sd[k]['bane']}/{sd[k]['felles']} (rover {sd[k]['rover']}, base {sd[k]['base']})" for k in main)
+        brukbar = sum(sd[k]["bane"] for k in main)
+        utan = [k for k in main if sd[k]["bane"] < sd[k]["felles"]]
+        if utan:
+            _step(S, "common", "Felles satellittar i utrekninga", WARN if brukbar >= 8 else FAIL,
+                  f"{brukbar} brukbare · {txt} (brukbare/felles)",
+                  f"{', '.join(utan)}: felles satellittar utan gyldig bane blir ikkje brukte. Banene kjem frå BRDC-fila, og "
+                  "GLONASS-baner gjeld berre ±30 min (GPS ±2 t). SNOWMAN hentar fila oftare når dette skjer. Varig løysing: "
+                  "baner i straumen (1019/1020 frå mottakaren eller basen).")
+        elif brukbar < 8:
+            _step(S, "common", "Felles satellittar i utrekninga", WARN, f"{brukbar} brukbare · {txt} (brukbare/felles)",
+                  "Få felles satellittar mellom mottakaren og basen. Same satellittsystem må vere på i begge (TH: GPS + "
+                  "GLONASS), og antenna må ha fri sikt.")
+        else:
+            _step(S, "common", "Felles satellittar i utrekninga", OK, f"{brukbar} brukbare · {txt} (brukbare/felles)")
 
 
 def check(st, cfg, ports=None, net=None, now=None):
@@ -391,6 +410,11 @@ if __name__ == "__main__":     # sjølvtest: python3 rtksjekk.py
               err="16:50:43.40: no common satell"))
     r = check(rs, cfg, ports, None, now)
     st_ = {x["id"]: x for x in r["steps"]}
+    r2 = check(dict(rs, motor=dict(rs["motor"], sats={"GPS": {"rover": 9, "base": 10, "felles": 8, "bane": 8},
+              "GLONASS": {"rover": 7, "base": 7, "felles": 6, "bane": 0}, "SBAS": {"rover": 2, "base": 0, "felles": 0, "bane": 0}})),
+               cfg, ports, None, now)
+    c = {x["id"]: x for x in r2["steps"]}["common"]
+    assert c["status"] == WARN and "GLONASS" in c["action"] and "GLONASS 0/6" in c["detail"], c
     assert st_["data"]["status"] == WAIT, st_["data"]
     assert st_["rtk"]["status"] == FAIL and "no common satell" in st_["rtk"]["detail"], st_["rtk"]
     print(report(r, "rs-test"))

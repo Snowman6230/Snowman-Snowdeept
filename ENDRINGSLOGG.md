@@ -9,6 +9,22 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.101 – feilsøkaren viser felles satellittar og gamle baner
+- **Bakgrunn (felttest 28.10, Emlid Reach RS+ over Bluetooth, fri sikt):** RTK rekna i SNOWMAN stod i FLOAT med berre
+  6 satellittar i over 20 minutt. Mot TH (GPS + GLONASS) skulle det vore 10–16. Mistanke: GLONASS blir ikkje brukt.
+  Verken TH eller Reach sender baner (1019/1020), så banene kjem frå BRDC-fila. GLONASS-baner gjeld berre ±30 min i
+  RTKLIB (GPS ±2 t), og fila vart berre henta kvar time.
+- **Nytt:** motoren reknar kvart 5. s ut kor mange satellittar kvart system har hos roveren, hos basen, felles, og
+  felles med gyldig bane (same grenser som RTKLIB). Feilsøkaren viser det i det nye steget «Felles satellittar i
+  utrekninga», t.d. «GPS 8/8 · GLONASS 0/6», og seier ifrå når felles satellittar manglar gyldig bane.
+- **Endra:** manglar felles GPS- eller GLONASS-satellittar gyldig bane, blir BRDC-fila henta kvart 10. min i staden for
+  kvar time.
+- **Ikkje løyst endå:** om BKG oppdaterer fila oftare enn kvar time. Varig løysing er baner i ein straum (1019/1020
+  frå mottakar eller base, eller eit eige banemountpoint).
+- **Testa:** `_satdiag` mot GLONASS-banefila i RTKLIB-testdataa (`brdc0910.09g`): same tid gir 2/2, to døgn seinare
+  0/2. Heile SNOWMAN med falsk mottakar (usortert 1002, utan NMEA): steget viser «8 brukbare · GPS 8/8» og RTK FLOAT.
+  `replay.py` 115/115 FIX og `rtksjekk.py` sin sjølvtest (ny: GLONASS 0/6) OK.
+
 ### PC-prototype v1.6.100 – RTK-motoren sorterer observasjonane (Emlid Reach RS+)
 - **Bakgrunn (felttest 27.–28.10, Emlid Reach RS+):** Reach i basemodus sende rådata (1002 + 1010 + 1006, i tillegg
   1107/1117/1127) over USB. SNOWMAN tok imot både rådata (674 epokar) og basedata frå TH (135 epokar), men motoren

@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.100"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.101"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -388,16 +388,23 @@ def motor_start():
             update(rtk_motor="feil: "+RM.LIB_ERR[:200]); LOG.event("RTK-motor: "+RM.LIB_ERR,err=True)
     threading.Thread(target=run,daemon=True).start()
 def motor_nav_loop():
-    """Satellittbaner når verken mottakar eller base sender dei: prøv BRDC-fila frå BKG (IGS) kvar time."""
+    """Satellittbaner når verken mottakar eller base sender dei: prøv BRDC-fila frå BKG (IGS) kvar time.
+    Manglar felles satellittar gyldig bane (GLONASS-baner gjeld berre ±30 min), blir fila henta kvart 10. min (v1.6.101)."""
     while not STOP.is_set() and MOTOR[0] is not None:
-        m=MOTOR[0]
+        m=MOTOR[0]; wait=3600
         if m.stats.get("eph",0)<4:
+            sd=m.stats.get("sats") or {}
+            gammal=any(isinstance(v,dict) and v.get("bane",0)<v.get("felles",0) for k,v in sd.items() if k in ("GPS","GLONASS"))
+            if gammal: wait=600
             try:
-                path=RM.fetch_brdc(DATA/"brdc",ua=WX.ua)
+                path=RM.fetch_brdc(DATA/"brdc",ua=WX.ua,max_age=wait)
                 if path:
                     n=m.load_nav(str(path)); update(rtk_nav=f"BRDC-fil {path.name}: {n} baner")
             except Exception as e: update(rtk_nav=f"BRDC-fil: {e}")
-        STOP.wait(3600)
+        else:
+            wait=3600
+        # første runde: vent til motoren har sett satellittane, så banene kan vurderast
+        STOP.wait(wait if m.stats.get("sats") else 60)
 
 SERIAL_REOPEN=threading.Event()   # «LAGRE / KOPLE TIL» eller døyande samband: lukk porten og opne han på nytt
 SERIAL_IDLE=15.0                   # s utan data frå mottakaren før porten blir opna på nytt (mottakarar sender minst 1 Hz)

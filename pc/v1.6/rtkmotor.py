@@ -185,7 +185,8 @@ class RtkMotor:
                       "none": 0, "last_stat": None, "last_ratio": None, "last_sol": 0.0, "base_time": 0.0,
                       "rover_time": 0.0, "base_pos": None, "rover_types": {}, "base_types": {}, "err": "",
                       "rover_fmt": None, "eph_rover": 0, "eph_fixed": 0, "clock_off": None, "tdiff": None,
-                      "ubx_bad": 0}
+                      "ubx_bad": 0, "sats": None}
+        self._diag_t = 0.0
         self.base_obs = None
         self.base_n = 0
         self.base_t = None
@@ -442,7 +443,14 @@ class RtkMotor:
             arr[k].rcv = 1
         for k, i in enumerate(sorted(range(nb), key=lambda i: self.base_obs[i].sat)):
             arr[nr + k] = self.base_obs[i]
-        R.rtkpos(self.rtk, arr[0], nr + nb, self._nav())
+        nav = self._nav()
+        if time.time() - self._diag_t > 5.0:                 # oversikt til feilsøkaren kvart 5. s
+            self._diag_t = time.time()
+            try:
+                self.stats["sats"] = self._satdiag(arr, nr, nb, nav)
+            except Exception as e:
+                self.stats["sats"] = {"feil": str(e)[:120]}
+        R.rtkpos(self.rtk, arr[0], nr + nb, nav)
         sol = self.rtk.sol
         st = int(sol.stat)
         key = {1: "fix", 2: "float"}.get(st, "single" if st in (3, 4, 5) else "none")
@@ -457,6 +465,39 @@ class RtkMotor:
         self.stats["sol"] += 1
         self.stats["last_sol"] = time.time()
         return self._gga(sol, st), {"stat": st, "ratio": float(sol.ratio), "ns": int(sol.ns), "age": float(sol.age)}
+
+    def _satdiag(self, arr, nr, nb, nav):
+        """Kor mange satellittar per system hos roveren, basen, felles, og felles med gyldig bane i nav.
+        Gyldig bane = som i RTKLIB (seleph): GPS/Galileo/BeiDou/QZSS innanfor MAXDTOE (2 t), GLONASS innanfor
+        MAXDTOE_GLO (30 min) frå epoka. Manglar banane, blir satellitten ikkje brukt – t.d. GLONASS når BRDC-fila
+        er eldre enn ein halvtime og verken basen eller mottakaren sender 1020."""
+        names = {R.SYS_GPS: "GPS", R.SYS_GLO: "GLONASS", R.SYS_GAL: "Galileo", R.SYS_CMP: "BeiDou",
+                 R.SYS_QZS: "QZSS", R.SYS_SBS: "SBAS"}
+        if nr == 0:
+            return None
+        t = arr[0].time
+        prn = R.Arr1Dint(1)
+        rov = {arr[i].sat for i in range(nr)}
+        bas = {arr[nr + i].sat for i in range(nb)}
+        ok = set()
+        for i in range(nav.n):
+            e = nav.eph[i]
+            if e.sat and e.sat in rov and abs(R.timediff(t, e.toe)) <= R.MAXDTOE:
+                ok.add(e.sat)
+        for i in range(nav.ng):
+            g = nav.geph[i]
+            if g.sat and g.sat in rov and abs(R.timediff(t, g.toe)) <= R.MAXDTOE_GLO:
+                ok.add(g.sat)
+        out = {}
+        for sat in rov | bas:
+            n = names.get(R.satsys(sat, prn), "anna")
+            d = out.setdefault(n, {"rover": 0, "base": 0, "felles": 0, "bane": 0})
+            d["rover"] += sat in rov
+            d["base"] += sat in bas
+            if sat in rov and sat in bas:
+                d["felles"] += 1
+                d["bane"] += sat in ok
+        return out
 
     def _gga(self, sol, st):
         rr = R.Arr1Ddouble(3)
@@ -491,7 +532,7 @@ class RtkMotor:
 BRDC_URL = "https://igs.bkg.bund.de/root_ftp/IGS/BRDC/{y}/{d:03d}/"   # IGS-baner (BKG), samla døgnfiler
 
 
-def fetch_brdc(folder, ua="SNOWMAN", now=None):
+def fetch_brdc(folder, ua="SNOWMAN", now=None, max_age=3600):
     """Hent siste samla banefil (RINEX nav) frå BKG/IGS til folder og returner stien, eller None.
     NB: døgnfilene blir fullstendige først etter midnatt – for sanntid er baner frå mottakaren (eller basen) best.
     Brukt som reserve når straumane ikkje har baner."""
@@ -518,7 +559,7 @@ def fetch_brdc(folder, ua="SNOWMAN", now=None):
             continue
         name = sorted(set(n.split("/")[-1] for n in names))[-1]
         out = folder / name[:-3]
-        if out.exists() and time.time() - out.stat().st_mtime < 3600:
+        if out.exists() and time.time() - out.stat().st_mtime < max_age:
             return out
         with nett.urlopen(urllib.request.Request(url + name, headers={"User-Agent": ua}), timeout=60) as r:
             data = gzip.decompress(r.read())
