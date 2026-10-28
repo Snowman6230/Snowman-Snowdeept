@@ -9,6 +9,25 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.102 – banefila blir sjekka kvart 2. min når GLONASS-banene er gamle
+- **Bakgrunn (felttest 28.10, Reach RS+):** etter omstart med ny banefil viste feilsøkaren «GLONASS 5/5» og 11
+  satellittar i løysinga. 17 minutt seinare var det «GLONASS 0/6» og berre 7 GPS att, og FLOAT med ratio 1,0–1,2.
+  Mistanken frå v1.6.101 er stadfesta: banene går ut på dato. v1.6.101 sjekka berre kvar time om dei var gamle, så
+  «kvart 10. min» slo ikkje inn.
+- **Endra:** SNOWMAN sjekkar kvart minutt om felles GPS- eller GLONASS-satellittar manglar gyldig bane. I så fall spør
+  han BKG kvart 2. minutt om fila er endra (HEAD: Last-Modified og storleik), og lastar ho berre ned når ho er ny. Det
+  brukar lite mobildata. Elles: kvar time som før.
+- **Nytt:** feilsøkaren viser når fila hos BKG sist vart endra, og når SNOWMAN sist sjekka. Det viser kor ofte
+  kjelda faktisk blir oppdatert.
+- **Retta (test):** `testrekkjefolgje.py` flyttar fasen nær kodeavstanden før 1002-kodinga. RTKLIB sin 1002-kodar flaut
+  over med RINEX-testdataa og gav berre FLOAT. No: 114/120 RTK FIX med berre L1 (GPS), både usortert og sortert. Same
+  resultat som 1077 med berre L1. Motoren kan altså gi FIX med L1-mottakar.
+- **Råd frå felttesten:** set Reach til 1 Hz, så rover- og baseepokane kjem frå same sekund (TH sender 1 Hz). Varig
+  løysing for banene: TH sender 1019/1020.
+- **Testa:** fetch_brdc mot ein lokal falsk tenar: første henting lastar ned, uendra fil blir ikkje lasta ned att, ny
+  fil hos kjelda blir lasta ned, og cache innanfor max_age blir brukt. `replay.py` 115/115 FIX, `testrekkjefolgje.py`
+  ALT OK, `rtksjekk.py` OK. SNOWMAN startar og motoren blir «klar».
+
 ### PC-prototype v1.6.101 – feilsøkaren viser felles satellittar og gamle baner
 - **Bakgrunn (felttest 28.10, Emlid Reach RS+ over Bluetooth, fri sikt):** RTK rekna i SNOWMAN stod i FLOAT med berre
   6 satellittar i over 20 minutt. Mot TH (GPS + GLONASS) skulle det vore 10–16. Mistanke: GLONASS blir ikkje brukt.

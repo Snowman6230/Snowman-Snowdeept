@@ -538,6 +538,7 @@ def fetch_brdc(folder, ua="SNOWMAN", now=None, max_age=3600):
     Brukt som reserve når straumane ikkje har baner."""
     import datetime as dt
     import gzip
+    import os
     import re
     import urllib.request
     from pathlib import Path
@@ -560,11 +561,33 @@ def fetch_brdc(folder, ua="SNOWMAN", now=None, max_age=3600):
         name = sorted(set(n.split("/")[-1] for n in names))[-1]
         out = folder / name[:-3]
         if out.exists() and time.time() - out.stat().st_mtime < max_age:
+            BRDC_LAST.update(changed=False)
+            return out
+        # Spør først om fila hos kjelda er endra (HEAD: Last-Modified + storleik) – då kan SNOWMAN sjekke ofte utan å
+        # laste ned heile fila kvar gong (v1.6.102). Kjelda kan svare utan desse felta; då blir fila lasta ned.
+        meta = out.with_suffix(".meta")
+        key = ""
+        try:
+            with nett.urlopen(urllib.request.Request(url + name, headers={"User-Agent": ua}, method="HEAD"), timeout=15) as r:
+                lm, ln = r.headers.get("Last-Modified") or "", r.headers.get("Content-Length") or ""
+                key = f"{lm}|{ln}" if (lm or ln) else ""
+        except Exception:
+            lm = ""
+        BRDC_LAST.update(remote=lm or None, checked=time.time())
+        if key and out.exists() and meta.exists() and meta.read_text() == key:
+            os.utime(out, None)                             # uendra hos kjelda: rekna som fersk sjekk
+            BRDC_LAST.update(changed=False)
             return out
         with nett.urlopen(urllib.request.Request(url + name, headers={"User-Agent": ua}), timeout=60) as r:
             data = gzip.decompress(r.read())
         tmp = out.with_suffix(".tmp")
         tmp.write_bytes(data)
         tmp.replace(out)
+        if key:
+            meta.write_text(key)
+        BRDC_LAST.update(changed=True, loaded=time.time())
         return out
     return None
+
+
+BRDC_LAST = {"changed": False, "remote": None, "checked": None, "loaded": None}   # siste sjekk av banefila (feilsøkaren)

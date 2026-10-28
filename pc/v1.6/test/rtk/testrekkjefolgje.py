@@ -8,9 +8,13 @@ motoren «no common satellite», og det vart ingen løysing i det heile.
 Testen etterliknar dette med RTKLIB-testdataa 0759/3040: roveren blir koda som 1002 (berre L1, som RS+)
 i to meldingar per epoke, der dei høgaste satellittnummera kjem først (sync=1) og dei lågaste sist (sync=0).
 Basen er 1006 + 1077 (L1 + L2, som lagrtcm.py). Same roverdata blir òg køyrde sorterte (éi melding per epoke).
-Venta: usortert gir nøyaktig same resultat som sortert, RTK-løysing (FLOAT/FIX) i minst 90 % av epokane, og
-ingen «no common satellite». (L1-rover mot desse testdataa gir FLOAT, ikkje FIX – det er venta: kort tid og
-berre L1. Det testen viser, er at rekkjefølgja ikkje lenger betyr noko.)
+Venta: usortert gir nøyaktig same resultat som sortert, RTK FIX i minst 90 % av epokane (berre L1, GPS), og
+ingen «no common satellite».
+
+NB (v1.6.102): RINEX-testdataa har berebølgjefasen langt frå kodeavstanden. I 1002 er fasen lagra som skilnad mot
+koden i eit felt på ±262 m, og RTKLIB sin kodar flyt då over, slik at nokre satellittar får ein brøkdels syklus-feil
+(berre FLOAT). Ein ekte mottakar held fasen nær koden. Testen flyttar difor fasen heile syklusar per satellitt før
+kodinga – det endrar ikkje heiltalsløysinga.
 
 Køyr: python3 testrekkjefolgje.py   (krev rtklib/test/data/rinex, sjå LES-MEG.txt)
 """
@@ -39,7 +43,8 @@ def rover_1002(usortert=True):
     for i in range(obs.n):
         d = obs.data[i]; ep.setdefault((d.time.time, d.time.sec), []).append(i)
     r = R.rtcm_t(); R.init_rtcm(r); r.staid = 0
-    out = bytearray()
+    out = bytearray(); off = {}
+    lam = R.CLIGHT / R.FREQ1
     for key in sorted(ep):
         idx = sorted(ep[key], key=lambda i: obs.data[i].sat)
         half = len(idx) // 2
@@ -48,6 +53,10 @@ def rover_1002(usortert=True):
             r.time = obs.data[idx[0]].time; r.obs.n = len(part)
             for j, i in enumerate(part):
                 r.obs.data[j] = obs.data[i]
+                d = r.obs.data[j]
+                if d.sat not in off:                                # fasen nær koden, heile syklusar (sjå NB)
+                    off[d.sat] = round(d.L[0] - d.P[0] / lam)
+                d.L[0] -= off[d.sat]
             if R.gen_rtcm3(r, 1002, 0, sync):
                 out.extend(bytes(r.buff[k] for k in range(r.nbyte)))
     return bytes(out)
@@ -84,8 +93,7 @@ def run(usortert):
 def main():
     u, s = run(True), run(False)
     same = all(u[k] == s[k] for k in ("fix", "float", "none"))
-    rtk = u["fix"] + u["float"]
-    ok = same and u["rover_obs"] > 100 and rtk >= 0.9 * u["rover_obs"] and "no common" not in u["err"]
+    ok = same and u["rover_obs"] > 100 and u["fix"] >= 0.9 * u["rover_obs"] and "no common" not in u["err"]
     print("ALT OK" if ok else "FEIL")
     return 0 if ok else 1
 
