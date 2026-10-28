@@ -9,6 +9,20 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.105 – SNR-maske 35 dBHz for roveren
+- **Bakgrunn (opptak 28.10 kl. 19:43, Reach RS+ over Bluetooth, 1 Hz, 4 min):** 279 av 336 epokar gav ingen løysing,
+  og feilmeldinga var «large residual (sat=29-31 L1 v=14.990)». Analyse av opptaket per satellitt:
+  - Sterke satellittar (37–51 dBHz) hadde kode minus fase med spreiing 0,2 m og samanhengande fase.
+  - Svake satellittar (G04, G11, G26, G31, R01, R02, R11: 24–29 dBHz) hadde 2–6 m kodestøy, fase berre i delar av
+    tida og hopp på 10–60 syklusar. Dei kom med i utrekninga (elevasjonsmaske 15°) og øydela heile løysinga.
+- **Endra:** RTK-motoren brukar ei SNR-maske på 35 dBHz for roveren (L1, alle elevasjonar), same som Emlid tilrår.
+  Masken blir berre slått på når mottakaren rapporterer SNR. Elles (SNR 0) ville RTKLIB kaste alle satellittar.
+- **Funne òg:** banefila hos BKG vart endra 19:40, altså oftare enn kvar time. Likevel viste feilsøkaren «GLONASS 0/6»
+  kl. 19:47. Det blir undersøkt med banefila frå felt.
+- **Testa:** RTKLIB-testdata utan SNR: uendra (`replay.py` 115/115 FIX, `testrekkjefolgje.py` ALT OK). Same data med
+  SNR 40 dBHz: 114 FIX (maska aktiv, ingen satellittar fell bort). Med SNR 25 dBHz: 0 løysingar (alle under maska).
+- **Ikkje testa:** opptaket frå felt gjennom motoren. Det krev banefila frå SNOWMAN-PC-en (data/brdc).
+
 ### PC-prototype v1.6.104 – opptak av rådata til feilsøking
 - **Bakgrunn (felttest 28.10, Reach RS+ over Bluetooth, 1 Hz):** banene er i orden (GPS 9/9, GLONASS 6/6), og
   SNOWMAN har rekna 14 RTK FIX. Men ratio ligg mest på 1–2, og om lag kvar andre epoke gir «INGA» utan feilmelding frå

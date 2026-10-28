@@ -155,6 +155,7 @@ class Demux:
 
 
 UBX_NAMES = {(0x02, 0x15): "UBX-RAWX", (0x02, 0x13): "UBX-SFRBX", (0x01, 0x07): "UBX-PVT", (0x01, 0x3C): "UBX-RELPOSNED"}
+SNR_MASK = 35.0                              # dBHz – minste signalstyrke for roversatellittar (L1), alle elevasjonar
 MAX_BASE_AGE = 30.0                         # s – eldre basedata blir ikkje brukte (same som RTKLIB maxtdiff)
 QUAL = {1: 4, 2: 5, 3: 2, 4: 2, 5: 1}      # RTKLIB SOLQ_* → GGA-kvalitet (FIX, FLOAT, SBAS→DGPS, DGPS, SINGLE)
 STATNAME = {0: "INGA", 1: "FIX", 2: "FLOAT", 3: "SBAS", 4: "DGPS", 5: "SINGLE", 6: "PPP"}
@@ -210,6 +211,12 @@ class RtkMotor:
             opt.modear = 1                                  # ARMODE_CONT – løyser heiltal kontinuerleg
             opt.glomodear = 0                               # GLONASS-heiltal av: trygt mellom ulike mottakarmerke
             opt.thresar[0] = 3.0                            # ratio-test for FIX
+            # SNR-maske for roveren (v1.6.105): felttest 28.10 med Reach RS+ – satellittar under ~30 dBHz hadde 2–5 m
+            # kodestøy og fasebrot, gav «large residual» og tok ned heile løysinga. Masken blir berre slått på når
+            # mottakaren faktisk rapporterer SNR (sjå _solve), elles ville alle satellittar falle bort.
+            for i in range(9):
+                opt.snrmask.mask[(0, i)] = SNR_MASK
+            opt.snrmask.ena[0] = 0
             opt.dynamics = 0
             opt.refpos = 0                                  # baseposisjon frå opt.rb (set frå RTCM 1005/1006)
             self.rtk = R.rtk_t()
@@ -450,6 +457,8 @@ class RtkMotor:
                 self.stats["sats"] = self._satdiag(arr, nr, nb, nav)
             except Exception as e:
                 self.stats["sats"] = {"feil": str(e)[:120]}
+        # SNR-maska berre når roveren rapporterer SNR (RTKLIB reknar SNR 0 som under maska)
+        self.rtk.opt.snrmask.ena[0] = 1 if any(arr[i].SNR[0] for i in range(nr)) else 0
         self.rtk.neb = 0                                    # feilmeldingar berre frå denne epoka (bufferen blir elles full
                                                             # og viser gamle meldingar – retta i v1.6.103)
         R.rtkpos(self.rtk, arr[0], nr + nb, nav)
