@@ -433,12 +433,15 @@ class RtkMotor:
                 self.stats["err"] = (f"Basen og roveren har {dt:.0f} s ulik tid – "
                                      + ("sjekk klokka/veka" if abs(dt) > 3600 else "basedataa er for gamle"))
                 nb = 0
+        # RTKLIB (rtkpos/selsat) krev at rover- og baseobservasjonane kvar for seg er sorterte etter satellittnummer.
+        # Avkodaren legg satellittane inn i den rekkjefølgja meldingane kjem: ein mottakar som sender fleire meldingar
+        # per epoke (t.d. Emlid RS+: 1002, 1010, 1107, 1117, 1127) gir då usortert liste og «no common satellite».
         arr = R.Arr1Dobsd_t(nr + nb)
-        for i in range(nr):
-            arr[i] = obs.data[i]
-            arr[i].rcv = 1
-        for i in range(nb):
-            arr[nr + i] = self.base_obs[i]
+        for k, i in enumerate(sorted(range(nr), key=lambda i: obs.data[i].sat)):
+            arr[k] = obs.data[i]
+            arr[k].rcv = 1
+        for k, i in enumerate(sorted(range(nb), key=lambda i: self.base_obs[i].sat)):
+            arr[nr + k] = self.base_obs[i]
         R.rtkpos(self.rtk, arr[0], nr + nb, self._nav())
         sol = self.rtk.sol
         st = int(sol.stat)

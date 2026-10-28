@@ -27,3 +27,9 @@ UBX (u-blox RXM-RAWX + RXM-SFRBX, t.d. ZED-F9P) – v1.6.99
    Venta: RTK FIX rekna i SNOWMAN frå «UBX RAWX», banene frå SFRBX, feilsøkaren åtvarar om PC-klokka.
 
 NB: rtklib/ kan vere ei lenkje til ein klon av rtklibexplorer/RTKLIB (berre test/data trengst).
+
+Rekkjefølgje på satellittane (t.d. Emlid RS+: 1002 + 1010 + MSM for andre system per epoke) – v1.6.100
+7. python3 lagrtcm.py 1077 (basen) og så python3 testrekkjefolgje.py
+                                → roveren som 1002 (berre L1) i to meldingar per epoke, høge satellittnummer først.
+                                  Same data køyrt sortert. Venta: likt resultat (FLOAT/FIX) og «ALT OK».
+                                  Utan sortering i motoren: anna resultat, og i felt «no common satellite».

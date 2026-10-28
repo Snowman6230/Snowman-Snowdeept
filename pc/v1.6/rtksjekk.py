@@ -80,8 +80,10 @@ def _snowman_steps(S, st, r, now):
     types = ", ".join(sorted(m.get("rover_types") or {})) or "ingen"
     if not m.get("rover_obs"):
         _step(S, "raw", "Rådata frå mottakaren", FAIL, f"Ingen rådata endå (meldingar frå mottakaren: {types}).",
-              "Mottakaren må sende RÅDATA på same port som SNOWMAN les: RTCM 3 – MSM (1074/1084/1094/1124 eller 1077 …) eller "
-              "1004/1012 – eller u-blox UBX RXM-RAWX (+ RXM-SFRBX for banene), som ZED-F9P. GGA åleine kan ikkje gi RTK. "
+              "Mottakaren må sende RÅDATA på same port som SNOWMAN les: RTCM 3 – MSM (1074/1084/1094/1124 eller 1077 …), "
+              "1004/1012 eller 1002/1010 (berre L1, t.d. Emlid RS+ i basemodus) – eller u-blox UBX RXM-RAWX (+ RXM-SFRBX for "
+              "banene), som ZED-F9P. Bluetooth på mange mottakarar ber berre éin straum: slå då av posisjonsutgangen (NMEA), "
+              "SNOWMAN reknar posisjonen sjølv. GGA åleine kan ikkje gi RTK. "
               "(ZED-F9P: slå på RXM-RAWX og RXM-SFRBX på USB i u-center og lagre i mottakaren – SNOWMAN sender ingen kommandoar. "
               "Zenith35 Pro: i «RTK Base»-modus sender han eigne rådata ut på External/kabel – prøv det.)")
     elif ra is not None and ra > 5:
@@ -164,6 +166,10 @@ def check(st, cfg, ports=None, net=None, now=None):
     # ---------- 3. Data frå mottakaren ----------
     if not st.get("serial_connected"):
         _step(S, "data", "Posisjon (GGA) frå mottakaren", SKIP, "Ventar på at porten blir open.")
+    elif gga_age is None and mode == "snowman" and (st.get("motor") or {}).get("rover_obs"):
+        # Mottakaren sender berre rådata (t.d. Emlid RS+ i basemodus over Bluetooth, éin straum): posisjonen kjem frå motoren.
+        _step(S, "data", "Posisjon (GGA) frå mottakaren", WAIT,
+              "Mottakaren sender berre rådata – posisjonen kjem frå RTK-motoren i SNOWMAN når han har løysing (sjå «RTK FIX»).")
     elif gga_age is None:
         _step(S, "data", "Posisjon (GGA) frå mottakaren", FAIL, "Porten er open, men det har ikkje kome posisjon (GGA).",
               "Slå på GGA-utgang i mottakaren (t.d. Zenith: Settings › Sensor Settings › NMEA Streaming › GGA 1–5 Hz). "
@@ -314,7 +320,16 @@ def check(st, cfg, ports=None, net=None, now=None):
         _step(S, "rtk", "RTK FIX", WAIT, "RTK FLOAT – mottakaren reknar seg fram mot FIX.",
               "Vent 1–3 min med fri sikt. Varer det: betre sikt, fleire satellittsystem, eller nærare base.")
     else:
-        _step(S, "rtk", "RTK FIX", SKIP if not have_pos else FAIL, f"Status {fix}")
+        mo = st.get("motor") or {}
+        if mode == "snowman" and mo.get("ready") and mo.get("rover_obs") and mo.get("base_obs") and not mo.get("sol"):
+            # Rådata og basedata kjem fram, men RTKLIB reknar ingen løysing – vis kvifor (feilmeldinga frå RTKLIB).
+            err = str(mo.get("err") or "").split(": ", 1)[-1] or "ingen melding"
+            _step(S, "rtk", "RTK FIX", FAIL, f"RTK-motoren reknar ingen løysing: «{err}»",
+                  "«no common satellite»: roveren og basen har ingen felles satellittar – same satellittsystem må vere på i "
+                  "begge (TH: GPS + GLONASS). «point pos error»: for få satellittar eller manglande baner. «age of "
+                  "differential»: basedataa er for gamle.")
+        else:
+            _step(S, "rtk", "RTK FIX", SKIP if not have_pos else FAIL, f"Status {fix}")
 
     # ---------- 15. Snødjupne ----------
     ds = st.get("depth_status")
@@ -370,6 +385,15 @@ if __name__ == "__main__":     # sjølvtest: python3 rtksjekk.py
     r = check(sm, cfg, ports, None, now)
     assert r["ok"], [(x["id"], x["status"]) for x in r["steps"] if x["status"] not in (OK, SKIP)]
     print(report(r, "snowman-test"))
+    # Felttilstanden 28.10.: Emlid RS+ sender berre rådata (1002/1010), basedata kjem, men motoren reknar ingenting
+    rs = dict(base, rtk_mode="snowman", fix="NO DATA", gga_time=None, motor=dict(motor, rover_obs=674, rover_age=0.2,
+              rover_types={"1002": 674, "1010": 674, "1006": 13}, base_obs=135, eph_file=5894, sol=0,
+              err="16:50:43.40: no common satell"))
+    r = check(rs, cfg, ports, None, now)
+    st_ = {x["id"]: x for x in r["steps"]}
+    assert st_["data"]["status"] == WAIT, st_["data"]
+    assert st_["rtk"]["status"] == FAIL and "no common satell" in st_["rtk"]["detail"], st_["rtk"]
+    print(report(r, "rs-test"))
     ms = dict(base, rtk_mode="mottakar_sjolv", fix="GPS", ntrip_connected=False, rtcm={})
     r = check(ms, cfg, ports, None, now)
     assert r["first"] == "use", r["first"]

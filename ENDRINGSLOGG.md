@@ -7,6 +7,41 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-28
+
+### PC-prototype v1.6.100 – RTK-motoren sorterer observasjonane (Emlid Reach RS+)
+- **Bakgrunn (felttest 27.–28.10, Emlid Reach RS+):** Reach i basemodus sende rådata (1002 + 1010 + 1006, i tillegg
+  1107/1117/1127) over USB. SNOWMAN tok imot både rådata (674 epokar) og basedata frå TH (135 epokar), men motoren
+  rekna ingen løysing i det heile. RTKLIB sa «no common satellite».
+- **Retta:** RTKLIB (rtkpos/selsat) krev at rover- og baseobservasjonane kvar for seg er sorterte etter
+  satellittnummer. Avkodaren legg satellittane inn i den rekkjefølgja meldingane kjem. Sender mottakaren fleire
+  meldingar per epoke, blir lista usortert, og felles satellittar blir ikkje funne. Motoren sorterer no begge listene
+  før kvar utrekning. Med éi melding per epoke (1004/1012, 1077, UBX RAWX) har det gått bra før, difor har feilen
+  ikkje vist seg.
+- **Nytt (feilsøkaren):**
+  - Når rådata og basedata kjem fram, men motoren ikkje reknar noko, viser steget «RTK FIX» feilmeldinga frå RTKLIB
+    (t.d. «no common satellite», «point pos error») med råd. Før stod det berre «Status NO DATA».
+  - Sender mottakaren berre rådata (ingen GGA) i «I SNOWMAN», er GGA-steget «ventar» i staden for feil: posisjonen
+    kjem frå motoren. Mange mottakarar ber berre éin straum på Bluetooth (Reach RS+ gjer det).
+  - Råd-teksten nemner 1002/1010 (berre L1, t.d. Emlid RS+) og at posisjonsutgangen kan slåast av.
+- **Lærdom frå felttesten (Emlid Reach RS+, berre L1):**
+  - Bluetooth på RS+ ber berre éin utgåande straum. Med både NMEA og RTCM ut kom berre NMEA fram.
+  - USB krev Zadig-driveren USB Serial (CDC) på Windows. Vel berre eininga «Reach+» i Zadig. Bytte av driver på
+    PC-en si eiga Bluetooth/Wi-Fi-brikke slo ut Wi-Fi og Bluetooth (retta med `pnputil /delete-driver` og omstart).
+  - Med «I mottakaren – han hentar korreksjonane sjølv» og NTRIP i Reach (over Wi-Fi) fekk SNOWMAN RTK FLOAT over USB.
+    Det krev internett i mottakaren og er ikkje vegen vidare.
+  - Reach si basestasjonsutgang må aldri stå på NTRIP mot casteren: då prøver han å sende inn på mountpointen til
+    basen (TH).
+- **Testa:**
+  - `test/rtk/testrekkjefolgje.py` (ny): roveren som 1002 i to meldingar per epoke (høge satellittnummer først) gir
+    nøyaktig same resultat som sortert (115/120 FLOAT, L1 åleine mot desse testdataa). Utan rettinga: 6 FIX/108 FLOAT
+    og anna resultat enn sortert.
+  - Heile SNOWMAN: falsk mottakar over TCP med usortert 1002 og **utan NMEA**, og falsk caster: «RTK FLOAT» rekna i
+    SNOWMAN (115 epokar).
+  - `replay.py` (1077): 115/115 FIX som før. `testubx.py`: ALT OK. `rtksjekk.py` sin sjølvtest (ny: felttilstanden
+    28.10.): OK.
+- **Ikkje testa:** ekte Reach RS+ med rettinga (blir gjort i felt), FIX med L1-mottakar.
+
 ## 2026-10-22
 
 ### PC-prototype v1.6.99 – RTK-motoren les u-blox UBX (RXM-RAWX og RXM-SFRBX)
