@@ -152,7 +152,8 @@ class SnowSurface:
         return c
 
     def cells_near(self, lat, lon, half, test=False, max_age_h=24 * KEEP_DAYS):
-        """Lagra ruter innanfor ±half m (til snøflata i 3D): liste av [lat, lon, overflate, alder_t]."""
+        """Lagra ruter innanfor ±half m (til snøflata i 3D): liste av [lat, lon, overflate, alder_t, førre_overflate].
+        førre_overflate er overflata ved førre preparering (None når ruta berre er køyrd éin gong)."""
         if lat is None or lon is None:
             return []
         z = zone_of(lon)
@@ -165,7 +166,8 @@ class SnowSurface:
         out = []
         for k, c in v:
             la, lo = utm_inverse(k[1] + 0.5, k[2] + 0.5, z)
-            out.append([round(la, 7), round(lo, 7), round(c[0], 3), round((now - c[1]) / 3600, 2)])
+            out.append([round(la, 7), round(lo, 7), round(c[0], 3), round((now - c[1]) / 3600, 2),
+                        None if c[4] is None else round(c[4], 3)])
         return out
 
     def at(self, lat, lon, terrain_height, test=False, max_age_h=72):

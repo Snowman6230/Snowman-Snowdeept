@@ -9,6 +9,20 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.111 – fargar mot måldjupne i trasé, endring sidan førre preparering i 3D
+
+- **Nytt (eigaren):** Fargar mot måldjupna. Inne i ein trasé med måldjupne blir sporet farga mot målet:
+  mørk raud = meir enn 2 × toleranse under, oransje = under, grøn = på mål (± toleranse), lyseblå = over,
+  blå = meir enn 2 × toleranse over. Toleransen er den same som i Målprofil (standard 0,10 m).
+  Teiknforklaringa byter til «Mot mål x,xx m · trasénamn» når maskina køyrer inn i traseen, og tilbake når ho køyrer ut.
+  Lagra snøflate i 3D blir farga mot målet til traseen ruta ligg i. Innst. › Kart: «FARGAR MOT MÅLDJUPNE I TRASÉ».
+- **Nytt:** Snøflate-fargar i 3D: «SNØDJUPNE» eller «ENDRING SIDAN FØRRE PREP.». Endringa er overflata no minus
+  overflata ved førre preparering (snøflateminnet): raudt = skore ned, blått = fylt på, grått = ± 5 cm,
+  kvitt = første køyring. Fargane blir oppdaterte kvart 8. sekund medan ein køyrer.
+- **Endra:** `GET /api/surface/cells` gir òg førre overflate per rute.
+- **Avgjerd:** Måldjupna blir lagd inn per trasé (feltet «Måldjupne snø» når traseen blir teikna eller endra),
+  ikkje som ei felles innstilling for heile anlegget.
+
 ### PC-prototype v1.6.110 – snøflate i 3D, full fresbreidd i snøflateminnet, høgare fargestolpar
 
 - **Nytt (eigaren):** Snøflate i 3D. Der maskina har køyrt, blir snøoverflata vist som eiga høgd oppå barmarka

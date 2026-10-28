@@ -2616,6 +2616,8 @@
             </div>
           </details>
           <button id="detailSet" class="btn" onclick="cycleDetail3d()">3D-DETALJ NÆR MASKINA: NORMAL</button>
+          <button id="snowModeSet" class="btn" onclick="toggleSnowMode()" title="Fargane på snøflata i 3D: snødjupne, eller endring i overflata sidan førre preparering">SNØFLATE-FARGAR: SNØDJUPNE</button>
+          <button id="targetColSet" class="btn on" onclick="toggleTargetColors()" title="I ein trasé med måldjupne: raudt under mål, grønt på mål, blått over mål">FARGAR MOT MÅLDJUPNE I TRASÉ: PÅ</button>
           <button id="snow3dSet" class="btn on" onclick="toggleSnow3d()" title="Viser snøoverflata der maskina har køyrt som eige lag oppå barmarka (3D og frontrute)">SNØFLATE I 3D: PÅ</button>
           <button id="fsSet" class="btn toggle" onclick="toggleFullscreen()">FULLSKJERM: AV</button>
           <button id="northSet" class="btn" onclick="toggleNorth()">KARTRETNING: KØYRERETNING OPP</button>
@@ -3121,7 +3123,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.110";
+      const APP_VERSION = "1.6.111";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3152,6 +3154,8 @@
           zOff: 0,
           northUp: false,
           detail3d: "normal", // 3D-detalj nær maskina: hog | normal | av
+          snow3dMode: "djupne", // v1.6.111: fargar på snøflata i 3D: djupne | endring (sidan førre preparering)
+          targetColors: true, // v1.6.111: fargar mot måldjupna i trasé med måldjupne
           snow3d: true, // v1.6.110: snøflate i 3D (overflata oppå barmarka der maskina har køyrt)
           kbMode: "auto", // tastatur på skjermen: auto | alltid | av
           teleOn: true, // fart, kurs, spor, areal og tid nede til venstre
@@ -3534,7 +3538,10 @@
           snowBox = null, // [i0, i1, j0, j1] – rutepunkt som er endra og ikkje sende til skjermkortet enno
           snowNormT = 0,
           snowReq = 0,
+          segMark = null, // rutepunkt sett av sporet i denne økta (blir ikkje overskrivne av lagra flate)
           snowCells = [], // lagra ruter frå tidlegare køyring: {x, y, c} – farga etter snødjupna (overflate − barmark)
+          chgCells = [], // v1.6.111: alle lagra ruter farga etter endring sidan førre preparering
+          chgT = 0,
           loading = false,
           visible = false,
           failed = false,
@@ -3816,6 +3823,7 @@
                 sl = ex * rx + ey * ry;
               } else if (Math.abs(sl) > w2) continue;
               SN[k] = sa + t * (sb - sa) + sl * slope;
+              segMark[k] = 1;
               snowTop(k);
               snowMark(i, j);
             }
@@ -3831,16 +3839,21 @@
             let n = p.n,
               got = new Uint8Array(n * n);
             snowCells = [];
+            // Endring sidan førre preparering: alle lagra ruter (også frå denne økta), farga etter overflate − førre overflate
+            chgCells = r.cells.map((c) => {
+              let [x, y] = local([c[0], c[1]]);
+              return { x: Math.round(x / STEP) * STEP, y: Math.round(y / STEP) * STEP, c: changeColor(c[4] == null ? null : c[2] - c[4]) };
+            });
             r.cells.forEach((c) => {
               let [x, y] = local([c[0], c[1]]),
                 j = Math.round((x + HALF) / STEP),
                 i = Math.round((HALF - y) / STEP);
               if (i < 0 || j < 0 || i >= n || j >= n) return;
               let k = i * n + j;
-              if (isNaN(G[k]) || !isNaN(SN[k])) return;
+              if (isNaN(G[k]) || segMark[k]) return;
               SN[k] = c[2];
               got[k] = 1;
-              snowCells.push({ x: -HALF + j * STEP, y: HALF - i * STEP, c: depthColor(Math.max(0, c[2] - G[k])) });
+              snowCells.push({ x: -HALF + j * STEP, y: HALF - i * STEP, c: snowColor(Math.max(0, c[2] - G[k]), [c[0], c[1]]) });
               snowTop(k);
               snowMark(i, j);
             });
@@ -3867,10 +3880,11 @@
           } catch (e) {}
         }
         // Lagra snøflate: kvar rute farga etter snødjupna der (same fargar som sporet)
-        function paintCells(cx, X, Y, s) {
-          if (!snowCells.length || !snowOn3d()) return;
+        function paintCells(cx, X, Y, s, list) {
+          list = list || snowCells;
+          if (!list.length || !snowOn3d()) return;
           // heilt dekkjande (ikkje gjennomsiktig): overlapp mellom rutene gav elles eit mørkt rutenett
-          snowCells.forEach((q) => {
+          list.forEach((q) => {
             cx.fillStyle = q.c;
             cx.fillRect(Math.floor(X(q.x - STEP / 2)), Math.floor(Y(q.y + STEP / 2)), Math.ceil(STEP * s) + 1, Math.ceil(STEP * s) + 1);
           });
@@ -4085,6 +4099,7 @@
           }
           paintCells(dCx, (x) => (x - ox) * s, (y) => (oy - y) * s, s);
           segs.forEach(dSeg);
+          if (changeMode()) paintCells(dCx, (x) => (x - ox) * s, (y) => (oy - y) * s, s, chgCells);
           dDirty = true;
         }
         function dSeg(sg) {
@@ -4189,6 +4204,7 @@
           paintBase();
           paintCells(texCx, (x) => (x + HALF) * PX, (y) => (HALF - y) * PX, PX);
           segs.forEach(paintSeg);
+          if (changeMode()) paintCells(texCx, (x) => (x + HALF) * PX, (y) => (HALF - y) * PX, PX, chgCells);
           tex.needsUpdate = true;
           paintEst();
         }
@@ -4226,6 +4242,7 @@
               G = new Float32Array(u8.buffer);
               H = G.slice();
               SN = new Float32Array(G.length).fill(NaN);
+              segMark = new Uint8Array(G.length);
               snowBox = null;
               snowCells = [];
               segs.forEach((sg) => snowSeg(sg, true)); // sporet i denne økta (også demo) blir lagt på att i det nye utsnittet
@@ -4368,6 +4385,10 @@
           }
           dCheck();
           snowNormCheck();
+          if (changeMode() && patch && t - chgT > 8000) {
+            chgT = t; // endringsfargane: hent lagra ruter på nytt (sporet som blir køyrt no kjem med)
+            loadSnow(patch);
+          }
           if (t - snowInfoT > 2000) {
             snowInfoT = t;
             snowInfo = snowOn3d() && SN ? snowArea() : 0;
@@ -4416,10 +4437,15 @@
           clear() {
             segs = [];
             if (SN) SN.fill(NaN);
+            if (segMark) segMark.fill(0);
             snowCells = [];
             this.snowChanged();
             if (patch) loadSnow(patch); // lagra flate frå tidlegare køyring (snøflateminnet) blir ikkje sletta av «Reset spor»
             if (renderer) repaint();
+          },
+          // Nye fargar på lagra snøflate (mål/endring): hent og mål på nytt
+          snowReload() {
+            if (patch && renderer) loadSnow(patch);
           },
           // Snøflate i 3D av/på (Innst. › Kart): rekn ut synleg overflate på nytt for heile utsnittet
           snowChanged() {
@@ -4534,6 +4560,7 @@
         $("app").classList.toggle("view3d", !!cfg.view3d);
         $("app").classList.toggle("horizon", css === "horisont");
         $("app").classList.toggle("terrain3d", use3d);
+        renderLegend(); // endringsfargane gjeld berre i 3D
         $("viewBtn").classList.toggle("on", mode !== "kart");
         $("viewBtn").innerHTML = "<i>" + VIEWS[mode].icon + "</i>" + VIEWS[mode].name;
         document.querySelectorAll("#viewSet button, #viewMenu button").forEach((b) => b.classList.toggle("on", b.dataset.v === mode));
@@ -5051,6 +5078,30 @@
         let on = cfg.snow3d !== false;
         $("snow3dSet").textContent = "SNØFLATE I 3D: " + (on ? "PÅ" : "AV");
         $("snow3dSet").classList.toggle("on", on);
+        $("snowModeSet").textContent = "SNØFLATE-FARGAR: " + (cfg.snow3dMode === "endring" ? "ENDRING SIDAN FØRRE PREP." : "SNØDJUPNE");
+        $("snowModeSet").classList.toggle("on", cfg.snow3dMode === "endring");
+        $("targetColSet").textContent = "FARGAR MOT MÅLDJUPNE I TRASÉ: " + (targetColorsOn() ? "PÅ" : "AV");
+        $("targetColSet").classList.toggle("on", targetColorsOn());
+      }
+      function toggleSnowMode() {
+        cfg.snow3dMode = cfg.snow3dMode === "endring" ? "djupne" : "endring";
+        persistCfg();
+        snow3dLabel();
+        renderLegend();
+        T3D.snowReload();
+        toast(
+          cfg.snow3dMode === "endring"
+            ? "Snøflata i 3D viser endring sidan førre preparering: raudt = skore ned, blått = fylt på"
+            : "Snøflata i 3D viser snødjupne",
+        );
+      }
+      function toggleTargetColors() {
+        cfg.targetColors = !targetColorsOn();
+        persistCfg();
+        snow3dLabel();
+        renderLegend();
+        T3D.snowReload();
+        toast(cfg.targetColors ? "I trasé med måldjupne: fargar mot målet (raudt under, grønt på mål, blått over)" : "Fargar mot måldjupne AV – vanlege snødjupnefargar");
       }
       function toggleSnow3d() {
         cfg.snow3d = cfg.snow3d === false;
@@ -5284,6 +5335,27 @@
         updateMachine();
       }
       function renderLegend() {
+        let row = (c, t) => '<div class=leg><i class=sw style="background:' + c + '"></i>' + t + "</div>",
+          f2 = (v) => (+v).toFixed(2).replace(".", ","),
+          tol = cfg.tol || 0.1;
+        if (changeMode()) {
+          $("legend").innerHTML =
+            "<b>Endring sidan førre preparering (3D)" + (src === "demo" ? " (demo)" : simGnss ? " (simulert)" : "") + "</b><div class=legRow>" +
+            row(CHANGE_COLORS[0], "skore ned &gt; 20 cm") + row(CHANGE_COLORS[1], "5–20 cm ned") + row(CHANGE_COLORS[2], "± 5 cm") +
+            row(CHANGE_COLORS[3], "5–20 cm opp") + row(CHANGE_COLORS[4], "fylt på &gt; 20 cm") + row(CHANGE_NONE, "første køyring") + "</div>";
+          return;
+        }
+        let tg = null;
+        try {
+          tg = targetColorsOn() ? TRA.target() : null; // TRA finst ikkje enno under oppstarten
+        } catch (e) {}
+        if (tg) {
+          $("legend").innerHTML =
+            "<b>Mot mål " + f2(tg.target) + " m · " + tg.name + (src === "demo" ? " (demo)" : "") + "</b><div class=legRow>" +
+            row(TARGET_COLORS[0], "&gt; " + f2(2 * tol) + " under") + row(TARGET_COLORS[1], "under") + row(TARGET_COLORS[2], "på mål ± " + f2(tol)) +
+            row(TARGET_COLORS[3], "over") + row(TARGET_COLORS[4], "&gt; " + f2(2 * tol) + " over") + "</div>";
+          return;
+        }
         $("legend").innerHTML =
           "<b>Snødjupne" +
           (src === "demo" ? " (demo)" : "") +
@@ -5561,6 +5633,31 @@
           $("depthNote").textContent =
             (Math.abs(diff) <= tol ? "✓ PÅ MÅL " : diff < 0 ? "▼ " + (-diff).toFixed(2).replace(".", ",") + " UNDER MÅL " : "▲ " + diff.toFixed(2).replace(".", ",") + " OVER MÅL ") +
             tg.target.toFixed(2).replace(".", ",") + " m" + (simd ? " · SIMULERT" : "");
+        }
+      }
+      // v1.6.111 (eigaren): fargar mot måldjupna i ein trasé. diff = snødjupne − måldjupne, tol frå Målprofil.
+      const TARGET_COLORS = ["#c62828", "#ff9800", "#22c55e", "#4fc3f7", "#1565c0"];
+      function targetColor(diff) {
+        let t = cfg.tol || 0.1;
+        return TARGET_COLORS[diff < -2 * t ? 0 : diff < -t ? 1 : diff <= t ? 2 : diff <= 2 * t ? 3 : 4];
+      }
+      const targetColorsOn = () => cfg.targetColors !== false;
+      // Farge for ei snødjupne: mot måldjupna når maskina (eller punktet p) er i ein trasé med måldjupne, elles djupne-fargane
+      function snowColor(d, p) {
+        let tg = targetColorsOn() ? (p ? TRA.targetAt(p) : TRA.target()) : null;
+        return tg ? targetColor(d - tg.target) : depthColor(d);
+      }
+      // Endring i snøoverflata sidan førre preparering (m): raudt = skore ned, blått = fylt på
+      const CHANGE_COLORS = ["#c62828", "#ff9800", "#9aa7b0", "#4fc3f7", "#1565c0"],
+        CHANGE_NONE = "#dfe7ec";
+      function changeColor(dz) {
+        return dz == null ? CHANGE_NONE : CHANGE_COLORS[dz < -0.2 ? 0 : dz < -0.05 ? 1 : dz <= 0.05 ? 2 : dz <= 0.2 ? 3 : 4];
+      }
+      function changeMode() {
+        try {
+          return cfg.snow3dMode === "endring" && cfg.snow3d !== false && !!VIEWS[viewMode()].gl;
+        } catch (e) {
+          return false; // under oppstarten
         }
       }
       function depthColor(d) {
@@ -5980,7 +6077,7 @@
         }
         let color = NEUTRAL;
         if (src === "demo") color = depthColor(cfg.demoD);
-        else if (src === "gnss" && realDepth != null) color = depthColor(realDepth);
+        else if (src === "gnss" && realDepth != null) color = snowColor(realDepth);
         // Sporet er ei flate i meter (fresbreidd) – ikkje ei linje i pikslar – så det følgjer zoomen.
         let w = toolsFull ? cfg.tiller : cfg.tillerN,
           opt = { renderer: coverRenderer, stroke: false, fill: true, fillColor: color, fillOpacity: 1, interactive: false };
@@ -6648,6 +6745,7 @@
       /* ---------- Trasear: yttergrenser for preparering, forbodne område, prosent preparert ----------
          Lagra i SNOWMAN-tenesta (data/trasear.json). Prosent blir rekna der frå øktene i prepareringsdøgnet (kl. 12–12).
          Teikning skjer berre når prep er stoppa, med kartet ovanfrå og nord opp (elles treffer ikkje trykka rett stad). */
+      let legKey = "";
       const TRA = (function () {
         let list = [],
           st = {},
@@ -6965,7 +7063,12 @@
           let half = (toolsFull ? cfg.tiller : cfg.tillerN) / 2,
             here = tr.filter((t) => pointInPoly(pos, t.poly)),
             cur = here.sort((a, b) => a.area - b.area)[0];
+          let lk = cur && cur.target != null ? cur.id + ":" + cur.target : "";
           curT = cur || null;
+          if (lk !== legKey) {
+            legKey = lk;
+            renderLegend(); // inn i / ut av ein trasé med måldjupne: teiknforklaringa byter mellom mål- og djupnefargar
+          }
           if (tr.length) {
             $("traCellLbl").textContent = cur ? "TRASÉ · " + pctText(cur.id) : "TRASÉ";
             $("traCellV").textContent = cur ? cur.name : "Utanfor";
@@ -7262,6 +7365,11 @@
           uprightLabels: upright,
           // måldjupna i traseen maskina er i (null når traseen ikkje har eiga måldjupne)
           target: () => (curT && curT.target != null && pos ? { target: curT.target, name: curT.name } : null),
+          // måldjupna i punktet p (minste trasé med måldjupne som punktet ligg i), til farging av lagra snøflate
+          targetAt(p) {
+            let t = list.filter((t) => t.kind === "trase" && t.target != null && pointInPoly(p, t.poly)).sort((a, b) => a.area - b.area)[0];
+            return t ? { target: t.target, name: t.name } : null;
+          },
           toggleUnprep() {
             unprep = !unprep;
             cfg.traUnprep = unprep;
