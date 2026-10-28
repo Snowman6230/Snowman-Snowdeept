@@ -19,6 +19,9 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
+        /* v1.6.108: clip i staden for hidden – «hidden» kan framleis rullast av nettlesaren (t.d. når kartet får fokus
+           ved trykk i førarvising), og då hamna knapperada midt på skjermen med kart under */
+        overflow: clip;
         background: #06121a;
         color: #fff;
         font-family: Arial, sans-serif;
@@ -3011,7 +3014,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.107";
+      const APP_VERSION = "1.6.108";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3102,6 +3105,12 @@
         }
       } catch (e) {}
       const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([62.39, 6.58], 19);
+      // v1.6.108: hovudflata skal aldri rulle. Kartet (#map) er større enn skjermen i 3D-visingane; når det fekk fokus
+      // ved trykk, rulla nettlesaren #app slik at knapperada kom midt på skjermen. Set rullinga tilbake straks.
+      [$("app"), document.body].forEach((el) =>
+        el.addEventListener("scroll", () => { if (el.scrollTop || el.scrollLeft) el.scrollTop = el.scrollLeft = 0; }, { passive: true })
+      );
+      window.addEventListener("scroll", () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); }, { passive: true });
       /* ---------- Kartkjelder ----------
          Kvart anlegg kan velje kartkjelde. Utan nett (eller med "Ingen") blir rutenettet under vist. */
       const MAP_PRESETS = {

@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.108 – knapperada hoppa opp midt på skjermen
+
+- **Retta:** Når ein trykte på kartet i førarvisinga (og horisont), kunne heile flata rulle om lag 130–170 px opp:
+  knapperada kom midt på skjermen, kartet heldt fram under, og teiknforklaringa vart kutta øvst (sett på Windows 10, 28.10).
+- **Kvifor:** Kartet er større enn skjermen i 3D-visingane. Når kartet fekk fokus ved trykk, rulla nettlesaren
+  `#app` for å vise det, sjølv med `overflow: hidden`. Stadfesta i Chromium: fokus på kartet gav `scrollTop` 133.
+- **Endra:** `html`, `body` og `#app` har no `overflow: clip` (kan ikkje rullast i det heile), og ein vakt set
+  rullinga tilbake til 0 om noko likevel rullar. Ingen endring i grensesnittet elles.
+
 ### PC-prototype v1.6.107 – fix-and-hold og 3 FIX på rad (første ekte FIX med Trimble R12i)
 - **Bakgrunn (felttest 28.10 kl. 22–23, lånt Trimble R12i):** R12i i basemodus sende RTCM 3 legacy (1004/1012) over
   Bluetooth, og SNOWMAN rekna RTK mot TH. Etter at R12i vart flytta til open himmel, kom **dei første ekte RTK FIX
