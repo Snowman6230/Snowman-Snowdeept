@@ -3123,7 +3123,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.111";
+      const APP_VERSION = "1.6.112";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3779,7 +3779,7 @@
         }
         // Eitt spor-segment a→b med fresbreidd w og snødjupne d (målt midt under maskina)
         function snowSeg(sg, quiet) {
-          if (sg.d == null || !patch || !G) return;
+          if (sg.d == null || !patch || !G || !(sg.d > -0.5 && sg.d < SNOW_MAX)) return;
           let A = local(sg.a),
             B = local(sg.b);
           if (Math.abs(A[0]) > HALF + 10 || Math.abs(A[1]) > HALF + 10) return;
@@ -3851,12 +3851,15 @@
               if (i < 0 || j < 0 || i >= n || j >= n) return;
               let k = i * n + j;
               if (isNaN(G[k]) || segMark[k]) return;
+              let dd = c[2] - G[k];
+              if (!(dd > -0.5 && dd < SNOW_MAX)) return; // urimeleg snølag (gammal/feil høgd): ikkje vis (v1.6.112)
               SN[k] = c[2];
               got[k] = 1;
               snowCells.push({ x: -HALF + j * STEP, y: HALF - i * STEP, c: snowColor(Math.max(0, c[2] - G[k]), [c[0], c[1]]) });
               snowTop(k);
               snowMark(i, j);
             });
+            snowDespike(n);
             // Små hol mellom rutene (UTM-ruta og 3D-ruta er ikkje heilt parallelle): snitt av naboane
             for (let i = 1; i < n - 1; i++)
               for (let j = 1; j < n - 1; j++) {
@@ -3887,6 +3890,34 @@
           list.forEach((q) => {
             cx.fillStyle = q.c;
             cx.fillRect(Math.floor(X(q.x - STEP / 2)), Math.floor(Y(q.y + STEP / 2)), Math.ceil(STEP * s) + 1, Math.ceil(STEP * s) + 1);
+          });
+        }
+        // v1.6.112: ingen «tappar». Eitt einsleg punkt med snø (eller eitt som skil seg mykje frå naboane) gav ei høg
+        // kjegle i 3D. Punkt med færre enn 2 snønaboar, eller meir enn 0,5 m frå snittet av snønaboane, blir fjerna.
+        const SNOW_MAX = 6;
+        function snowDespike(n) {
+          let drop = [];
+          for (let i = 0; i < n; i++)
+            for (let j = 0; j < n; j++) {
+              let k = i * n + j;
+              if (isNaN(SN[k]) || segMark[k]) continue;
+              let s = 0,
+                c = 0;
+              if (j > 0 && !isNaN(SN[k - 1])) (s += SN[k - 1]), c++;
+              if (j < n - 1 && !isNaN(SN[k + 1])) (s += SN[k + 1]), c++;
+              if (i > 0 && !isNaN(SN[k - n])) (s += SN[k - n]), c++;
+              if (i < n - 1 && !isNaN(SN[k + n])) (s += SN[k + n]), c++;
+              if (c < 2 || Math.abs(SN[k] - s / c) > 0.5) drop.push(k);
+            }
+          drop.forEach((k) => {
+            SN[k] = NaN;
+            snowTop(k);
+          });
+          if (drop.length) snowBox = [0, n - 1, 0, n - 1];
+          snowCells = snowCells.filter((q) => {
+            let j = Math.round((q.x + HALF) / STEP),
+              i = Math.round((HALF - q.y) / STEP);
+            return !isNaN(SN[i * n + j]);
           });
         }
         // Send endra høgder til skjermkortet. Normalane (lyset) blir rekna om høgst 3 gonger i sekundet.

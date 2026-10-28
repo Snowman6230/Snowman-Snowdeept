@@ -31,7 +31,14 @@ R = 8.0                # søkjeradius for interpolasjonen (m)
 NEAR = 6.0             # næraste måling må vere innanfor dette (m)
 MIN_PTS = 3            # minst så mange ruter med måling innanfor R
 SMOOTH = 6             # glatta terreng: snitt innanfor ±SMOOTH m (prøvar kvar 2. m)
-VISIT_GAP = 2 * 3600   # målingar med lengre mellomrom enn dette i same rute = nytt besøk (ny preparering)
+VISIT_GAP = 2 * 3600
+# v1.6.112: rimeleg snølag (overflate − glatta terreng). Utanfor dette er målinga feil (t.d. gammal høgd før
+# geoide/kalibrering, FLOAT-hopp) – blir ikkje lagra og ikkje brukt. Gav høge «tappar» i 3D-terrenget (28.10).
+R_MIN, R_MAX = -1.5, 6.0
+
+
+def plausible(surface, tg):
+    return surface is not None and tg is not None and R_MIN <= surface - tg <= R_MAX   # målingar med lengre mellomrom enn dette i same rute = nytt besøk (ny preparering)
 
 
 def zone_of(lon):
@@ -105,7 +112,7 @@ class SnowSurface:
         if old and old[2] != bool(test):
             old = None   # test og ekte blir aldri blanda
         tg = old[3] if old else smooth_terrain(z, math.floor(E) + 0.5, math.floor(N) + 0.5, terrain_height)
-        if tg is None:
+        if tg is None or not plausible(float(surface), tg):
             return None
         if old and now - old[1] > VISIT_GAP:
             prev = (old[0], old[1])          # ruta var sist køyrd ved ei tidlegare preparering
@@ -161,7 +168,7 @@ class SnowSurface:
         lim = time.time() - max_age_h * 3600
         with self.lock:
             v = [(k, c) for k, c in self.cells.items()
-                 if k[0] == z and c[2] == bool(test) and c[1] >= lim and abs(k[1] + 0.5 - E0) <= half and abs(k[2] + 0.5 - N0) <= half]
+                 if k[0] == z and c[2] == bool(test) and c[1] >= lim and plausible(c[0], c[3]) and abs(k[1] + 0.5 - E0) <= half and abs(k[2] + 0.5 - N0) <= half]
         now = time.time()
         out = []
         for k, c in v:
@@ -218,7 +225,7 @@ class SnowSurface:
         for de in range(-r, r + 1):
             for dn in range(-r, r + 1):
                 c = cells.get((z, e0 + de, n0 + dn))
-                if c is None or c[2] != test or c[1] < lim:
+                if c is None or c[2] != test or c[1] < lim or not plausible(c[0], c[3]):
                     continue
                 d = math.hypot(e0 + de + 0.5 - E, n0 + dn + 0.5 - N)
                 if d >= R:

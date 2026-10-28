@@ -7,6 +7,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-29
+
+### PC-prototype v1.6.112 – ingen høge «tappar» i 3D-terrenget
+
+- **Retta:** Høge spisse tappar i 3D-terrenget (sett på ekte data 28.10, «SNØFLATE 66 m²»). Kvar tapp var ei einsleg
+  rute i snøflateminnet med feil overflate, t.d. målt før geoide/kalibrering var på plass eller under eit FLOAT-hopp.
+  Snøflata i 3D løfta det eine punktet, og det vart ei kjegle.
+- **Endra:** Snøflateminnet lagrar og brukar berre rimelege snølag: overflate − glatta terreng mellom −1,5 og 6 m.
+  Gamle feilmålingar i `data/snoflate.json` blir hoppa over (også i estimatet framfor maskina).
+- **Endra:** 3D-visinga fjernar lagra punkt med færre enn 2 snønaboar, og punkt som skil seg meir enn 0,5 m frå
+  snittet av naboane. Snødjupne under −0,5 m eller over 6 m blir aldri lagd på som snøflate.
+- **Test:** 15 ruter lagde 30–40 m for høgt og 15 ruter 1,2 m for høgt i testdata – ingen tappar i 3D.
+
 ## 2026-10-28
 
 ### PC-prototype v1.6.111 – fargar mot måldjupne i trasé, endring sidan førre preparering i 3D
