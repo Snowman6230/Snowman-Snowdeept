@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.103"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.104"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -417,6 +417,43 @@ def motor_nav_loop():
                 except Exception as e: update(rtk_nav=f"BRDC-fil: {e}")
         STOP.wait(60)
 
+# ---------- Opptak av rådata (v1.6.104): mottakar + base, til feilsøking av RTK i ettertid ----------
+# Fil: data/opptak/opptak-ÅÅÅÅMMDD-TTMMSS.bin. Kvar post: tid (double, s), kind (b"R" mottakar / b"B" base), lengd (uint32), byte.
+# Inneheld berre GNSS-data (RTCM/NMEA frå mottakaren og RTCM frå casteren) – ingen passord.
+import struct
+OPPTAK={"until":0.0,"path":None,"n":{"R":0,"B":0},"bytes":0,"start":None}
+_opptak_lock=threading.Lock()
+def opptak_write(kind,data):
+    if not data or time.time()>OPPTAK["until"] or not OPPTAK["path"]: return
+    try:
+        with _opptak_lock, open(OPPTAK["path"],"ab") as f:
+            f.write(struct.pack("<dcI",time.time(),kind.encode(),len(data))+bytes(data))
+        OPPTAK["n"][kind]+=1; OPPTAK["bytes"]+=len(data)
+    except Exception as e: LOG.event(f"Opptak: {e}",err=True); OPPTAK["until"]=0.0
+def opptak_start(sek):
+    sek=max(10,min(int(sek or 300),3600))
+    d=DATA/"opptak"; d.mkdir(parents=True,exist_ok=True)
+    OPPTAK.update(path=str(d/time.strftime("opptak-%Y%m%d-%H%M%S.bin")),until=time.time()+sek,n={"R":0,"B":0},bytes=0,start=time.time())
+    LOG.event(f"Opptak av rådata starta ({sek} s): {Path(OPPTAK['path']).name}")
+    return opptak_status()
+def opptak_status():
+    left=max(0.0,OPPTAK["until"]-time.time())
+    return {"ok":True,"active":left>0,"left":round(left),"file":Path(OPPTAK["path"]).name if OPPTAK["path"] else None,
+            "mottakar_bitar":OPPTAK["n"]["R"],"base_bitar":OPPTAK["n"]["B"],"bytes":OPPTAK["bytes"]}
+def opptak_zip():
+    """Siste opptak + status (motor, RTCM, oppsett utan passord/brukarnamn) i éi zip-fil."""
+    import io, zipfile
+    if not OPPTAK["path"] or not Path(OPPTAK["path"]).exists(): raise FileNotFoundError("Ingen opptak endå")
+    st=dict(STATE); st["motor"]=MOTOR[0].status() if MOTOR[0] is not None else None
+    cfg={k:v for k,v in CFG.items() if k not in ("password","username")}
+    meta={"versjon":VERSION,"laga":time.strftime("%Y-%m-%d %H:%M:%S"),"opptak":opptak_status(),"oppsett":cfg,
+          "status":{k:st.get(k) for k in ("fix","rtk_mode","rtk_nav","rtcm","motor","satellites","hdop")}}
+    bio=io.BytesIO()
+    with zipfile.ZipFile(bio,"w",zipfile.ZIP_DEFLATED) as z:
+        z.write(OPPTAK["path"],Path(OPPTAK["path"]).name)
+        z.writestr("status.json",json.dumps(meta,ensure_ascii=False,indent=1,default=str))
+    return bio.getvalue(),Path(OPPTAK["path"]).stem+".zip"
+
 SERIAL_REOPEN=threading.Event()   # «LAGRE / KOPLE TIL» eller døyande samband: lukk porten og opne han på nytt
 SERIAL_IDLE=15.0                   # s utan data frå mottakaren før porten blir opna på nytt (mottakarar sender minst 1 Hz)
 
@@ -469,6 +506,7 @@ def serial_loop():
                     gnss_lost=True; LOG.event(f"Mottakaren har slutta å sende posisjon (ingen GGA på {ga:.0f} s)",err=True)
                 elif gnss_lost and ga<1:
                     gnss_lost=False; LOG.event("Posisjon frå mottakaren er tilbake")
+                if b: opptak_write("R",b)
                 if b and rtk_snowman() and MOTOR[0] is not None:
                     b=MOTOR[0].rover_bytes(b)   # RTCM-rådata til RTK-motoren; teksten (NMEA) går vidare som før
                 if b:
@@ -575,6 +613,7 @@ def ntrip_loop():
                     if wait>tmo: raise ConnectionError(f"Ingen korreksjonar på {wait:.0f} s – koplar til på nytt")
                     continue
                 last_data=now
+                opptak_write("B",data)
                 clean=RTCM.feed(data)   # berre heile RTCM-rammer med rett CRC – til RTK-motoren, aldri til mottakaren
                 if clean and rtk_snowman() and MOTOR[0] is not None:
                     MOTOR[0].base_feed(clean)
@@ -611,6 +650,16 @@ class API(http.server.BaseHTTPRequestHandler):
         except Exception: return False
     def do_GET(self):
         u=urllib.parse.urlparse(self.path)
+        if u.path=="/api/opptak":   # status for opptak av rådata
+            self.headers_ok(); self.wfile.write(json.dumps(opptak_status()).encode()); return
+        if u.path=="/api/opptak.zip":   # last ned siste opptak (rådata + status, utan passord)
+            try:
+                data,name=opptak_zip()
+                self.send_response(200); self.send_header("Content-Type","application/zip")
+                self.send_header("Content-Disposition",f'attachment; filename="{name}"'); self.end_headers(); self.wfile.write(data)
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if u.path=="/api/status":
             st=dict(STATE); gt=st.get("gga_time"); st["gga_age"]=None if not gt else round(time.time()-gt,1)
             st["rtk_mode"]=rtk_mode()
@@ -960,6 +1009,13 @@ class API(http.server.BaseHTTPRequestHandler):
                 except Exception: pass
             return
         body=self.rfile.read(n)
+        if self.path=="/api/opptak":   # start opptak av rådata: {"sek": 300}
+            try:
+                d=json.loads(body or b"{}"); r=opptak_start(d.get("sek",300))
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if self.path=="/api/config":
             try:
                 d=json.loads(body or b"{}"); before=dict(CFG)

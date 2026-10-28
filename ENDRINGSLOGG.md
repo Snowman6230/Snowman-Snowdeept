@@ -9,6 +9,20 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.104 – opptak av rådata til feilsøking
+- **Bakgrunn (felttest 28.10, Reach RS+ over Bluetooth, 1 Hz):** banene er i orden (GPS 9/9, GLONASS 6/6), og
+  SNOWMAN har rekna 14 RTK FIX. Men ratio ligg mest på 1–2, og om lag kvar andre epoke gir «INGA» utan feilmelding frå
+  RTKLIB. I RTKLIB skjer det når færre enn 4 satellittar er gyldige på L1 etter filteret (`sol.ns < 4`), typisk når
+  fasen blir nullstilt (fasebrot/låsetid) for mange satellittar. Det kan ikkje avgjerast utan dataa.
+- **Nytt:** opptak av rådata. `POST /api/opptak {"sek": 300}` lagrar alt frå mottakaren og casteren, med tid, i
+  `data/opptak/opptak-….bin` (10–3600 s). `GET /api/opptak` viser status, og `GET /api/opptak.zip` gir opptaket og
+  `status.json` (versjon, motor, RTCM, banefil, oppsett utan passord og brukarnamn).
+- **Nytt:** `test/rtk/spel_opptak.py` spelar av eit opptak gjennom RTK-motoren i same rekkjefølgje som i felt.
+  `--detalj` viser kvar epoke.
+- **Testa:** heile SNOWMAN med falsk mottakar (usortert 1002) og falsk caster: opptak i 40 s (120 mottakar- og 113
+  basebitar), nedlasting av zip-fila (inga passord eller brukarnamn i status.json), og avspeling med
+  `spel_opptak.py`: 107 RTK FIX av 120.
+
 ### PC-prototype v1.6.103 – feilmeldinga frå RTK-motoren er no den nyaste
 - **Bakgrunn (felttest 28.10):** feilsøkaren viste «point pos err» frå 18:09 (GPS-tid) over 20 minutt seinare, då
   banene var i orden att (GPS 9/9, GLONASS 6/6). Første RTK FIX rekna i SNOWMAN frå Emlid RS+: 12 epokar.

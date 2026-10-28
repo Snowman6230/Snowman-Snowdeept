@@ -33,3 +33,8 @@ Rekkjefølgje på satellittane (t.d. Emlid RS+: 1002 + 1010 + MSM for andre syst
                                 → roveren som 1002 (berre L1) i to meldingar per epoke, høge satellittnummer først.
                                   Same data køyrt sortert. Venta: likt resultat, RTK FIX (berre L1) og «ALT OK».
                                   Utan sortering i motoren: anna resultat, og i felt «no common satellite».
+
+Opptak frå felt – v1.6.104
+8. I SNOWMAN: POST /api/opptak {"sek":300} startar opptak av alt frå mottakaren og casteren.
+   GET /api/opptak.zip gir opptaket + status.json (utan passord og brukarnamn).
+   python3 spel_opptak.py opptak-….bin [data/brdc/BRDC….rnx] [--detalj] → same utrekning som i felt.
