@@ -450,6 +450,8 @@ class RtkMotor:
                 self.stats["sats"] = self._satdiag(arr, nr, nb, nav)
             except Exception as e:
                 self.stats["sats"] = {"feil": str(e)[:120]}
+        self.rtk.neb = 0                                    # feilmeldingar berre frå denne epoka (bufferen blir elles full
+                                                            # og viser gamle meldingar – retta i v1.6.103)
         R.rtkpos(self.rtk, arr[0], nr + nb, nav)
         sol = self.rtk.sol
         st = int(sol.stat)
@@ -458,7 +460,9 @@ class RtkMotor:
         self.stats["last_stat"] = st
         self.stats["last_ratio"] = round(float(sol.ratio), 1)
         if st == 0:
-            eb = "".join(self.rtk.errbuf[i] for i in range(min(self.rtk.neb, 300))).strip("\x00").strip()
+            # pyrtklib: errbuf[i] gir C-strengen frå posisjon i (til første NUL), ikkje eitt teikn – errbuf[0] er heile
+            # bufferen for denne epoka (neb blir nullstilt før rtkpos).
+            eb = str(self.rtk.errbuf[0] if self.rtk.neb else "").strip("\x00").strip()
             if eb:
                 self.stats["err"] = eb.splitlines()[-1][:200]
             return None

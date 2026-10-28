@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.103 – feilmeldinga frå RTK-motoren er no den nyaste
+- **Bakgrunn (felttest 28.10):** feilsøkaren viste «point pos err» frå 18:09 (GPS-tid) over 20 minutt seinare, då
+  banene var i orden att (GPS 9/9, GLONASS 6/6). Første RTK FIX rekna i SNOWMAN frå Emlid RS+: 12 epokar.
+- **Retta:** feilbufferen i RTKLIB vart aldri nullstilt. Han vart full, og SNOWMAN las dei eldste meldingane. I tillegg
+  gir `errbuf[i]` i pyrtklib heile strengen frå posisjon i, ikkje eitt teikn, så meldinga vart kutta («no common
+  satell», «point pos err»). No blir bufferen nullstilt før kvar utrekning, og heile meldinga for epoka blir lesen.
+- **Testa:** utan base og banar viser meldinga tida til siste epoke (00:59:30) og ikkje første (00:01:00), og ho er
+  heil («point pos error (lack of valid sats ns=5)»). `replay.py` 115/115 FIX, `testrekkjefolgje.py` ALT OK.
+
 ### PC-prototype v1.6.102 – banefila blir sjekka kvart 2. min når GLONASS-banene er gamle
 - **Bakgrunn (felttest 28.10, Reach RS+):** etter omstart med ny banefil viste feilsøkaren «GLONASS 5/5» og 11
   satellittar i løysinga. 17 minutt seinare var det «GLONASS 0/6» og berre 7 GPS att, og FLOAT med ratio 1,0–1,2.
