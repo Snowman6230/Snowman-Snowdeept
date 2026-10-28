@@ -1938,6 +1938,87 @@
       #app.view3d .legend {
         opacity: 0.85;
       }
+      /* v1.6.109 (eigaren): teiknforklaringa ligg i topplinja over kartet, ikkje oppå kartet til venstre */
+      .top .rtk {
+        flex: none;
+      }
+      .top .legend {
+        position: static;
+        flex: 0 1 auto;
+        min-width: 0;
+        width: auto;
+        margin: 0 12px;
+        padding: 0;
+        background: none;
+        border-radius: 0;
+        opacity: 1;
+      }
+      .top .legend > b {
+        display: block;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+        color: #c9dbe5;
+        margin-bottom: 3px;
+      }
+      .top .legend .legRow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 12px;
+        max-height: 44px;
+        overflow: hidden;
+      }
+      .top .leg {
+        margin: 0;
+        gap: 5px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .top .sw {
+        width: 16px;
+        height: 16px;
+      }
+      /* v1.6.109: teksten under snødjupna (terrengmodell, mål, status) står inne i feltet */
+      .top .depth {
+        height: 64px;
+        box-sizing: border-box;
+        padding: 3px 14px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        flex: none;
+      }
+      .top .depth > * {
+        flex: none;
+      }
+      .top .depth b {
+        font-size: 30px;
+        line-height: 1;
+      }
+      .top .depth small {
+        position: static;
+        display: block;
+        margin: 1px 0 0;
+        padding: 0;
+        background: none;
+        border: 0;
+        font-size: 11px;
+        max-width: 340px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      @media (max-width: 700px) {
+        .top .legend {
+          display: none;
+        }
+        .top .depth {
+          height: 56px;
+        }
+        .top .depth small {
+          font-size: 9px;
+          max-width: 160px;
+        }
+      }
       /* Terreng-fane */
       /* Samanfaldbare boksar (v1.6.53): lister og hjelpetekstar i Rapport, Drivstoff, Kontroll og Historikk */
       details.fold {
@@ -2391,6 +2472,7 @@
         </div>
         <div class="depth"><label id="depthLabel">SNØDJUPNE (MIDT)</label><b id="depth">--</b><small id="depthNote">IKKJE MÅLT</small></div>
         <div id="aheadBox" class="ahead hide"><label id="aheadLabel">FRAMFOR · ESTIMERT</label><b id="aheadD">--</b><small id="aheadNote"></small></div>
+        <div id="legend" class="legend"></div>
         <div class="rtk" onclick="toggleSatStatus()">
           <b id="fix">GNSS AV</b><span id="acc">VENTAR PÅ DATA</span><small id="fixSub">Leica / mobil / demo</small>
         </div>
@@ -2413,7 +2495,6 @@
         ><button class="btn" onclick="location.href = 'feilsok'" title="Går gjennom alle stega frå mottakar til RTK FIX og viser kvar det stoppar">🔍 FEILSØK RTK</button
         ><button class="btn mobGpsBtn" onclick="toggleGPS()">START MOBIL-GPS (TEST)</button>
       </div>
-      <div id="legend" class="legend"></div>
       <div id="tele" class="tele">
         <div id="traCell" class="traCell hide"><small id="traCellLbl">TRASÉ</small><b id="traCellV">--</b></div>
         <div><small>FART</small><b id="speed">0,0 km/t</b></div>
@@ -3014,7 +3095,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.108";
+      const APP_VERSION = "1.6.109";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -4951,7 +5032,7 @@
         $("legend").innerHTML =
           "<b>Snødjupne" +
           (src === "demo" ? " (demo)" : "") +
-          "</b>" +
+          "</b><div class=legRow>" +
           colors
             .map(
               (c, i) =>
@@ -4969,7 +5050,8 @@
                 " m</div>",
             )
             .join("") +
-          (src === "demo" ? "" : '<div class=leg><i class=sw style="background:' + NEUTRAL + '"></i>Preparert (ikkje målt)</div>');
+          (src === "demo" ? "" : '<div class=leg><i class=sw style="background:' + NEUTRAL + '"></i>Preparert (ikkje målt)</div>') +
+          "</div>";
       }
       function updateMachine() {
         let b = toolsFull ? cfg.blade : cfg.bladeN,
@@ -5183,7 +5265,7 @@
       function toggleSnow() {
         snowOn = !snowOn;
         $("legend").classList.toggle("hide", !snowOn);
-        $("depth").parentElement.classList.toggle("hide", !snowOn);
+        // v1.6.109 (eigaren): «SNØDJUPNE (MIDT)» står fast – knappen slår berre av fargane på kartet og teiknforklaringa
         ["snowBtn", "snowSet"].forEach((id) => $(id) && $(id).classList.toggle("on", snowOn));
         $("snowSet").textContent = "SNØDJUPNE: " + (snowOn ? "PÅ" : "AV");
       }

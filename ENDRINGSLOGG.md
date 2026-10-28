@@ -9,6 +9,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.109 – teiknforklaring i topplinja, snødjupna står fast
+
+- **Endra (eigaren):** Teiknforklaringa for snødjupne er flytta frå kartet (oppe til venstre) til topplinja over
+  kartet, til høgre for SNØDJUPNE (MIDT). Ho står på éi rad og bryt til to rader på smalare skjermar.
+  Under 700 px breidd blir ho skjult. Demo er framleis merka i tittelen.
+- **Endra (eigaren):** Teksten under snødjupna (t.d. «Terreng: dtm1_… · 1 m», mål, status) står no inne i feltet,
+  ikkje under det oppå kartet. Er han for lang, blir han kutta med «…».
+- **Endra (eigaren):** Knappen «Snødjupne» skjuler ikkje lenger SNØDJUPNE (MIDT). Han slår berre av fargane på
+  kartet og teiknforklaringa.
+- **Avgjerd:** SNØDJUPNE (MIDT) skal alltid vere synleg i førarvisinga.
+
 ### PC-prototype v1.6.108 – knapperada hoppa opp midt på skjermen
 
 - **Retta:** Når ein trykte på kartet i førarvisinga (og horisont), kunne heile flata rulle om lag 130–170 px opp:
