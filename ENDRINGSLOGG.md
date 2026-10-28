@@ -9,6 +9,24 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.107 – fix-and-hold og 3 FIX på rad (første ekte FIX med Trimble R12i)
+- **Bakgrunn (felttest 28.10 kl. 22–23, lånt Trimble R12i):** R12i i basemodus sende RTCM 3 legacy (1004/1012) over
+  Bluetooth, og SNOWMAN rekna RTK mot TH. Etter at R12i vart flytta til open himmel, kom **dei første ekte RTK FIX
+  rekna i SNOWMAN**, alle innanfor 1–2 cm av kvarandre. Men FIX fall ofte tilbake til FLOAT (51 % FIX i ro).
+  - «3.3 (MSM)» på R12i gir MSM3 (1073/1083/…), som RTKLIB ikkje støttar. «3 (legacy)» fungerer.
+  - Med delvis skjerma sikt hadde R12i fasebrot kvart sekund på R04, R11, R20 og G20.
+- **Endra:** fix-and-hold (RTKLIB modear 3). Validert FIX blir halden fast som tilleggsmåling.
+- **Nytt:** FIX blir først meldt etter 3 FIX på rad frå RTKLIB (`FIX_RUN`). Før det blir epoka meldt som FLOAT. Talet
+  står i `fix_wait`.
+- **Avgjerd:** «minste låstid» (minlock 5/10) gav fleire FIX (63–95 %), men òg **falske FIX på 33–79 cm** like etter at
+  antenna stod i ro. Den blir ikkje teken i bruk.
+- **Resultat på opptaket med R12i (i ro, 197 epokar):**
+  - v1.6.106: 51 % FIX, éin FIX 7,7 cm feil
+  - fix-and-hold: 69 % FIX, same avviket
+  - fix-and-hold og 3 på rad (v1.6.107): **61 % FIX, største avvik 2,3 cm, ingen over 5 cm**
+- **Testa:** `replay.py` 113/115 FIX (dei to første fell bort med kravet om 3 på rad), `testrekkjefolgje.py` ALT OK,
+  `testubx.py` ALT OK, `rtksjekk.py` OK. Reach RS+-opptaket (15 min): framleis 0 FIX og ingen falske.
+
 ### PC-prototype v1.6.106 – GLONASS: banene blir rekna fram i tid, og autokalibrering mellom mottakarmerke
 - **Bakgrunn:** opptaket frå 28.10 kl. 19:43 (Reach RS+, 5 min) og banefila frå SNOWMAN-PC-en vart spela av med
   `spel_opptak.py`.

@@ -155,6 +155,7 @@ class Demux:
 
 
 UBX_NAMES = {(0x02, 0x15): "UBX-RAWX", (0x02, 0x13): "UBX-SFRBX", (0x01, 0x07): "UBX-PVT", (0x01, 0x3C): "UBX-RELPOSNED"}
+FIX_RUN = 3                                  # så mange FIX på rad frå RTKLIB før SNOWMAN melder FIX
 SNR_MASK = 35.0                              # dBHz – minste signalstyrke for roversatellittar (L1), alle elevasjonar
 MAX_BASE_AGE = 30.0                         # s – eldre basedata blir ikkje brukte (same som RTKLIB maxtdiff)
 QUAL = {1: 4, 2: 5, 3: 2, 4: 2, 5: 1}      # RTKLIB SOLQ_* → GGA-kvalitet (FIX, FLOAT, SBAS→DGPS, DGPS, SINGLE)
@@ -243,8 +244,9 @@ class RtkMotor:
                       "none": 0, "last_stat": None, "last_ratio": None, "last_sol": 0.0, "base_time": 0.0,
                       "rover_time": 0.0, "base_pos": None, "rover_types": {}, "base_types": {}, "err": "",
                       "rover_fmt": None, "eph_rover": 0, "eph_fixed": 0, "clock_off": None, "tdiff": None,
-                      "ubx_bad": 0, "sats": None, "glo_ext": 0}
+                      "ubx_bad": 0, "sats": None, "glo_ext": 0, "fix_wait": 0}
         self._diag_t = 0.0
+        self._fixrun = 0
         self.base_obs = None
         self.base_n = 0
         self.base_t = None
@@ -265,7 +267,9 @@ class RtkMotor:
             opt.nf = 2                                      # L1 + L2
             opt.navsys = R.SYS_GPS | R.SYS_GLO | R.SYS_GAL | R.SYS_CMP
             opt.elmin = 15.0 * math.pi / 180.0              # 15° elevasjonsmaske
-            opt.modear = 1                                  # ARMODE_CONT – løyser heiltal kontinuerleg
+            # Fix-and-hold (v1.6.107): når ein FIX er validert, blir heiltala haldne fast som tilleggsmålingar. Opptak med
+            # Trimble R12i 28.10: FIX i 69 % av tida i ro mot 51 % med kontinuerleg (ARMODE_CONT), utan nye avvik.
+            opt.modear = 3
             # GLONASS: autokalibrering av skilnaden mellom mottakarmerke (RTKLIB glomodear=2, v1.6.106). Med «av» (0)
             # vart GLONASS-fasen med i flytløysinga med ukjend skilnad (Trimble-base mot u-blox i Reach: 6–19 cm i
             # dobbeldifferansane), og opptaket frå 28.10 gav 26 FIX der alle var 1–2 m feil. Med 2: ingen falske FIX.
@@ -528,6 +532,12 @@ class RtkMotor:
         R.rtkpos(self.rtk, arr[0], nr + nb, nav)
         sol = self.rtk.sol
         st = int(sol.stat)
+        # FIX blir først meldt når RTKLIB har hatt FIX FIX_RUN epokar på rad (v1.6.107). Første FIX etter flyt kan vere
+        # feil heiltal (opptak 28.10: éin FIX 7,7 cm feil medan antenna enno flytta seg). Til då blir han meldt som FLOAT.
+        self._fixrun = self._fixrun + 1 if st == 1 else 0
+        if st == 1 and self._fixrun < FIX_RUN:
+            st = 2
+            self.stats["fix_wait"] += 1
         key = {1: "fix", 2: "float"}.get(st, "single" if st in (3, 4, 5) else "none")
         self.stats[key] += 1
         self.stats["last_stat"] = st
