@@ -9,6 +9,20 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-28
 
+### PC-prototype v1.6.110 – snøflate i 3D, full fresbreidd i snøflateminnet, høgare fargestolpar
+
+- **Nytt (eigaren):** Snøflate i 3D. Der maskina har køyrt, blir snøoverflata vist som eiga høgd oppå barmarka
+  (barmark + målt snødjupne midt under maskina, lagd med sidehellinga til det glatta terrenget over fresbreidda).
+  Groper og bekkefar som er fylte blir jamne i biletet, og kanten av sporet blir ein synleg vegg som viser kor tjukt
+  laget er. Maskina står no på snøen, ikkje på barmarka. Lagra overflate frå tidlegare køyring blir henta frå
+  snøflateminnet når utsnittet blir lasta (ny `GET /api/surface/cells`). Innst. › Kart: «SNØFLATE I 3D: PÅ/AV».
+  Infolinja i 3D viser «SNØFLATE n m²», merka DEMO/SIMULERT når det gjeld.
+- **Endra:** Snøflateminnet lagrar heile fresbreidda (ruter kvar meter på tvers), ikkje berre ruta under antenna.
+  Utan kurs (maskina står) blir berre midtruta lagra. Dette gjer òg estimatet framfor maskina betre.
+- **Endra (eigaren):** Fargestolpane i teiknforklaringa er høgare og breiare (20 × 32 px), lettare å sjå.
+- **Kvifor:** Før vart snødjupna berre måla som farge på barmarka, så ein såg ikkje at terrenget var utjamna etter
+  trakking (analyse 28.10). Neste steg: endring sidan førre preparering og høgdeoverdriving (v1.6.111).
+
 ### PC-prototype v1.6.109 – teiknforklaring i topplinja, snødjupna står fast
 
 - **Endra (eigaren):** Teiknforklaringa for snødjupne er flytta frå kartet (oppe til venstre) til topplinja over

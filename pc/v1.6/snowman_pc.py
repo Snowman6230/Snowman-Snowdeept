@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.109"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.110"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -251,13 +251,25 @@ def _motion(lat,lon):
     return pr["v"],pr["h"]
 
 SURFX={"chg":[],"last_t":0}
-def surf_upd(dstat,det,lat,lon,ter):
+_TW={"mt":None,"w":0.0}
+def tiller_w():
+    """Fresbreidda (m) frå innstillingane i førarskjermen (UI_CFG), lesen på nytt berre når fila er endra."""
+    try:
+        mt=UI_CFG.stat().st_mtime
+        if mt!=_TW["mt"]:
+            u=json.loads(UI_CFG.read_text("utf-8")); c=u.get("cfg",u) if isinstance(u,dict) else {}
+            _TW.update(mt=mt,w=float(c.get("tiller") or 0))
+    except Exception: pass
+    return _TW["w"]
+def surf_upd(dstat,det,lat,lon,ter,hdg=None):
     """Snøflateminnet: lagre overflata ved gyldig snødjupne, og rekn ut til HUD-en
     – endring i overflata sidan førre preparering (median av dei siste målingane), og
     – «sist målt her» frå minnet når den direkte målinga manglar (høgst 1 gong i sekundet)."""
     test=bool(STATE.get("simulated")); now=time.time()
     if dstat=="OK" and det.get("surface") is not None:
-        c=SURF.add(lat,lon,det["surface"],TERR.height,test=test); SURF.save()
+        # v1.6.110: heile fresbreidda (snøflata i 3D og estimatet framfor treng breidda, ikkje berre midtlinja)
+        w=tiller_w()
+        c=SURF.add_swath(lat,lon,hdg,w,det["surface"],TERR.height,test=test); SURF.save()
         L=SURFX["chg"]; L.append((now,c)); del L[:-15]
         v=[x[1] for x in L if x[1] is not None and now-x[0]<5]
         if len(v)>=5:
@@ -312,7 +324,7 @@ def parse_gga(line):
             LOG.event(f"Snødjupne-status: {pst} → {dstat} ({DEPTH_TXT.get(dstat,'OK') if dstat!='OK' else 'snødjupne blir vist'}); "
                       f"høgd {det.get('H')}, overflate {det.get('surface')}, terreng {det.get('terrain')}, rå {det.get('raw')}, "
                       f"lag {(ter or {}).get('name','-')}",err=dstat in ("NEGATIVE","NO_GEOID","NO_HEIGHT","NO_ENGINE"))
-        surf_upd(dstat,det,mlat,mlon,ter)
+        surf_upd(dstat,det,mlat,mlon,ter,h if v>=0.3 else None)
         update(last_gga=line.strip(), fix=fix,
                satellites=int(p[7] or 0), hdop=float(p[8]) if p[8] else None,
                altitude=alt, geoid_sep=sep, lat=lat, lon=lon, tilt=tilt, geoid_model=None if gN is None else round(gN,3),
@@ -766,6 +778,13 @@ class API(http.server.BaseHTTPRequestHandler):
             return
         if u.path=="/api/objekt":
             r={"ok":True,"objekt":OBJ.listing(),"types":{k:{"name":v[0],"radius":v[1],"sym":v[2]} for k,v in TR.OBJ_TYPES.items()}} if OBJ else {"ok":False,"error":TRA_ERR}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/surface/cells":   # v1.6.110: lagra snøoverflate rundt maskina (snøflata i 3D)
+            q=urllib.parse.parse_qs(u.query); test=bool(STATE.get("simulated"))
+            try:
+                f=lambda k,d=None: float(q[k][0]) if k in q and q[k][0] not in ("","null") else d
+                r={"ok":True,"test":test,"cells":SURF.cells_near(f("lat"),f("lon"),min(f("half",150.0),200.0),test=test)}
+            except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path in ("/api/surface/ahead","/api/surface/status"):   # estimat framfor maskina frå tidlegare snøoverflate
             q=urllib.parse.parse_qs(u.query); test=bool(STATE.get("simulated"))

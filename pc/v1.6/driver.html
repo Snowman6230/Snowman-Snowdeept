@@ -1965,7 +1965,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 3px 12px;
-        max-height: 44px;
+        max-height: 48px;
         overflow: hidden;
       }
       .top .leg {
@@ -1974,9 +1974,34 @@
         font-size: 12px;
         white-space: nowrap;
       }
+      /* v1.6.110 (eigaren): høgare og breiare fargestolpar, lettare å sjå */
       .top .sw {
+        width: 20px;
+        height: 32px;
+        border-radius: 4px;
+        flex: none;
+      }
+      .top .leg {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      /* Estimatboksen (FRAMFOR) tek plass: fargane bryt til to rader, då med lågare stolpar */
+      .top:has(#aheadBox:not(.hide)) .sw {
         width: 16px;
-        height: 16px;
+        height: 18px;
+      }
+      .top:has(#aheadBox:not(.hide)) .leg {
+        font-size: 12px;
+      }
+      /* smalare vindauge: fargane bryt til to rader, då med lågare stolpar */
+      @media (max-width: 1250px) {
+        .top .sw {
+          width: 16px;
+          height: 18px;
+        }
+        .top .leg {
+          font-size: 12px;
+        }
       }
       /* v1.6.109: teksten under snødjupna (terrengmodell, mål, status) står inne i feltet */
       .top .depth {
@@ -2591,6 +2616,7 @@
             </div>
           </details>
           <button id="detailSet" class="btn" onclick="cycleDetail3d()">3D-DETALJ NÆR MASKINA: NORMAL</button>
+          <button id="snow3dSet" class="btn on" onclick="toggleSnow3d()" title="Viser snøoverflata der maskina har køyrt som eige lag oppå barmarka (3D og frontrute)">SNØFLATE I 3D: PÅ</button>
           <button id="fsSet" class="btn toggle" onclick="toggleFullscreen()">FULLSKJERM: AV</button>
           <button id="northSet" class="btn" onclick="toggleNorth()">KARTRETNING: KØYRERETNING OPP</button>
           <button id="snowSet" class="btn toggle on" onclick="toggleSnow()">SNØDJUPNE: PÅ</button
@@ -3095,7 +3121,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.109";
+      const APP_VERSION = "1.6.110";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3126,6 +3152,7 @@
           zOff: 0,
           northUp: false,
           detail3d: "normal", // 3D-detalj nær maskina: hog | normal | av
+          snow3d: true, // v1.6.110: snøflate i 3D (overflata oppå barmarka der maskina har køyrt)
           kbMode: "auto", // tastatur på skjermen: auto | alltid | av
           teleOn: true, // fart, kurs, spor, areal og tid nede til venstre
           surfMem: true, // estimat frå tidlegare trakka overflate
@@ -3501,8 +3528,13 @@
           hatch = null,
           fov = 70,
           patch = null,
-          H = null,
-          hRef = 0,
+          H = null, // synleg overflate: snøflata der ho er målt, elles barmark (v1.6.110)
+          G = null, // barmark frå terrengmodellen
+          SN = null, // snøoverflate per rutepunkt (NaN = ikkje målt/køyrt)
+          snowBox = null, // [i0, i1, j0, j1] – rutepunkt som er endra og ikkje sende til skjermkortet enno
+          snowNormT = 0,
+          snowReq = 0,
+          snowCells = [], // lagra ruter frå tidlegare køyring: {x, y, c} – farga etter snødjupna (overflate − barmark)
           loading = false,
           visible = false,
           failed = false,
@@ -3534,8 +3566,9 @@
         function local(p) {
           return [(p[1] - patch.lon0) * mLon(patch.lat0), (p[0] - patch.lat0) * M_LAT]; // x mot aust, y mot nord
         }
-        function hAt(x, y) {
-          if (!patch) return NaN;
+        function hAt(x, y, A) {
+          A = A || H;
+          if (!patch || !A) return NaN;
           let n = patch.n,
             c = (x + HALF) / STEP,
             r = (HALF - y) / STEP,
@@ -3544,10 +3577,10 @@
           if (c0 < 0 || r0 < 0 || c0 >= n - 1 || r0 >= n - 1) return NaN;
           let fc = c - c0,
             fr = r - r0,
-            a = H[r0 * n + c0],
-            b = H[r0 * n + c0 + 1],
-            d = H[(r0 + 1) * n + c0],
-            e = H[(r0 + 1) * n + c0 + 1];
+            a = A[r0 * n + c0],
+            b = A[r0 * n + c0 + 1],
+            d = A[(r0 + 1) * n + c0],
+            e = A[(r0 + 1) * n + c0 + 1];
           return (a * (1 - fc) + b * fc) * (1 - fr) + (d * (1 - fc) + e * fc) * fr; // NaN om eitt av hjørna manglar
         }
         function init() {
@@ -3701,6 +3734,181 @@
           machine = g;
           machine.rotation.order = "YXZ";
           scene.add(machine);
+        }
+        // ---- Snøflate i 3D (v1.6.110) ----
+        // Snøoverflata blir vist som eiga høgd oppå barmarka der maskina har køyrt: overflate = barmark + målt snødjupne
+        // midt under maskina, lagd med sidehellinga til det glatta terrenget over fresbreidda. Då ser ein at groper og
+        // bekkefar er fylte og at overflata er jamnare enn terrenget. Kanten av sporet blir ein synleg vegg (lagtjukkleik).
+        // Lagra overflate frå tidlegare køyring (snøflateminnet, api/surface/cells) blir henta når utsnittet blir lasta.
+        // Demo/test: same merking som resten av skjermen (sporet er simulert).
+        const snowOn3d = () => cfg.snow3d !== false;
+        function snowTop(k) {
+          let g = G[k],
+            sv = SN[k];
+          H[k] = !snowOn3d() || isNaN(sv) || isNaN(g) ? g : Math.max(sv, g);
+        }
+        function snowMark(i, j) {
+          if (!snowBox) snowBox = [i, i, j, j];
+          else {
+            if (i < snowBox[0]) snowBox[0] = i;
+            if (i > snowBox[1]) snowBox[1] = i;
+            if (j < snowBox[2]) snowBox[2] = j;
+            if (j > snowBox[3]) snowBox[3] = j;
+          }
+        }
+        // Snitt av barmarka i eit 6 × 6 m kvadrat (glatta terreng, same tanke som i snoflate.py)
+        function gSmooth(x, y) {
+          let s = 0,
+            c = 0;
+          for (let dx = -3; dx <= 3; dx += 1.5)
+            for (let dy = -3; dy <= 3; dy += 1.5) {
+              let h = hAt(x + dx, y + dy, G);
+              if (!isNaN(h)) {
+                s += h;
+                c++;
+              }
+            }
+          return c >= 12 ? s / c : NaN;
+        }
+        // Eitt spor-segment a→b med fresbreidd w og snødjupne d (målt midt under maskina)
+        function snowSeg(sg, quiet) {
+          if (sg.d == null || !patch || !G) return;
+          let A = local(sg.a),
+            B = local(sg.b);
+          if (Math.abs(A[0]) > HALF + 10 || Math.abs(A[1]) > HALF + 10) return;
+          let ga = hAt(A[0], A[1], G),
+            gb = hAt(B[0], B[1], G);
+          if (isNaN(ga) || isNaN(gb)) return;
+          let sa = ga + sg.d,
+            sb = gb + sg.d,
+            dx = B[0] - A[0],
+            dy = B[1] - A[1],
+            len = Math.hypot(dx, dy),
+            ux = len > 0.05 ? dx / len : 0,
+            uy = len > 0.05 ? dy / len : 1,
+            rx = uy,
+            ry = -ux, // mot høgre
+            w2 = sg.w / 2,
+            mx = (A[0] + B[0]) / 2,
+            my = (A[1] + B[1]) / 2,
+            gr = gSmooth(mx + rx * w2, my + ry * w2),
+            gl = gSmooth(mx - rx * w2, my - ry * w2),
+            slope = isNaN(gr - gl) ? 0 : (gr - gl) / sg.w,
+            n = patch.n,
+            j0 = Math.max(0, Math.floor((Math.min(A[0], B[0]) - w2 + HALF) / STEP)),
+            j1 = Math.min(n - 1, Math.ceil((Math.max(A[0], B[0]) + w2 + HALF) / STEP)),
+            i0 = Math.max(0, Math.floor((HALF - Math.max(A[1], B[1]) - w2) / STEP)),
+            i1 = Math.min(n - 1, Math.ceil((HALF - Math.min(A[1], B[1]) + w2) / STEP));
+          for (let i = i0; i <= i1; i++)
+            for (let j = j0; j <= j1; j++) {
+              let k = i * n + j;
+              if (isNaN(G[k])) continue;
+              let px = -HALF + j * STEP - A[0],
+                py = HALF - i * STEP - A[1],
+                t = len > 0.05 ? (px * ux + py * uy) / len : 0,
+                sl = px * rx + py * ry;
+              if (t < 0 || t > 1) {
+                // rund ende rundt b (fyller kilen i svingar, som i kartet)
+                let ex = -HALF + j * STEP - B[0],
+                  ey = HALF - i * STEP - B[1];
+                if (Math.hypot(ex, ey) > w2) continue;
+                t = 1;
+                sl = ex * rx + ey * ry;
+              } else if (Math.abs(sl) > w2) continue;
+              SN[k] = sa + t * (sb - sa) + sl * slope;
+              snowTop(k);
+              snowMark(i, j);
+            }
+          if (!quiet) snowFlush();
+        }
+        // Lagra overflate frå snøflateminnet (tidlegare køyring). Fyller berre punkt som ikkje alt har spor frå denne økta.
+        async function loadSnow(p) {
+          if (src === "demo") return;
+          let my = ++snowReq;
+          try {
+            let r = await (await fetch("api/surface/cells?lat=" + p.lat0 + "&lon=" + p.lon0 + "&half=" + HALF)).json();
+            if (my !== snowReq || patch !== p || !r.ok) return;
+            let n = p.n,
+              got = new Uint8Array(n * n);
+            snowCells = [];
+            r.cells.forEach((c) => {
+              let [x, y] = local([c[0], c[1]]),
+                j = Math.round((x + HALF) / STEP),
+                i = Math.round((HALF - y) / STEP);
+              if (i < 0 || j < 0 || i >= n || j >= n) return;
+              let k = i * n + j;
+              if (isNaN(G[k]) || !isNaN(SN[k])) return;
+              SN[k] = c[2];
+              got[k] = 1;
+              snowCells.push({ x: -HALF + j * STEP, y: HALF - i * STEP, c: depthColor(Math.max(0, c[2] - G[k])) });
+              snowTop(k);
+              snowMark(i, j);
+            });
+            // Små hol mellom rutene (UTM-ruta og 3D-ruta er ikkje heilt parallelle): snitt av naboane
+            for (let i = 1; i < n - 1; i++)
+              for (let j = 1; j < n - 1; j++) {
+                let k = i * n + j;
+                if (!isNaN(SN[k]) || isNaN(G[k])) continue;
+                let s = 0,
+                  c = 0;
+                [k - 1, k + 1, k - n, k + n].forEach((q) => {
+                  if (got[q]) {
+                    s += SN[q];
+                    c++;
+                  }
+                });
+                if (c >= 3) {
+                  SN[k] = s / c;
+                  snowTop(k);
+                }
+              }
+            snowFlush(true);
+            repaint();
+          } catch (e) {}
+        }
+        // Lagra snøflate: kvar rute farga etter snødjupna der (same fargar som sporet)
+        function paintCells(cx, X, Y, s) {
+          if (!snowCells.length || !snowOn3d()) return;
+          // heilt dekkjande (ikkje gjennomsiktig): overlapp mellom rutene gav elles eit mørkt rutenett
+          snowCells.forEach((q) => {
+            cx.fillStyle = q.c;
+            cx.fillRect(Math.floor(X(q.x - STEP / 2)), Math.floor(Y(q.y + STEP / 2)), Math.ceil(STEP * s) + 1, Math.ceil(STEP * s) + 1);
+          });
+        }
+        // Send endra høgder til skjermkortet. Normalane (lyset) blir rekna om høgst 3 gonger i sekundet.
+        function snowFlush(force) {
+          if (!terrain || !snowBox) return;
+          let pos = terrain.geometry.getAttribute("position"),
+            a = pos.array,
+            n = patch.n,
+            [i0, i1, j0, j1] = snowBox;
+          for (let i = i0; i <= i1; i++)
+            for (let j = j0; j <= j1; j++) {
+              let k = i * n + j;
+              a[3 * k + 1] = isNaN(H[k]) ? 0 : H[k] - hRef;
+            }
+          pos.needsUpdate = true;
+          snowBox = null;
+          let t = performance.now();
+          if (force || t - snowNormT > 330) {
+            snowNormT = t;
+            terrain.geometry.computeVertexNormals();
+            terrain.geometry.computeBoundingSphere();
+          } else snowNormPending = true;
+        }
+        let snowNormPending = false;
+        function snowNormCheck() {
+          if (snowNormPending && terrain && performance.now() - snowNormT > 330) {
+            snowNormPending = false;
+            snowNormT = performance.now();
+            terrain.geometry.computeVertexNormals();
+          }
+        }
+        function snowArea() {
+          if (!SN) return 0;
+          let c = 0;
+          for (let k = 0; k < SN.length; k++) if (!isNaN(SN[k])) c++;
+          return c * STEP * STEP;
         }
         function buildTerrain() {
           let n = patch.n,
@@ -3875,6 +4083,7 @@
             dCx.lineWidth = (2.4 * s) / PX;
             dCx.stroke(major);
           }
+          paintCells(dCx, (x) => (x - ox) * s, (y) => (oy - y) * s, s);
           segs.forEach(dSeg);
           dDirty = true;
         }
@@ -3978,6 +4187,7 @@
           if (!patch) return;
           if (dC) dPaint();
           paintBase();
+          paintCells(texCx, (x) => (x + HALF) * PX, (y) => (HALF - y) * PX, PX);
           segs.forEach(paintSeg);
           tex.needsUpdate = true;
           paintEst();
@@ -4013,9 +4223,15 @@
                 u8 = new Uint8Array(bin.length);
               for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
               patch = r;
-              H = new Float32Array(u8.buffer);
+              G = new Float32Array(u8.buffer);
+              H = G.slice();
+              SN = new Float32Array(G.length).fill(NaN);
+              snowBox = null;
+              snowCells = [];
+              segs.forEach((sg) => snowSeg(sg, true)); // sporet i denne økta (også demo) blir lagt på att i det nye utsnittet
               if (init()) {
                 buildTerrain();
+                loadSnow(r);
                 dC = null; // nytt utsnitt: detaljflata blir bygd på nytt med dei nye hjørnepunkta
                 repaint();
               }
@@ -4062,6 +4278,8 @@
           if (avg > 66) lowerDetail3d(Math.round(1000 / avg)); // under ca. 15 bilete i sekundet
           else guard.on = false; // held farta: ingen fleire målingar denne økta
         }
+        let snowInfoT = 0,
+          snowInfo = 0;
         function frame(t) {
           raf = requestAnimationFrame(frame);
           if (t - lastFrame < 33) return; // ca. 30 bilete i sekundet
@@ -4149,7 +4367,18 @@
             scene.fog.far = 200 + camDist * 2.5;
           }
           dCheck();
-          $("t3dInfo").textContent = (pos ? "3D-TERRENG · " : "INGEN GNSS – VISER MIDTEN AV TERRENGMODELLEN · ") + patch.layers.join(", ") + " · " + Math.round(sm.h) + " moh.";
+          snowNormCheck();
+          if (t - snowInfoT > 2000) {
+            snowInfoT = t;
+            snowInfo = snowOn3d() && SN ? snowArea() : 0;
+          }
+          $("t3dInfo").textContent =
+            (pos ? "3D-TERRENG · " : "INGEN GNSS – VISER MIDTEN AV TERRENGMODELLEN · ") +
+            patch.layers.join(", ") +
+            " · " +
+            Math.round(sm.h) +
+            " moh." +
+            (snowInfo ? " · SNØFLATE " + Math.round(snowInfo) + " m²" + (src === "demo" ? " (DEMO)" : simGnss ? " (SIMULERT)" : "") : "");
           renderer.render(scene, camera);
         }
         return {
@@ -4173,10 +4402,11 @@
             request(p);
             check();
           },
-          addSeg(a, b, w, color) {
-            let sg = { a, b, w, color };
+          addSeg(a, b, w, color, d) {
+            let sg = { a, b, w, color, d: d == null || isNaN(d) ? null : d };
             segs.push(sg);
             if (patch && renderer) {
+              snowSeg(sg);
               paintSeg(sg);
               tex.needsUpdate = true;
               dSeg(sg);
@@ -4185,6 +4415,18 @@
           },
           clear() {
             segs = [];
+            if (SN) SN.fill(NaN);
+            snowCells = [];
+            this.snowChanged();
+            if (patch) loadSnow(patch); // lagra flate frå tidlegare køyring (snøflateminnet) blir ikkje sletta av «Reset spor»
+            if (renderer) repaint();
+          },
+          // Snøflate i 3D av/på (Innst. › Kart): rekn ut synleg overflate på nytt for heile utsnittet
+          snowChanged() {
+            if (!patch || !G) return;
+            for (let k = 0; k < G.length; k++) snowTop(k);
+            snowBox = [0, patch.n - 1, 0, patch.n - 1];
+            snowFlush(true);
             if (renderer) repaint();
           },
           // Fri vising: start i same vinkel som kameraet har no
@@ -4805,6 +5047,18 @@
         $("detailSet").textContent = "3D-DETALJ NÆR MASKINA: " + DETAIL_TXT[v];
         $("detailSet").classList.toggle("on", v !== "av");
       }
+      function snow3dLabel() {
+        let on = cfg.snow3d !== false;
+        $("snow3dSet").textContent = "SNØFLATE I 3D: " + (on ? "PÅ" : "AV");
+        $("snow3dSet").classList.toggle("on", on);
+      }
+      function toggleSnow3d() {
+        cfg.snow3d = cfg.snow3d === false;
+        persistCfg();
+        snow3dLabel();
+        T3D.snowChanged();
+        toast(cfg.snow3d ? "Snøflate i 3D PÅ – snøoverflata blir vist oppå terrenget der maskina har køyrt" : "Snøflate i 3D AV – berre barmark, snødjupna som farge");
+      }
       function cycleDetail3d() {
         let order = ["hog", "normal", "av"],
           v = DETAIL_TXT[cfg.detail3d] ? cfg.detail3d : "normal";
@@ -4985,6 +5239,7 @@
         cfg.bounds.forEach((v, i) => ($("b" + i).onchange = save));
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
         detailLabel();
+        snow3dLabel();
         applyView();
         applyBg();
         updateFsButtons();
@@ -5731,7 +5986,7 @@
           opt = { renderer: coverRenderer, stroke: false, fill: true, fillColor: color, fillOpacity: 1, interactive: false };
         let strip = stripPolygon(lastCoverage, p, w);
         if (strip) L.polygon(strip, opt).addTo(coverGroup);
-        T3D.addSeg(lastCoverage, p, w, color);
+        T3D.addSeg(lastCoverage, p, w, color, src === "demo" ? cfg.demoD : src === "gnss" ? realDepth : null);
         L.circle(p, Object.assign({ radius: w / 2 }, opt)).addTo(coverGroup); // fyller kilen i svingar
         lastCoverage = p;
       }

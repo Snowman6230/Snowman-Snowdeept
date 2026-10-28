@@ -118,6 +118,56 @@ class SnowSurface:
             self.dirty = True
         return (float(surface) - prev[0], now - prev[1]) if prev[0] is not None else None
 
+    def add_swath(self, lat, lon, hdg, width, surface, terrain_height, test=False, t=None):
+        """v1.6.110: lagre overflata over heile fresbreidda, ikkje berre ruta under antenna.
+        Midtruta får den målte overflata. Ruter på tvers (kvar meter ut til ±breidd/2) får same overflate,
+        lagd med sidehellinga til det glatta terrenget (snøflata etter planering følgjer den store forma, sjå over).
+        Utan kurs (maskina står) blir berre midtruta lagra. Returnerer det same som add() for midtruta."""
+        c = self.add(lat, lon, surface, terrain_height, test=test, t=t)
+        if hdg is None or not width or width < 1.5 or surface is None or not math.isfinite(surface):
+            return c
+        z = zone_of(lon)
+        E0, N0 = utm_forward(lat, lon, z)
+        h = math.radians(hdg)
+        rx, ry = math.cos(h), -math.sin(h)          # eining mot høgre, vinkelrett på køyreretninga
+        half = width / 2.0
+        tr = smooth_terrain(z, E0 + rx * half, N0 + ry * half, terrain_height)
+        tl = smooth_terrain(z, E0 - rx * half, N0 - ry * half, terrain_height)
+        if tr is None or tl is None:
+            return c
+        slope = (tr - tl) / width                   # m per m mot høgre
+        k0 = (z, int(math.floor(E0)), int(math.floor(N0)))
+        done = {k0}
+        s = 0.5
+        while s <= half + 1e-6:
+            for o in (s, -s):
+                E, N = E0 + rx * o, N0 + ry * o
+                k = (z, int(math.floor(E)), int(math.floor(N)))
+                if k in done:
+                    continue
+                done.add(k)
+                la, lo = utm_inverse(E, N, z)
+                self.add(la, lo, surface + o * slope, terrain_height, test=test, t=t)
+            s += 0.5
+        return c
+
+    def cells_near(self, lat, lon, half, test=False, max_age_h=24 * KEEP_DAYS):
+        """Lagra ruter innanfor ±half m (til snøflata i 3D): liste av [lat, lon, overflate, alder_t]."""
+        if lat is None or lon is None:
+            return []
+        z = zone_of(lon)
+        E0, N0 = utm_forward(lat, lon, z)
+        lim = time.time() - max_age_h * 3600
+        with self.lock:
+            v = [(k, c) for k, c in self.cells.items()
+                 if k[0] == z and c[2] == bool(test) and c[1] >= lim and abs(k[1] + 0.5 - E0) <= half and abs(k[2] + 0.5 - N0) <= half]
+        now = time.time()
+        out = []
+        for k, c in v:
+            la, lo = utm_inverse(k[1] + 0.5, k[2] + 0.5, z)
+            out.append([round(la, 7), round(lo, 7), round(c[0], 3), round((now - c[1]) / 3600, 2)])
+        return out
+
     def at(self, lat, lon, terrain_height, test=False, max_age_h=72):
         """Estimert snødjupne akkurat her frå lagra overflate (til «sist målt her» når målinga manglar)."""
         if lat is None or lon is None:
