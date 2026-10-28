@@ -16,6 +16,7 @@ Førar- og snødjupnesystem for trakkemaskiner (RTK-GNSS + LiDAR-terrengmodell).
 | **`pc/v1.6/`** | **PC-prototype v1.6 – Terrain Engine: ekte snødjupne frå terrengmodell. Gjeldande PC-versjon.** |
 | `pc/snowman`, `pc/installer-linux.sh` | Linux: kommandoen `snowman` (meny) og installasjon |
 | `pc/SNOWMAN.bat`, `pc/INSTALLER-WINDOWS.bat` | Windows: meny og installasjon – sjå `pc/LES-MEG-WINDOWS.txt` |
+| **`base/v1.0/`** | **SNOWMAN Base – RTK-base, NTRIP-caster og anleggsserver (PC, NAS, Linux). Sjå `base/v1.0/LES-MEG.md`.** |
 | `ntrip-service/v1.1/` | SNOWMAN NTRIP Service v1.1 – Python-bru mellom COM/Leica og CPOS |
 | `worker.js` | Cloudflare Worker – terrengproxy mot Kartverket (eldre test) |
 

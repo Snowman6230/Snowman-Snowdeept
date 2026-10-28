@@ -1,0 +1,192 @@
+<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. -->
+<html lang="nn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNOWMAN Kontor</title>
+<link rel="icon" href="/vendor/snowman-icon.png">
+<link rel="stylesheet" href="/vendor/leaflet.css">
+<style>
+:root{--bg:#06121a;--panel:#081822;--line:#16303e;--txt:#e6f1f5;--dim:#8fa3ad;--ok:#27d84d;--warn:#ffb020;--err:#ff5a4f;--acc:#4db8ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+header h1{font-size:18px;margin:0}
+header nav{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+button,a.btn,input,select,textarea{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit}
+button,a.btn{cursor:pointer;text-decoration:none}
+button:hover,a.btn:hover{border-color:var(--acc)}
+button.on{border-color:var(--acc);color:var(--acc)}
+button.pri{background:#0d3550;border-color:var(--acc)}
+main{padding:16px;max-width:1300px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 10px}
+.dim{color:var(--dim)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:500}
+.scroll{overflow-x:auto}
+.pill{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
+.høg{color:var(--err);border-color:rgba(255,90,79,.5)}.middels{color:var(--warn);border-color:rgba(255,176,32,.5)}.låg{color:var(--dim)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+#map{height:420px;border-radius:10px;border:1px solid var(--line)}
+#login{max-width:440px;margin:60px auto}
+pre{white-space:pre-wrap;background:#04101a;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px;max-height:420px;overflow:auto}
+.msg{margin:8px 0;color:var(--acc)}
+label{display:block;color:var(--dim);font-size:13px;margin-top:8px}
+input,select,textarea{width:100%}
+.row input,.row select{width:auto;flex:1;min-width:160px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>SNOWMAN Kontor</h1><span class="dim" id="sub"></span>
+  <nav id="tabs" class="hidden">
+    <button data-t="oversikt">Oversikt</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
+    <button data-t="forbetringar">Forbetringar</button><button data-t="ai">AI</button><button data-t="system">System</button>
+    <a class="btn" href="/">Status</a><button id="logout">Logg ut</button>
+  </nav>
+</header>
+<section id="login" class="card">
+  <h2>Logg inn</h2>
+  <p class="dim">Bruk kontornøkkelen frå første oppstart (data/NOKLAR.txt), eller lag ny med <code>snowman-base nokkel kontor</code>.</p>
+  <input id="key" type="password" placeholder="Kontornøkkel" autocomplete="current-password">
+  <div class="row"><button class="pri" id="loginBtn">Logg inn</button><span id="loginMsg" class="dim"></span></div>
+</section>
+<main id="app" class="hidden">
+  <div id="t-oversikt">
+    <section class="card"><h2>Kart</h2><div id="map"></div><p class="dim">Basar (raud) og maskiner (blå) etter siste posisjon. Teikning og redigering av trasear, hindringar og kontrollpunkt i 2D/3D kjem i v1.9 (VEGEN-VIDARE kap. 16).</p></section>
+    <section class="card"><h2>Maskiner</h2><div class="scroll" id="machines"></div></section>
+  </div>
+  <div id="t-pakke" class="hidden">
+    <section class="card"><h2>Anleggspakke</h2>
+      <p class="dim">Anleggspakka (zip: terrengmodellar, trasear, hindringar, kontrollpunkt, kartfliser) blir henta av alle maskinene når dei har dekning. Ny versjon blir aktiv med éin gong. Du kan rulle tilbake.</p>
+      <div class="row"><input type="file" id="pkgFile" accept=".zip"><input id="pkgNote" placeholder="Merknad (kva er endra)"><button class="pri" id="pkgUp">Last opp</button></div>
+      <div id="pkgMsg" class="msg"></div>
+      <div class="scroll" id="pkgList"></div></section>
+  </div>
+  <div id="t-forslag" class="hidden">
+    <section class="card"><h2>Forslag frå maskinene</h2><p class="dim">Førarane kan melde ny hindring, merknad eller ønske til programmet. Godkjente hindringar legg du inn i anleggspakka. Ønske til programmet kjem med i forbetringslista til utviklaren.</p><div class="scroll" id="propList"></div></section>
+  </div>
+  <div id="t-forbetringar" class="hidden">
+    <section class="card"><h2>Forbetringsforslag</h2>
+      <p class="dim">Frå reglane (alltid på) og AI (om slått på). Kategoriar: SNOWMAN Base, SNOWMAN snødjupne, mottakar/antenne og drift. Eksporter lista og gi henne til utviklaren (eller ein AI-assistent) som oppgåveliste.</p>
+      <div class="row"><button id="impRun">Analyser no</button><button id="impAll">Vis også gjorde/avviste</button><a class="btn" id="impMd" href="#">Last ned som Markdown</a></div>
+      <div class="scroll" id="impList"></div></section>
+    <section class="card"><h2>Trend siste dagar</h2><div class="scroll" id="days"></div></section>
+  </div>
+  <div id="t-ai" class="hidden">
+    <section class="card"><h2>AI i SNOWMAN Base</h2>
+      <p class="dim">AI les eit <b>anonymisert samandrag</b> (ingen namn, IP-adresser, posisjonar eller nøklar) og foreslår forbetringar – også i SNOWMAN-programma. AI styrer aldri noko. Sjå nøyaktig kva som blir sendt under «Førehandsvis».</p>
+      <label>Leverandør</label><select id="aiProv"><option value="av">Av</option><option value="ollama">Lokal modell (Ollama) – ingenting forlèt anlegget</option><option value="anthropic">Claude (Anthropic API) – krev eigen API-nøkkel</option></select>
+      <label>Modell</label><input id="aiModel" placeholder="t.d. llama3.1 (Ollama) eller claude-sonnet-5-5">
+      <label>Adresse (Ollama)</label><input id="aiAddr" placeholder="http://localhost:11434">
+      <label>API-nøkkel (Claude)</label><input id="aiKey" type="password" placeholder="(uendra)">
+      <div class="row"><button class="pri" id="aiSave">Lagre</button><button id="aiPrev">Førehandsvis</button><button id="aiRun">Analyser med AI no</button></div>
+      <div id="aiMsg" class="msg"></div><pre id="aiOut" class="hidden"></pre></section>
+    <section class="card"><h2>Spør SNOWMAN Base</h2>
+      <textarea id="aiQ" rows="3" placeholder="t.d. Kvifor har FIX-delen gått ned denne veka?"></textarea>
+      <div class="row"><button class="pri" id="aiAsk">Spør</button></div><pre id="aiA" class="hidden"></pre></section>
+  </div>
+  <div id="t-system" class="hidden">
+    <section class="card"><h2>Oppdatering</h2><div id="updInfo" class="dim"></div>
+      <div class="row"><button id="updCheck">Sjekk etter ny versjon</button><button class="pri" id="updRun">Oppdater og start på nytt</button></div>
+      <pre id="updOut" class="hidden"></pre></section>
+    <section class="card"><h2>Hendingar</h2><div class="scroll" id="events"></div></section>
+    <section class="card"><h2>Innstillingar (utan passord)</h2><pre id="cfg"></pre><p class="dim">Endre i data/base.json og start Base på nytt, eller bruk kommandoane i LES-MEG.md.</p></section>
+  </div>
+</main>
+<script src="/vendor/leaflet.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const tid=t=>t?new Date(t*1000).toLocaleString("nn-NO",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"–";
+const dur=s=>{s=Math.round(s);if(s<60)return s+" s";if(s<3600)return Math.round(s/60)+" min";if(s<86400)return (s/3600).toFixed(1)+" t";return (s/86400).toFixed(1)+" d"};
+let KEY=""; try{KEY=sessionStorage.getItem("sbk")||""}catch(e){}
+let showAll=false, map=null, layer=null, tab="oversikt";
+async function api(path,opt={}){
+  const h=Object.assign({"Authorization":"Bearer "+KEY},opt.headers||{});
+  if(opt.json!==undefined){h["Content-Type"]="application/json";opt.body=JSON.stringify(opt.json)}
+  const r=await fetch(path,{...opt,headers:h,cache:"no-store"});
+  if(r.status===401){logout();throw new Error("Feil nøkkel")}
+  const ct=r.headers.get("content-type")||"";
+  const d=ct.includes("json")?await r.json():await r.text();
+  if(!r.ok) throw new Error(d.feil||r.status);
+  return d;
+}
+function logout(){KEY="";try{sessionStorage.removeItem("sbk")}catch(e){};$("#app").classList.add("hidden");$("#tabs").classList.add("hidden");$("#login").classList.remove("hidden")}
+async function login(){
+  KEY=$("#key").value.trim();
+  try{await api("/api/v1/hendingar?n=1");try{sessionStorage.setItem("sbk",KEY)}catch(e){};start()}
+  catch(e){$("#loginMsg").textContent="Feil nøkkel."}
+}
+function show(t){tab=t;document.querySelectorAll("#tabs button[data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  document.querySelectorAll("[id^=t-]").forEach(d=>d.classList.toggle("hidden",d.id!=="t-"+t));location.hash=t;refresh()}
+async function start(){
+  $("#login").classList.add("hidden");$("#app").classList.remove("hidden");$("#tabs").classList.remove("hidden");
+  show((location.hash||"#oversikt").slice(1));setInterval(()=>{if(tab==="oversikt")refresh()},10000);
+}
+async function refresh(){try{await ({oversikt,pakke,forslag,forbetringar,ai,system})[tab]()}catch(e){console.log(e)}}
+async function oversikt(){
+  const s=await (await fetch("/api/status",{headers:{"Authorization":"Bearer "+KEY}})).json();
+  $("#sub").textContent=`${s.namn} · v${s.versjon}`;
+  const m=await api("/api/v1/maskiner");
+  const live={};s.mountpoints.forEach(mp=>mp.klientar.forEach(c=>{if(c.gga)live[c.brukar+"@"+c.ip]={...c.gga,mp:mp.namn,brukar:c.brukar}}));
+  $("#machines").innerHTML=m.maskiner.length?`<table><tr><th>Maskin</th><th>SNOWMAN</th><th>FIX</th><th>Anleggspakke</th><th>Sist sett</th><th></th></tr>${m.maskiner.map(r=>`<tr><td>${esc(r.namn)}<div class="dim">${esc(r.id)}</div></td><td>${esc(r.versjon||'–')}</td><td>${r.fixdel==null?'–':Math.round(r.fixdel*100)+' %'}</td><td>${r.pakke?'v'+esc(r.pakke):'–'}</td><td>${r.age==null?'–':dur(r.age)+' sidan'}</td><td><button onclick="rmMachine('${esc(r.id)}')">Fjern</button></td></tr>`).join("")}</table>`
+    :`<p class="dim">Ingen maskiner har meldt seg (krev SNOWMAN med deling, v1.8). Maskiner som hentar korreksjonar no: ${Object.keys(live).length}.</p>`;
+  if(!map&&window.L){map=L.map("map");L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png",{maxZoom:18,attribution:"© Kartverket"}).addTo(map);layer=L.layerGroup().addTo(map);map.setView([62.3,6.8],10)}
+  if(!map)return; layer.clearLayers(); const pts=[];
+  s.mountpoints.forEach(mp=>{if(mp.base){pts.push([mp.base.lat,mp.base.lon]);L.circleMarker([mp.base.lat,mp.base.lon],{radius:9,color:"#ff5a4f"}).bindTooltip("Base "+mp.namn).addTo(layer)}});
+  m.maskiner.forEach(r=>{if(r.lat!=null){pts.push([r.lat,r.lon]);L.circleMarker([r.lat,r.lon],{radius:7,color:"#4db8ff"}).bindTooltip(r.namn).addTo(layer)}});
+  Object.values(live).forEach(g=>{pts.push([g.lat,g.lon]);L.circleMarker([g.lat,g.lon],{radius:6,color:"#27d84d"}).bindTooltip(`${g.brukar} (${g.mp})`).addTo(layer)});
+  if(pts.length&&!map._fitted){map.fitBounds(pts,{maxZoom:15,padding:[30,30]});map._fitted=true}
+}
+async function rmMachine(id){if(!confirm("Fjerne maskina frå lista? Ho blir lagt til att neste gong ho melder seg."))return;await api("/api/v1/maskin/fjern",{method:"POST",json:{id}});refresh()}
+async function pakke(){
+  const d=await api("/api/v1/anleggspakke/versjonar");
+  $("#pkgList").innerHTML=d.versjonar.length?`<table><tr><th>Versjon</th><th>Dato</th><th>Storleik</th><th>Merknad</th><th></th></tr>${d.versjonar.map(p=>`<tr><td>v${p.versjon}${p.aktiv?' <span class="pill" style="color:var(--ok)">aktiv</span>':''}</td><td>${tid(p.dato)}</td><td>${(p.storleik/1e6).toFixed(1)} MB</td><td>${esc(p.merknad)}</td><td>${p.aktiv?'':`<button onclick="activate(${p.versjon})">Gjer aktiv</button>`}</td></tr>`).join("")}</table>`:'<p class="dim">Ingen anleggspakke lasta opp enno.</p>';
+}
+async function activate(v){if(!confirm(`Gjere v${v} aktiv? Maskinene hentar henne når dei har dekning.`))return;await api("/api/v1/anleggspakke/aktiv",{method:"POST",json:{versjon:v}});pakke()}
+$("#pkgUp").onclick=async()=>{const f=$("#pkgFile").files[0];if(!f)return;$("#pkgMsg").textContent="Lastar opp …";
+  try{const d=await api("/api/v1/anleggspakke",{method:"POST",body:f,headers:{"X-Merknad":encodeURIComponent($("#pkgNote").value)}});$("#pkgMsg").textContent=`v${d.pakke.versjon} er lasta opp og aktiv.`;pakke()}catch(e){$("#pkgMsg").textContent="Feil: "+e.message}};
+async function forslag(){
+  const d=await api("/api/v1/forslag");
+  $("#propList").innerHTML=d.forslag.length?`<table><tr><th>Dato</th><th>Maskin</th><th>Type</th><th>Tekst</th><th>Status</th><th></th></tr>${d.forslag.map(p=>`<tr><td>${tid(p.dato)}</td><td>${esc(p.maskin)}</td><td>${esc(p.type)}${p.lat?`<div class="dim">${(+p.lat).toFixed(5)}, ${(+p.lon).toFixed(5)}</div>`:''}</td><td>${esc(p.tekst)}</td><td>${esc(p.status)}</td><td style="white-space:nowrap"><button onclick="prop(${p.id},'godkjent')">Godkjenn</button> <button onclick="prop(${p.id},'avvist')">Avvis</button> <button onclick="prop(${p.id},'gjort')">Gjort</button></td></tr>`).join("")}</table>`:'<p class="dim">Ingen forslag.</p>';
+}
+async function prop(id,status){await api("/api/v1/forslag/svar",{method:"POST",json:{id,status}});forslag()}
+async function forbetringar(){
+  const d=await api("/api/v1/forbetringar"+(showAll?"?alle=1":""));
+  $("#impMd").onclick=async e=>{e.preventDefault();const t=await api("/api/v1/forbetringar.md"+(showAll?"?alle=1":""));const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/markdown"}));a.download="snowman-forbetringar.md";a.click()};
+  $("#impList").innerHTML=d.forbetringar.length?`<table><tr><th>Alvor</th><th>Kategori</th><th>Forslag</th><th>Kjelde</th><th>Status</th><th></th></tr>${d.forbetringar.map(r=>`<tr><td><span class="pill ${r.alvor}">${r.alvor}</span></td><td>${esc(d.kategoriar[r.kategori]||r.kategori)}</td><td><b>${esc(r.tittel)}</b><div class="dim">${esc(r.grunn)}</div><div>→ ${esc(r.tiltak)}</div></td><td>${esc(r.kjelde)}<div class="dim">${r.tal}× · ${tid(r.sist)}</div></td><td>${esc(r.status)}</td><td style="white-space:nowrap"><button onclick="imp('${esc(r.nokkel)}','godteke')">Godta</button> <button onclick="imp('${esc(r.nokkel)}','gjort')">Gjort</button> <button onclick="imp('${esc(r.nokkel)}','avvist')">Avvis</button></td></tr>`).join("")}</table>`:'<p class="dim">Ingen opne forslag.</p>';
+  $("#days").innerHTML=d.dagar.length?`<table><tr><th>Dato</th><th>Oppetid</th><th>Byte av kjelde</th><th>Satellittar</th><th>Tilkoplingar</th><th>Maskiner</th></tr>${d.dagar.map(x=>{const m=Object.values(x.mountpoints||{})[0]||{};return `<tr><td>${x.dato}</td><td>${m.oppetid==null?'–':(m.oppetid*100).toFixed(1)+' %'}</td><td>${m.bytte??'–'}</td><td>${m.satellittar??'–'}</td><td>${x.tilkoplingar}</td><td>${(x.maskiner||[]).length}</td></tr>`}).join("")}</table>`:'<p class="dim">Ingen dagstal enno (første analyse etter to minutt).</p>';
+}
+async function imp(nokkel,status){await api("/api/v1/forbetringar/status",{method:"POST",json:{nokkel,status}});forbetringar()}
+$("#impRun").onclick=async()=>{await api("/api/v1/forbetringar/analyser",{method:"POST",json:{}});forbetringar()};
+$("#impAll").onclick=()=>{showAll=!showAll;$("#impAll").classList.toggle("on",showAll);forbetringar()};
+async function ai(){
+  const d=await api("/api/v1/ai");$("#aiProv").value=d.leverandor;$("#aiModel").value=d.modell;$("#aiAddr").value=d.adresse;
+  $("#aiKey").placeholder=d.har_nokkel?"(lagra – skriv ny for å byte)":"(ingen)";
+  $("#aiMsg").textContent=d.siste?(d.siste.ok?`Siste analyse ${tid(d.siste.t)}: ${d.siste.tal} forslag.`:`Siste analyse feila: ${d.siste.feil}`):"";
+}
+$("#aiSave").onclick=async()=>{try{await api("/api/v1/ai/innstillingar",{method:"POST",json:{leverandor:$("#aiProv").value,modell:$("#aiModel").value,adresse:$("#aiAddr").value,api_nokkel:$("#aiKey").value}});$("#aiKey").value="";$("#aiMsg").textContent="Lagra.";ai()}catch(e){$("#aiMsg").textContent="Feil: "+e.message}};
+$("#aiPrev").onclick=async()=>{const d=await api("/api/v1/ai/forehandsvis");$("#aiOut").classList.remove("hidden");$("#aiOut").textContent="SYSTEM:\n"+d.system+"\n\nMELDING:\n"+d.melding};
+$("#aiRun").onclick=async()=>{$("#aiMsg").textContent="Analyserer … (kan ta eitt minutt)";try{const d=await api("/api/v1/ai/analyser",{method:"POST",json:{}});$("#aiMsg").textContent=`${d.tal} forslag – sjå Forbetringar.`}catch(e){$("#aiMsg").textContent="Feil: "+e.message}};
+$("#aiAsk").onclick=async()=>{$("#aiA").classList.remove("hidden");$("#aiA").textContent="Tenkjer …";try{const d=await api("/api/v1/ai/sporsmal",{method:"POST",json:{tekst:$("#aiQ").value}});$("#aiA").textContent=d.svar}catch(e){$("#aiA").textContent="Feil: "+e.message}};
+async function system(){
+  const s=await (await fetch("/api/status",{headers:{"Authorization":"Bearer "+KEY}})).json(), u=s.oppdatering;
+  $("#updInfo").innerHTML=`Installert: v${esc(s.versjon)} (API v${s.api}, krev SNOWMAN ${esc(s.snowman_min)} for deling). `+(u.ny?`<b style="color:var(--warn)">Ny versjon: ${esc(u.ny)}</b>`:(u.sjekka?`Siste versjon (sjekka ${tid(u.sjekka)}).`:"Ikkje sjekka enno."))+(u.feil?` Sjekken feila: ${esc(u.feil)}`:"");
+  const e=await api("/api/v1/hendingar?n=300");
+  $("#events").innerHTML=`<table>${e.hendingar.map(x=>`<tr><td class="dim" style="white-space:nowrap">${tid(x.t)}</td><td style="color:${x.niva==='feil'?'var(--err)':x.niva==='ok'?'var(--ok)':'inherit'}">${esc(x.tekst)}</td></tr>`).join("")}</table>`;
+  const c=await api("/api/v1/konfig");$("#cfg").textContent=JSON.stringify(c.konfig,null,1);
+}
+$("#updCheck").onclick=async()=>{await api("/api/v1/oppdatering/sjekk",{method:"POST",json:{}});system()};
+$("#updRun").onclick=async()=>{if(!confirm("Oppdatere SNOWMAN Base no? Maskinene mistar korreksjonane i nokre sekund medan Base startar på nytt."))return;
+  $("#updOut").classList.remove("hidden");$("#updOut").textContent="Oppdaterer …";
+  try{const d=await api("/api/v1/oppdater",{method:"POST",json:{}});$("#updOut").textContent=d.tekst+(d.endra?"\n\nStartar på nytt – sida blir lasta om eit augeblink.":"");if(d.endra)setTimeout(()=>location.reload(),8000)}catch(e){$("#updOut").textContent="Feil: "+e.message}};
+document.querySelectorAll("#tabs button[data-t]").forEach(b=>b.onclick=()=>show(b.dataset.t));
+$("#logout").onclick=logout;$("#loginBtn").onclick=login;$("#key").onkeydown=e=>{if(e.key==="Enter")login()};
+if(KEY)api("/api/v1/hendingar?n=1").then(start).catch(()=>{});
+</script>
+</body>
+</html>

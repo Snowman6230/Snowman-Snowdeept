@@ -10,3 +10,6 @@
 - Proprietær kode – sjå LICENSE. Ikkje legg til tredjepartskode utan å sjekke lisensen.
 - Test med simulert GNSS før push: `simuler-leica.py` (og `--terreng` + `testterreng.py` for snødjupne mot fasit).
 - Spesifikasjon for terreng: `docs/TERRAIN-ENGINE.md`.
+- SNOWMAN Base: `base/v1.0/` (eiga versjonsmappe, same reglar). Endringar i casteren eller API-et skal testast med
+  `cd base/v1.0 && python -m unittest discover -s test` – testen brukar NTRIP-klienten i `pc/v1.6`. Brot i API-et gir
+  ny API-versjon; oppdater `SNOWMAN_MIN` i `base/v1.0/konfig.py` når SNOWMAN snødjupne må oppdaterast.

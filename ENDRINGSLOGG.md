@@ -9,6 +9,27 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### SNOWMAN Base v1.0 – eigen base, NTRIP-caster og anleggsserver (`base/v1.0/`)
+- **Avgjerd (eigaren):** SNOWMAN skal ha eigen base som køyrer på PC, server, NAS eller Linux, med alle funksjonane
+  SNOWMAN snødjupne treng, kontordelen på same maskin, enkel oppdatering, omsyn til samspelet med SNOWMAN snødjupne,
+  og forslag til forbetringar i programma med innebygd AI. Ført inn som VEGEN-VIDARE kap. 18.
+- **Nytt:**
+  - NTRIP-caster (NTRIP 1 og 2) med innlogging, kjeldetabell og GGA frå maskinene.
+  - Kjelder: USB/seriell, TCP, TCP-tenar, NTRIP-opplasting, relé (TH/CPOS) og avspeling. Reserve i prioritert
+    rekkjefølgje og tillegg med satellittbaner.
+  - Kontroll av baseposisjonen mot innmålt punkt (berre for eigen base, ikkje reserven), rådatalogg, BRDC-banefil.
+  - API v1: hjarteslag, delte målingar (siste 12 t, berre FIX frå kalibrerte maskiner), anleggspakke med versjonar og
+    tilbakerulling, forslag frå maskinene.
+  - Statusside og kontorside med kart, anleggspakke, forslag, forbetringar, AI og oppdatering.
+  - Forbetringsmotor (reglar, alltid på) og AI (av som standard; lokal Ollama eller Claude med eigen nøkkel, berre
+    anonymisert samandrag, førehandsvising). Eksport som Markdown-oppgåveliste.
+  - Oppdatering som i SNOWMAN snødjupne (git eller zip, `data/` blir aldri rørt), dagleg sjekk.
+  - Installasjon: systemteneste (Linux/Raspberry Pi), Docker (NAS) og .bat (Windows).
+- **Samspel:** `/api/v1/info` viser API-versjon og minste SNOWMAN-versjon (`SNOWMAN_MIN`). 23 testar, mellom anna mot
+  NTRIP-klienten i `pc/v1.6` (NTRIP 1, 2 og auto, kjeldetabell, feil passord, ukjent mountpoint, GGA). Regel i
+  CLAUDE.md: endringar i casteren eller API-et skal testast mot `pc/v1.6`.
+- **Ingen endring i SNOWMAN snødjupne.**
+
 ### PC-prototype v1.6.112 – ingen høge «tappar» i 3D-terrenget
 
 - **Retta:** Høge spisse tappar i 3D-terrenget (sett på ekte data 28.10, «SNØFLATE 66 m²»). Kvar tapp var ei einsleg

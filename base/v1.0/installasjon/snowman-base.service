@@ -1,0 +1,19 @@
+# SNOWMAN Base som systemteneste (Linux). Installer med installasjon/installer-linux.sh.
+[Unit]
+Description=SNOWMAN Base (RTK-base, NTRIP-caster og anleggsserver)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__BRUKAR__
+WorkingDirectory=__MAPPE__
+Environment=SNOWMAN_BASE_TENESTE=1
+Environment=SNOWMAN_BASE_DATA=__DATA__
+ExecStart=__MAPPE__/.venv/bin/python __MAPPE__/snowman_base.py
+# Kode 3 = start på nytt etter oppdatering. Ved feil: ny start etter 5 s.
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

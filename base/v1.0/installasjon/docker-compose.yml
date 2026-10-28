@@ -1,0 +1,15 @@
+# SNOWMAN Base på NAS eller server med Docker.
+#   cd base/v1.0/installasjon && docker compose up -d --build
+# Programmet (base/v1.0) blir montert inn, så «Oppdater» på kontorsida oppdaterer det. Data ligg i base/v1.0/data.
+services:
+  snowman-base:
+    build: .
+    container_name: snowman-base
+    restart: unless-stopped          # kode 3 etter oppdatering → Docker startar Base att
+    network_mode: host               # NTRIP 2101 og nettside 8780 direkte på NAS-en
+    volumes:
+      - ..:/app
+      - ../data:/data
+    # Mottakar på USB (fjern # og vel rett eining, sjå «ls /dev/ttyACM* /dev/ttyUSB*» på NAS-en):
+    # devices:
+    #   - /dev/ttyACM0:/dev/ttyACM0

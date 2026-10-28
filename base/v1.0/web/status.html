@@ -1,0 +1,101 @@
+<!doctype html><!-- SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. -->
+<html lang="nn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNOWMAN Base</title>
+<style>
+:root{--bg:#06121a;--panel:#081822;--line:#16303e;--txt:#e6f1f5;--dim:#8fa3ad;--ok:#27d84d;--warn:#ffb020;--err:#ff5a4f;--acc:#4db8ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+header h1{font-size:18px;margin:0;letter-spacing:.5px}
+header .sub{color:var(--dim);font-size:13px}
+header nav{margin-left:auto;display:flex;gap:8px}
+a.btn,button{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit;text-decoration:none;cursor:pointer}
+a.btn:hover,button:hover{border-color:var(--acc)}
+main{padding:16px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));max-width:1400px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.card h2{font-size:15px;margin:0 0 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.big{font-size:22px;font-weight:600}
+.dim{color:var(--dim)}
+.verdict{padding:8px 10px;border-radius:8px;margin:8px 0;font-weight:500}
+.v-ok{background:rgba(39,216,77,.12);color:var(--ok)}.v-warn{background:rgba(255,176,32,.12);color:var(--warn)}.v-err{background:rgba(255,90,79,.14);color:var(--err)}
+.pill{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:rgba(39,216,77,.5)}.pill.err{color:var(--err);border-color:rgba(255,90,79,.5)}.pill.warn{color:var(--warn);border-color:rgba(255,176,32,.5)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:14px}
+.kv div:nth-child(odd){color:var(--dim)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:500}
+.scroll{overflow-x:auto}
+details summary{cursor:pointer;color:var(--acc);margin-top:8px}
+.ev{font-size:13px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;max-height:340px;overflow:auto}
+.ev .t{color:var(--dim);font-variant-numeric:tabular-nums}
+.ev .feil{color:var(--err)}.ev .ok{color:var(--ok)}
+.wide{grid-column:1/-1}
+#err{display:none;color:var(--err);padding:8px 16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>SNOWMAN Base</h1>
+  <span class="sub" id="sub">koplar til …</span>
+  <span id="upd"></span>
+  <nav><a class="btn" href="/kontor/">Kontor</a></nav>
+</header>
+<div id="err">Får ikkje kontakt med SNOWMAN Base.</div>
+<main id="main"></main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const dur=s=>{s=Math.round(s);if(s<60)return s+" s";if(s<3600)return Math.round(s/60)+" min";if(s<86400)return (s/3600).toFixed(1)+" t";return (s/86400).toFixed(1)+" d"};
+const tid=t=>new Date(t*1000).toLocaleString("nn-NO",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+const cls=v=>v.startsWith("OK")?"v-ok":(v.startsWith("FEIL")?"v-err":"v-warn");
+const QN={0:"ingen",1:"enkel",2:"DGPS",4:"RTK FIX",5:"RTK FLOAT",6:"estimert"};
+let open={};
+function mountCard(m){
+  const src=m.kjelder.map(s=>`<tr><td>${esc(s.namn)}${m.aktiv===s.namn?' <span class="pill ok">aktiv</span>':''}</td><td>${esc(s.type)}<div class="dim">${esc(s.kjelde)}</div></td>
+    <td>${s.tilkopla?'<span class="pill ok">tilkopla</span>':'<span class="pill err">fråkopla</span>'}${s.feil?`<div class="dim">${esc(s.feil)}</div>`:''}</td>
+    <td>${s.age==null?'–':dur(s.age)+' sidan'}<div class="dim">${s.crcFeil} CRC-feil</div></td></tr>`).join("");
+  const ext=m.tillegg.length?`<div class="dim" style="margin-top:6px">Tillegg: ${m.tillegg.map(s=>esc(s.namn)+(s.tilkopla?' ✓':' ✗')).join(", ")}</div>`:"";
+  const types=m.types.map(t=>`<tr><td>${t.type}</td><td>${esc(t.kva)}</td><td>${t.iv?t.iv+' s':'–'}</td><td>${t.n}</td><td>${t.aktiv?'':'<span class="dim">stoppa</span>'}</td></tr>`).join("");
+  const b=m.base, bc=m.basekontroll;
+  const cl=m.klientar.map(c=>`<tr><td>${esc(c.brukar||'–')}</td><td>${esc(c.ip)}</td><td>${esc(c.protokoll)}</td><td>${dur(Date.now()/1000-c.sidan)}</td><td>${Math.round(c.sendt/1024)} kB</td><td>${c.gga?QN[c.gga.kvalitet]??c.gga.kvalitet:'–'}</td></tr>`).join("");
+  const id="t-"+m.namn;
+  return `<section class="card"><h2>${esc(m.namn)} ${m.test?'<span class="pill warn">TEST</span>':''}<span class="dim" style="font-weight:400">${esc(m.skildring)}</span></h2>
+  <div class="verdict ${cls(m.vurdering)}">${esc(m.vurdering)}</div>
+  <div class="kv">
+    <div>Satellittsystem</div><div>${m.systems.join(", ")||'–'} ${m.satsTotal?`· ${m.satsTotal} satellittar`:''}</div>
+    <div>Baner i straumen</div><div>${m.eph.length?m.eph.join(", "):'ingen'}</div>
+    <div>Baseposisjon</div><div>${b?`stasjon ${b.station} · ${b.lat.toFixed(6)}, ${b.lon.toFixed(6)} · h ${b.h.toFixed(2)} m`:'–'}${bc?`<div class="${bc.vurdering==='OK'?'':'dim'}">Innmålt: avvik ${bc.avvik_m<1?(bc.avvik_m*100).toFixed(1)+' cm':bc.avvik_m.toFixed(2)+' m'}</div>`:''}</div>
+    <div>Datamengd</div><div>${m.bitrate?(m.bitrate/1000).toFixed(1)+' kbit/s':'–'}</div>
+    <div>Maskiner no</div><div>${m.klientar.length}</div>
+  </div>
+  <div class="scroll"><table style="margin-top:10px"><tr><th>Kjelde</th><th>Type</th><th>Status</th><th>Data</th></tr>${src}</table></div>${ext}
+  <details ${open[id]?'open':''} ontoggle="open['${id}']=this.open"><summary>Meldingstypar</summary><div class="scroll"><table><tr><th>Type</th><th>Kva</th><th>Kvar</th><th>Tal</th><th></th></tr>${types}</table></div></details>
+  ${cl?`<details ${open[id+'c']?'open':''} ontoggle="open['${id}c']=this.open"><summary>Tilkopla maskiner (${m.klientar.length})</summary><div class="scroll"><table><tr><th>Brukar</th><th>IP</th><th>NTRIP</th><th>Tid</th><th>Sendt</th><th>GGA</th></tr>${cl}</table></div></details>`:''}
+  </section>`;
+}
+async function load(){
+  try{
+    const r=await fetch("/api/status",{cache:"no-store"}); if(!r.ok) throw r.status;
+    const s=await r.json(); $("#err").style.display="none";
+    $("#sub").textContent=`${s.anlegg?s.anlegg+' · ':''}v${s.versjon} · oppe ${dur(s.oppetid)} · NTRIP port ${s.caster.port} · ${s.caster.klientar} maskiner tilkopla`;
+    $("#upd").innerHTML=s.oppdatering?.ny?`<span class="pill warn">Ny versjon ${esc(s.oppdatering.ny)} – oppdater på kontorsida</span>`:"";
+    const f=s.forbetringar, fsum=f["høg"]+f.middels+f["låg"];
+    const ms=s.maskiner.map(m=>`<tr><td>${esc(m.namn)}</td><td>${esc(m.versjon||'–')}</td><td>${m.fixdel==null?'–':Math.round(m.fixdel*100)+' %'}</td><td>${m.pakke?'v'+esc(m.pakke):'–'}</td><td>${m.age==null?'–':dur(m.age)+' sidan'}</td></tr>`).join("");
+    const ev=s.hendingar.map(e=>`<div class="t">${tid(e.t)}</div><div class="${e.niva}">${esc(e.tekst)}</div>`).join("");
+    $("#main").innerHTML=(s.mountpoints.length?s.mountpoints.map(mountCard).join(""):`<section class="card"><h2>Ingen mountpoint enno</h2><p class="dim">Sett opp eit mountpoint: <code>snowman-base mountpoint ny FJELL --seriell /dev/ttyACM0</code> (sjå LES-MEG.md).</p></section>`)+
+    `<section class="card"><h2>Maskiner med SNOWMAN</h2>${ms?`<div class="scroll"><table><tr><th>Maskin</th><th>SNOWMAN</th><th>FIX</th><th>Anleggspakke</th><th>Sist sett</th></tr>${ms}</table></div>`:'<p class="dim">Ingen maskiner har meldt seg enno (deling kjem med SNOWMAN v1.8). Maskiner som berre hentar korreksjonar, står under mountpointet.</p>'}
+     <div class="kv" style="margin-top:10px"><div>Anleggspakke</div><div>${s.pakke?'v'+s.pakke.versjon+' · '+tid(s.pakke.dato):'ingen lasta opp'}</div>
+     <div>Forbetringsforslag</div><div>${fsum?`${f["høg"]} høg · ${f.middels} middels · ${f["låg"]} låg – <a href="/kontor/#forbetringar" style="color:var(--acc)">sjå kontorsida</a>`:'ingen'}</div>
+     <div>AI</div><div>${s.ai.leverandor==='av'?'av':esc(s.ai.leverandor)}</div>
+     <div>Diskplass</div><div>${s.disk_gb??'–'} GB ledig${s.radata?` · rådata ${s.radata.mb} MB i ${s.radata.filer} filer`:''}</div></div></section>`+
+    `<section class="card wide"><h2>Hendingar</h2><div class="ev">${ev}</div></section>`;
+  }catch(e){$("#err").style.display="block"}
+}
+load(); setInterval(load,3000);
+</script>
+</body>
+</html>

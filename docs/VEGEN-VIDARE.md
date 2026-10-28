@@ -392,12 +392,44 @@ maskin. Avgrens til t.d. 2 flyttingar per år utan å kontakte Alpindata.
 **Plassering:** lag 1, 2, 5 og 6 i v1.9 (står alt i vegplanen som «lisens og aktivering per maskin»), lag 3 når
 serveren kjem i v1.8, lag 4 når GNSS-boksen er valt og testa.
 
+## 18. SNOWMAN Base (laga 2026-10-29, v1.0)
+
+**Avgjerd (eigaren 2026-10-29):** SNOWMAN skal ha eigen base, «SNOWMAN Base», som kan køyre på PC, server, NAS (med
+operativsystem/Docker) eller Linux. Han skal innehalde alle funksjonane SNOWMAN snødjupne treng frå ein base og ein
+server, vere framtidsretta, kunne køyre kontordelen, vere like enkel å oppdatere som SNOWMAN snødjupne, ta omsyn til
+at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetringar i programma – med innebygd AI.
+
+**Laga i `base/v1.0/`** (sjå `base/v1.0/LES-MEG.md`):
+- NTRIP-caster (NTRIP 1 og 2) med innlogging, kjeldetabell og GGA frå maskinene (posisjon på kartet).
+- Kjelder: mottakar på USB/seriell, TCP, TCP-tenar, NTRIP-opplasting (t.d. Raspberry Pi ved antenna), relé frå
+  TH/CPOS, avspeling (test). Reserve i prioritert rekkjefølgje, og tillegg (satellittbaner) inn i straumen.
+- Kontroll av baseposisjonen (1005/1006) mot innmålt punkt, rådatalogg for PPP, BRDC-banefil til maskinene.
+- API v1 for v1.8: hjarteslag, delte målingar (siste 12 t, berre FIX frå kalibrerte maskiner), anleggspakke med
+  versjonar og tilbakerulling, forslag frå maskinene. Maskinplassar som førebuing til kap. 17 (av som standard).
+- Statusside og kontorside (kart med basar og maskiner, anleggspakke, forslag, forbetringar, AI, oppdatering).
+- Forbetringsmotor: reglar (alltid på) + AI (av som standard: lokal Ollama eller Claude med eigen nøkkel, berre
+  anonymisert samandrag). Kategoriar: SNOWMAN Base, SNOWMAN snødjupne, mottakar/antenne, drift. Eksport som
+  Markdown-oppgåveliste til utviklaren. Dagstal for trendar.
+- Oppdatering som i SNOWMAN snødjupne (git pull eller zip, `data/` blir aldri rørt), dagleg sjekk og valfri
+  automatisk oppdatering om natta. Køyrer som systemteneste (Linux), Docker (NAS) eller .bat (Windows).
+- Samspel: `/api/v1/info` med API-versjon og minste SNOWMAN-versjon. Testane køyrer casteren mot NTRIP-klienten i
+  `pc/v1.6`. Brot i API-et gir ny API-versjon; v1 blir verande.
+
+**Står att (neste steg):**
+1. SNOWMAN snødjupne: klient mot API v1 (deling og anleggspakke) – v1.8.
+2. Kontordelen: teikne og redigere trasear, hindringar og kontrollpunkt i 2D/3D, og byggje anleggspakka i Base – v1.9.
+3. Baner frå BRDC-fila inn i straumen som RTCM 1019/1020 (for basemottakarar som ikkje sender baner, t.d. ZED-F9P).
+4. Base kan vise SNOWMAN sin eigen FIX-status: SNOWMAN sender i dag GGA frå mottakaren til casteren. Når RTK blir
+   rekna i SNOWMAN, er det SNOWMAN si løysing (frå hjarteslaget i v1.8) som viser den reelle FIX-delen.
+5. Når repoet blir privat (kap. 17): tilgangsnøkkel for oppdateringa.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
 |---|---|
 | **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
 | **v1.7** | Anleggspakke med versjonsnummer (kap. 16), fleire terrengfiler på ein gong (LAS/LAZ/XYZ kom i v1.6.95), trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
+| **Base v1.0** | SNOWMAN Base (kap. 18): eigen base, NTRIP-caster med reserve, API for deling og anleggspakke, kontorside, forbetringar med AI. Laga 2026-10-29. |
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). Kontor publiserer, maskiner sender forslag, enkel kontorside i 2D (kap. 16). Lisensplassar på serveren (kap. 17). |
 | **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin (kap. 17), full kontordel med 3D-redigering og import (kap. 16), driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
