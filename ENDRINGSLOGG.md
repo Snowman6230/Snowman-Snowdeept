@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### Avgjerd og analyse: SNOWMAN snødjupne utan Base, reservecaster og byte av base (berre dokumentasjon)
+- **Avgjerd (eigaren):** SNOWMAN snødjupne skal ikkje vere avhengig av SNOWMAN Base. Base er ei valfri tilknyting –
+  ein NTRIP-caster blant fleire. Ført inn som regel i CLAUDE.md.
+- **Analyse i VEGEN-VIDARE kap. 19:** kontroll av `pc/v1.6` (ingen avhengnad i dag), reglar for kontordel og deling,
+  svakheit funnen (RTK blir ikkje nullstilt når basen blir bytt → mogleg falsk FIX), og konsekvensar av ein
+  reservecaster i SNOWMAN.
+- **Ingen kodeendring.** Eigaren vil gjere SNOWMAN Base ferdig først.
+
 ### To separate nedlastingar: SNOWMAN snødjupne og SNOWMAN Base
 - **Bakgrunn:** eigaren meinte det kan bli forvirrande at begge programma kjem i same nedlasting.
 - **Avgjerd:** begge programma blir verande i same repo (felles testing av samspelet), men kvar får si eiga nedlasting.

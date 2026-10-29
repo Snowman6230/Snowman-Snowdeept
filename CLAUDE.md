@@ -13,3 +13,5 @@
 - SNOWMAN Base: `base/v1.0/` (eiga versjonsmappe, same reglar). Endringar i casteren eller API-et skal testast med
   `cd base/v1.0 && python -m unittest discover -s test` – testen brukar NTRIP-klienten i `pc/v1.6`. Brot i API-et gir
   ny API-versjon; oppdater `SNOWMAN_MIN` i `base/v1.0/konfig.py` når SNOWMAN snødjupne må oppdaterast.
+- SNOWMAN snødjupne skal fungere fullt ut utan SNOWMAN Base. Base er ei valfri tilknyting (NTRIP-caster, anleggsdata,
+  deling). Det som kjem frå Base, blir lagra lokalt i maskina. Sjå VEGEN-VIDARE kap. 19.

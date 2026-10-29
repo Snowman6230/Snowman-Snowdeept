@@ -431,6 +431,50 @@ at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetrin
    rekna i SNOWMAN, er det SNOWMAN si løysing (frå hjarteslaget i v1.8) som viser den reelle FIX-delen.
 5. Når repoet blir privat (kap. 17): tilgangsnøkkel for oppdateringa.
 
+## 19. SNOWMAN snødjupne utan Base, reservecaster og byte av base (analyse 2026-10-29, ventar)
+
+**Status:** analyse – ingen kode. Eigaren vil gjere SNOWMAN Base ferdig først og sjå på dette seinare.
+
+**Avgjerd (eigaren 2026-10-29):** SNOWMAN snødjupne skal **ikkje** vere avhengig av SNOWMAN Base for å fungere. Base
+er ei valfri tilknyting – ein NTRIP-caster blant fleire (TH, CPOS, rtk2go, eigen base), og eventuelt ein stad å hente
+anleggsdata, innstillingar og delte målingar frå.
+
+**Slik er det i dag (sjekka i `pc/v1.6`, v1.6.112):** ingen kode i SNOWMAN snødjupne viser til Base (ingen adresse,
+ingen bruk av API-et). NTRIP-sida er ein vanleg NTRIP-klient. Base blir brukt ved å skrive adressa til Base i dei same
+felta (caster, port, mountpoint, brukarnamn, passord) som i dag blir brukte mot TH.
+
+**Reglar for det som kjem (kontordel v1.7–v1.8, deling v1.8, lisens kap. 17):**
+- Alt maskina får frå Base (kartgrenser, hindringar, innstillingar), blir lagra lokalt og brukt derifrå. Er Base borte,
+  gjeld det siste som kom.
+- Maskina kan framleis setjast opp lokalt utan Base.
+- Hindringar og forbodne område skal aldri forsvinne fordi sambandet med Base er brote.
+- Utan Base viser maskina berre eigne målingar – delinga er eit tillegg.
+- Lisensen kan avgrense det Base sender ut, men aldri stoppe sjølve SNOWMAN snødjupne.
+- Den valfrie koplinga til Base (adresse og anleggsnøkkel for anleggsdata og deling) blir ein eigen bolk, av som
+  standard. NTRIP-felta blir som i dag.
+
+**Svakheit funnen (gjeld alt i dag):** RTK-motoren (`pc/v1.6/rtkmotor.py`, `base_bytes`, RTCM 1005/1006) tek inn ny
+baseposisjon i `opt.rb`, men **nullstiller ikkje RTK-løysinga**. Heiltala frå den gamle basen kan bli verande, særleg
+med fix-and-hold (v1.6.107) → mogleg **falsk FIX** like etter at basen er bytt. Det skjer òg utan reservecaster: når
+Base sjølv går over til reserven (t.d. TH), får SNOWMAN ein annan base i same straum.
+- **Tiltak (prioritet 1):** oppdag nytt basepunkt (posisjonen flyttar seg meir enn t.d. 1 m, eller ny stasjons-ID) →
+  nullstill RTK-løysinga, logg hendinga, og vis kva base som er i bruk.
+
+**Reservecaster i SNOWMAN (prioritet 2) – konsekvensar:**
+
+| | Konsekvens | Tiltak |
+|---|---|---|
+| Fordel | Korreksjonar sjølv om hovudkjelda (t.d. Base) er nede. SNOWMAN blir verande uavhengig av Base. | – |
+| Høgdereferanse | RTK måler relativt til basen. Feil i baseposisjonen går rett inn i snødjupna. Ulikt innmålte basar → hopp på cm til m ved byte. | Berre basar med innmålt koordinat (EUREF89/NN2000). Kontrollmål snødjupna mot kjent punkt med kvar base. |
+| FIX-tap ved byte | Sekund til minutt i FLOAT medan heiltala blir funne på nytt – ingen ekte snødjupne i den tida. | Tiltaket i prioritet 1. |
+| Sporbarheit | Målingar frå ulike basar kan avvike. | Feltlogg og rapport viser kva kjelde som var i bruk. Viktig for deling (v1.8). |
+| Byte fram og tilbake | Kjelde som fell ut og kjem att → mange byte og FIX-tap. | Tilbake til hovudkjelda først når ho har vore stabil ei stund (t.d. 2 min), helst ikkje midt i preparering. |
+| Innlogging | Ein konto til må lagrast. CPOS: same konto kan ofte ikkje vere innlogga to stader, og kostar per konto. | Eigen konto for reserven. |
+| Arbeid | Felt for reserve på NTRIP-sida + logikk for byte. Bruker eksisterande «Ny oppkopling etter … sekund». | Om lag éin dag, i `pc/v1.6` (v1.6.x). |
+
+**Rekkjefølgje:** 1) nullstilling av RTK ved byte av base og vising av aktiv base, 2) reservecaster med ventetid før
+byte tilbake og logg av kjelde, 3) i drift: berre innmålte basar som hovudkjelde og reserve.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
