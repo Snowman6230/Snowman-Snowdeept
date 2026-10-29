@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### Dokumentasjon – SNOWMAN Base på NAS
+- **Bakgrunn:** eigaren bad om at NAS står som eige val i dokumentasjonen til SNOWMAN Base.
+- **Nytt i `base/v1.0/LES-MEG.md`:** kapitlet «SNOWMAN Base på NAS» – krav, kvifor mottakaren helst bør stå på ein
+  Raspberry Pi ved antenna og sende inn til NAS-en (Synology DSM 7 har avgrensa støtte for USB-seriell), installasjon
+  på Synology (Container Manager) og QNAP (Container Station), tilgang utanfrå med dynamisk DNS og port 2101 (som
+  Norman sin base på gpsbase.dyndns.org) eller Tailscale, kopi og oppdatering.
+
 ### SNOWMAN Base v1.0 – eigen base, NTRIP-caster og anleggsserver (`base/v1.0/`)
 - **Avgjerd (eigaren):** SNOWMAN skal ha eigen base som køyrer på PC, server, NAS eller Linux, med alle funksjonane
   SNOWMAN snødjupne treng, kontordelen på same maskin, enkel oppdatering, omsyn til samspelet med SNOWMAN snødjupne,

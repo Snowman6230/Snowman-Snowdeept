@@ -46,12 +46,12 @@ Last ned repoet (git eller zip), opne `base\v1.0` og dobbeltklikk `START-SNOWMAN
 
 ### NAS (Synology, QNAP) eller server med Docker
 
+Kort om NAS-vegen og når han passar: sjå kapitlet [«SNOWMAN Base på NAS»](#snowman-base-på-nas) under.
+
 ```bash
 cd Snowman-Snowdeept/base/v1.0/installasjon
 docker compose up -d --build
 ```
-
-Programmet ligg i ei mappe som blir montert inn i containeren, så «Oppdater» på kontorsida fungerer også her. Mottakar på USB: fjern `#` under `devices` i `docker-compose.yml`. Er mottakaren ved antenna og NAS-en i kjellaren, er det betre med ein Raspberry Pi ved antenna som sender inn (sjå «Opplasting»).
 
 ### Første oppstart
 
@@ -65,6 +65,73 @@ Base lagar ein NTRIP-brukar, ein **anleggsnøkkel** (maskinene) og ein **kontorn
 | `snowman-base mountpoint ny NAMN …` | `--seriell PORT [--baud]`, `--tcp-tenar PORT`, `--opplasting`, `--rele caster:port/MP`, `--reserve caster:port/MP`, `--brukar`, `--passord` |
 | `snowman-base oppdater` | Hent siste versjon |
 | `snowman-base versjon` | |
+
+## SNOWMAN Base på NAS
+
+Ein NAS står uansett på heile døgnet, har straumvern og kopi av data – ein god stad for Base når anlegget har ein.
+Base køyrer i **Docker**: ein «container» med Python og det Base treng, avgrensa frå resten av NAS-en.
+Programfilene og `data/` ligg i vanlege mapper på NAS-en, så «Oppdater» på kontorsida fungerer, og ingenting går
+tapt om containeren blir bygd på nytt.
+
+### Krav
+
+| | |
+|---|---|
+| NAS | Synology med DSM 7.2 eller nyare (**Container Manager**), eller QNAP med **Container Station**. Både Intel/AMD- og ARM-modellar fungerer. |
+| Minne og disk | Base brukar lite: under 200 MB minne. Rekn 5 GB disk til rådatalogg (30 dagar) og anleggspakkar. |
+| Nett | Fast IP-adresse for NAS-en på det lokale nettet (reservert i ruteren). |
+
+### Mottakaren: helst ikkje på USB i NAS-en
+
+NAS-en står sjeldan der antenna kan stå, og **Synology DSM 7 har avgrensa støtte for USB-seriell-einingar** (GNSS-mottakarar
+blir ofte ikkje kjende att utan ekstra drivarar). Tilrådd oppsett:
+
+```
+antenne ── mottakar ── Raspberry Pi (ved antenna) ──nett──► NAS med SNOWMAN Base ──► maskinene
+                       str2str sender inn (opplasting)
+```
+
+1. På NAS-en: `mountpoint ny FJELL --opplasting --reserve gpsbase.dyndns.org:2101/TH` (sjå «Første oppstart»).
+2. På Pi-en: `str2str -in serial://ttyACM0:115200 -out ntrips://:PASSORD@NAS-ADRESSE:2101/FJELL` som teneste.
+
+Har NAS-en mottakaren på USB likevel (QNAP, eller Synology der eininga finst som `/dev/ttyACM0`): fjern `#` under
+`devices` i `docker-compose.yml` og bruk `--seriell /dev/ttyACM0`.
+
+### Installasjon på Synology (Container Manager)
+
+1. **Pakkesenter** › installer **Container Manager** (og **Git Server** eller last ned repoet som zip).
+2. Legg repoet i ei delt mappe, t.d. `/volume1/docker/snowman`, slik at `base/v1.0` ligg der.
+3. **Container Manager** › **Prosjekt** › **Opprett**: namn `snowman-base`, sti `/volume1/docker/snowman/base/v1.0/installasjon`,
+   kjelde «Bruk eksisterande docker-compose.yml». Byggjer og startar.
+4. Opne `http://NAS-ADRESSE:8780/`. Innloggingane står i `base/v1.0/data/NOKLAR.txt`.
+5. Kommandoar (mountpoint, brukarar, nøklar): Container Manager › Container › `snowman-base` › **Terminal** ›
+   `python /app/snowman_base.py mountpoint ny FJELL --opplasting`, og start containeren på nytt.
+
+### Installasjon på QNAP (Container Station)
+
+Container Station › **Applikasjonar** › **Opprett** › lim inn `docker-compose.yml` (rett stiane til mappa der repoet
+ligg), eller køyr `docker compose up -d --build` over SSH i `base/v1.0/installasjon`.
+
+### Nå Base utanfrå (som Norman sin base på gpsbase.dyndns.org)
+
+Maskinene brukar mobilnett og må nå NAS-en frå internett. To måtar:
+
+| | Dynamisk DNS + port 2101 | Tailscale |
+|---|---|---|
+| Korleis | Eit fast namn (t.d. `fjellsatra.synology.me`) peikar alltid til den offentlege IP-adressa til anlegget. Ruteren sender port 2101 vidare til NAS-en. | Kryptert privat nett mellom NAS og maskiner. Ingen opne portar. |
+| Oppsett | Synology: Kontrollpanel › Ekstern tilgang › **DDNS** (gratis `synology.me`). Eller DDNS i ruteren. Ruteren: vidaresend **TCP 2101** → NAS. | Tailscale-pakken på NAS-en og Tailscale på kvar maskin-PC. |
+| I SNOWMAN | caster `fjellsatra.synology.me`, port 2101 | caster = Tailscale-namnet til NAS-en, port 2101 |
+| Passar | Akkurat som TH i dag. Også for andre (t.d. Norman) som vil bruke basen. | Sikrast, men kvar eining må ha Tailscale. |
+
+Opne **berre port 2101** mot internett, aldri 8780 (status og kontor) – bruk Tailscale eller VPN til kontorsida utanfrå.
+Port-vidaresending krev at internettsambandet på anlegget har ei offentleg IP-adresse (ikkje CGNAT). Sjekk det hos
+internettleverandøren; har sambandet ikkje det, er Tailscale løysinga.
+
+### Kopi og oppdatering
+
+- Ta med `base/v1.0/data/` i NAS-en sin vanlege kopi (Hyper Backup / HBS). Rådataloggen kan utelatast.
+- Oppdatering: kontorsida › System › **Oppdater**. Containeren startar på nytt av seg sjølv (kode 3, `restart: unless-stopped`).
+- Ny Python-versjon i containeren (sjeldan): Container Manager › Prosjekt › `snowman-base` › **Bygg** på nytt.
 
 ## I SNOWMAN snødjupne (maskina)
 
