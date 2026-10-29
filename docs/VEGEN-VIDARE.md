@@ -329,6 +329,11 @@ og plottar detaljar i kart og 3D-modell og sender oppdateringar ut til heile mas
 | Oppgåver og beskjedar | Sende ut | Ta imot og kvittere |
 | Rapportar og drivstoff | Alle maskiner | Eigne økter |
 
+**Presisering frå eigaren (2026-10-29):** kontordelen skal liggje i **SNOWMAN Base**. Derifrå skal kontoret kunne
+sende ut kartgrenser (trasear/yttergrenser), hindringar m.m. til SNOWMAN snødjupne, og **alle innstillingar** til
+dei ulike tråkkemaskinene – felles for heile flåten eller ulikt per maskin (t.d. kalibrering, fresbreidd, antenne,
+NTRIP, varsel).
+
 **Utsending til maskinparken** (reglane frå kap. 6 gjeld)
 - Kontoret **publiserer** ein ny versjon av anleggspakka; serveren sender han ut. Maskinene hentar sjølve når dei har dekning.
 - Trasear og hindringar blir tekne i bruk med éin gong. Nytt terreng blir ikkje bytt under preparering.
@@ -418,6 +423,9 @@ at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetrin
 **Står att (neste steg):**
 1. SNOWMAN snødjupne: klient mot API v1 (deling og anleggspakke) – v1.8.
 2. Kontordelen: teikne og redigere trasear, hindringar og kontrollpunkt i 2D/3D, og byggje anleggspakka i Base – v1.9.
+   Inkluderer utsending av innstillingar til maskinene, felles og per maskin (eigaren 2026-10-29). API v1 har i dag
+   éi anleggspakke for heile flåten; innstillingar per maskin krev eit tillegg i API-et (t.d. `GET /api/v1/innstillingar`
+   med maskin-ID frå hjarteslaget).
 3. Baner frå BRDC-fila inn i straumen som RTCM 1019/1020 (for basemottakarar som ikkje sender baner, t.d. ZED-F9P).
 4. Base kan vise SNOWMAN sin eigen FIX-status: SNOWMAN sender i dag GGA frå mottakaren til casteren. Når RTK blir
    rekna i SNOWMAN, er det SNOWMAN si løysing (frå hjarteslaget i v1.8) som viser den reelle FIX-delen.

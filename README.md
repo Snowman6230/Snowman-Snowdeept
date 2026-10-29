@@ -2,6 +2,21 @@
 
 Førar- og snødjupnesystem for trakkemaskiner (RTK-GNSS + LiDAR-terrengmodell).
 
+## Last ned
+
+SNOWMAN består av to program. Last ned det som passar der du skal installere:
+
+| Skal installerast på | Program | Nedlasting |
+|---|---|---|
+| **Tråkkemaskina** (PC/nettbrett i førarhuset) | **SNOWMAN snødjupne** – kart, RTK og snødjupne for føraren | [SNOWMAN-snodjupne.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-snodjupne.zip) |
+| **Anlegget** (PC, Raspberry Pi, server eller NAS) | **SNOWMAN Base** – eigen RTK-base, NTRIP-caster og kontordelen som sender kartgrenser, hindringar og innstillingar ut til maskinene | [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip) |
+
+Pakk ut zip-fila og følg `LES-MEG-WINDOWS.txt` (snødjupne) eller `LES-MEG.txt` (Base). Kvart program oppdaterer
+seg sjølv og hentar berre si eiga mappe, så dei to installasjonane er heilt åtskilde. Pakkane blir laga på nytt ved
+kvar endring (`verktoy/lag-pakkar.py`).
+
+Utviklarar: heile repoet (Code › Download ZIP eller `git clone`) inneheld begge programma, og dei blir testa saman.
+
 ## Innhald
 
 | Mappe / fil | Kva det er |
@@ -18,6 +33,7 @@ Førar- og snødjupnesystem for trakkemaskiner (RTK-GNSS + LiDAR-terrengmodell).
 | `pc/SNOWMAN.bat`, `pc/INSTALLER-WINDOWS.bat` | Windows: meny og installasjon – sjå `pc/LES-MEG-WINDOWS.txt` |
 | **`base/v1.0/`** | **SNOWMAN Base – RTK-base, NTRIP-caster og anleggsserver (PC, NAS, Linux). Sjå `base/v1.0/LES-MEG.md`.** |
 | `ntrip-service/v1.1/` | SNOWMAN NTRIP Service v1.1 – Python-bru mellom COM/Leica og CPOS |
+| `verktoy/lag-pakkar.py`, `.github/workflows/pakkar.yml` | Lagar dei to nedlastingane (snødjupne og Base) |
 | `worker.js` | Cloudflare Worker – terrengproxy mot Kartverket (eldre test) |
 
 Sjå [docs/VEGEN-VIDARE.md](docs/VEGEN-VIDARE.md) for moglege framtidige løysingar, [ENDRINGSLOGG.md](ENDRINGSLOGG.md) for alle endringar og avgjerder, og [docs/TERRAIN-ENGINE.md](docs/TERRAIN-ENGINE.md) for spesifikasjonen av Terrain Engine.

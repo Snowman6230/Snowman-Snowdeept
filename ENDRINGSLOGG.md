@@ -9,6 +9,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### To separate nedlastingar: SNOWMAN snødjupne og SNOWMAN Base
+- **Bakgrunn:** eigaren meinte det kan bli forvirrande at begge programma kjem i same nedlasting.
+- **Avgjerd:** begge programma blir verande i same repo (felles testing av samspelet), men kvar får si eiga nedlasting.
+- **Nytt:** `verktoy/lag-pakkar.py` lagar `SNOWMAN-snodjupne.zip` (innhaldet i `pc/`, berre versjonsmapper som kan
+  køyrast) og `SNOWMAN-Base.zip` (innhaldet i `base/`). `.github/workflows/pakkar.yml` lagar dei ved kvar push til main
+  og legg dei på utgivinga «siste». Testa: utpakka Base startar, og oppdateringa i begge programma skriv berre til si
+  eiga mappe i den nye mappestrukturen.
+- **README:** ny boks «Last ned» øvst – kva som skal på tråkkemaskina og kva som skal på anlegget.
+- **Base LES-MEG:** Windows- og NAS-installasjon frå `SNOWMAN-Base.zip`.
+- **Kontordelen (eigaren):** skal liggje i SNOWMAN Base og sende ut kartgrenser, hindringar og alle innstillingar til
+  maskinene, felles eller per maskin. Ført inn i VEGEN-VIDARE kap. 16 og 18.
+
 ### Dokumentasjon – SNOWMAN Base på NAS
 - **Bakgrunn:** eigaren bad om at NAS står som eige val i dokumentasjonen til SNOWMAN Base.
 - **Nytt i `base/v1.0/LES-MEG.md`:** kapitlet «SNOWMAN Base på NAS» – krav, kvifor mottakaren helst bør stå på ein

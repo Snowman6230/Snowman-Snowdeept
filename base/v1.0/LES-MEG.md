@@ -42,7 +42,7 @@ sudo systemctl restart snowman-base
 
 ### Windows
 
-Last ned repoet (git eller zip), opne `base\v1.0` og dobbeltklikk `START-SNOWMAN-BASE.bat`. Første gong blir Python-pakkane installerte. Kommandoar: `START-SNOWMAN-BASE.bat mountpoint ny FJELL --seriell COM5`.
+Last ned [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip), pakk ut (t.d. til `C:\SNOWMAN-Base`), opne `v1.0` og dobbeltklikk `START-SNOWMAN-BASE.bat`. (Frå heile repoet: `base\v1.0`.) Første gong blir Python-pakkane installerte. Kommandoar: `START-SNOWMAN-BASE.bat mountpoint ny FJELL --seriell COM5`.
 
 ### NAS (Synology, QNAP) eller server med Docker
 
@@ -100,8 +100,9 @@ Har NAS-en mottakaren på USB likevel (QNAP, eller Synology der eininga finst so
 ### Installasjon på Synology (Container Manager)
 
 1. **Pakkesenter** › installer **Container Manager** (og **Git Server** eller last ned repoet som zip).
-2. Legg repoet i ei delt mappe, t.d. `/volume1/docker/snowman`, slik at `base/v1.0` ligg der.
-3. **Container Manager** › **Prosjekt** › **Opprett**: namn `snowman-base`, sti `/volume1/docker/snowman/base/v1.0/installasjon`,
+2. Pakk ut `SNOWMAN-Base.zip` i ei delt mappe, t.d. `/volume1/docker/snowman-base`, slik at `v1.0` ligg der
+   (eller legg heile repoet der, så `base/v1.0` ligg der). Bruk den mappa i stiane under.
+3. **Container Manager** › **Prosjekt** › **Opprett**: namn `snowman-base`, sti `/volume1/docker/snowman-base/v1.0/installasjon`,
    kjelde «Bruk eksisterande docker-compose.yml». Byggjer og startar.
 4. Opne `http://NAS-ADRESSE:8780/`. Innloggingane står i `base/v1.0/data/NOKLAR.txt`.
 5. Kommandoar (mountpoint, brukarar, nøklar): Container Manager › Container › `snowman-base` › **Terminal** ›

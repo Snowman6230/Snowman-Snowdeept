@@ -16,3 +16,6 @@ data/
 pc/v1.6/test/rtk/rtklib
 pc/v1.6/test/rtk/*.rtcm3
 pc/v1.6/test/rtk/*.ubx
+
+# Nedlastingar laga av verktoy/lag-pakkar.py
+dist/
