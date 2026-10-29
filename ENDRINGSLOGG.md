@@ -9,6 +9,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### PC-prototype v1.6.115 – ingen tappar frå gamle feilmålingar i snøflata i 3D
+- **Bakgrunn:** felttest 29.10 – høge blå tappar i 3D ved huset. Snøflateminnet (`data/snoflate.json`) frå eigaren:
+  1 636 ruter frå 29.10 låg jamt 0,68–1,28 m over terrenget (falsk «snø» frå feil antennehøgd, men utan tappar).
+  63 ruter frå 28.10 (testar med Reach RS+ og falske FIX) hadde 1,6–59 m «snø». Grensa på 6 m frå v1.6.112 tok dei
+  verste, men om lag 25 ruter på 1,6–6 m slapp gjennom, fleire i små klynger med like høge naboar.
+- **Endra:** snøflata i 3D (`/api/surface/cells`) viser berre ruter som passar med naboane (innanfor 0,5 m av
+  snittet av 8-naboane, minst 2 naboar, i tre rundar) og ligg i samanhengande område på minst 12 ruter. Eit ekte spor
+  er fleire meter breitt og jamt; feilmålingar er ujamne og spreidde.
+- **Test:** på fila til eigaren blir alle 63 rutene frå 28.10 fjerna; 1 080 av 1 636 frå 29.10 blir viste (resten var
+  spreidde punkt frå køyring i 22–32 km/t, som 3D-visinga òg fjerna før). `test/testsnoklynge.py`: ekte spor 320/320,
+  ujamn feilklynge og lita klynge fjerna. testsnoflate.py OK, simulatoren OK.
+- Rutene blir ikkje sletta frå minnet – berre ikkje viste i 3D. Tøm minnet etter testar med falsk snø.
+
 ### PC-prototype v1.6.114 – feilsøkaren viser ikkje gammal FIX og snødjupne
 - **Retta:** felttest 29.10 – RTK-feilsøkaren viste «status RTK FIX» og snødjupne 0,828 m tre minutt etter at
   Bluetooth-sambandet fall ut. Førarskjermen og HUD-en viste rett «INGEN DATA», men feilsøkaren brukte siste status.

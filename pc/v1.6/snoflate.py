@@ -35,10 +35,53 @@ VISIT_GAP = 2 * 3600
 # v1.6.112: rimeleg snølag (overflate − glatta terreng). Utanfor dette er målinga feil (t.d. gammal høgd før
 # geoide/kalibrering, FLOAT-hopp) – blir ikkje lagra og ikkje brukt. Gav høge «tappar» i 3D-terrenget (28.10).
 R_MIN, R_MAX = -1.5, 6.0
+# v1.6.115: snøflata i 3D viser berre samanhengande område med minst så mange ruter (8-naboskap). Eit ekte spor etter
+# ei tråkkemaskin er fleire meter breitt; små klynger på 1–5 ruter var feilmålingar frå testane 28.10 (1,6–6 m «snø»
+# ved huset, falske FIX med Reach RS+) og gav tappar i 3D sjølv etter grensa i v1.6.112.
+MIN_CLUSTER = 12
 
 
 def plausible(surface, tg):
     return surface is not None and tg is not None and R_MIN <= surface - tg <= R_MAX   # målingar med lengre mellomrom enn dette i same rute = nytt besøk (ny preparering)
+
+
+NEIGH_MAX = 0.5   # m – største skilnad mot snittet av naboane (same som 3D-visinga i v1.6.112)
+
+
+def drop_small_clusters(items, min_size=None):
+    """Behald berre ruter som passar med naboane (overflate innanfor NEIGH_MAX av snittet av 8-naboane, minst 2 naboar)
+    og som ligg i samanhengande område (8-naboskap) med minst min_size ruter. items = [(nøkkel, celle)]."""
+    min_size = MIN_CLUSTER if min_size is None else min_size
+    surf = {k: c[0] for k, c in items}
+    for _ in range(3):                      # nokre rundar: når ein feil fell bort, kan naboen hans også vise seg å vere feil
+        drop = []
+        for (z, e, n), h in surf.items():
+            nb = [surf[q] for q in ((z, e + de, n + dn) for de in (-1, 0, 1) for dn in (-1, 0, 1) if de or dn) if q in surf]
+            if len(nb) < 2 or abs(h - sum(nb) / len(nb)) > NEIGH_MAX:
+                drop.append((z, e, n))
+        if not drop:
+            break
+        for k in drop:
+            del surf[k]
+    keys = set(surf)
+    keep, seen = set(), set()
+    for k in keys:
+        if k in seen:
+            continue
+        comp, stack = [], [k]
+        seen.add(k)
+        while stack:
+            z, e, n = stack.pop()
+            comp.append((z, e, n))
+            for de in (-1, 0, 1):
+                for dn in (-1, 0, 1):
+                    q = (z, e + de, n + dn)
+                    if q in keys and q not in seen:
+                        seen.add(q)
+                        stack.append(q)
+        if len(comp) >= min_size:
+            keep.update(comp)
+    return [(k, c) for k, c in items if k in keep]
 
 
 def zone_of(lon):
@@ -169,6 +212,7 @@ class SnowSurface:
         with self.lock:
             v = [(k, c) for k, c in self.cells.items()
                  if k[0] == z and c[2] == bool(test) and c[1] >= lim and plausible(c[0], c[3]) and abs(k[1] + 0.5 - E0) <= half and abs(k[2] + 0.5 - N0) <= half]
+        v = drop_small_clusters(v)
         now = time.time()
         out = []
         for k, c in v:
