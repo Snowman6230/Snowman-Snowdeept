@@ -9,6 +9,22 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### SNOWMAN Base v1.1.0 – mountpoint manuelt på kontorsida
+- **Bakgrunn:** eigaren må kunne leggje inn mountpoint manuelt. Før kunne det berre gjerast med kommando.
+- **Nytt:** fana «Mountpoints» på kontorsida. Lag, endre og slett mountpoints med kjelder i prioritert rekkjefølgje:
+  relé frå annan caster (NTRIP – same felt som i SNOWMAN: caster, port, brukarnamn, passord, mountpoint), mottakar
+  på USB/COM (med «Finn portar»), opplasting (passord vist éin gong), TCP-port inn og mottakar på nettet.
+  «Hent mountpoints frå casteren» viser lista, men mountpointet kan òg skrivast sjølv.
+- **Teke i bruk med éin gong:** Base byggjer berre det endra mountpointet på nytt; maskiner som er kopla til, blir
+  kopla frå og koplar seg til på nytt. Ingen omstart.
+- **Tryggleik:** passord og hash blir aldri sende til kontorsida. Kvar kjelde har fast id, så tomt passordfelt ved
+  endring beheld det lagra passordet. Kontroll av alt som blir skrive inn (namn, adresser, portar, ikkje portane
+  Base sjølv brukar). Avspeling av fil kan berre setjast opp frå kommandolinja.
+- **API (kontornøkkel):** `GET /api/v1/mountpoints`, `POST /api/v1/mountpoint`, `POST /api/v1/mountpoint/fjern`,
+  `POST /api/v1/kjeldetabell`, `GET /api/v1/serieportar`. API-versjonen er uendra (berre tillegg).
+- **Testa:** 7 nye testar (30 i alt), mellom anna at NTRIP-klienten i SNOWMAN snødjupne (`pc/v1.6`) får
+  korreksjonar frå eit relé lagt inn på kontorsida. Kontorsida er klikka gjennom i nettlesar.
+
 ### Retta: SNOWMAN Base startar med feilmeldingar på Windows («'d' is not recognized …»)
 - **Feil (funne av eigaren):** `START-SNOWMAN-BASE.bat` hadde Linux-linjeskift (LF). Då les cmd.exe fila feil og
   prøver å køyre bitar av linjene som kommandoar. Base starta likevel, men med mange feilmeldingar. I tillegg

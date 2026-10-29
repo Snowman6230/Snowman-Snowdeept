@@ -412,6 +412,8 @@ at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetrin
 - API v1 for v1.8: hjarteslag, delte målingar (siste 12 t, berre FIX frå kalibrerte maskiner), anleggspakke med
   versjonar og tilbakerulling, forslag frå maskinene. Maskinplassar som førebuing til kap. 17 (av som standard).
 - Statusside og kontorside (kart med basar og maskiner, anleggspakke, forslag, forbetringar, AI, oppdatering).
+- v1.1.0: mountpoints blir lagde og endra manuelt på kontorsida (relé, USB/COM, opplasting, TCP), med
+  prioritet/reserve, henting av mountpoints frå ein annan caster, og bruk med éin gong utan omstart.
 - Forbetringsmotor: reglar (alltid på) + AI (av som standard: lokal Ollama eller Claude med eigen nøkkel, berre
   anonymisert samandrag). Kategoriar: SNOWMAN Base, SNOWMAN snødjupne, mottakar/antenne, drift. Eksport som
   Markdown-oppgåveliste til utviklaren. Dagstal for trendar.

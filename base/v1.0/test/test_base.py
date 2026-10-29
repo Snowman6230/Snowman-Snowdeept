@@ -256,6 +256,114 @@ class TestOpplastingOgReserve(BaseCase):
         s.close()
 
 
+class TestMountpointFraKontor(BaseCase):
+    """Mountpoints lagde og endra frå kontorsida (manuelt), tekne i bruk utan omstart."""
+
+    def make_mounts(self):
+        return [{"namn": "FJELL", "kjelder": [{"type": "fil", "namn": "opptak", "sti": self.write("a.rtcm3", epoch() * 400),
+                                                "byte_per_s": 20000}]}]
+
+    def rele(self, **kw):
+        k = {"type": "ntrip", "caster": "127.0.0.1", "port": self.port, "mountpoint": "FJELL",
+             "brukar": "snowman", "passord": self.pw}
+        k.update(kw)
+        return k
+
+    def test_krev_kontornokkel(self):
+        self.assertEqual(self.call("/api/v1/mountpoints", key=self.akey)[0], 401)
+        self.assertEqual(self.call("/api/v1/mountpoint", {"namn": "X", "kjelder": [self.rele()]}, self.akey)[0], 401)
+
+    def test_nytt_rele_manuelt_og_snowman_les_det(self):
+        c, d = self.call("/api/v1/mountpoint", {"namn": "TH2", "skildring": "Relé", "kjelder": [self.rele()]}, self.kkey)
+        self.assertEqual(c, 200, d)
+        self.assertNotIn('"passord"', json.dumps(d))                     # passord kjem aldri tilbake
+        self.assertNotIn(self.pw, json.dumps(d))
+        self.assertIn("TH2", self.base.mounts)
+        st = PCN.open_stream("127.0.0.1", self.port, "TH2", "snowman", self.pw, "auto", "test")
+        self.assertIn(1005, types_in(read_for(st, 3.0)))                 # SNOWMAN-klienten får korreksjonar
+        st.close()
+        c, d = self.call("/api/v1/mountpoints", key=self.kkey)
+        th2 = next(m for m in d["mountpoints"] if m["namn"] == "TH2")
+        self.assertTrue(th2["kjelder"][0]["har_passord"])
+        self.assertNotIn(self.pw, json.dumps(d))
+        lagra = json.loads((self.dir / "data" / "base.json").read_text(encoding="utf-8"))
+        self.assertEqual(next(m for m in lagra["mountpoints"] if m["namn"] == "TH2")["kjelder"][0]["passord"], self.pw)
+
+    def test_endre_utan_passord_beheld_det_og_klientar_blir_kopla_om(self):
+        self.call("/api/v1/mountpoint", {"namn": "R", "kjelder": [self.rele()]}, self.kkey)
+        kid = self.call("/api/v1/mountpoints", key=self.kkey)[1]["mountpoints"][1]["kjelder"][0]["id"]
+        st = PCN.open_stream("127.0.0.1", self.port, "R", "snowman", self.pw, "1", "test")
+        read_for(st, 1.0)
+        gamal = self.base.mounts["R"]
+        c, d = self.call("/api/v1/mountpoint", {"gamalt_namn": "R", "namn": "R", "byte_etter_s": 5,
+                                                "kjelder": [self.rele(id=kid, passord="")]}, self.kkey)
+        self.assertEqual(c, 200, d)
+        self.assertTrue(gamal.closed)
+        self.assertIsNot(self.base.mounts["R"], gamal)
+        self.assertEqual(self.base.mounts["R"].cfg["kjelder"][0]["passord"], self.pw)
+        self.assertEqual(self.base.mounts["R"].cfg["kjelder"][0]["id"], kid)
+        time.sleep(1.5)
+        self.assertEqual(len(gamal.clients), 0)                         # den gamle straumen er stengd
+        st.close()
+        st = PCN.open_stream("127.0.0.1", self.port, "R", "snowman", self.pw, "auto", "test")
+        self.assertIn(1005, types_in(read_for(st, 3.0)))
+        st.close()
+
+    def test_kjeldetabell_via_base(self):
+        c, d = self.call("/api/v1/kjeldetabell", {"caster": "127.0.0.1", "port": self.port, "brukar": "snowman",
+                                                  "passord": self.pw}, self.kkey)
+        self.assertTrue(d["ok"], d)
+        self.assertIn("FJELL", [m["mountpoint"] for m in d["mountpoints"]])
+        c, d = self.call("/api/v1/kjeldetabell", {"caster": "127.0.0.1", "port": 1}, self.kkey)
+        self.assertFalse(d["ok"])
+
+    def test_kontroll_av_det_som_blir_skrive_inn(self):
+        def feil(body):
+            c, d = self.call("/api/v1/mountpoint", body, self.kkey)
+            self.assertEqual(c, 400, d)
+            return d["feil"]
+        self.assertIn("Namnet", feil({"namn": "Fjell sætra", "kjelder": [self.rele()]}))
+        self.assertIn("finst alt", feil({"namn": "fjell", "kjelder": [self.rele()]}))
+        self.assertIn("minst éi kjelde", feil({"namn": "A", "kjelder": []}))
+        self.assertIn("mountpoint", feil({"namn": "A", "kjelder": [self.rele(mountpoint="")]}))
+        self.assertIn("casteradressa", feil({"namn": "A", "kjelder": [self.rele(caster="http://a b")]}))
+        self.assertIn("i bruk av Base", feil({"namn": "A", "kjelder": [{"type": "tcp-tenar",
+                                                                          "port": self.base.web_port}]}))
+        self.assertIn("COM5", feil({"namn": "A", "kjelder": [{"type": "seriell", "port": "feil port"}]}))
+        self.assertIn("ukjend type", feil({"namn": "A", "kjelder": [{"type": "fil", "sti": "/etc/passwd"}]}))
+        self.assertNotIn("A", self.base.mounts)
+
+    def test_opplasting_gir_passord_ein_gong(self):
+        c, d = self.call("/api/v1/mountpoint", {"namn": "PI", "kjelder": [{"type": "opplasting"}]}, self.kkey)
+        self.assertEqual(c, 200, d)
+        pw = d["melding"].split("PI: ")[1].split(" ")[0]
+        s = socket.create_connection(("127.0.0.1", self.port))
+        s.sendall(f"SOURCE {pw} /PI\r\nSource-Agent: NTRIP str2str\r\n\r\n".encode())
+        self.assertIn(b"ICY 200 OK", s.recv(100))
+        for _ in range(10):
+            s.sendall(epoch(station=7))
+            time.sleep(0.05)
+        time.sleep(0.3)
+        self.assertEqual(self.base.mounts["PI"].active.name, "opplasting")
+        s.close()
+        kid = self.call("/api/v1/mountpoints", key=self.kkey)[1]["mountpoints"][1]["kjelder"][0]["id"]
+        c, d = self.call("/api/v1/mountpoint", {"gamalt_namn": "PI", "namn": "PI", "kjelder": [{"type": "opplasting",
+                                                                                                  "id": kid}]}, self.kkey)
+        self.assertEqual(d["melding"], "")                               # passordet blir ståande
+
+    def test_slett_og_avspeling_blir_ståande(self):
+        kid = self.call("/api/v1/mountpoints", key=self.kkey)[1]["mountpoints"][0]["kjelder"][0]["id"]
+        c, d = self.call("/api/v1/mountpoint", {"gamalt_namn": "FJELL", "namn": "FJELL",
+                                                "kjelder": [{"type": "fil", "id": kid}, self.rele(mountpoint="X")]},
+                         self.kkey)
+        self.assertEqual(c, 200, d)
+        self.assertEqual(self.base.mounts["FJELL"].cfg["kjelder"][0]["type"], "fil")
+        self.assertTrue(self.call("/api/v1/mountpoint/fjern", {"namn": "FJELL"}, self.kkey)[1]["ok"])
+        self.assertNotIn("FJELL", self.base.mounts)
+        with self.assertRaises(PCN.NtripError):
+            PCN.open_stream("127.0.0.1", self.port, "FJELL", "snowman", self.pw, "auto", "t")
+
+
 class FakeOllama(http.server.BaseHTTPRequestHandler):
     seen = []
 

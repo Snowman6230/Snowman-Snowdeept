@@ -131,12 +131,16 @@ class Mountpoint:
         self.clients = {}             # id → Client (sett av casteren)
         self.lock = threading.Lock()
         self.day = {"dato": time.strftime("%Y-%m-%d"), "ok": 0, "tot": 0, "bytte": 0}   # oppetid og byte i dag
+        self.closed = False           # sett når mountpointet blir endra eller sletta frå kontorsida
 
     def start(self):
         for s in self.sources + self.extras:
             s.start()
 
     def stop(self):
+        self.closed = True
+        with self.cond:
+            self.cond.notify_all()        # klientane (maskinene) blir kopla frå og koplar til det nye oppsettet
         for s in self.sources + self.extras:
             s.stop()
 

@@ -28,6 +28,7 @@ sys.path.insert(0, str(HERE))
 
 import api                      # noqa: E402
 import forbetring               # noqa: E402
+import mountoppsett             # noqa: E402
 import straum                   # noqa: E402
 from ai import AI               # noqa: E402
 from baner import Baner         # noqa: E402
@@ -47,7 +48,10 @@ class SnowmanBase:
         self.events = straum.Events(self.data)
         lg = self.cfg["logg"]
         self.rawlog = straum.RawLog(self.data, lg.get("dagar", 30), lg.get("maks_mb", 5000))
+        if mountoppsett.sikre_id(self.cfg):
+            self.cfg.save()
         self.mounts = straum.build(self.cfg["mountpoints"], self.events, self.rawlog)
+        self.mount_lock = threading.Lock()
         self.store = Store(self.data)
         self.caster = Caster(self.cfg, self.mounts, self.events)
         self.ai = AI(self.cfg, self.store, self.events)
@@ -113,6 +117,45 @@ class SnowmanBase:
             except Exception as e:
                 self.events.add(f"Forbetringsanalysen feila: {e}", "feil")
             self.stop_ev.wait(900)
+
+    # ---------- mountpoints frå kontorsida ----------
+    def lagre_mountpoint(self, inn, gamalt_namn=None):
+        """Lagrar eit nytt eller endra mountpoint og tek det i bruk med éin gong (utan omstart av Base)."""
+        with self.mount_lock, self.cfg.lock:
+            reserverte = {p for p in (self.caster_port, self.web_port, self.cfg["caster"]["port"],
+                                      self.cfg["web"]["port"]) if p}
+            m, melding = mountoppsett.lag(inn, self.cfg["mountpoints"], gamalt_namn, reserverte)
+            liste = self.cfg["mountpoints"]
+            i = next((k for k, x in enumerate(liste) if x.get("namn") == gamalt_namn), None) if gamalt_namn else None
+            if i is None:
+                liste.append(m)
+            else:
+                liste[i] = m
+            self.cfg.save()
+            gamal = self.mounts.pop(gamalt_namn, None) if gamalt_namn else None
+            if gamal:
+                gamal.stop()
+            ny = straum.Mountpoint(m, self.events, self.rawlog)
+            self.mounts[m["namn"]] = ny
+            ny.start()
+        kva = "endra" if gamalt_namn else "oppretta"
+        namn = m["namn"] + (f" (før {gamalt_namn})" if gamalt_namn and gamalt_namn != m["namn"] else "")
+        self.events.add(f"Mountpoint {namn} {kva} frå kontorsida: {len(m['kjelder'])} kjelde(r) – "
+                        + ", ".join(k.get("namn", "") for k in m["kjelder"]), "ok")
+        return m, melding
+
+    def fjern_mountpoint(self, namn):
+        with self.mount_lock, self.cfg.lock:
+            liste = self.cfg["mountpoints"]
+            if not any(x.get("namn") == namn for x in liste):
+                return False
+            self.cfg.data["mountpoints"] = [x for x in liste if x.get("namn") != namn]
+            self.cfg.save()
+            gamal = self.mounts.pop(namn, None)
+            if gamal:
+                gamal.stop()
+        self.events.add(f"Mountpoint {namn} sletta frå kontorsida", "feil")
+        return True
 
     def disk_free(self):
         return straum.disk_free(self.data)

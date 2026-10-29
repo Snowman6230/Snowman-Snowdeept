@@ -25,6 +25,13 @@ API v1 (JSON). Innlogging: «Authorization: Bearer <nøkkel>».
               POST /api/v1/ai/analyser  ·  POST /api/v1/ai/sporsmal {tekst}
               POST /api/v1/oppdatering/sjekk  ·  POST /api/v1/oppdater
               GET  /api/v1/hendingar
+              GET  /api/v1/mountpoints              mountpoints med kjelder (utan passord)
+              POST /api/v1/mountpoint               {namn, skildring, byte_etter_s, innmalt, kjelder, gamalt_namn}
+                                                    – nytt eller endra, blir teke i bruk med éin gong
+              POST /api/v1/mountpoint/fjern {namn}
+              POST /api/v1/kjeldetabell             {caster, port, brukar, passord | kjelde_id} – mountpoints
+                                                    på ein annan caster (til relé)
+              GET  /api/v1/serieportar              COM-portar / USB-einingar på maskina Base køyrer på
 Brot i API-et gir ny API-versjon (/api/v2/…); v1 blir verande så lenge maskiner brukar han.
 """
 import http.server
@@ -38,6 +45,8 @@ import urllib.parse
 from pathlib import Path
 
 import forbetring
+import mountoppsett
+import ntripklient
 from konfig import API_VERSION, FUNKSJONAR, SNOWMAN_MIN, VERSION
 
 HERE = Path(__file__).resolve().parent
@@ -195,6 +204,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json({"ok": True, "hendingar": b.events.latest(int(q.get("n") or 200))})
         if p == "konfig":
             return self.send_json({"ok": True, "konfig": b.cfg.public()})
+        if p == "mountpoints":
+            st_ = {m.name: m for m in list(b.mounts.values())}
+            ut = []
+            for mc in b.cfg["mountpoints"]:
+                d = mountoppsett.offentleg(mc)
+                m = st_.get(mc.get("namn"))
+                d["aktiv"] = m.active.name if m and m.active else None
+                d["klientar"] = len(m.clients) if m else 0
+                d["kjeldestatus"] = {x.name: {"tilkopla": x.connected, "feil": x.err} for x in (m.sources if m else [])}
+                ut.append(d)
+            return self.send_json({"ok": True, "mountpoints": ut, "caster_port": b.caster_port,
+                                   "typar": list(mountoppsett.TYPAR), "baud": list(mountoppsett.BAUD)})
+        if p == "serieportar":
+            try:
+                from serial.tools import list_ports
+                portar = [{"port": x.device, "skildring": x.description or ""} for x in list_ports.comports()]
+            except Exception as e:
+                return self.send_json({"ok": True, "portar": [], "feil": f"Kan ikkje liste portar ({e})"})
+            return self.send_json({"ok": True, "portar": sorted(portar, key=lambda x: x["port"])})
         return self.send_json({"ok": False, "feil": "ukjend adresse"}, 404)
 
     # ---------- POST ----------
@@ -282,12 +310,41 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json({"ok": True, "tal": len(items), "forslag": items})
         if p == "ai/sporsmal":
             return self.send_json({"ok": True, "svar": b.ai.ask(b, d.get("tekst", ""))})
+        if p == "mountpoint":
+            m, melding = b.lagre_mountpoint(d, d.get("gamalt_namn") or None)
+            return self.send_json({"ok": True, "mountpoint": mountoppsett.offentleg(m), "melding": melding})
+        if p == "mountpoint/fjern":
+            return self.send_json({"ok": b.fjern_mountpoint(str(d.get("namn") or ""))})
+        if p == "kjeldetabell":
+            return self.send_json(self.sourcetable(d))
         if p == "oppdatering/sjekk":
             return self.send_json({"ok": True, **b.updates.check()})
         if p == "oppdater":
             changed, text = b.updates.run_now()
             return self.send_json({"ok": True, "endra": changed, "tekst": text})
         return self.send_json({"ok": False, "feil": "ukjend adresse"}, 404)
+
+    def sourcetable(self, d):
+        """Mountpoints på ein annan caster. Tomt passord: bruk det lagra passordet til kjelda (kjelde_id)."""
+        b = self.base
+        vert = str(d.get("caster") or "").strip()
+        vert = vert.split("://")[-1].rstrip("/")
+        if not vert or " " in vert or "/" in vert:
+            raise ValueError("Skriv casteradressa, t.d. gpsbase.dyndns.org")
+        port = int(d.get("port") or 2101)
+        brukar, pw = str(d.get("brukar") or ""), str(d.get("passord") or "")
+        if not pw and d.get("kjelde_id"):
+            for mc in b.cfg["mountpoints"]:
+                for k in mc.get("kjelder", []):
+                    if k.get("id") == d["kjelde_id"] and k.get("type") == "ntrip":
+                        pw = k.get("passord", "")
+        try:
+            r = ntripklient.fetch_sourcetable(vert, port, brukar, pw, f"Base {VERSION}", timeout=8)
+        except Exception as e:
+            return {"ok": False, "feil": str(e)}
+        return {"ok": True, "caster": r["caster"], "proto": r["proto"],
+                "mountpoints": [{k: m.get(k) for k in ("mountpoint", "name", "format", "systems", "lat", "lon",
+                                                       "nmea", "network_rtk")} for m in r["mounts"]]}
 
     def upload_package(self):
         b = self.base

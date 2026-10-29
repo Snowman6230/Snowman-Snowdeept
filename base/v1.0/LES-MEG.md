@@ -42,7 +42,7 @@ sudo systemctl restart snowman-base
 
 ### Windows
 
-Last ned [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip), pakk ut (t.d. til `C:\SNOWMAN-Base`), opne `v1.0` og dobbeltklikk `START-SNOWMAN-BASE.bat`. (Frå heile repoet: `base\v1.0`.) Første gong blir Python-pakkane installerte. Kommandoar: `START-SNOWMAN-BASE.bat mountpoint ny FJELL --seriell COM5`.
+Last ned [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip), pakk ut (t.d. til `C:\SNOWMAN-Base`), opne `v1.0` og dobbeltklikk `START-SNOWMAN-BASE.bat`. (Frå heile repoet: `base\v1.0`.) Første gong blir Python-pakkane installerte. Legg deretter inn mountpoint på kontorsida (sjå «Mountpoint: legg inn manuelt på kontorsida»), eller med kommando: `START-SNOWMAN-BASE.bat mountpoint ny FJELL --seriell COM5`.
 
 ### NAS (Synology, QNAP) eller server med Docker
 
@@ -64,6 +64,24 @@ Base lagar ein NTRIP-brukar, ein **anleggsnøkkel** (maskinene) og ein **kontorn
 | `snowman-base nokkel kontor` | Ny kontornøkkel (den gamle sluttar å virke) |
 | `snowman-base mountpoint ny NAMN …` | `--seriell PORT [--baud]`, `--tcp-tenar PORT`, `--opplasting`, `--rele caster:port/MP`, `--reserve caster:port/MP`, `--brukar`, `--passord` |
 | `snowman-base oppdater` | Hent siste versjon |
+
+### Mountpoint: legg inn manuelt på kontorsida
+
+Det enklaste er å setje opp mountpointa på kontorsida, utan kommandoar:
+
+1. Opne **http://localhost:8780/kontor/** og logg inn med kontornøkkelen.
+2. Fana **Mountpoints** › **+ Nytt mountpoint**. Skriv **Namn** (det maskinene skriv i «Mountpoint», t.d. `FJELL`).
+3. Legg til kjelder i prioritert rekkjefølgje (øvst = første val, resten er reserve):
+   - **Relé frå annan caster (NTRIP):** caster, port, brukarnamn, passord og mountpoint – same verdiar som du har
+     brukt i SNOWMAN mot Norman sin caster (t.d. `gpsbase.dyndns.org`, `2101`, `TH`). «Hent mountpoints frå
+     casteren» viser lista, men du kan òg skrive mountpointet sjølv.
+   - **Mottakar på USB / COM-port:** t.d. `COM5`, 115200 baud. «Finn portar» viser portane på PC-en.
+   - **Opplasting til Base:** for ein NTRIP-server (t.d. str2str på ein Raspberry Pi). Passordet blir vist éin gong.
+   - **Mottakar sender inn på ein TCP-port** eller **mottakar på nettet**.
+4. **Lagre og ta i bruk.** Endringa gjeld med éin gong – Base treng ikkje startast på nytt. Maskiner som er kopla
+   til, koplar seg til på nytt av seg sjølv.
+
+Passord blir aldri viste på kontorsida. Når du endrar eit mountpoint, står passordet att om du lèt feltet vere tomt.
 | `snowman-base versjon` | |
 
 ## SNOWMAN Base på NAS

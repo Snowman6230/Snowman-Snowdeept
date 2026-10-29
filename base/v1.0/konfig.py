@@ -14,7 +14,7 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 API_VERSION = 1
 
 # Samspel med SNOWMAN snødjupne (pc/). Endrar du casteren eller API-et, skal kompatibilitetstesten
@@ -24,7 +24,7 @@ API_VERSION = 1
 #   - Eit brot i API-et gir ny API_VERSION; gamle maskiner får då beskjed om å oppdatere, ikkje feil data.
 SNOWMAN_MIN = "1.8.0"
 FUNKSJONAR = ["ntrip-caster", "ntrip-opplasting", "rele", "reserve", "tillegg-baner", "radata-logg", "basekontroll",
-              "deling-v1", "anleggspakke-v1", "forslag-v1", "baner-brdc", "forbetringar", "ai"]
+              "mountpoint-kontor", "deling-v1", "anleggspakke-v1", "forslag-v1", "baner-brdc", "forbetringar", "ai"]
 
 DEFAULT = {
     "namn": "SNOWMAN Base",

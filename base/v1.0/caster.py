@@ -204,7 +204,7 @@ class Handler(socketserver.BaseRequestHandler):
         threading.Thread(target=reader, daemon=True, name=f"gga-{c.id}").start()
         seq = m.seq
         try:
-            while not stop.is_set():
+            while not stop.is_set() and not m.closed:
                 seq, frames = m.read_after(seq, 1.0)
                 if not frames:
                     continue
@@ -243,7 +243,7 @@ class Handler(socketserver.BaseRequestHandler):
             if self.buf:
                 src.push(dech.feed(self.buf) if dech else self.buf)
             self.request.settimeout(60)
-            while True:
+            while not m.closed:
                 d = self.request.recv(8192)
                 if not d:
                     break

@@ -37,13 +37,21 @@ label{display:block;color:var(--dim);font-size:13px;margin-top:8px}
 input,select,textarea{width:100%}
 .row input,.row select{width:auto;flex:1;min-width:160px}
 .hidden{display:none}
+.src{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0;background:#061520}
+.src h3{font-size:14px;margin:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.src h3 .sp{flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 10px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--dim);margin-right:4px}
+.dot.on{background:var(--ok)}.dot.err{background:var(--err)}
+.box{border:1px solid var(--warn);color:var(--warn);border-radius:8px;padding:8px 10px;margin:8px 0;word-break:break-all}
+.small{font-size:12px}
 </style>
 </head>
 <body>
 <header>
   <h1>SNOWMAN Kontor</h1><span class="dim" id="sub"></span>
   <nav id="tabs" class="hidden">
-    <button data-t="oversikt">Oversikt</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
+    <button data-t="oversikt">Oversikt</button><button data-t="mount">Mountpoints</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
     <button data-t="forbetringar">Forbetringar</button><button data-t="ai">AI</button><button data-t="system">System</button>
     <a class="btn" href="/">Status</a><button id="logout">Logg ut</button>
   </nav>
@@ -58,6 +66,36 @@ input,select,textarea{width:100%}
   <div id="t-oversikt">
     <section class="card"><h2>Kart</h2><div id="map"></div><p class="dim">Basar (raud) og maskiner (blå) etter siste posisjon. Teikning og redigering av trasear, hindringar og kontrollpunkt i 2D/3D kjem i v1.9 (VEGEN-VIDARE kap. 16).</p></section>
     <section class="card"><h2>Maskiner</h2><div class="scroll" id="machines"></div></section>
+  </div>
+  <div id="t-mount" class="hidden">
+    <section class="card" id="mpListCard"><h2>Mountpoints</h2>
+      <p class="dim">Eit mountpoint er éin korreksjonsstraum ut til maskinene. Kvart mountpoint har éi eller fleire kjelder i prioritert rekkjefølgje: den første som sender, blir brukt, og dei neste er reserve. Endringar blir tekne i bruk med éin gong – maskinene som er kopla til, koplar seg til på nytt av seg sjølv.</p>
+      <div class="row"><button class="pri" id="mpNew">+ Nytt mountpoint</button></div>
+      <div class="scroll" id="mpList"></div>
+      <div id="mpConnect" class="dim small"></div></section>
+    <section class="card hidden" id="mpEdit"><h2 id="mpTitle">Nytt mountpoint</h2>
+      <div class="grid">
+        <div><label>Namn (det maskinene skriv i «Mountpoint»)</label><input id="mpName" placeholder="t.d. FJELL" maxlength="32"></div>
+        <div><label>Skildring (vist i kjeldetabellen)</label><input id="mpDesc" placeholder="t.d. Fjellsætra – eigen base" maxlength="60"></div>
+        <div><label>Byte til reserve etter (sekund utan data)</label><input id="mpSwitch" type="number" min="2" max="120" step="1" value="10"></div>
+      </div>
+      <details style="margin-top:8px"><summary class="dim">Innmålt basepunkt (valfritt – kontroll av posisjonen basen sender)</summary>
+        <div class="grid"><div><label>Breiddegrad (EUREF89)</label><input id="mpLat" placeholder="62.380200"></div>
+        <div><label>Lengdegrad</label><input id="mpLon" placeholder="6.781100"></div>
+        <div><label>Ellipsoidisk høgd (m)</label><input id="mpH" placeholder="702.35"></div></div>
+        <p class="dim small">Gjeld berre eigen base (første kjelde), ikkje reserve frå ein annan caster. Avvik over 5 cm gir åtvaring.</p></details>
+      <h2 style="margin-top:14px">Kjelder <span class="dim small">(øvst = første val, resten er reserve)</span></h2>
+      <div id="mpSrc"></div>
+      <div class="row"><select id="mpAddType">
+        <option value="ntrip">Relé frå annan caster (NTRIP) – t.d. TH eller CPOS</option>
+        <option value="seriell">Mottakar på USB / COM-port</option>
+        <option value="opplasting">Opplasting til Base (NTRIP-server, t.d. str2str på ein Raspberry Pi)</option>
+        <option value="tcp-tenar">Mottakar sender inn på ein TCP-port</option>
+        <option value="tcp">Mottakar på nettet (Base koplar til)</option>
+      </select><button id="mpAdd">+ Legg til kjelde</button></div>
+      <div class="row"><button class="pri" id="mpSave">Lagre og ta i bruk</button><button id="mpCancel">Avbryt</button><span id="mpMsg" class="msg"></span></div>
+      <div id="mpSecret" class="box hidden"></div>
+    </section>
   </div>
   <div id="t-pakke" class="hidden">
     <section class="card"><h2>Anleggspakke</h2>
@@ -94,7 +132,7 @@ input,select,textarea{width:100%}
       <div class="row"><button id="updCheck">Sjekk etter ny versjon</button><button class="pri" id="updRun">Oppdater og start på nytt</button></div>
       <pre id="updOut" class="hidden"></pre></section>
     <section class="card"><h2>Hendingar</h2><div class="scroll" id="events"></div></section>
-    <section class="card"><h2>Innstillingar (utan passord)</h2><pre id="cfg"></pre><p class="dim">Endre i data/base.json og start Base på nytt, eller bruk kommandoane i LES-MEG.md.</p></section>
+    <section class="card"><h2>Innstillingar (utan passord)</h2><pre id="cfg"></pre><p class="dim">Mountpoints blir sette opp under «Mountpoints». Anna: endre i data/base.json og start Base på nytt, eller bruk kommandoane i LES-MEG.md.</p></section>
   </div>
 </main>
 <script src="/vendor/leaflet.js"></script>
@@ -125,9 +163,11 @@ function show(t){tab=t;document.querySelectorAll("#tabs button[data-t]").forEach
   document.querySelectorAll("[id^=t-]").forEach(d=>d.classList.toggle("hidden",d.id!=="t-"+t));location.hash=t;refresh()}
 async function start(){
   $("#login").classList.add("hidden");$("#app").classList.remove("hidden");$("#tabs").classList.remove("hidden");
-  show((location.hash||"#oversikt").slice(1));setInterval(()=>{if(tab==="oversikt")refresh()},10000);
+  let first=(location.hash||"").slice(1);
+  if(!first){try{const st=await (await fetch("/api/status",{headers:{"Authorization":"Bearer "+KEY}})).json();first=st.mountpoints&&st.mountpoints.length?"oversikt":"mount"}catch(e){first="oversikt"}}
+  show(first);setInterval(()=>{if(tab==="oversikt")refresh()},10000);
 }
-async function refresh(){try{await ({oversikt,pakke,forslag,forbetringar,ai,system})[tab]()}catch(e){console.log(e)}}
+async function refresh(){try{await ({oversikt,mount,pakke,forslag,forbetringar,ai,system})[tab]()}catch(e){console.log(e)}}
 async function oversikt(){
   const s=await (await fetch("/api/status",{headers:{"Authorization":"Bearer "+KEY}})).json();
   $("#sub").textContent=`${s.namn} · v${s.versjon}`;
@@ -142,6 +182,80 @@ async function oversikt(){
   Object.values(live).forEach(g=>{pts.push([g.lat,g.lon]);L.circleMarker([g.lat,g.lon],{radius:6,color:"#27d84d"}).bindTooltip(`${g.brukar} (${g.mp})`).addTo(layer)});
   if(pts.length&&!map._fitted){map.fitBounds(pts,{maxZoom:15,padding:[30,30]});map._fitted=true}
 }
+// ---------- mountpoints ----------
+const TYPENAMN={ntrip:"Relé frå annan caster",seriell:"Mottakar på USB / COM",opplasting:"Opplasting til Base",
+  "tcp-tenar":"Mottakar sender inn (TCP-port)",tcp:"Mottakar på nettet",fil:"Avspeling (test)"};
+let MP=null, ED=null, PORTS=[];
+const kvar=k=>k.type==="ntrip"?`${k.caster}:${k.port}/${k.mountpoint}`:k.type==="seriell"?`${k.port} · ${k.baud} baud`:
+  k.type==="tcp"?`${k.vert}:${k.port}`:k.type==="tcp-tenar"?`port ${k.port}`:k.type==="opplasting"?"NTRIP-opplasting":(k.sti||"");
+async function mount(){
+  MP=await api("/api/v1/mountpoints");
+  $("#mpList").innerHTML=MP.mountpoints.length?`<table><tr><th>Mountpoint</th><th>Kjelder (prioritet)</th><th>I bruk no</th><th>Maskiner</th><th></th></tr>${MP.mountpoints.map((m,i)=>`<tr><td><b>${esc(m.namn)}</b><div class="dim">${esc(m.skildring)}</div></td><td>${m.kjelder.map((k,j)=>{const st=m.kjeldestatus[k.namn]||{};return `<div><span class="dot ${st.tilkopla?'on':(st.feil?'err':'')}"></span>${j+1}. ${esc(TYPENAMN[k.type]||k.type)} <span class="dim">${esc(kvar(k))}</span>${st.feil&&!st.tilkopla?`<div class="dim small" style="color:var(--err)">${esc(st.feil)}</div>`:''}</div>`}).join("")}</td><td>${m.aktiv?esc(m.aktiv):'<span class="dim">ingen data</span>'}</td><td>${m.klientar}</td><td style="white-space:nowrap"><button onclick="mpEdit(${i})">Endre</button> <button onclick="mpDel('${esc(m.namn)}')">Slett</button></td></tr>`).join("")}</table>`
+    :'<p class="dim">Ingen mountpoints enno. Trykk «+ Nytt mountpoint». Før du har eigen mottakar, kan du leggje inn ein annan caster (t.d. TH) som relé.</p>';
+  const h=location.hostname;
+  $("#mpConnect").innerHTML=MP.mountpoints.length?`I SNOWMAN snødjupne: Caster = <b>${esc(h==="localhost"||h==="127.0.0.1"?"localhost (same PC) eller IP-adressa til denne PC-en":h)}</b>, Port = <b>${MP.caster_port}</b>, Mountpoint = <b>${MP.mountpoints.map(m=>esc(m.namn)).join(" / ")}</b>, Brukarnamn/passord = NTRIP-brukaren i Base (data/NOKLAR.txt).`:"";
+  if(!MP.mountpoints.length&&!ED)mpOpen(null);
+}
+function mpOpen(m){
+  ED=m?JSON.parse(JSON.stringify(m)):{namn:"",skildring:"",byte_etter_s:10,innmalt:null,kjelder:[]};
+  ED.gamalt_namn=m?m.namn:null;
+  $("#mpTitle").textContent=m?`Endre ${m.namn}`:"Nytt mountpoint";
+  $("#mpName").value=ED.namn;$("#mpDesc").value=ED.skildring;$("#mpSwitch").value=ED.byte_etter_s||10;
+  const im=ED.innmalt||{};$("#mpLat").value=im.lat??"";$("#mpLon").value=im.lon??"";$("#mpH").value=im.h??"";
+  $("#mpMsg").textContent="";$("#mpSecret").classList.add("hidden");
+  if(!ED.kjelder.length)ED.kjelder.push(nyKjelde("ntrip"));
+  $("#mpEdit").classList.remove("hidden");mpRender();$("#mpEdit").scrollIntoView({behavior:"smooth"});
+}
+function mpEdit(i){mpOpen(MP.mountpoints[i])}
+function nyKjelde(t){return {type:t,port:t==="ntrip"?2101:t==="seriell"?"":t==="tcp-tenar"?5000:"",baud:115200,versjon:"auto",caster:"",mountpoint:"",brukar:"",passord:"",vert:""}}
+function felt(i,f,lab,ph,typ){const k=ED.kjelder[i];return `<div><label>${lab}</label><input data-i="${i}" data-f="${f}" ${typ?`type="${typ}"`:''} value="${esc(k[f]??"")}" placeholder="${esc(ph||"")}" ${f==="port"&&k.type==="seriell"?'list="comList"':''}></div>`}
+function mpRender(){
+  const n=ED.kjelder.length;
+  $("#mpSrc").innerHTML=ED.kjelder.map((k,i)=>{
+    let body="";
+    if(k.type==="ntrip") body=`<div class="grid">${felt(i,"caster","Caster","gpsbase.dyndns.org")}${felt(i,"port","Port","2101","number")}${felt(i,"brukar","Brukarnamn","")}
+      <div><label>Passord</label><input data-i="${i}" data-f="passord" type="password" value="${esc(k.passord||"")}" placeholder="${k.har_passord?'(lagra)':''}" title="${k.har_passord?'Passordet er lagra. Skriv nytt berre om du vil byte.':''}" autocomplete="new-password"></div>
+      <div><label>Mountpoint</label><input data-i="${i}" data-f="mountpoint" value="${esc(k.mountpoint||"")}" placeholder="t.d. TH" list="mpl${i}"><datalist id="mpl${i}">${(k._liste||[]).map(m=>`<option value="${esc(m.mountpoint)}">${esc(m.name||'')} ${esc(m.format||'')} ${esc(m.systems||'')}</option>`).join("")}</datalist></div>
+      <div><label>NTRIP-versjon</label><select data-i="${i}" data-f="versjon">${["auto","2","1"].map(v=>`<option value="${v}" ${String(k.versjon||"auto")===v?'selected':''}>${v==="auto"?"Auto (tilrådd)":"NTRIP "+v}</option>`).join("")}</select></div></div>
+      <div class="row"><button onclick="mpTable(${i})">Hent mountpoints frå casteren</button><span class="dim small" id="mpt${i}">${esc(k._msg||"Du kan òg skrive mountpointet sjølv.")}</span></div>`;
+    else if(k.type==="seriell") body=`<div class="grid">${felt(i,"port","COM-port / eining","t.d. COM5 eller /dev/ttyACM0")}<div><label>Baud</label><select data-i="${i}" data-f="baud">${MP.baud.map(b=>`<option ${+k.baud===b?'selected':''}>${b}</option>`).join("")}</select></div></div>
+      <div class="row"><button onclick="mpPorts()">Finn portar på denne maskina</button><span class="dim small">${PORTS.length?PORTS.map(p=>esc(p.port+(p.skildring?' ('+p.skildring+')':''))).join(" · "):"Porten må finnast på maskina Base køyrer på."}</span></div>`;
+    else if(k.type==="tcp") body=`<div class="grid">${felt(i,"vert","Adresse til mottakaren","192.168.1.50")}${felt(i,"port","Port","","number")}</div>`;
+    else if(k.type==="tcp-tenar") body=`<div class="grid">${felt(i,"port","Port Base lyttar på","5000","number")}</div><p class="dim small">Eininga (t.d. str2str: -out tcpcli://&lt;base&gt;:port) sender RTCM inn hit.</p>`;
+    else if(k.type==="opplasting") body=`<p class="dim small">Ein NTRIP-server (t.d. str2str på ein Raspberry Pi ved antenna) lastar opp til mountpointet her. ${k.har_passord?'Passordet er lagra.':'Passordet blir laga og vist éin gong når du lagrar.'}</p>${k.har_passord?`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" style="width:auto" data-i="${i}" data-f="nytt_passord" ${k.nytt_passord?'checked':''}> Lag nytt opplastingspassord</label>`:''}`;
+    else body=`<p class="dim small">${esc(kvar(k))} – sett opp frå kommandolinja, blir ståande uendra.</p>`;
+    return `<div class="src"><h3>${i+1}. ${esc(TYPENAMN[k.type]||k.type)} <span class="dim small">${i===0?'første val':'reserve '+i}</span><span class="sp"></span>
+      <button ${i===0?'disabled':''} onclick="mpMove(${i},-1)" title="Flytt opp">↑</button><button ${i===n-1?'disabled':''} onclick="mpMove(${i},1)" title="Flytt ned">↓</button><button onclick="mpRm(${i})">Fjern</button></h3>${body}</div>`;
+  }).join("")+`<datalist id="comList">${PORTS.map(p=>`<option value="${esc(p.port)}">${esc(p.skildring)}</option>`).join("")}</datalist>`;
+  $("#mpSrc").querySelectorAll("[data-f]").forEach(el=>{el[el.type==="checkbox"?"onchange":"oninput"]=()=>{const k=ED.kjelder[+el.dataset.i];k[el.dataset.f]=el.type==="checkbox"?el.checked:el.value}});
+}
+function mpMove(i,d){const a=ED.kjelder;[a[i],a[i+d]]=[a[i+d],a[i]];mpRender()}
+function mpRm(i){ED.kjelder.splice(i,1);mpRender()}
+$("#mpAdd").onclick=()=>{ED.kjelder.push(nyKjelde($("#mpAddType").value));mpRender()};
+$("#mpNew").onclick=()=>mpOpen(null);
+$("#mpCancel").onclick=()=>{ED=null;$("#mpEdit").classList.add("hidden")};
+async function mpPorts(){try{const d=await api("/api/v1/serieportar");PORTS=d.portar;if(d.feil)alert(d.feil);else if(!PORTS.length)alert("Fann ingen COM-portar. Sjekk at mottakaren er kopla til og at drivaren er installert.")}catch(e){alert(e.message)}mpRender()}
+async function mpTable(i){
+  const k=ED.kjelder[i], el=$("#mpt"+i); el.textContent="Hentar …";
+  try{const d=await api("/api/v1/kjeldetabell",{method:"POST",json:{caster:k.caster,port:k.port,brukar:k.brukar,passord:k.passord,kjelde_id:k.id}});
+    if(!d.ok){k._msg="Feil: "+d.feil;el.textContent=k._msg;return}
+    k._liste=d.mountpoints;k._msg=`${d.mountpoints.length} mountpoints på ${d.caster} (${d.proto}) – vel i feltet, eller skriv sjølv: ${d.mountpoints.slice(0,12).map(m=>m.mountpoint).join(", ")}${d.mountpoints.length>12?" …":""}`;mpRender()}
+  catch(e){k._msg="Feil: "+e.message;el.textContent=k._msg}
+}
+$("#mpSave").onclick=async()=>{
+  ED.namn=$("#mpName").value.trim();ED.skildring=$("#mpDesc").value.trim();ED.byte_etter_s=$("#mpSwitch").value;
+  ED.innmalt={lat:$("#mpLat").value.trim(),lon:$("#mpLon").value.trim(),h:$("#mpH").value.trim()};
+  const body={...ED,kjelder:ED.kjelder.map(({_liste,_msg,har_passord,...k})=>k)};
+  if(ED.gamalt_namn&&ED.gamalt_namn!==ED.namn&&!confirm(`Endre namnet frå ${ED.gamalt_namn} til ${ED.namn}? Maskinene må då få nytt mountpoint i innstillingane.`))return;
+  $("#mpMsg").textContent="Lagrar …";
+  try{const d=await api("/api/v1/mountpoint",{method:"POST",json:body});
+    $("#mpMsg").textContent=`${d.mountpoint.namn} er lagra og i bruk.`;
+    if(d.melding){$("#mpSecret").textContent=d.melding;$("#mpSecret").classList.remove("hidden")}
+    else{ED=null;$("#mpEdit").classList.add("hidden")}
+    mount()}
+  catch(e){$("#mpMsg").textContent="Feil: "+e.message}
+};
+async function mpDel(namn){if(!confirm(`Slette mountpointet ${namn}? Maskinene som brukar det, mistar korreksjonane.`))return;await api("/api/v1/mountpoint/fjern",{method:"POST",json:{namn}});mount()}
 async function rmMachine(id){if(!confirm("Fjerne maskina frå lista? Ho blir lagt til att neste gong ho melder seg."))return;await api("/api/v1/maskin/fjern",{method:"POST",json:{id}});refresh()}
 async function pakke(){
   const d=await api("/api/v1/anleggspakke/versjonar");
