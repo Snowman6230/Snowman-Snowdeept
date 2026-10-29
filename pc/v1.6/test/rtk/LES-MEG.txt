@@ -38,3 +38,13 @@ Opptak frå felt – v1.6.104
 8. I SNOWMAN: POST /api/opptak {"sek":300} startar opptak av alt frå mottakaren og casteren.
    GET /api/opptak.zip gir opptaket + status.json (utan passord og brukarnamn).
    python3 spel_opptak.py opptak-….bin [data/brdc/BRDC….rnx] [--detalj] → same utrekning som i felt.
+
+RAIM-FDE – éin satellitt med stor feil – v1.6.113
+9. python3 lagrtcm.py 1077 og så python3 testraim.py [raim=0|1]
+                                → éin satellitt i roveren får +60 m feil i kodemålinga i epoke 40–79 (som ein dårleg bane).
+                                  raim=0: ingen løysing i feilperioden («chi-square error»). raim=1 (standard): satellitten
+                                  blir kasta ut, FIX heile perioden. Venta: «ALT OK».
+
+Automatisk portval for Bluetooth – v1.6.113
+10. python3 ../testautoport.py (frå pc/v1.6: python3 test/testautoport.py) → simulerte portar. Venta: «ALT OK».
+

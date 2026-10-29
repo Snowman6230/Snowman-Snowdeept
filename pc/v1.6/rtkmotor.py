@@ -169,6 +169,7 @@ def _nmea(body):
     return f"${body}*{cs:02X}"
 
 
+RAIM_FDE = 1          # v1.6.113: RTKLIB RAIM-FDE – kastar ut éin satellitt med stor feil i staden for heile epoka
 GLO_EXT_MIN = 90        # min – GLONASS-baner blir rekna fram i tid så langt (sjå extend_glonass)
 GLO_EXT_STEP = 15       # min mellom framrekna baner
 
@@ -274,6 +275,11 @@ class RtkMotor:
             # vart GLONASS-fasen med i flytløysinga med ukjend skilnad (Trimble-base mot u-blox i Reach: 6–19 cm i
             # dobbeldifferansane), og opptaket frå 28.10 gav 26 FIX der alle var 1–2 m feil. Med 2: ingen falske FIX.
             opt.glomodear = 2
+            # RAIM-FDE (v1.6.113): felttest 29.10 med R12i – «point pos error (chi-square error nv=16 vv=130.0 cs=26.1)».
+            # Den enkle posisjonen (første steg i RTK) feila kontrollen fordi éin satellitt hadde stor feil (truleg ein
+            # framrekna GLONASS-bane), og heile epoka vart forkasta – i lange periodar. Med RAIM-FDE prøver RTKLIB å
+            # utelate éin satellitt om gongen og brukar løysinga som består kontrollen (krev minst 6 satellittar).
+            opt.posopt[4] = RAIM_FDE
             opt.thresar[0] = 3.0                            # ratio-test for FIX
             # SNR-maske for roveren (v1.6.105): felttest 28.10 med Reach RS+ – satellittar under ~30 dBHz hadde 2–5 m
             # kodestøy og fasebrot, gav «large residual» og tok ned heile løysinga. Masken blir berre slått på når

@@ -175,8 +175,11 @@ def check(st, cfg, ports=None, net=None, now=None):
 
     # ---------- 2. Porten open ----------
     if st.get("serial_connected"):
+        ap = st.get("serial_autoport") or {}
         _step(S, "open", "Porten er open", OK, f"{st.get('port') or port} @ {st.get('baud') or cfg.get('baud')}" +
-              (f" · opna på nytt {st['serial_reopens']} gong(er)" if st.get("serial_reopens") else ""))
+              (f" · opna på nytt {st['serial_reopens']} gong(er)" if st.get("serial_reopens") else "") +
+              (f" · automatisk portval: bytte frå {ap.get('fra') or '–'} til {ap.get('til')} for {_dur(now - ap['tid'])} sidan"
+               if ap.get("tid") else ""))
     else:
         why = err if err.startswith("Serial") else "Porten er ikkje open."
         _step(S, "open", "Porten er open", FAIL, why[:300],

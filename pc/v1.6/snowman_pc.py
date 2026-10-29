@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.112"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.113"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -116,6 +116,7 @@ CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint
        "rtk_mode":"snowman",   # "snowman" (RTK i SNOWMAN – standard) eller "mottakar_sjolv" (mottakaren hentar korreksjonane
                                 # sjølv med SIM/radio). SNOWMAN sender ALDRI noko til mottakaren (eigaren 2026-10-11).
        "hudLan":False,
+       "auto_port":True,       # v1.6.113: Bluetooth-porten byter nummer i Windows – SNOWMAN finn sjølv porten som sender
        "frost_client_id":"",   # tomt = SNOWMAN sin innebygde Frost-ID (berre opne data); eit anlegg kan setje sin eigen
        "frost_stations":""}    # tomt = næraste stasjonar etter GPS; elles t.d. "SN60190,SN60225"
 def load_cfg():
@@ -469,6 +470,82 @@ def opptak_zip():
 SERIAL_REOPEN=threading.Event()   # «LAGRE / KOPLE TIL» eller døyande samband: lukk porten og opne han på nytt
 SERIAL_IDLE=15.0                   # s utan data frå mottakaren før porten blir opna på nytt (mottakarar sender minst 1 Hz)
 
+# ---------- Automatisk portval for Bluetooth (v1.6.113) ----------
+# Felttest 29.10 med R12i: Windows laga nye utgåande Bluetooth-portar etter brot og ny paring (COM9 → COM8 → COM4, og
+# COM4 forsvann og kom att). SNOWMAN lytta då på ein port som ikkje lenger var mottakaren. No: når vald port ikkje finst,
+# eller det ikkje har kome data på to vakthund-periodar (ca. 30 s), lyttar SNOWMAN kort på dei andre Bluetooth-portane
+# og byter til den som sender – rådata (RTCM) først når RTK blir rekna i SNOWMAN, elles NMEA. Berre lesing: ingenting
+# blir sendt til nokon port. Kan slåast av med "auto_port": false. Kvart byte blir skrive i feltloggen.
+AUTOPORT={"last_try":0.0,"last":None,"scanning":False}
+AUTOPORT_MIN_S=45.0                # minst så lenge mellom kvar leiting
+def _rtcm_frames(b):
+    """Talet på heile RTCM 3-rammer med rett CRC i b."""
+    from rtcm import crc24q
+    n=i=0
+    while True:
+        i=b.find(0xD3,i)
+        if i<0 or i+6>len(b): return n
+        ln=((b[i+1]&3)<<8)|b[i+2]
+        if not (b[i+1]&0xFC) and ln and i+ln+6<=len(b) and crc24q(b[i:i+ln+3])==int.from_bytes(b[i+ln+3:i+ln+6],"big"):
+            n+=1; i+=ln+6
+        else: i+=1
+def _probe_port(dev,sek=5.0):
+    """Lytt på ein port (berre lesing). Returnerer (rtcm-rammer, nmea-linjer, byte) eller None om han ikkje opnar."""
+    import serial
+    try:
+        sp=serial.serial_for_url(dev, baudrate=int(CFG["baud"]), timeout=.2, do_not_open=True)
+        for k in ("rtscts","xonxoff","dsrdtr","dtr","rts"):
+            try: setattr(sp,k,False)
+            except Exception: pass
+        sp.open()
+    except Exception: return None
+    got=b""; t=time.time()
+    try:
+        while time.time()-t<sek and len(got)<30000 and not STOP.is_set():
+            got+=sp.read(4096)
+    except Exception: pass
+    finally:
+        try: sp.close()
+        except Exception: pass
+    return _rtcm_frames(got), got.count(b"$G"), len(got)
+def bt_ports():
+    try:
+        from serial.tools import list_ports
+        return [(p.device,p.description or "",p.hwid or "") for p in list_ports.comports()]
+    except Exception: return []
+def _is_bt(desc,hwid): return "bluetooth" in f"{desc} {hwid}".lower() or "BTHENUM" in str(hwid).upper()
+def autoport_try(why):
+    """Finn porten som sender. Returnerer ny port (og lagrar han) eller None."""
+    cur=str(CFG.get("serial_port") or "")
+    if not CFG.get("auto_port",True) or REAL_PORT[0] is not None or cur.startswith("socket://") or STATE.get("simulated"): return None
+    if time.time()-AUTOPORT["last_try"]<AUTOPORT_MIN_S: return None
+    ports=bt_ports(); here={d.upper():(desc,hw) for d,desc,hw in ports}
+    cinfo=here.get(cur.upper())
+    if cinfo is not None and not _is_bt(*cinfo): return None        # kabel/USB: ikkje rør
+    cand=[d for d,desc,hw in ports if _is_bt(desc,hw) and d.upper()!=cur.upper()]
+    AUTOPORT["last_try"]=time.time()
+    if not cand: return None
+    AUTOPORT["scanning"]=True; update(autoport_scan=time.time())
+    LOG.event(f"Automatisk portval: {why} – lyttar på {', '.join(cand)}")
+    best=None
+    try:
+        for d in cand:
+            r=_probe_port(d)
+            if not r: continue
+            frames,nmea,nb=r
+            score=(frames*10+nmea) if rtk_snowman() else (nmea*10+frames)
+            if (frames>=2 or nmea>=2) and (best is None or score>best[1]): best=(d,score,frames,nmea)
+    finally: AUTOPORT["scanning"]=False
+    if not best:
+        LOG.event("Automatisk portval: ingen Bluetooth-port sender data",err=True); return None
+    d,_,frames,nmea=best
+    desc=next((x for dd,x,_ in ports if dd==d),"")
+    AUTOPORT["last"]={"fra":cur,"til":d,"tid":time.time(),"kvifor":why,"rtcm":frames,"nmea":nmea,"namn":desc}
+    CFG["serial_port"]=d; save_cfg()
+    update(serial_autoport=AUTOPORT["last"])
+    LOG.event(f"Automatisk portval: bytte frå {cur or '–'} til {d} ({desc}) – {frames} RTCM-rammer, {nmea} NMEA-linjer")
+    return d
+
 def serial_loop():
     global serial_obj
     while not STOP.is_set():
@@ -505,14 +582,17 @@ def serial_loop():
                 # utan at Windows lukkar porten – då kjem det aldri meir data. Opne porten på nytt etter SERIAL_IDLE s stille.
                 if time.time()-last_rx>SERIAL_IDLE:
                     LOG.event(f"Ingen data frå mottakaren på {SERIAL_IDLE:.0f} s – opnar porten på nytt",err=True)
+                    STATE["serial_silent_run"]=STATE.get("serial_silent_run",0)+1
                     update(serial_reopens=STATE.get("serial_reopens",0)+1,serial_reopen_time=time.time())
                     update(serial_connected=False,last_error=f"Serial: ingen data frå mottakaren på {SERIAL_IDLE:.0f} s – koplar til på nytt "
                            "(mottakaren av, starta på nytt eller utanfor rekkjevidd?)")
                     try: serial_obj.close()
                     except Exception: pass
-                    serial_obj=None; time.sleep(1); break
+                    serial_obj=None; time.sleep(1)
+                    if STATE.get("serial_silent_run",0)>=2: autoport_try(f"ingen data på {CFG['serial_port']}")
+                    break
                 b=serial_obj.read(4096)
-                if b: last_rx=time.time()
+                if b: last_rx=time.time(); STATE["serial_silent_run"]=0
                 ga=time.time()-(STATE.get("gga_time") or time.time())
                 if ga>5 and not gnss_lost:
                     gnss_lost=True; LOG.event(f"Mottakaren har slutta å sende posisjon (ingen GGA på {ga:.0f} s)",err=True)
@@ -563,6 +643,9 @@ def serial_loop():
                 if serial_obj: serial_obj.close()
             except: pass
             serial_obj=None; time.sleep(2)
+            low=msg.lower()
+            if any(k in low for k in ("finnes ikke","finst ikkje","does not exist","could not open port","filenotfound","cannot find")):
+                autoport_try(f"{CFG.get('serial_port')} finst ikkje")
 
 def rtk_hint(st):
     """Kvifor manglar RTK FIX? Kort vurdering på norsk (detaljane står i 🔍 FEILSØK RTK). SNOWMAN sender aldri noko til

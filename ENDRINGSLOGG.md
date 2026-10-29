@@ -9,6 +9,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### PC-prototype v1.6.113 – RAIM i RTK-motoren og automatisk portval for Bluetooth
+- **Bakgrunn (felttest 29.10, R12i over Bluetooth mot TH):**
+  - RTK-motoren gav ingen løysing i lange periodar: «point pos error (chi-square error nv=16 vv=130.0 cs=26.1)». Den
+    enkle posisjonen, som er første steg i RTK, feila kontrollen fordi éin satellitt hadde stor feil (truleg ein
+    framrekna GLONASS-bane), og heile epoka vart forkasta. Opptaket 21.31 hadde 357 epokar, alle utan løysing.
+  - Windows laga nye utgåande Bluetooth-portar etter brot og ny paring (COM9 → COM8 → COM4, og COM4 forsvann og kom
+    att). SNOWMAN lytta på ein port som ikkje lenger var mottakaren, og porten vart opna på nytt over 100 gonger.
+- **Nytt:**
+  - RAIM-FDE i RTKLIB (`posopt[4]`): éin satellitt med stor feil blir kasta ut i staden for heile epoka.
+    Test (`test/rtk/testraim.py`): éin satellitt +60 m i 40 epokar gir 0/40 løysingar utan RAIM og 40/40 FIX med.
+  - Automatisk portval: finst ikkje vald port, eller har det ikkje kome data på to vakthund-periodar (ca. 30 s),
+    lyttar SNOWMAN kort på dei andre Bluetooth-portane og byter til den som sender – rådata (RTCM) først når RTK blir
+    rekna i SNOWMAN, elles NMEA. Berre lesing. Byte blir lagra, skrive i feltloggen og vist i RTK-feilsøkaren.
+    Kabel/USB, simulator og `"auto_port": false` blir ikkje rørte. Test: `test/testautoport.py`.
+- Testa: replay (113/115 FIX), testubx, testrekkjefolgje, testraim, testautoport og simulatoren (RTK FIX).
+- Står att: kontroll av RAIM på opptaket frå 29.10 (krev BRDC-fila frå PC-en).
+
 ### Retta: SNOWMAN Base v1.1.1 – oppdatering feila med sertifikatfeil på Windows
 - **Feil (funne av eigaren):** «Oppdater» på kontorsida gav `CERTIFICATE_VERIFY_FAILED: Missing Authority Key
   Identifier`. Python 3.13 krev strengare sertifikat, og eit antivirus, ein brannmur eller ein proxy som les HTTPS,
