@@ -9,6 +9,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### PC-prototype v1.6.114 – feilsøkaren viser ikkje gammal FIX og snødjupne
+- **Retta:** felttest 29.10 – RTK-feilsøkaren viste «status RTK FIX» og snødjupne 0,828 m tre minutt etter at
+  Bluetooth-sambandet fall ut. Førarskjermen og HUD-en viste rett «INGEN DATA», men feilsøkaren brukte siste status.
+  No gjeld same grense som førarskjermen (5 s utan posisjon): «NO DATA (siste: RTK FIX for 3 min sidan)», og
+  snødjupna blir ikkje vist.
+
 ### PC-prototype v1.6.113 – RAIM i RTK-motoren og automatisk portval for Bluetooth
 - **Bakgrunn (felttest 29.10, R12i over Bluetooth mot TH):**
   - RTK-motoren gav ingen løysing i lange periodar: «point pos error (chi-square error nv=16 vv=130.0 cs=26.1)». Den

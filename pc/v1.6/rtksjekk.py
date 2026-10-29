@@ -151,8 +151,13 @@ def check(st, cfg, ports=None, net=None, now=None):
     port = str(cfg.get("serial_port") or "")
     ports = ports or []
     fix = st.get("fix") or "NO DATA"
-    q = QUAL.get(fix, -1)
     gga_age = (now - st["gga_time"]) if st.get("gga_time") else None
+    # v1.6.114: gammal status skal ikkje stå som gjeldande (felttest 29.10: «RTK FIX» og snødjupne 3 min etter siste
+    # posisjon). Same grense som førarskjermen og HUD (5 s).
+    stale = gga_age is not None and gga_age > 5 and not st.get("simulated")
+    if stale:
+        fix = f"NO DATA (siste: {fix} for {_dur(gga_age)} sidan)"
+    q = QUAL.get(fix, -1)
     err = str(st.get("last_error") or "")
     sim = bool(st.get("simulated"))
     mode = "mottakar_sjolv" if st.get("rtk_mode") == "mottakar_sjolv" else "snowman"   # SNOWMAN sender aldri noko til mottakaren
@@ -357,7 +362,9 @@ def check(st, cfg, ports=None, net=None, now=None):
 
     # ---------- 15. Snødjupne ----------
     ds = st.get("depth_status")
-    if fix not in ("RTK FIX", "SIMULERT"):
+    if stale:
+        _step(S, "depth", "Snødjupne", SKIP, "GNSS har stoppa – ingen gjeldande snødjupne.")
+    elif fix not in ("RTK FIX", "SIMULERT"):
         _step(S, "depth", "Snødjupne", SKIP, "Krev RTK FIX.")
     elif ds == "OK":
         _step(S, "depth", "Snødjupne", OK, f"{st.get('depth')} m")
