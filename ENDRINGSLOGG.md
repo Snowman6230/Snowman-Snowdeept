@@ -24,7 +24,8 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
     rekna i SNOWMAN, elles NMEA. Berre lesing. Byte blir lagra, skrive i feltloggen og vist i RTK-feilsøkaren.
     Kabel/USB, simulator og `"auto_port": false` blir ikkje rørte. Test: `test/testautoport.py`.
 - Testa: replay (113/115 FIX), testubx, testrekkjefolgje, testraim, testautoport og simulatoren (RTK FIX).
-- Står att: kontroll av RAIM på opptaket frå 29.10 (krev BRDC-fila frå PC-en).
+- **Stadfesta på opptaket frå felt 29.10** (21:31–21:35, R12i i ro, 231 epokar): utan RAIM 0 løysingar, med RAIM
+  231 løysingar, av dei 225 FIX innanfor ±1 cm sidevegs og ±1,4 cm i høgd (median ratio 855).
 
 ### Retta: SNOWMAN Base v1.1.1 – oppdatering feila med sertifikatfeil på Windows
 - **Feil (funne av eigaren):** «Oppdater» på kontorsida gav `CERTIFICATE_VERIFY_FAILED: Missing Authority Key
