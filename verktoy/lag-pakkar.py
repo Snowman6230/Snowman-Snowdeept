@@ -86,7 +86,19 @@ def lag_base(ut: Path) -> Path:
     return zp
 
 
+def sjekk_bat() -> None:
+    """Windows-filene må ha CRLF. Med berre LF les cmd.exe dei feil («'d' is not recognized …»)."""
+    feil = []
+    for f in list((ROT / "pc").rglob("*.bat")) + list((ROT / "base").rglob("*.bat")):
+        data = f.read_bytes()
+        if data.count(b"\n") != data.count(b"\r\n"):
+            feil.append(str(f.relative_to(ROT)))
+    if feil:
+        sys.exit("Stoppa: desse .bat-filene manglar Windows-linjeskift (CRLF): " + ", ".join(feil))
+
+
 def main() -> None:
+    sjekk_bat()
     ut = Path(sys.argv[1]) if len(sys.argv) > 1 else ROT / "dist"
     ut.mkdir(parents=True, exist_ok=True)
     lag_snodjupne(ut)

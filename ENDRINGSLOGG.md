@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### Retta: SNOWMAN Base startar med feilmeldingar på Windows («'d' is not recognized …»)
+- **Feil (funne av eigaren):** `START-SNOWMAN-BASE.bat` hadde Linux-linjeskift (LF). Då les cmd.exe fila feil og
+  prøver å køyre bitar av linjene som kommandoar. Base starta likevel, men med mange feilmeldingar. I tillegg
+  stod «'py' is not recognized» når Python-startaren `py` manglar, sjølv om `python` fanst.
+- **Retting:** fila har no Windows-linjeskift (CRLF). Ny `.gitattributes` gjer at alle `.bat`-filer alltid får CRLF
+  (og `.sh` alltid LF). Startfila finn sjølv `py` eller `python` utan feilmelding, og seier tydeleg frå om Python
+  manglar. `verktoy/lag-pakkar.py` stoppar om ei `.bat`-fil manglar CRLF, så feilen ikkje kan kome med i nedlastinga.
+
 ### Avgjerd og analyse: SNOWMAN snødjupne utan Base, reservecaster og byte av base (berre dokumentasjon)
 - **Avgjerd (eigaren):** SNOWMAN snødjupne skal ikkje vere avhengig av SNOWMAN Base. Base er ei valfri tilknyting –
   ein NTRIP-caster blant fleire. Ført inn som regel i CLAUDE.md.
