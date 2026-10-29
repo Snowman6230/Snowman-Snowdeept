@@ -12,6 +12,7 @@ import urllib.request
 from pathlib import Path
 
 from konfig import VERSION
+import nett
 
 BRDC_URL = "https://igs.bkg.bund.de/root_ftp/IGS/BRDC/{y}/{d:03d}/"
 
@@ -36,7 +37,7 @@ class Baner:
             day = now - dt.timedelta(days=back)
             url = BRDC_URL.format(y=day.year, d=day.timetuple().tm_yday)
             try:
-                with urllib.request.urlopen(urllib.request.Request(url, headers=ua), timeout=20) as r:
+                with nett.urlopen(urllib.request.Request(url, headers=ua), timeout=20) as r:
                     html = r.read().decode("utf-8", "ignore")
             except Exception as e:
                 self.info["feil"] = str(e)[:200]
@@ -45,7 +46,7 @@ class Baner:
             if not names:
                 continue
             name = sorted(set(n.split("/")[-1] for n in names))[-1]
-            with urllib.request.urlopen(urllib.request.Request(url + name, headers=ua), timeout=60) as r:
+            with nett.urlopen(urllib.request.Request(url + name, headers=ua), timeout=60) as r:
                 data = gzip.decompress(r.read())
             out = self.folder / name[:-3]
             tmp = out.with_suffix(".tmp")

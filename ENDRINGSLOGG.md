@@ -9,6 +9,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-29
 
+### Retta: SNOWMAN Base v1.1.1 – oppdatering feila med sertifikatfeil på Windows
+- **Feil (funne av eigaren):** «Oppdater» på kontorsida gav `CERTIFICATE_VERIFY_FAILED: Missing Authority Key
+  Identifier`. Python 3.13 krev strengare sertifikat, og eit antivirus, ein brannmur eller ein proxy som les HTTPS,
+  set inn rotsertifikat som ikkje oppfyller kravet – sjølv om nettlesaren godtek GitHub.
+- **Retting:** Base brukar no sertifikatlageret i Windows via truststore (MIT, `base/v1.0/vendor/truststore`), same
+  løysing som SNOWMAN snødjupne har brukt sidan Vêr (`pc/v1.6/nett.py`). Gjeld oppdatering, satellittbaner og AI.
+  Utan truststore blir berre den strenge tilleggsregelen slått av. Sertifikatkontrollen blir aldri slått av.
+  Feilmeldingane er no på norsk (`base/v1.0/nett.py`).
+- **Merk:** Base 1.0.0/1.1.0 kan ikkje oppdatere seg sjølv på slike PC-ar. Last ned SNOWMAN-Base.zip i nettlesaren
+  éin gong og pakk ut over den gamle mappa (`data` blir ikkje rørt).
+
 ### SNOWMAN Base v1.1.0 – mountpoint manuelt på kontorsida
 - **Bakgrunn:** eigaren må kunne leggje inn mountpoint manuelt. Før kunne det berre gjerast med kommando.
 - **Nytt:** fana «Mountpoints» på kontorsida. Lag, endre og slett mountpoints med kjelder i prioritert rekkjefølgje:

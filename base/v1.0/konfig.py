@@ -14,7 +14,7 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 API_VERSION = 1
 
 # Samspel med SNOWMAN snødjupne (pc/). Endrar du casteren eller API-et, skal kompatibilitetstesten

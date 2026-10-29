@@ -16,6 +16,7 @@ import urllib.request
 
 from forbetring import day_summary, CATEGORIES
 from konfig import VERSION, SNOWMAN_MIN
+import nett
 
 SYSTEM = """Du er forbetringsassistenten i SNOWMAN Base (Alpindata), serveren for eit skianlegg som brukar SNOWMAN
 snødjupne: tråkkemaskiner måler snødjupne med RTK-GNSS (RTK rekna i SNOWMAN med RTKLIB) mot ein terrengmodell.
@@ -109,7 +110,7 @@ def _post(url, body, headers, timeout):
     req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
                                  headers={"content-type": "application/json", "user-agent": f"SNOWMAN Base/{VERSION}",
                                           **headers})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with nett.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
 

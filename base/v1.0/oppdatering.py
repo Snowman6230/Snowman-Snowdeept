@@ -22,6 +22,7 @@ import zipfile
 from pathlib import Path
 
 from konfig import VERSION
+import nett
 
 HERE = Path(__file__).resolve().parent            # base/v1.0
 REPO = HERE.parent.parent
@@ -37,7 +38,7 @@ def vtuple(v):
 def latest_version(timeout=15):
     """VERSION i den nyaste base-mappa på GitHub (eller None)."""
     req = urllib.request.Request(RAW_URL.format(ver=HERE.name), headers={"User-Agent": f"SNOWMAN Base/{VERSION}"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with nett.urlopen(req, timeout=timeout) as r:
         m = re.search(r'^VERSION = "([^"]+)"', r.read().decode("utf-8", "ignore"), re.M)
     return m.group(1) if m else None
 
@@ -57,10 +58,10 @@ def apply(log=print):
     else:
         say("Lastar ned siste versjon frå GitHub …")
         try:
-            data = urllib.request.urlopen(urllib.request.Request(ZIP_URL, headers={"User-Agent": "SNOWMAN Base"}),
-                                          timeout=120).read()
+            data = nett.urlopen(urllib.request.Request(ZIP_URL, headers={"User-Agent": "SNOWMAN Base"}),
+                                timeout=120).read()
         except Exception as e:
-            say(f"Fekk ikkje lasta ned ({e}). Sjekk at maskina er på nett.")
+            say(f"Fekk ikkje lasta ned: {nett.forklar(e)}")
             return False, "\n".join(out)
         n = 0
         basedir = HERE.parent                       # base/
@@ -112,7 +113,7 @@ class Updates:
             self.info.update(sjekka=time.time(), feil="",
                              ny=v if v and vtuple(v) > vtuple(VERSION) else None)
         except Exception as e:
-            self.info.update(sjekka=time.time(), feil=str(e)[:200])
+            self.info.update(sjekka=time.time(), feil=nett.forklar(e))
         return self.info
 
     def run_now(self):
