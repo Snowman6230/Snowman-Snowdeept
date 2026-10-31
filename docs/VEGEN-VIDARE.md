@@ -422,6 +422,21 @@ at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetrin
 - Samspel: `/api/v1/info` med API-versjon og minste SNOWMAN-versjon. Testane køyrer casteren mot NTRIP-klienten i
   `pc/v1.6`. Brot i API-et gir ny API-versjon; v1 blir verande.
 
+**Analyse 2026-10-31 (Base v1.1.1, ingen kode endra) – feil som skal rettast i Base v1.2:**
+- **H1** Kommandoane `brukar`/`nokkel`/`mountpoint ny` verkar ikkje i Base som køyrer, og blir sletta når kontorsida
+  lagrar (stadfesta). Til retta: stopp Base før slike kommandoar.
+- **H2** Ingen ventetid før Base byter tilbake til eigen base → blafring mellom basar (stadfesta: 20 byte på 10 epokar).
+  Saman med kap. 19 (SNOWMAN nullstiller ikkje RTK ved byte av base) gir det risiko for falsk FIX.
+- **H3** `verdict()` krasjar når ingen kjelde er aktiv og eit tillegg sender baner → `/api/status` 500 (stadfesta).
+- **M1** tcp-tenar: hengande tilkopling stengjer for ny (stadfesta). **M2** byte i `tick()` blir ikkje logga/talt
+  (stadfesta). **M3** Windows: `SO_REUSEADDR` lèt to Base binde same port. **M4** port 2101: ingen grense per IP,
+  hendingslogg utan rotasjon. **M5** oppdatering skriv over .bat-fila som køyrer. **M6** Windows: ingen autostart,
+  dvale, USB-straumsparing.
+- Nye funksjonar: side «Slik når maskinene Base» (IP, CGNAT-åtvaring), innebygd dynamisk DNS, «send vidare» til
+  ekstern caster, åtvaring ved same stasjons-ID på eigen base og reserve.
+- Tilrådd oppsett: Base på Raspberry Pi ved antenna (ZED-F9P på USB). Tilgang som Norman sin base krev offentleg IP,
+  DDNS og port 2101; elles Tailscale eller vidaresending til ekstern caster.
+
 **Står att (neste steg):**
 1. SNOWMAN snødjupne: klient mot API v1 (deling og anleggspakke) – v1.8.
 2. Kontordelen: teikne og redigere trasear, hindringar og kontrollpunkt i 2D/3D, og byggje anleggspakka i Base – v1.9.

@@ -7,6 +7,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-10-31
+
+### Analyse av SNOWMAN Base v1.1.1 (berre dokumentasjon)
+- **Bakgrunn:** eigaren bad om ein grundig analyse: programmeringsfeil, mottak frå GPS-antenna, og korleis SNOWMAN
+  snødjupne kan nå Base slik som Norman sin base.
+- **Funn:** tre feil med høg prioritet (H1–H3) og seks middels (M1–M6), dei fleste stadfesta med testskript.
+  Ført inn i VEGEN-VIDARE kap. 18 med tilrådd rekkjefølgje for Base v1.2.
+- **Ingen kodeendring.**
+
 ## 2026-10-29
 
 ### PC-prototype v1.6.115 – ingen tappar frå gamle feilmålingar i snøflata i 3D
