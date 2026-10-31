@@ -43,7 +43,7 @@ def rules(base):
                      "Base har ingen korreksjonsstraum å sende til maskinene.",
                      "Legg til eit mountpoint med kjelde (mottakar på USB, opplasting frå Pi, eller relé frå TH/CPOS). "
                      "Sjå LES-MEG.md, «Kom i gang»."))
-    for m in base.mounts.values():
+    for m in list(base.mounts.values()):
         s = m.out.summary()
         k = m.name
         if not any(x.kind != "ntrip" for x in m.sources):
@@ -99,6 +99,10 @@ def rules(base):
         if d["tot"] > 3600 and d["ok"] / d["tot"] < 0.98:
             out.append(S(f"{k}:oppetid", "drift", "middels", f"{k}: oppetid {100 * d['ok'] / d['tot']:.1f} % i dag",
                          "Korreksjonane har vore borte i periodar.", "Sjå hendingane for når og kvifor."))
+        for st, names in m.station_conflict().items():
+            out.append(S(f"{k}:stasjon-{st}", "utstyr", "middels", f"{k}: same stasjons-ID ({st}) på {', '.join(names)}",
+                         "Når to basar har same stasjons-ID, ser ikkje RTKLIB i SNOWMAN at basen er bytt.",
+                         "Gi eigen base ein eigen stasjons-ID i mottakaren (ikkje 0, og ikkje same som reserven)."))
         for src in m.sources:
             fr = src.stats.frames
             if fr > 200 and src.framer.crc_err / fr > 0.01:
@@ -157,7 +161,7 @@ def rules(base):
 def day_summary(base):
     """Samandrag av døgnet så langt – lagra i dagstal (trendar) og brukt av AI."""
     mounts = {}
-    for m in base.mounts.values():
+    for m in list(base.mounts.values()):
         s = m.out.summary()
         d = m.day
         mounts[m.name] = {"oppetid": round(d["ok"] / d["tot"], 4) if d["tot"] else None, "bytte": d["bytte"],

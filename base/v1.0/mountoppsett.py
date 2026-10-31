@@ -95,6 +95,8 @@ def lag(inn, alle, gamalt_namn=None, reserverte_portar=()):
     ut["namn"] = namn
     ut["skildring"] = _txt(inn.get("skildring"), 60, "Skildringa") or namn
     ut["byte_etter_s"] = _tal(inn.get("byte_etter_s", 10) or 10, "Byte til reserve etter", 2, 120)
+    ut["tilbake_etter_s"] = _tal(inn.get("tilbake_etter_s", 60) if inn.get("tilbake_etter_s") not in (None, "")
+                                 else 60, "Tilbake til første kjelde etter", 0, 3600)
     im = inn.get("innmalt")
     if im and any(str(im.get(k, "")).strip() for k in ("lat", "lon", "h")):
         ut["innmalt"] = {"lat": _tal(im.get("lat"), "Breiddegrad", -90, 90),

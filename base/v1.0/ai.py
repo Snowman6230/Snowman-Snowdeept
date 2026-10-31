@@ -45,7 +45,8 @@ class AI:
     def context(self, base):
         """Anonymisert samandrag: tal og typar – ingen namn, IP, posisjonar eller nøklar."""
         days = self.store.days(14)
-        names = [m["namn"] for m in self.store.machines() if m.get("namn")] + [m["id"] for m in self.store.machines()]
+        names = ([m["namn"] for m in self.store.machines() if m.get("namn")] + [m["id"] for m in self.store.machines()]
+                 + [u.get("namn", "") for u in self.cfg["brukarar"]])          # også brukarnamn (NTRIP/kontor)
         rules = [{"kategori": r["kategori"], "alvor": r["alvor"], "tittel": _anon(r["tittel"], names), "status": r["status"],
                   "tal": r["tal"]} for r in self.store.improvements(include_done=True)[:40]]
         wishes = [p["tekst"][:300] for p in self.store.proposals() if p["type"] == "program"][:20]

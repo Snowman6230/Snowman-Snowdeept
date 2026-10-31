@@ -27,5 +27,5 @@ sudo systemctl enable --now snowman-base
 sleep 3
 echo
 echo "SNOWMAN Base køyrer. Statusside: http://$(hostname -I | awk '{print $1}'):8780/"
-echo "Innloggingane frå første oppstart står i $DATA/NOKLAR.txt"
-echo "Neste steg: snowman-base mountpoint ny FJELL --seriell /dev/ttyACM0   og   sudo systemctl restart snowman-base"
+echo "Første gong: opne http://$(hostname -I | awk '{print $1}'):8780/kontor/ frå ein PC på same nett og lag administrator."
+echo "Mountpoint og brukarar: kontorsida, eller «snowman-base brukar legg-til NAMN --rolle kontor»."

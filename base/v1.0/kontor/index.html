@@ -51,16 +51,30 @@ input,select,textarea{width:100%}
 <header>
   <h1>SNOWMAN Kontor</h1><span class="dim" id="sub"></span>
   <nav id="tabs" class="hidden">
-    <button data-t="oversikt">Oversikt</button><button data-t="mount">Mountpoints</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
+    <button data-t="oversikt">Oversikt</button><button data-t="mount">Mountpoints</button><button data-t="tilgang">Tilgang</button><button data-t="brukarar">Brukarar</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
     <button data-t="forbetringar">Forbetringar</button><button data-t="ai">AI</button><button data-t="system">System</button>
     <a class="btn" href="/">Status</a><button id="logout">Logg ut</button>
   </nav>
 </header>
 <section id="login" class="card">
   <h2>Logg inn</h2>
-  <p class="dim">Bruk kontornøkkelen frå første oppstart (data/NOKLAR.txt), eller lag ny med <code>snowman-base nokkel kontor</code>.</p>
-  <input id="key" type="password" placeholder="Kontornøkkel" autocomplete="current-password">
+  <label>Brukarnamn</label><input id="lUser" autocomplete="username" autocapitalize="off">
+  <label>Passord</label><input id="lPw" type="password" autocomplete="current-password">
   <div class="row"><button class="pri" id="loginBtn">Logg inn</button><span id="loginMsg" class="dim"></span></div>
+  <p class="dim small">Gløymt passord? På maskina Base køyrer på: <code>START-SNOWMAN-BASE.bat brukar passord NAMN</code> (Windows) eller <code>snowman-base brukar passord NAMN</code> (Linux).</p>
+</section>
+<section id="setup" class="card hidden" style="max-width:520px;margin:40px auto">
+  <h2>Lag administrator</h2>
+  <p class="dim">SNOWMAN Base har ingen administrator enno. Vel brukarnamn og passord for kontorsida. Skriv dei ned – dei blir ikkje viste att.</p>
+  <label>Brukarnamn (administrator)</label><input id="sUser" autocomplete="username" autocapitalize="off" placeholder="t.d. hans">
+  <label>Passord (minst 8 teikn)</label><input id="sPw" type="password" autocomplete="new-password">
+  <label>Same passord ein gong til</label><input id="sPw2" type="password" autocomplete="new-password">
+  <h2 style="margin-top:16px">Maskinene (NTRIP)</h2>
+  <p class="dim small">Brukarnamnet og passordet tråkkemaskinene skriv i SNOWMAN snødjupne under NTRIP. Kan òg lagast seinare under «Brukarar». Finst det alt ein NTRIP-brukar, blir han verande.</p>
+  <label>Brukarnamn (maskinene)</label><input id="sNUser" autocapitalize="off" placeholder="t.d. pb600">
+  <label>Passord (minst 8 teikn)</label><input id="sNPw" type="password" autocomplete="new-password">
+  <div class="row"><button class="pri" id="setupBtn">Lag og logg inn</button><span id="setupMsg" class="msg"></span></div>
+  <p id="setupRemote" class="dim small hidden">Administrator kan berre lagast frå det lokale nettet. Opne sida frå ein PC på anlegget, eller køyr <code>brukar legg-til NAMN --rolle kontor</code> på maskina Base køyrer på.</p>
 </section>
 <main id="app" class="hidden">
   <div id="t-oversikt">
@@ -78,6 +92,7 @@ input,select,textarea{width:100%}
         <div><label>Namn (det maskinene skriv i «Mountpoint»)</label><input id="mpName" placeholder="t.d. FJELL" maxlength="32"></div>
         <div><label>Skildring (vist i kjeldetabellen)</label><input id="mpDesc" placeholder="t.d. Fjellsætra – eigen base" maxlength="60"></div>
         <div><label>Byte til reserve etter (sekund utan data)</label><input id="mpSwitch" type="number" min="2" max="120" step="1" value="10"></div>
+        <div><label>Tilbake til første kjelde når ho har sendt stabilt i (s)</label><input id="mpBack" type="number" min="0" max="3600" step="10" value="60"></div>
       </div>
       <details style="margin-top:8px"><summary class="dim">Innmålt basepunkt (valfritt – kontroll av posisjonen basen sender)</summary>
         <div class="grid"><div><label>Breiddegrad (EUREF89)</label><input id="mpLat" placeholder="62.380200"></div>
@@ -96,6 +111,37 @@ input,select,textarea{width:100%}
       <div class="row"><button class="pri" id="mpSave">Lagre og ta i bruk</button><button id="mpCancel">Avbryt</button><span id="mpMsg" class="msg"></span></div>
       <div id="mpSecret" class="box hidden"></div>
     </section>
+  </div>
+  <div id="t-tilgang" class="hidden">
+    <section class="card"><h2>Slik når maskinene Base</h2>
+      <p class="dim">Som Norman sin base (gpsbase.dyndns.org:2101) treng maskinene på mobilnettet eit fast namn som peikar på den offentlege IP-adressa til anlegget, og port 2101 opna i ruteren mot denne maskina.</p>
+      <div id="tgInfo" class="scroll"></div>
+      <div class="row"><button id="tgFresh">Sjekk på nytt</button></div></section>
+    <section class="card"><h2>Dynamisk DNS (fast namn)</h2>
+      <p class="dim">Den offentlege IP-adressa på fiber kan endre seg. Ei gratis DDNS-teneste gir eit fast namn (t.d. <b>fjellsatra.duckdns.org</b>). Lag namnet hos tenesta, og lim inn oppdaterings-adressa her – Base held då namnet oppdatert kvart 10. minutt. Har ruteren innebygd DDNS, kan du bruke det i staden og la feltet stå tomt.</p>
+      <label>Oppdaterings-adresse (https://…)</label><input id="ddUrl" placeholder="https://www.duckdns.org/update?domains=fjellsatra&token=…">
+      <div class="row"><button class="pri" id="ddSave">Lagre og oppdater no</button><span id="ddMsg" class="msg"></span></div></section>
+    <section class="card"><h2>Ruteren</h2>
+      <ol class="dim">
+        <li>Gi denne maskina fast IP-adresse på det lokale nettet (reservasjon/DHCP-binding i ruteren).</li>
+        <li>Port-vidaresending: <b>TCP 2101</b> utanfrå → denne maskina, port 2101. <b>Aldri</b> 8780 (kontoret).</li>
+        <li>Test utanfrå: kople SNOWMAN-PC-en til mobilen (Wi-Fi av på mobilen), skriv det faste namnet i Caster og trykk «Hent mountpoints».</li>
+      </ol></section>
+  </div>
+  <div id="t-brukarar" class="hidden">
+    <section class="card"><h2>Brukarar</h2>
+      <p class="dim"><b>ntrip</b> = maskinene: brukarnamnet og passordet i SNOWMAN snødjupne under NTRIP (same innlogging blir brukt til deling og anleggspakke). <b>kontor</b> = administrator: denne sida. Passord blir aldri viste – berre endra.</p>
+      <div class="scroll" id="uList"></div></section>
+    <section class="card"><h2 id="uTitle">Ny brukar</h2>
+      <div class="grid">
+        <div><label>Brukarnamn</label><input id="uName" autocapitalize="off" maxlength="32"></div>
+        <div><label>Passord (minst 8 teikn)</label><input id="uPw" type="password" autocomplete="new-password" placeholder=""></div>
+        <div><label>Same passord ein gong til</label><input id="uPw2" type="password" autocomplete="new-password"></div>
+      </div>
+      <div class="row"><label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="uNtrip" style="width:auto" checked> ntrip (maskin)</label>
+        <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="uKontor" style="width:auto"> kontor (administrator)</label></div>
+      <label>Mountpoints (tomt = alle)</label><input id="uMounts" placeholder="t.d. FJELL">
+      <div class="row"><button class="pri" id="uSave">Lagre</button><button id="uNew">Ny brukar</button><span id="uMsg" class="msg"></span></div></section>
   </div>
   <div id="t-pakke" class="hidden">
     <section class="card"><h2>Anleggspakke</h2>
@@ -141,33 +187,52 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const tid=t=>t?new Date(t*1000).toLocaleString("nn-NO",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"–";
 const dur=s=>{s=Math.round(s);if(s<60)return s+" s";if(s<3600)return Math.round(s/60)+" min";if(s<86400)return (s/3600).toFixed(1)+" t";return (s/86400).toFixed(1)+" d"};
-let KEY=""; try{KEY=sessionStorage.getItem("sbk")||""}catch(e){}
+let KEY=""; try{KEY=sessionStorage.getItem("sbo")||""}catch(e){}
 let showAll=false, map=null, layer=null, tab="oversikt";
 async function api(path,opt={}){
   const h=Object.assign({"Authorization":"Bearer "+KEY},opt.headers||{});
   if(opt.json!==undefined){h["Content-Type"]="application/json";opt.body=JSON.stringify(opt.json)}
   const r=await fetch(path,{...opt,headers:h,cache:"no-store"});
-  if(r.status===401){logout();throw new Error("Feil nøkkel")}
+  if(r.status===401){logout();throw new Error("Logga ut – logg inn på nytt")}
   const ct=r.headers.get("content-type")||"";
   const d=ct.includes("json")?await r.json():await r.text();
   if(!r.ok) throw new Error(d.feil||r.status);
   return d;
 }
-function logout(){KEY="";try{sessionStorage.removeItem("sbk")}catch(e){};$("#app").classList.add("hidden");$("#tabs").classList.add("hidden");$("#login").classList.remove("hidden")}
+async function post(path,json){
+  const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(json),cache:"no-store"});
+  return {status:r.status,...(await r.json())};
+}
+function logout(){if(KEY)fetch("/api/v1/logg-ut",{method:"POST",headers:{"Authorization":"Bearer "+KEY}}).catch(()=>{});
+  KEY="";try{sessionStorage.removeItem("sbo")}catch(e){};$("#app").classList.add("hidden");$("#tabs").classList.add("hidden");gate()}
+function setKey(k){KEY=k;try{sessionStorage.setItem("sbo",k)}catch(e){}}
+async function gate(){
+  const d=await (await fetch("/api/v1/oppsett",{cache:"no-store"})).json();
+  $("#login").classList.toggle("hidden",d.treng_admin);$("#setup").classList.toggle("hidden",!d.treng_admin);
+  $("#setupRemote").classList.toggle("hidden",d.lokal);$("#setupBtn").disabled=!d.lokal;
+}
 async function login(){
-  KEY=$("#key").value.trim();
-  try{await api("/api/v1/hendingar?n=1");try{sessionStorage.setItem("sbk",KEY)}catch(e){};start()}
-  catch(e){$("#loginMsg").textContent="Feil nøkkel."}
+  $("#loginMsg").textContent="";
+  const d=await post("/api/v1/logg-inn",{brukar:$("#lUser").value.trim(),passord:$("#lPw").value});
+  if(!d.ok){$("#loginMsg").textContent=d.feil;return}
+  $("#lPw").value="";setKey(d.okt);start();
+}
+async function setup(){
+  const m=$("#setupMsg");
+  if($("#sPw").value!==$("#sPw2").value){m.textContent="Passorda er ikkje like.";return}
+  const d=await post("/api/v1/oppsett",{brukar:$("#sUser").value.trim(),passord:$("#sPw").value,ntrip_brukar:$("#sNUser").value.trim(),ntrip_passord:$("#sNPw").value});
+  if(!d.ok){m.textContent="Feil: "+d.feil;return}
+  setKey(d.okt);$("#setup").classList.add("hidden");start();
 }
 function show(t){tab=t;document.querySelectorAll("#tabs button[data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
   document.querySelectorAll("[id^=t-]").forEach(d=>d.classList.toggle("hidden",d.id!=="t-"+t));location.hash=t;refresh()}
 async function start(){
-  $("#login").classList.add("hidden");$("#app").classList.remove("hidden");$("#tabs").classList.remove("hidden");
+  $("#login").classList.add("hidden");$("#setup").classList.add("hidden");$("#app").classList.remove("hidden");$("#tabs").classList.remove("hidden");
   let first=(location.hash||"").slice(1);
   if(!first){try{const st=await (await fetch("/api/status",{headers:{"Authorization":"Bearer "+KEY}})).json();first=st.mountpoints&&st.mountpoints.length?"oversikt":"mount"}catch(e){first="oversikt"}}
   show(first);setInterval(()=>{if(tab==="oversikt")refresh()},10000);
 }
-async function refresh(){try{await ({oversikt,mount,pakke,forslag,forbetringar,ai,system})[tab]()}catch(e){console.log(e)}}
+async function refresh(){try{await ({oversikt,mount,tilgang,brukarar,pakke,forslag,forbetringar,ai,system})[tab]()}catch(e){console.log(e)}}
 async function oversikt(){
   const s=await (await fetch("/api/status",{headers:{"Authorization":"Bearer "+KEY}})).json();
   $("#sub").textContent=`${s.namn} · v${s.versjon}`;
@@ -193,14 +258,14 @@ async function mount(){
   $("#mpList").innerHTML=MP.mountpoints.length?`<table><tr><th>Mountpoint</th><th>Kjelder (prioritet)</th><th>I bruk no</th><th>Maskiner</th><th></th></tr>${MP.mountpoints.map((m,i)=>`<tr><td><b>${esc(m.namn)}</b><div class="dim">${esc(m.skildring)}</div></td><td>${m.kjelder.map((k,j)=>{const st=m.kjeldestatus[k.namn]||{};return `<div><span class="dot ${st.tilkopla?'on':(st.feil?'err':'')}"></span>${j+1}. ${esc(TYPENAMN[k.type]||k.type)} <span class="dim">${esc(kvar(k))}</span>${st.feil&&!st.tilkopla?`<div class="dim small" style="color:var(--err)">${esc(st.feil)}</div>`:''}</div>`}).join("")}</td><td>${m.aktiv?esc(m.aktiv):'<span class="dim">ingen data</span>'}</td><td>${m.klientar}</td><td style="white-space:nowrap"><button onclick="mpEdit(${i})">Endre</button> <button onclick="mpDel('${esc(m.namn)}')">Slett</button></td></tr>`).join("")}</table>`
     :'<p class="dim">Ingen mountpoints enno. Trykk «+ Nytt mountpoint». Før du har eigen mottakar, kan du leggje inn ein annan caster (t.d. TH) som relé.</p>';
   const h=location.hostname;
-  $("#mpConnect").innerHTML=MP.mountpoints.length?`I SNOWMAN snødjupne: Caster = <b>${esc(h==="localhost"||h==="127.0.0.1"?"localhost (same PC) eller IP-adressa til denne PC-en":h)}</b>, Port = <b>${MP.caster_port}</b>, Mountpoint = <b>${MP.mountpoints.map(m=>esc(m.namn)).join(" / ")}</b>, Brukarnamn/passord = NTRIP-brukaren i Base (data/NOKLAR.txt).`:"";
+  $("#mpConnect").innerHTML=MP.mountpoints.length?`I SNOWMAN snødjupne: Caster = <b>${esc(h==="localhost"||h==="127.0.0.1"?"localhost (same PC) eller IP-adressa til denne PC-en":h)}</b>, Port = <b>${MP.caster_port}</b>, Mountpoint = <b>${MP.mountpoints.map(m=>esc(m.namn)).join(" / ")}</b>, Brukarnamn/passord = ein brukar med rolla ntrip (fana «Brukarar»). Fast namn for maskinene ute: fana «Tilgang».`:"";
   if(!MP.mountpoints.length&&!ED)mpOpen(null);
 }
 function mpOpen(m){
-  ED=m?JSON.parse(JSON.stringify(m)):{namn:"",skildring:"",byte_etter_s:10,innmalt:null,kjelder:[]};
+  ED=m?JSON.parse(JSON.stringify(m)):{namn:"",skildring:"",byte_etter_s:10,tilbake_etter_s:60,innmalt:null,kjelder:[]};
   ED.gamalt_namn=m?m.namn:null;
   $("#mpTitle").textContent=m?`Endre ${m.namn}`:"Nytt mountpoint";
-  $("#mpName").value=ED.namn;$("#mpDesc").value=ED.skildring;$("#mpSwitch").value=ED.byte_etter_s||10;
+  $("#mpName").value=ED.namn;$("#mpDesc").value=ED.skildring;$("#mpSwitch").value=ED.byte_etter_s||10;$("#mpBack").value=ED.tilbake_etter_s??60;
   const im=ED.innmalt||{};$("#mpLat").value=im.lat??"";$("#mpLon").value=im.lon??"";$("#mpH").value=im.h??"";
   $("#mpMsg").textContent="";$("#mpSecret").classList.add("hidden");
   if(!ED.kjelder.length)ED.kjelder.push(nyKjelde("ntrip"));
@@ -243,7 +308,7 @@ async function mpTable(i){
   catch(e){k._msg="Feil: "+e.message;el.textContent=k._msg}
 }
 $("#mpSave").onclick=async()=>{
-  ED.namn=$("#mpName").value.trim();ED.skildring=$("#mpDesc").value.trim();ED.byte_etter_s=$("#mpSwitch").value;
+  ED.namn=$("#mpName").value.trim();ED.skildring=$("#mpDesc").value.trim();ED.byte_etter_s=$("#mpSwitch").value;ED.tilbake_etter_s=$("#mpBack").value;
   ED.innmalt={lat:$("#mpLat").value.trim(),lon:$("#mpLon").value.trim(),h:$("#mpH").value.trim()};
   const body={...ED,kjelder:ED.kjelder.map(({_liste,_msg,har_passord,...k})=>k)};
   if(ED.gamalt_namn&&ED.gamalt_namn!==ED.namn&&!confirm(`Endre namnet frå ${ED.gamalt_namn} til ${ED.namn}? Maskinene må då få nytt mountpoint i innstillingane.`))return;
@@ -256,6 +321,53 @@ $("#mpSave").onclick=async()=>{
   catch(e){$("#mpMsg").textContent="Feil: "+e.message}
 };
 async function mpDel(namn){if(!confirm(`Slette mountpointet ${namn}? Maskinene som brukar det, mistar korreksjonane.`))return;await api("/api/v1/mountpoint/fjern",{method:"POST",json:{namn}});mount()}
+// ---------- tilgang ----------
+async function tilgang(fresh){
+  const d=await api("/api/v1/tilgang"+(fresh?"?frisk=1":"")), dd=d.ddns||{};
+  const name=dd.namn||"(fast namn – sjå under)";
+  let warn="";
+  if(d.cgnat)warn=`<div class="box">Den offentlege adressa (${esc(d.offentleg)}) ser ut til å vere delt (CGNAT). Port-vidaresending fungerer då ikkje – bruk Tailscale eller send vidare til ein caster på internett (sjå LES-MEG).</div>`;
+  const ddst=!dd.namn?'<span class="dim">ikkje sett opp her</span>':(dd.peikar_til?(dd.peikar_rett?`<span style="color:var(--ok)">peikar på ${esc(dd.peikar_til)} ✓</span>`:`<span style="color:var(--warn)">peikar på ${esc(dd.peikar_til)} – ikkje den offentlege adressa</span>`):'<span style="color:var(--err)">finst ikkje (enno)</span>');
+  $("#tgInfo").innerHTML=warn+`<table>
+   <tr><th>Offentleg IP-adresse</th><td>${d.offentleg?esc(d.offentleg):'<span class="dim">ukjend '+esc(d.offentleg_feil||"")+'</span>'} <div class="dim small">Samanlikn med WAN-adressa i ruteren. Er dei ulike, har anlegget delt adresse (CGNAT).</div></td></tr>
+   <tr><th>Denne maskina på det lokale nettet</th><td>${d.lokale.map(esc).join(", ")||'–'} <div class="dim small">Port 2101 i ruteren skal sendast hit.</div></td></tr>
+   <tr><th>Fast namn (DDNS)</th><td>${esc(dd.namn||"–")} ${ddst}${dd.svar?`<div class="dim small">Siste oppdatering: ${esc(dd.svar)} ${tid(dd.t)}</div>`:''}</td></tr>
+  </table>
+  <h2 style="margin-top:14px">I SNOWMAN snødjupne (NTRIP)</h2>
+  <table><tr><th></th><th>Ute i bakken (mobilnett)</th><th>På anlegget (same nett)</th></tr>
+   <tr><td>Caster</td><td><b>${esc(name)}</b></td><td><b>${esc(d.lokale[0]||"IP-adressa til denne maskina")}</b></td></tr>
+   <tr><td>Port</td><td><b>${d.caster_port}</b></td><td><b>${d.caster_port}</b></td></tr>
+   <tr><td>Mountpoint</td><td colspan="2"><b>${d.mountpoints.map(esc).join(" / ")||"lag eit under «Mountpoints»"}</b></td></tr>
+   <tr><td>Brukarnamn / passord</td><td colspan="2">ein brukar med rolla <b>ntrip</b> (fana «Brukarar»)</td></tr></table>`;
+  if(!$("#ddUrl").value&&dd.har_url)$("#ddUrl").placeholder="(lagra – lim inn ny for å byte, eller tøm og lagre for å slå av)";
+}
+$("#tgFresh").onclick=()=>tilgang(true);
+$("#ddSave").onclick=async()=>{const m=$("#ddMsg");m.textContent="Oppdaterer …";
+  try{const d=await api("/api/v1/ddns",{method:"POST",json:{url:$("#ddUrl").value.trim()}});const x=d.ddns||{};
+    m.textContent=x.ok===null?"Lagra (DDNS er av).":(x.ok?`OK: ${x.svar}`:`Feil: ${x.svar}`);$("#ddUrl").value="";tilgang(true)}
+  catch(e){m.textContent="Feil: "+e.message}};
+// ---------- brukarar ----------
+let UED=null;
+async function brukarar(){
+  const d=await api("/api/v1/brukarar");
+  $("#uList").innerHTML=d.brukarar.length?`<table><tr><th>Brukarnamn</th><th>Roller</th><th>Mountpoints</th><th></th></tr>${d.brukarar.map((u,i)=>`<tr><td><b>${esc(u.namn)}</b>${u.namn.toLowerCase()===(d.eg||"").toLowerCase()?' <span class="dim">(deg)</span>':''}</td><td>${u.roller.map(esc).join(", ")}</td><td>${(u.mountpoints||["*"]).map(x=>x==="*"?"alle":esc(x)).join(", ")}</td><td style="white-space:nowrap"><button data-u="${i}" class="uEdit">Endre / nytt passord</button> <button data-u="${i}" class="uDel">Slett</button></td></tr>`).join("")}</table>`:'<p class="dim">Ingen brukarar.</p>';
+  document.querySelectorAll(".uEdit").forEach(b=>b.onclick=()=>uOpen(d.brukarar[+b.dataset.u]));
+  document.querySelectorAll(".uDel").forEach(b=>b.onclick=async()=>{const u=d.brukarar[+b.dataset.u];
+    if(!confirm(`Slette brukaren ${u.namn}?`+(u.roller.includes("ntrip")?" Maskiner som brukar han, mistar korreksjonane.":"")))return;
+    try{await api("/api/v1/brukar/fjern",{method:"POST",json:{namn:u.namn}});brukarar()}catch(e){alert(e.message)}});
+}
+function uOpen(u){UED=u||null;$("#uTitle").textContent=u?`Endre ${u.namn}`:"Ny brukar";$("#uName").value=u?u.namn:"";$("#uName").disabled=!!u;
+  $("#uPw").value="";$("#uPw2").value="";$("#uPw").placeholder=u?"(uendra – skriv nytt for å byte)":"";
+  $("#uNtrip").checked=u?u.roller.includes("ntrip"):true;$("#uKontor").checked=u?u.roller.includes("kontor"):false;
+  $("#uMounts").value=u&&u.mountpoints&&!u.mountpoints.includes("*")?u.mountpoints.join(", "):"";$("#uMsg").textContent=""}
+$("#uNew").onclick=()=>uOpen(null);
+$("#uSave").onclick=async()=>{const m=$("#uMsg");
+  if($("#uPw").value!==$("#uPw2").value){m.textContent="Passorda er ikkje like.";return}
+  const roller=[...($("#uNtrip").checked?["ntrip"]:[]),...($("#uKontor").checked?["kontor"]:[])];
+  const mp=$("#uMounts").value.split(",").map(x=>x.trim()).filter(Boolean);
+  const body={namn:$("#uName").value.trim(),roller,mountpoints:mp.length?mp:["*"]};if($("#uPw").value)body.passord=$("#uPw").value;
+  try{await api("/api/v1/brukar",{method:"POST",json:body});const t=`${body.namn} er lagra.`+(UED&&body.passord?" Nytt passord gjeld med éin gong.":"");uOpen(null);m.textContent=t;brukarar()}
+  catch(e){m.textContent="Feil: "+e.message}};
 async function rmMachine(id){if(!confirm("Fjerne maskina frå lista? Ho blir lagt til att neste gong ho melder seg."))return;await api("/api/v1/maskin/fjern",{method:"POST",json:{id}});refresh()}
 async function pakke(){
   const d=await api("/api/v1/anleggspakke/versjonar");
@@ -299,8 +411,9 @@ $("#updRun").onclick=async()=>{if(!confirm("Oppdatere SNOWMAN Base no? Maskinene
   $("#updOut").classList.remove("hidden");$("#updOut").textContent="Oppdaterer …";
   try{const d=await api("/api/v1/oppdater",{method:"POST",json:{}});$("#updOut").textContent=d.tekst+(d.endra?"\n\nStartar på nytt – sida blir lasta om eit augeblink.":"");if(d.endra)setTimeout(()=>location.reload(),8000)}catch(e){$("#updOut").textContent="Feil: "+e.message}};
 document.querySelectorAll("#tabs button[data-t]").forEach(b=>b.onclick=()=>show(b.dataset.t));
-$("#logout").onclick=logout;$("#loginBtn").onclick=login;$("#key").onkeydown=e=>{if(e.key==="Enter")login()};
-if(KEY)api("/api/v1/hendingar?n=1").then(start).catch(()=>{});
+$("#logout").onclick=logout;$("#loginBtn").onclick=login;$("#lPw").onkeydown=e=>{if(e.key==="Enter")login()};
+$("#setupBtn").onclick=setup;
+if(KEY)api("/api/v1/hendingar?n=1").then(start).catch(()=>gate());else gate();
 </script>
 </body>
 </html>

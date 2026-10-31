@@ -10,6 +10,8 @@
 
 Alle kjeldene les byte, finn RTCM-rammer og sender rammene til mountpointet. Base sender aldri noko til mottakaren.
 """
+import os
+import select
 import socket
 import threading
 import time
@@ -159,49 +161,71 @@ class TcpSource(Source):
 
 
 class TcpServerSource(Source):
-    """Base lyttar; éi eining sender inn om gongen (ny tilkopling tek over)."""
+    """Base lyttar; éi eining sender inn om gongen. Ei ny tilkopling tek over (t.d. når Pi-en har mista nettet utan
+    å lukke den gamle), og ei tilkopling som ikkje har sendt noko på 60 s, blir lukka."""
     kind = "tcp-tenar"
+    STILLE_S = 60
 
     def where(self):
         return f"lyttar på port {self.cfg.get('port')}"
 
     def run(self):
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if os.name != "nt":                         # Windows: SO_REUSEADDR ville late to program dele porten
+            srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        elif hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            srv.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
         srv.bind((self.cfg.get("adresse", "0.0.0.0"), int(self.cfg["port"])))
-        srv.listen(2)
-        srv.settimeout(1)
-        self.listening = True
+        srv.listen(4)
+        c = None
+        quiet = 0.0
         try:
             while not self.stop_ev.is_set():
-                try:
-                    c, addr = srv.accept()
-                except socket.timeout:
+                socks = [srv] + ([c] if c else [])
+                r, _, _ = select.select(socks, [], [], 1.0)
+                if srv in r:
+                    nc, addr = srv.accept()
+                    if c:
+                        c.close()
+                        self.events.add(f"{self.label()}: ny tilkopling frå {addr[0]} tek over", "info")
+                    c, quiet = nc, time.time()
+                    self.up(f"eining kopla til frå {addr[0]}")
                     continue
-                c.settimeout(2)
-                self.up(f"eining kopla til frå {addr[0]}")
-                try:
-                    while not self.stop_ev.is_set():
-                        try:
-                            d = c.recv(4096)
-                        except socket.timeout:
-                            continue
-                        if not d:
-                            break
+                if c and c in r:
+                    try:
+                        d = c.recv(4096)
+                    except OSError as e:
+                        d, self.err = b"", str(e)
+                    if d:
+                        quiet = time.time()
                         self.data(d)
-                except OSError as e:
-                    self.err = str(e)
-                finally:
+                        continue
                     c.close()
+                    c = None
                     self.connected = False
                     self.events.add(f"{self.label()}: eininga kopla frå", "feil")
+                elif c and time.time() - quiet > self.STILLE_S:
+                    c.close()
+                    c = None
+                    self.connected = False
+                    self.err = f"ingen data på {self.STILLE_S} s – lukka, ventar på ny tilkopling"
+                    self.events.add(f"{self.label()}: {self.err}", "feil")
         finally:
+            if c:
+                c.close()
             srv.close()
 
 
 class UploadSource(Source):
-    """NTRIP-opplasting til Base sin eigen caster. Casteren kallar push()."""
+    """NTRIP-opplasting til Base sin eigen caster. Casteren kallar attach/push/detach. Ei ny opplasting tek over ei
+    gammal (token), så data frå to opplastingar aldri blir blanda."""
     kind = "opplasting"
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.current = None
+        self._n = 0
+        self._lock = threading.Lock()
 
     def where(self):
         return "NTRIP-opplasting til denne casteren"
@@ -213,13 +237,27 @@ class UploadSource(Source):
         self.stop_ev.wait()
 
     def attach(self, peer):
+        with self._lock:
+            self._n += 1
+            tok, old = self._n, self.current
+            self.current = tok
+            self.framer = type(self.framer)()          # ny straum: ikkje bland med ei halv ramme frå den gamle
+        if old is not None:
+            self.events.add(f"{self.label()}: ny opplasting frå {peer} tek over", "info")
         self.up(f"opplasting starta frå {peer}")
+        return tok
 
-    def detach(self):
+    def detach(self, tok=None):
+        with self._lock:
+            if tok is not None and tok != self.current:
+                return                                  # ei eldre opplasting som er teken over
+            self.current = None
         self.connected = False
         self.events.add(f"{self.label()}: opplastinga stoppa", "feil")
 
-    def push(self, chunk):
+    def push(self, chunk, tok=None):
+        if tok is not None and tok != self.current:
+            return
         self.data(chunk)
 
 

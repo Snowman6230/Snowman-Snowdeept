@@ -1,4 +1,4 @@
-# SNOWMAN Base v1.0
+# SNOWMAN Base (versjon 1.2 – mappa v1.0)
 
 RTK-base, NTRIP-caster og anleggsserver for SNOWMAN snødjupne. Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata).
 
@@ -15,7 +15,10 @@ reserve: TH / CPOS ─────────────relé─────�
 |---|---|
 | **NTRIP-caster** (port 2101) | NTRIP 1 og 2, same protokoll som TH og CPOS. Testa mot NTRIP-klienten i SNOWMAN snødjupne. |
 | **Kjelder** | Mottakar på USB/seriell, mottakar på nettet (TCP), eining som sender inn (TCP-tenar eller NTRIP-opplasting frå t.d. ein Raspberry Pi ved antenna), relé frå annan caster, avspeling (test). |
-| **Reserve** | Kjeldene står i prioritert rekkjefølgje. Stoppar eigen base, går Base over til reserven (t.d. TH eller CPOS) og tilbake når eigen base er oppe att. |
+| **Reserve** | Kjeldene står i prioritert rekkjefølgje. Stoppar eigen base, går Base over til reserven (t.d. TH eller CPOS) med éin gong, og tilbake når eigen base har sendt stabilt i 60 s (ingen byte fram og tilbake). |
+| **Innlogging** | Brukarnamn og passord – ingen nøklar. Rolla **ntrip** for maskinene (korreksjonar og API), **kontor** for administrator. |
+| **Tilgang** | Fana «Tilgang» viser kva maskinene skal skrive i SNOWMAN, offentleg IP og CGNAT-sjekk, og held eit fast namn (dynamisk DNS) oppdatert. |
+| **Vern** | Sperre i 10 min etter 10 feil passord frå same IP-adresse, grense for samtidige tilkoplingar, roterande hendingslogg. |
 | **Tillegg** | Utvalde meldingar (standard: satellittbaner 1019/1020/1042/1045/1046) frå ei anna kjelde blir lagde inn i straumen. RTK-motoren i SNOWMAN treng baner. |
 | **Basekontroll** | Posisjonen basen sender (1005/1006) blir samanlikna med innmålt koordinat. Avvik over 5 cm gir åtvaring. |
 | **Rådatalogg** | Alt mottakaren sender, éi fil per time (grunnlag for PPP-innmåling av basen og feilsøking). Blir sletta etter 30 dagar. |
@@ -36,13 +39,25 @@ Krev Python 3.10 eller nyare. `pyserial` trengst berre for mottakar på USB.
 git clone https://github.com/Snowman6230/Snowman-Snowdeept.git
 cd Snowman-Snowdeept/base/v1.0
 bash installasjon/installer-linux.sh          # systemteneste + kommandoen «snowman-base»
-snowman-base mountpoint ny FJELL --seriell /dev/ttyACM0 --reserve gpsbase.dyndns.org:2101/TH
-sudo systemctl restart snowman-base
 ```
+
+Opne deretter `http://<ip-til-pi>:8780/kontor/` frå ein PC på same nett og lag administrator.
 
 ### Windows
 
-Last ned [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip), pakk ut (t.d. til `C:\SNOWMAN-Base`), opne `v1.0` og dobbeltklikk `START-SNOWMAN-BASE.bat`. (Frå heile repoet: `base\v1.0`.) Første gong blir Python-pakkane installerte. Legg deretter inn mountpoint på kontorsida (sjå «Mountpoint: legg inn manuelt på kontorsida»), eller med kommando: `START-SNOWMAN-BASE.bat mountpoint ny FJELL --seriell COM5`.
+1. Last ned [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip)
+   og pakk ut til ei mappe **utanfor OneDrive**, t.d. `C:\SNOWMAN-Base`.
+2. **Fast drift (tilrådd):** dobbeltklikk `v1.0\INSTALLER-WINDOWS.bat` og godta spørsmålet om administratorløyve.
+   Installasjonen
+   - lagar Python-miljøet,
+   - lagar oppgåva «SNOWMAN Base», som startar Base ved kvar oppstart av Windows (også utan innlogging, og etter
+     straumbrot og Windows Update),
+   - opnar brannmuren for port 2101 (og 8780 berre frå privat nett),
+   - slår av dvale når PC-en står i straumen, og USB-straumsparing (mottakaren blir ikkje kopla frå).
+   Logg: `v1.0\data\teneste.log`. Fjerne igjen: `INSTALLER-WINDOWS.bat fjern`.
+3. **Prøve i eit vindauge:** dobbeltklikk `START-SNOWMAN-BASE.bat`. Ikkje bruk begge samstundes – då seier den andre
+   at porten er i bruk.
+4. Opne `http://localhost:8780/kontor/` og lag administrator (brukarnamn og passord).
 
 ### NAS (Synology, QNAP) eller server med Docker
 
@@ -53,23 +68,42 @@ cd Snowman-Snowdeept/base/v1.0/installasjon
 docker compose up -d --build
 ```
 
-### Første oppstart
+### Første oppstart: administrator og brukarar
 
-Base lagar ein NTRIP-brukar, ein **anleggsnøkkel** (maskinene) og ein **kontornøkkel** (kontorsida), og skriv dei éin gong til `data/NOKLAR.txt`. Ta vare på dei og slett fila. Nøklane blir berre lagra som hash.
+Innlogging er **brukarnamn og passord**. Det finst ingen nøklar å ta vare på.
+
+1. Opne kontorsida (`http://localhost:8780/kontor/`). Første gong ber ho deg lage ein **administrator** (rolla
+   kontor). Det går berre frå det lokale nettet. Lag gjerne samstundes brukaren maskinene skal bruke (rolla ntrip).
+2. Fana **Brukarar**: lag, endre og slett brukarar, og byt passord. Kvar maskin kan ha sin eigen brukar, eller alle
+   kan bruke same. Nytt passord gjeld med éin gong.
+
+| Rolle | Kven | Brukt til |
+|---|---|---|
+| `ntrip` | Tråkkemaskinene | Brukarnamn og passord i SNOWMAN snødjupne under NTRIP. Same innlogging gjeld for deling og anleggspakke (API). |
+| `kontor` | Administrator | Kontorsida. |
+
+**Gløymt passord** – på maskina Base køyrer på (fungerer også medan Base køyrer):
+
+| Windows | Linux / Pi |
+|---|---|
+| `START-SNOWMAN-BASE.bat brukar passord NAMN` | `snowman-base brukar passord NAMN` |
 
 | Kommando | Kva |
 |---|---|
-| `snowman-base brukar legg-til PB1` | Eigen NTRIP-brukar per maskin (passordet blir vist) |
-| `snowman-base brukar liste` / `fjern PB1` | |
-| `snowman-base nokkel kontor` | Ny kontornøkkel (den gamle sluttar å virke) |
-| `snowman-base mountpoint ny NAMN …` | `--seriell PORT [--baud]`, `--tcp-tenar PORT`, `--opplasting`, `--rele caster:port/MP`, `--reserve caster:port/MP`, `--brukar`, `--passord` |
-| `snowman-base oppdater` | Hent siste versjon |
+| `brukar legg-til NAMN [--rolle ntrip\|kontor\|begge] [--mountpoints FJELL]` | Ny brukar (spør etter passord) |
+| `brukar passord NAMN` | Nytt passord |
+| `brukar liste` / `brukar fjern NAMN` | |
+| `mountpoint ny NAMN …` | `--seriell PORT [--baud]`, `--tcp-tenar PORT`, `--opplasting`, `--rele caster:port/MP`, `--reserve caster:port/MP`, `--brukar`, `--passord` |
+| `oppdater` / `versjon` | Hent siste versjon / vis versjon |
+
+Kommandoane gjeld med éin gong også når Base køyrer (Base les innstillingane på nytt innan to sekund). Frå versjon 1.2
+blir dei gamle nøklane (`NOKLAR.txt`) ikkje brukte. NTRIP-brukarar frå før held fram som før.
 
 ### Mountpoint: legg inn manuelt på kontorsida
 
 Det enklaste er å setje opp mountpointa på kontorsida, utan kommandoar:
 
-1. Opne **http://localhost:8780/kontor/** og logg inn med kontornøkkelen.
+1. Opne **http://localhost:8780/kontor/** og logg inn med brukarnamn og passord (administrator).
 2. Fana **Mountpoints** › **+ Nytt mountpoint**. Skriv **Namn** (det maskinene skriv i «Mountpoint», t.d. `FJELL`).
 3. Legg til kjelder i prioritert rekkjefølgje (øvst = første val, resten er reserve):
    - **Relé frå annan caster (NTRIP):** caster, port, brukarnamn, passord og mountpoint – same verdiar som du har
@@ -82,7 +116,8 @@ Det enklaste er å setje opp mountpointa på kontorsida, utan kommandoar:
    til, koplar seg til på nytt av seg sjølv.
 
 Passord blir aldri viste på kontorsida. Når du endrar eit mountpoint, står passordet att om du lèt feltet vere tomt.
-| `snowman-base versjon` | |
+«Tilbake til første kjelde» (standard 60 s): kor lenge eigen base må ha sendt utan opphald før Base byter tilbake frå
+reserven. Hindrar at maskinene får byte av base fram og tilbake når eigen base er ustabil.
 
 ## SNOWMAN Base på NAS
 
@@ -122,7 +157,7 @@ Har NAS-en mottakaren på USB likevel (QNAP, eller Synology der eininga finst so
    (eller legg heile repoet der, så `base/v1.0` ligg der). Bruk den mappa i stiane under.
 3. **Container Manager** › **Prosjekt** › **Opprett**: namn `snowman-base`, sti `/volume1/docker/snowman-base/v1.0/installasjon`,
    kjelde «Bruk eksisterande docker-compose.yml». Byggjer og startar.
-4. Opne `http://NAS-ADRESSE:8780/`. Innloggingane står i `base/v1.0/data/NOKLAR.txt`.
+4. Opne `http://NAS-ADRESSE:8780/kontor/` og lag administrator (brukarnamn og passord).
 5. Kommandoar (mountpoint, brukarar, nøklar): Container Manager › Container › `snowman-base` › **Terminal** ›
    `python /app/snowman_base.py mountpoint ny FJELL --opplasting`, og start containeren på nytt.
 
@@ -152,11 +187,29 @@ internettleverandøren; har sambandet ikkje det, er Tailscale løysinga.
 - Oppdatering: kontorsida › System › **Oppdater**. Containeren startar på nytt av seg sjølv (kode 3, `restart: unless-stopped`).
 - Ny Python-versjon i containeren (sjeldan): Container Manager › Prosjekt › `snowman-base` › **Bygg** på nytt.
 
-## I SNOWMAN snødjupne (maskina)
+## I SNOWMAN snødjupne (maskina) – som mot Norman sin base
 
-NTRIP-innstillingane: caster = adressa til Base (t.d. `192.168.1.20`, eller Tailscale-namnet), port **2101**, mountpoint = namnet du valde (t.d. `FJELL`), brukar og passord frå `NOKLAR.txt`. «HENT MOUNTPOINTS» viser lista frå Base.
+Same felt som mot `gpsbase.dyndns.org:2101/TH`:
 
-Maskinene må nå Base. På anlegget: same nett. Over mobilnettet: opne port 2101 i ruteren (berre 2101, ikkje 8780), eller bruk **Tailscale** (gratis for små oppsett, ingen opne portar).
+| Felt i SNOWMAN | Ute i bakken (mobilnett) | På anlegget (same nett) |
+|---|---|---|
+| Caster | det faste namnet (dynamisk DNS), t.d. `fjellsatra.duckdns.org` | IP-adressa til Base, t.d. `192.168.1.20` |
+| Port | 2101 | 2101 |
+| Mountpoint | namnet i Base, t.d. `FJELL` («HENT MOUNTPOINTS» viser lista) | same |
+| Brukarnamn / passord | ein brukar med rolla ntrip | same |
+
+Fana **Tilgang** på kontorsida viser desse verdiane for ditt anlegg.
+
+**Slik blir Base nådd utanfrå (fiber med offentleg IP – som Norman):**
+1. Fast lokal IP-adresse til maskina med Base (reservasjon i ruteren).
+2. Port-vidaresending i ruteren: **TCP 2101** → maskina med Base. **Aldri 8780.**
+3. Fast namn: ei gratis DDNS-teneste (t.d. DuckDNS). Lim inn oppdaterings-adressa i **Tilgang › Dynamisk DNS**, så
+   held Base namnet oppdatert og viser om det peikar rett. Har ruteren innebygd DDNS, kan den brukast i staden.
+4. Test: SNOWMAN-PC-en på mobilnett (deling frå telefonen, Wi-Fi av på telefonen) → «HENT MOUNTPOINTS».
+
+Er den offentlege adressa delt (CGNAT – vanleg på mobilt breiband), fungerer ikkje port-vidaresending. Då: **Tailscale**
+på maskina med Base og på kvar maskin-PC, eller send straumen vidare til ein caster på internett med RTKLIB:
+`str2str -in ntrip://BRUKAR:PASSORD@localhost:2101/FJELL -out ntrips://:PASSORD2@rtk2go.com:2101/FJELLSATRA`.
 
 ## Basemottakaren
 
@@ -170,9 +223,13 @@ Base sender vidare det mottakaren sender, uendra. Mottakaren må stå i **basemo
 | 1019, 1020, 1042, 1046 (om mottakaren kan) | Satellittbaner til RTK-motoren i SNOWMAN. ZED-F9P kan ikkje sende baner som RTCM – då bør du leggje til eit tillegg med baner, eller slå på `baner.hent`. |
 
 - **u-blox ZED-F9P:** u-center › CFG-TMODE3 = Fixed (ECEF eller LLH frå innmålinga), og RTCM-meldingane over ut på USB.
+  Gi basen ein **eigen stasjons-ID** (ikkje 0, og ikkje same som reserven) – Base åtvarar om to kjelder har same ID.
+  Lagre konfigurasjonen i mottakaren: Base sender aldri noko til mottakaren.
 - **Unicore UM980/UM981:** baseposisjon med fast koordinat, og RTCM-meldingane over (sjå handboka til mottakaren for kommandoane). UM980 kan også sende baner.
 
-Legg inn den innmålte posisjonen (ARP, EUREF89, ellipsoidisk høgd) i `data/base.json` under mountpointet:
+Legg inn den innmålte posisjonen (ARP, EUREF89, ellipsoidisk høgd) på kontorsida › Mountpoints › Endre › «Innmålt
+basepunkt» (eller i `data/base.json` under mountpointet). Er TH reserve, bør basepunktet vere målt inn mot TH (t.d. med
+R12i), så snødjupna ikkje hoppar når Base byter:
 
 ```json
 "innmalt": {"lat": 62.380200, "lon": 6.781100, "h": 702.35}
@@ -233,6 +290,10 @@ cd base/v1.0 && python -m unittest discover -s test -v
 ## Tryggleik og drift
 
 - Opne berre port **2101** mot internett, aldri 8780 (statusside og kontor). Bruk Tailscale eller VPN for kontoret utanfrå.
-- `web.status_open: false` krev kontornøkkel også for statussida.
+- Bruk sterke passord (minst 8 teikn). Etter 10 feil passord frå same IP-adresse blir adressa sperra i 10 minutt
+  (`vern` i `data/base.json`). Maks 20 samtidige tilkoplingar per adresse og 200 i alt.
+- NTRIP sender brukarnamn og passord ukryptert (som alle NTRIP 1/2-castarar, også TH og CPOS). Bruk difor ein eigen
+  NTRIP-brukar for maskinene, ikkje same passord som administratoren.
+- `web.status_open: false` krev innlogging også for statussida.
 - Ta kopi av `data/` (innstillingar, anleggspakkar, delte målingar). Rådataloggen kan utelatast.
-- Hendingane står òg i `data/hendingar.log`.
+- Hendingane står òg i `data/hendingar.log` (blir rotert til `hendingar.log.1` ved 5 MB).

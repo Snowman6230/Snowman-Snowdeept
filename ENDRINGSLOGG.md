@@ -9,6 +9,39 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-10-31
 
+### SNOWMAN Base v1.2.0 – brukarnamn og passord, rettingar frå analysen, tilgang som Norman sin base
+- **Avgjerd (eigaren):** ingen nøklar – berre brukarnamn og passord («nøklar er lett å miste»). Anlegget har fiber, så
+  maskinene skal nå Base som Norman sin base: fast namn (dynamisk DNS) og port 2101.
+- **Innlogging (nytt):**
+  - Brukarar med rolla **ntrip** (maskinene: NTRIP og API med same brukarnamn og passord, Basic) og **kontor**
+    (administrator: kontorsida med økt som gjeld 12 t etter siste bruk).
+  - Første administrator blir laga på kontorsida (berre frå det lokale nettet) eller med `brukar legg-til NAMN --rolle kontor`.
+  - Fana «Brukarar»: lag, endre, nytt passord, slett (ikkje siste administrator). Nytt passord loggar ut gamle økter.
+  - Gløymt passord: `brukar passord NAMN` på maskina Base køyrer på. Kommandoen `nokkel` og `NOKLAR.txt` er fjerna;
+    gamle nøklar i `base.json` blir ignorerte. NTRIP-brukarar frå før held fram (rolla ntrip).
+  - API v1 er uendra bortsett frå innlogginga (ingen maskiner brukar API-et enno; SNOWMAN v1.8 brukar NTRIP-brukaren).
+- **Retta (frå analysen 2026-10-31):**
+  - H1: kommandoar (`brukar`, `mountpoint ny`) medan Base køyrer gjeld innan 2 s, og blir ikkje overskrivne når
+    kontorsida lagrar (innstillingane blir lesne på nytt før kvar endring).
+  - H2: ventetid før byte tilbake til kjelde med høgare prioritet (`tilbake_etter_s`, standard 60 s, på kontorsida).
+  - H3: statussida krasjar ikkje når berre eit tillegg sender.
+  - M1: tcp-tenar – ny tilkopling tek over, og ei stille tilkopling blir lukka etter 60 s.
+  - M2: alle byte av kjelde blir logga og talde.
+  - M3: éin Base per port (Windows: SO_EXCLUSIVEADDRUSE; tydeleg feilmelding om porten er i bruk).
+  - M4: sperre i 10 min etter 10 feil passord frå same IP (NTRIP, opplasting og kontor), maks 20 tilkoplingar per IP
+    og 200 i alt, `hendingar.log` blir rotert ved 5 MB.
+  - M5: .bat-filene er bygde slik at oppdateringa kan byte dei ut medan Base køyrer.
+  - M6: `INSTALLER-WINDOWS.bat`: oppgåve ved oppstart av Windows (`TENESTE-SNOWMAN-BASE.bat`, startar på nytt ved
+    feil), brannmur (2101, og 8780 berre privat), ingen dvale i straumen, USB-straumsparing av. Ikkje testa på Windows.
+  - L1: sending til maskinene har eigen frist (30 s), lesing av GGA brukar select. L2: kopi av mountpoint-lista der ho
+    blir gått gjennom. L3: rydding av rådataloggen med lås. L4: ny opplasting tek over utan å blande data. L7: AI-samandraget
+    fjernar også brukarnamn.
+  - Åtvaring (forbetringsforslag) når to kjelder har same stasjons-ID.
+- **Tilgang (nytt):** fana «Tilgang» viser lokale og offentleg IP, CGNAT-sjekk, kva som skal stå i SNOWMAN ute og på
+  anlegget, og dynamisk DNS: Base kallar oppdaterings-adressa (t.d. DuckDNS) kvart 10. min og sjekkar at namnet peikar rett.
+- **Testa:** 48 testar (18 nye), mellom anna innlogging og roller, første administrator, kommandoar medan Base køyrer,
+  ingen blafring, tcp-tenar og opplasting som tek over, sperre og to Base på same port. Kontorsida klikka gjennom i nettlesar.
+
 ### Analyse av SNOWMAN Base v1.1.1 (berre dokumentasjon)
 - **Bakgrunn:** eigaren bad om ein grundig analyse: programmeringsfeil, mottak frå GPS-antenna, og korleis SNOWMAN
   snødjupne kan nå Base slik som Norman sin base.

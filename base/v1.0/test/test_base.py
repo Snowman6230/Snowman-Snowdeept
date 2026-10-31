@@ -5,6 +5,7 @@
 når casteren eller API-et blir endra (sjå konfig.py, SNOWMAN_MIN).
 """
 import base64
+import os
 import http.server
 import importlib.util
 import json
@@ -73,10 +74,12 @@ class BaseCase(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
         cfg = konfig.Config(self.dir / "data")
-        lines = cfg.first_setup()
-        self.pw = next(l for l in lines if "NTRIP" in l).split("/ ")[1].strip()
-        self.akey = next(l for l in lines if "Anleggsnøkkel" in l).split(": ")[-1].strip()
-        self.kkey = next(l for l in lines if "Kontornøkkel" in l).split(": ")[-1].strip()
+        cfg.first_setup()
+        self.pw = "maskin-passord-1"
+        cfg.set_user("snowman", self.pw, roles=["ntrip"])
+        cfg.set_user("admin", "kontor-passord-1", roles=["kontor"])
+        self.akey = ("snowman", self.pw)                 # maskin: Basic med NTRIP-brukaren
+        self.kkey = ("admin", "kontor-passord-1")        # kontor: Basic med kontor-brukaren (eller økt)
         cfg.data["mountpoints"] = json.loads(json.dumps(self.make_mounts()))
         cfg.data["oppdatering"]["sjekk"] = False
         cfg.save()
@@ -99,7 +102,9 @@ class BaseCase(unittest.TestCase):
 
     def call(self, path, body=None, key=None, method=None, raw=None, headers=None):
         h = dict(headers or {})
-        if key:
+        if isinstance(key, tuple):
+            h["Authorization"] = "Basic " + base64.b64encode(f"{key[0]}:{key[1]}".encode()).decode()
+        elif key:
             h["Authorization"] = "Bearer " + key
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
         if body is not None:
@@ -196,7 +201,7 @@ class TestOpplastingOgReserve(BaseCase):
         reserve = self.write("reserve.rtcm3", epoch(station=99) * 40)
         upw = "opp123"
         self.upw = upw
-        return [{"namn": "EIGEN", "byte_etter_s": 1.5,
+        return [{"namn": "EIGEN", "byte_etter_s": 1.5, "tilbake_etter_s": 0.5,
                  "kjelder": [{"type": "opplasting", "namn": "pi", "hash": konfig.hash_pw(upw)},
                              {"type": "fil", "namn": "reserve", "sti": reserve, "byte_per_s": 20000}],
                  "tillegg": [{"type": "fil", "namn": "baner", "sti": self.write("eph.rtcm3",
@@ -362,6 +367,292 @@ class TestMountpointFraKontor(BaseCase):
         self.assertNotIn("FJELL", self.base.mounts)
         with self.assertRaises(PCN.NtripError):
             PCN.open_stream("127.0.0.1", self.port, "FJELL", "snowman", self.pw, "auto", "t")
+
+
+class Ev:
+    def __init__(self):
+        self.items = []
+
+    def add(self, text, level="info"):
+        self.items.append((level, text))
+
+
+class TestByteAvKjelde(unittest.TestCase):
+    """v1.2: ventetid før byte tilbake (H2), alle byte logga (M2), status utan aktiv kjelde (H3), stasjons-ID."""
+
+    def mk(self, extras=False, back=60):
+        import straum
+        cfg = {"namn": "FJELL", "byte_etter_s": 3, "tilbake_etter_s": back,
+               "kjelder": [{"type": "opplasting", "namn": "eigen"}, {"type": "opplasting", "namn": "reserve"}],
+               "tillegg": [{"type": "opplasting", "namn": "baner"}] if extras else []}
+        ev = Ev()
+        return straum.Mountpoint(cfg, ev, None), ev
+
+    def test_ingen_blafring_med_ustabil_eigen_base(self):
+        m, ev = self.mk()
+        own, res = m.sources
+        res.data(epoch(99))
+        switches, last = 0, m.active
+        for _ in range(10):                          # eigen base sender kvart 4. s – lenger enn byte_etter_s (3 s)
+            own.data(epoch(7))
+            switches += m.active is not last
+            last = m.active
+            own.stats.last -= 4
+            own.last_frame -= 4
+            m.tick()
+            res.data(epoch(99))
+            switches += m.active is not last
+            last = m.active
+        self.assertEqual(switches, 0)
+        self.assertEqual(m.active.name, "reserve")
+
+    def test_tilbake_når_stabil(self):
+        m, ev = self.mk(back=2)
+        own, res = m.sources
+        res.data(epoch(99))
+        own.data(epoch(7))
+        self.assertEqual(m.active.name, "reserve")    # ikkje stabil enno
+        t0 = time.time()
+        while time.time() - t0 < 2.5:
+            own.data(epoch(7))
+            res.data(epoch(99))
+            time.sleep(0.2)
+        self.assertEqual(m.active.name, "eigen")
+        self.assertTrue(any("stabil" in t for _, t in ev.items), ev.items)
+
+    def test_byte_i_tick_blir_logga_og_talt(self):
+        m, ev = self.mk()
+        own, res = m.sources
+        own.data(epoch(7))
+        res.data(epoch(99))
+        self.assertEqual(m.active.name, "eigen")
+        own.stats.last -= 10
+        m.tick()
+        self.assertEqual(m.active.name, "reserve")
+        self.assertEqual(m.day["bytte"], 1)
+        self.assertTrue(any("bytte frå eigen til reserve" in t for _, t in ev.items), ev.items)
+
+    def test_status_når_berre_tillegg_sender(self):
+        m, ev = self.mk(extras=True)
+        own, _ = m.sources
+        own.data(epoch(7))
+        own.stats.last -= 10
+        m.tick()
+        m.extras[0].data(rtcm.frame(eph(1019)))
+        self.assertIsNone(m.active)
+        self.assertTrue(m.verdict().startswith("FEIL: ingen kjelde"), m.verdict())
+        m.status()                                   # skal ikkje krasje
+
+    def test_same_stasjons_id(self):
+        m, _ = self.mk()
+        own, res = m.sources
+        own.data(epoch(7))
+        res.data(epoch(7))
+        self.assertEqual(m.station_conflict(), {7: ["eigen", "reserve"]})
+
+
+class TestKjelderTekOver(unittest.TestCase):
+    def test_tcp_tenar_ny_tilkopling_tek_over(self):
+        import straum
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        m = straum.Mountpoint({"namn": "FJELL", "kjelder": [{"type": "tcp-tenar", "port": port}]}, Ev(), None)
+        m.start()
+        try:
+            time.sleep(0.5)
+            gamal = socket.create_connection(("127.0.0.1", port))     # hengande tilkopling som aldri sender
+            time.sleep(0.3)
+            ny = socket.create_connection(("127.0.0.1", port))
+            for _ in range(6):
+                ny.sendall(epoch(7))
+                time.sleep(0.2)
+            self.assertGreater(m.sources[0].bytes_in, 0)
+            self.assertEqual(m.active.name, m.sources[0].name)
+            gamal.close()
+            ny.close()
+        finally:
+            m.stop()
+
+    def test_ny_opplasting_tek_over_utan_blanding(self):
+        import kjelder
+        import straum
+        m = straum.Mountpoint({"namn": "X", "kjelder": [{"type": "opplasting", "namn": "pi"}]}, Ev(), None)
+        src = m.sources[0]
+        t1 = src.attach("10.0.0.1")
+        t2 = src.attach("10.0.0.2")
+        src.push(epoch(1), t1)                        # gammal opplasting blir ignorert
+        self.assertEqual(src.bytes_in, 0)
+        src.push(epoch(2), t2)
+        self.assertGreater(src.bytes_in, 0)
+        src.detach(t1)                                # den gamle sin detach endrar ikkje noko
+        self.assertEqual(src.current, t2)
+
+
+class TestVern(unittest.TestCase):
+    def test_sperre_etter_mange_feil(self):
+        import vern
+        cfg = {"vern": {"maks_feil": 3, "minutt": 10, "maks_tilkoplingar": 4, "maks_per_ip": 2}}
+        v = vern.Vern(cfg, Ev())
+        ip = "203.0.113.5"
+        self.assertFalse(v.failed(ip, "t"))
+        self.assertFalse(v.failed(ip, "t"))
+        self.assertTrue(v.failed(ip, "t"))
+        self.assertTrue(v.is_blocked(ip))
+        for _ in range(20):
+            self.assertFalse(v.failed("127.0.0.1", "t"))
+        self.assertFalse(v.is_blocked("127.0.0.1"))
+        self.assertTrue(v.open_conn(ip) and v.open_conn(ip))
+        self.assertFalse(v.open_conn(ip))            # maks 2 per IP
+        v.close_conn(ip)
+        self.assertTrue(v.open_conn(ip))
+
+    def test_lokalt_nett(self):
+        import vern
+        for ip in ("127.0.0.1", "192.168.1.20", "10.1.2.3", "::ffff:192.168.0.5", "fe80::1"):
+            self.assertTrue(vern.is_local(ip), ip)
+        for ip in ("8.8.8.8", "1.1.1.1", "100.100.1.1"):
+            self.assertFalse(vern.is_local(ip), ip)
+
+    def test_hendingslogg_blir_rotert(self):
+        import straum
+        with tempfile.TemporaryDirectory() as d:
+            ev = straum.Events(d)
+            ev.MAKS_BYTE = 2000
+            for i in range(800):
+                ev.add("x" * 50)
+            self.assertTrue((Path(d) / "hendingar.log.1").exists())
+            self.assertLess((Path(d) / "hendingar.log").stat().st_size, 2000 + 200 * 80)
+
+
+class TestInnlogging(BaseCase):
+    """v1.2: brukarnamn og passord i staden for nøklar."""
+
+    def make_mounts(self):
+        return [{"namn": "FJELL", "kjelder": [{"type": "fil", "sti": self.write("a.rtcm3", epoch() * 400),
+                                                "byte_per_s": 20000}]}]
+
+    def test_innlogging_økt_og_utlogging(self):
+        c, d = self.call("/api/v1/logg-inn", {"brukar": "admin", "passord": "feil-passord"})
+        self.assertEqual(c, 401)
+        c, d = self.call("/api/v1/logg-inn", {"brukar": "snowman", "passord": self.pw})
+        self.assertEqual(c, 401)                     # maskinbrukaren har ikkje kontor-rolla
+        c, d = self.call("/api/v1/logg-inn", {"brukar": "ADMIN", "passord": "kontor-passord-1"})
+        self.assertEqual(c, 200, d)
+        tok = d["okt"]
+        self.assertEqual(self.call("/api/v1/brukarar", key=tok)[0], 200)
+        self.call("/api/v1/logg-ut", {}, tok)
+        self.assertEqual(self.call("/api/v1/brukarar", key=tok)[0], 401)
+
+    def test_roller(self):
+        self.assertEqual(self.call("/api/v1/maskiner", key=self.akey)[0], 200)        # ntrip → maskin-API
+        self.assertEqual(self.call("/api/v1/brukarar", key=self.akey)[0], 401)        # ntrip → ikkje kontor
+        self.assertEqual(self.call("/api/v1/maskiner", key=self.kkey)[0], 200)        # kontor → alt
+        self.assertEqual(self.call("/api/v1/maskiner", key=("snowman", "feil"))[0], 401)
+        with self.assertRaises(PCN.NtripError):                                          # kontor-brukar ≠ NTRIP
+            PCN.open_stream("127.0.0.1", self.port, "FJELL", "admin", "kontor-passord-1", "1", "t")
+
+    def test_brukarar_på_kontorsida(self):
+        c, d = self.call("/api/v1/brukar", {"namn": "pb2", "passord": "kort"}, self.kkey)
+        self.assertEqual(c, 400)
+        c, d = self.call("/api/v1/brukar", {"namn": "pb2", "passord": "pb2-passord", "roller": ["ntrip"]}, self.kkey)
+        self.assertEqual(c, 200, d)
+        st = PCN.open_stream("127.0.0.1", self.port, "FJELL", "pb2", "pb2-passord", "1", "t")
+        st.close()
+        self.call("/api/v1/brukar", {"namn": "pb2", "passord": "nytt-passord-2"}, self.kkey)
+        with self.assertRaises(PCN.NtripError):
+            PCN.open_stream("127.0.0.1", self.port, "FJELL", "pb2", "pb2-passord", "1", "t")
+        c, d = self.call("/api/v1/brukarar", key=self.kkey)
+        self.assertNotIn("hash", json.dumps(d))
+        self.assertEqual(self.call("/api/v1/brukar/fjern", {"namn": "admin"}, self.kkey)[0], 400)   # siste admin
+        self.assertTrue(self.call("/api/v1/brukar/fjern", {"namn": "pb2"}, self.kkey)[1]["ok"])
+
+    def test_kommandoar_medan_base_køyrer(self):
+        """H1: kommandoar gjeld med éin gong og blir ikkje overskrivne når kontorsida lagrar."""
+        d = str(self.dir / "data")
+        SB.main(["--data", d, "brukar", "legg-til", "PB1", "--passord", "pb1-passord"])
+        SB.main(["--data", d, "brukar", "passord", "admin", "--passord", "nytt-kontor-2"])
+        SB.main(["--data", d, "mountpoint", "ny", "CLI", "--rele", f"127.0.0.1:{self.port}/FJELL",
+                 "--brukar", "snowman", "--passord", self.pw])
+        t0 = time.time()
+        while time.time() - t0 < 5 and "CLI" not in self.base.mounts:
+            time.sleep(0.2)
+        self.assertIn("CLI", self.base.mounts)
+        self.assertTrue(self.base.cfg.user_ok("PB1", "pb1-passord", "FJELL"))
+        self.assertEqual(self.call("/api/v1/brukarar", key=self.kkey)[0], 401)              # gammalt passord
+        nk = ("admin", "nytt-kontor-2")
+        self.assertEqual(self.call("/api/v1/ai/innstillingar", {"leverandor": "av"}, nk)[0], 200)   # kontor lagrar
+        lagra = konfig.Config(self.dir / "data")
+        self.assertIsNotNone(lagra.check_user("PB1", "pb1-passord"))
+        self.assertIsNotNone(lagra.check_user("admin", "nytt-kontor-2"))
+        self.assertIn("CLI", [m["namn"] for m in lagra["mountpoints"]])
+        st = PCN.open_stream("127.0.0.1", self.port, "CLI", "PB1", "pb1-passord", "auto", "t")
+        self.assertIn(1005, types_in(read_for(st, 3.0)))
+        st.close()
+
+    def test_berre_éin_base_per_port(self):
+        with self.assertRaises(OSError):
+            SB.SnowmanBase(self.dir / "data2", self.port, 0).start()
+
+
+class TestFørsteAdministrator(BaseCase):
+    def setUp(self):
+        super().setUp()
+        self.base.cfg.update(lambda d: d["brukarar"].clear())
+
+    def test_oppsett_frå_lokalt_nett(self):
+        c, d = self.call("/api/v1/oppsett")
+        self.assertTrue(d["treng_admin"])
+        self.assertTrue(d["lokal"])
+        c, d = self.call("/api/v1/oppsett", {"brukar": "hans", "passord": "hans-passord", "ntrip_brukar": "pb600",
+                                             "ntrip_passord": "pb600-passord"})
+        self.assertEqual(c, 200, d)
+        self.assertEqual(self.call("/api/v1/brukarar", key=d["okt"])[0], 200)
+        c, d = self.call("/api/v1/oppsett", {"brukar": "inntrengar", "passord": "inntrengar-1"})
+        self.assertEqual(c, 409)                     # administrator finst alt
+        self.assertFalse(self.call("/api/v1/oppsett")[1]["treng_admin"])
+        self.assertTrue(self.base.cfg.user_ok("pb600", "pb600-passord", "X"))
+
+    def test_gamle_nøklar_blir_ignorerte(self):
+        p = self.dir / "data" / "base.json"
+        data = json.loads(p.read_text(encoding="utf-8"))
+        data["noklar"] = {"anlegg": konfig.hash_pw("gammal"), "kontor": konfig.hash_pw("gammal")}
+        data["brukarar"] = [{"namn": "snowman", "hash": konfig.hash_pw("gammalt-pw"), "mountpoints": ["*"]}]
+        p.write_text(json.dumps(data), encoding="utf-8")
+        cfg = konfig.Config(self.dir / "data")
+        self.assertNotIn("noklar", cfg.data)
+        self.assertEqual(cfg.find_user("snowman")["roller"], ["ntrip"])          # NTRIP-brukaren held fram
+        self.assertFalse(cfg.has_admin())
+
+
+class TestTilgang(BaseCase):
+    def test_ddns_og_namn(self):
+        import tilgang
+        self.assertEqual(tilgang.host_from_url("https://www.duckdns.org/update?domains=fjellsatra&token=x"),
+                         "fjellsatra.duckdns.org")
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"OK")
+
+            def log_message(self, *a):
+                pass
+        srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            self.base.cfg.update(lambda d: d["ddns"].__setitem__(
+                "url", f"http://127.0.0.1:{srv.server_address[1]}/update?hostname=localhost"))
+            r = self.base.tilgang.ddns_now()["ddns"]
+            self.assertTrue(r["ok"], r)
+            self.assertEqual(r["peikar_til"], "127.0.0.1")
+        finally:
+            srv.shutdown()
+        self.assertEqual(self.call("/api/v1/ddns", {"url": "http://usikker"}, self.kkey)[0], 400)
+        c, d = self.call("/api/v1/tilgang", key=self.kkey)
+        self.assertEqual(c, 200)
+        self.assertEqual(d["caster_port"], self.port)
 
 
 class FakeOllama(http.server.BaseHTTPRequestHandler):

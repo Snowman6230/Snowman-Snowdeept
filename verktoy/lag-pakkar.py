@@ -75,10 +75,11 @@ def lag_base(ut: Path) -> Path:
         z.write(ROT / "LICENSE", f"{namn}/LICENSE")
         z.writestr(f"{namn}/LES-MEG.txt", (
             "SNOWMAN Base – RTK-base, NTRIP-caster og anleggsserver (kontordelen)\n\n"
-            "Windows:  opne mappa v1.0 og dobbeltklikk START-SNOWMAN-BASE.bat\n"
+            "Windows (fast drift):  pakk ut utanfor OneDrive, opne v1.0 og dobbeltklikk INSTALLER-WINDOWS.bat\n"
+            "Windows (prøve):  dobbeltklikk START-SNOWMAN-BASE.bat i v1.0\n"
             "Linux / Raspberry Pi:  bash v1.0/installasjon/installer-linux.sh\n"
             "NAS (Docker):  sjå v1.0/LES-MEG.md, kapitlet «SNOWMAN Base på NAS»\n\n"
-            "Statusside: http://localhost:8780   Kontor: http://localhost:8780/kontor/\n"
+            "Statusside: http://localhost:8780   Kontor: http://localhost:8780/kontor/ (lag administrator første gong)\n"
             "Full rettleiing: v1.0/LES-MEG.md\n\n"
             "Dette er ikkje programmet til tråkkemaskinene. Det heiter SNOWMAN snødjupne og er ei eiga nedlasting.\n"
         ))

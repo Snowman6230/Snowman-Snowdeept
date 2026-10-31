@@ -6,6 +6,8 @@
                                                       → ring med rammer → kvar klient (maskin) les i sitt tempo
 
 Byte av kjelde gir ny baseposisjon (1005/1006) i straumen; RTK-motoren i SNOWMAN startar då på nytt (kort FLOAT).
+Difor byter Base ikkje fram og tilbake: ei kjelde med høgare prioritet blir teken i bruk att først når ho har sendt
+utan opphald i «tilbake_etter_s» sekund (standard 60). Fell aktiv kjelde ut, blir neste teken i bruk med éin gong.
 """
 import collections
 import math
@@ -26,12 +28,17 @@ class Events:
         self.lock = threading.Lock()
         self.file = Path(folder) / "hendingar.log" if folder else None
 
+    MAKS_BYTE = 5_000_000            # hendingar.log blir rotert til hendingar.log.1 ved 5 MB
+
     def add(self, text, level="info"):
         e = {"t": time.time(), "tekst": text, "niva": level}
         with self.lock:
             self.items.append(e)
             if self.file:
                 try:
+                    self._n = getattr(self, "_n", 0) + 1
+                    if self._n % 200 == 1 and self.file.exists() and self.file.stat().st_size > self.MAKS_BYTE:
+                        os.replace(self.file, self.file.with_suffix(".log.1"))
                     with open(self.file, "a", encoding="utf-8") as f:
                         f.write(time.strftime("%Y-%m-%d %H:%M:%S ", time.localtime(e["t"])) + f"[{level}] {text}\n")
                 except OSError:
@@ -83,22 +90,33 @@ class RawLog:
 
     def clean(self):
         """Slett filer eldre enn grensa, og dei eldste når samla storleik er over grensa."""
-        files = sorted((p for p in self.folder.rglob("*.raw")), key=lambda p: p.stat().st_mtime)
+        with self.lock:
+            open_hours = {h for h, _ in self.files.values()}
+        files = []
+        for p in self.folder.rglob("*.raw"):
+            try:
+                files.append((p.stat().st_mtime, p.stat().st_size, p))
+            except OSError:
+                pass
+        files.sort()
         cut = time.time() - self.days * 86400
-        total = sum(p.stat().st_size for p in files)
-        for p in files:
-            open_now = any(p.name.endswith(h + ".raw") for h, _ in self.files.values())
+        total = sum(x[1] for x in files)
+        for mtime, size, p in files:
+            open_now = any(p.name.endswith(h + ".raw") for h in open_hours)
             if open_now:
                 continue
-            if p.stat().st_mtime < cut or total > self.max_mb * 1e6:
-                total -= p.stat().st_size
+            if mtime < cut or total > self.max_mb * 1e6:
+                total -= size
                 try:
                     p.unlink()
                 except OSError:
                     pass
         for d in sorted(self.folder.rglob("*"), reverse=True):
-            if d.is_dir() and not any(d.iterdir()):
-                d.rmdir()
+            try:
+                if d.is_dir() and not any(d.iterdir()):
+                    d.rmdir()
+            except OSError:
+                pass
 
     def usage(self):
         files = list(self.folder.rglob("*.raw"))
@@ -128,6 +146,7 @@ class Mountpoint:
         self.seq = 0
         self.out = Stats()            # det som faktisk går ut til maskinene
         self.switch_after = float(cfg.get("byte_etter_s", 10))
+        self.back_after = float(cfg.get("tilbake_etter_s", 60))
         self.clients = {}             # id → Client (sett av casteren)
         self.lock = threading.Lock()
         self.day = {"dato": time.strftime("%Y-%m-%d"), "ok": 0, "tot": 0, "bytte": 0}   # oppetid og byte i dag
@@ -148,13 +167,44 @@ class Mountpoint:
         return next((s for s in self.sources if s.kind == "opplasting"), None)
 
     # ---------- inn ----------
+    def _fresh(self, now):
+        return [s for s in self.sources if s.age(now) is not None and s.age(now) < self.switch_after]
+
     def _choose(self, now):
-        """Første kjelde (i prioritert rekkjefølgje) som har sendt rammer innanfor grensa."""
-        for s in self.sources:
-            a = s.age(now)
-            if a is not None and a < self.switch_after:
-                return s
-        return None
+        """Kva kjelde som skal sendast ut.
+        - Aktiv kjelde blir verande så lenge ho sender, med mindre ei kjelde med høgare prioritet har sendt utan
+          opphald i minst «tilbake_etter_s» sekund (ventetid – hindrar byte fram og tilbake mellom to basar).
+        - Har aktiv kjelde stoppa, blir den første kjelda (i prioritert rekkjefølgje) som sender, teken i bruk."""
+        fresh = self._fresh(now)
+        if not fresh:
+            return None
+        cur = self.active
+        if cur in fresh:
+            ci = self.sources.index(cur)
+            for s in fresh:
+                if self.sources.index(s) >= ci:
+                    break
+                if now - getattr(s, "stable_since", now) >= self.back_after:
+                    return s
+            return cur
+        return fresh[0]
+
+    def _set_active(self, best):
+        """Byt aktiv kjelde – alltid logga og talt (kallast med self.lock)."""
+        old = self.active
+        if best is old:
+            return
+        self.active = best
+        if best is None:
+            self.events.add(f"{self.name}: ingen kjelde sender korreksjonar", "feil")
+        elif old is None:
+            self.events.add(f"{self.name}: sender frå {best.name}", "ok")
+        else:
+            self.day["bytte"] += 1
+            better = self.sources.index(best) < self.sources.index(old)
+            self.events.add(f"{self.name}: bytte frå {old.name} til {best.name}"
+                            + (f" (stabil i {self.back_after:.0f} s)" if better else " (ingen data frå "
+                               f"{old.name} på {self.switch_after:.0f} s)"), "ok" if better else "feil")
 
     def feed(self, src, frames):
         now = time.time()
@@ -165,23 +215,17 @@ class Mountpoint:
                 self._publish(frames, now)
             return
         with self.lock:
-            best = self._choose(now)
-            if best is not self.active:
-                old = self.active
-                self.active = best
-                if best is not None:
-                    if old is None:
-                        self.events.add(f"{self.name}: sender frå {best.name}", "ok")
-                    else:
-                        lvl = "ok" if self.sources.index(best) < self.sources.index(old) else "feil"
-                        self.day["bytte"] += 1
-                        self.events.add(f"{self.name}: bytte frå {old.name} til {best.name}", lvl)
+            last = getattr(src, "last_frame", None)
+            if last is None or now - last > self.switch_after:
+                src.stable_since = now                # opphald → stabil tid tel frå no
+            src.last_frame = now
+            self._set_active(self._choose(now))
             if src is not self.active:
                 return
         self._publish(frames, now)
 
     def tick(self):
-        """Kallast jamleg: oppdager at aktiv kjelde har stoppa sjølv om ingen andre sender."""
+        """Kallast kvart sekund: oppdagar at aktiv kjelde har stoppa sjølv om ingen andre sender."""
         now = time.time()
         today = time.strftime("%Y-%m-%d")
         if self.day["dato"] != today:
@@ -192,10 +236,16 @@ class Mountpoint:
             self.day["ok"] += 1
         with self.lock:
             if self.active is not None and (self.active.age(now) or 1e9) >= self.switch_after:
-                best = self._choose(now)
-                if best is None:
-                    self.events.add(f"{self.name}: ingen kjelde sender korreksjonar", "feil")
-                self.active = best
+                self._set_active(self._choose(now))
+
+    def station_conflict(self):
+        """Stasjons-ID-ar som fleire kjelder brukar (RTKLIB ser då ikkje at basen er bytt)."""
+        seen = {}
+        for s in self.sources:
+            b = s.stats.base
+            if b:
+                seen.setdefault(b["station"], []).append(s.name)
+        return {st: names for st, names in seen.items() if len(names) > 1}
 
     def _publish(self, frames, now):
         with self.cond:
@@ -249,6 +299,8 @@ class Mountpoint:
             return "Ventar på korreksjonar frå kjeldene."
         if s["age"] > self.switch_after:
             return f"FEIL: ingen korreksjonar på {s['age']:.0f} s."
+        if self.active is None:
+            return "FEIL: ingen kjelde sender korreksjonar (berre tillegg)."
         if not s["systems"]:
             return "FEIL: straumen har ingen observasjonar – RTK er ikkje mogleg."
         if "base" not in s:

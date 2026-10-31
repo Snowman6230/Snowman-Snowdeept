@@ -422,7 +422,8 @@ at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetrin
 - Samspel: `/api/v1/info` med API-versjon og minste SNOWMAN-versjon. Testane køyrer casteren mot NTRIP-klienten i
   `pc/v1.6`. Brot i API-et gir ny API-versjon; v1 blir verande.
 
-**Analyse 2026-10-31 (Base v1.1.1, ingen kode endra) – feil som skal rettast i Base v1.2:**
+**Analyse 2026-10-31 (Base v1.1.1) – feil som skal rettast i Base v1.2:** *(retta i Base v1.2.0, 2026-10-31 – sjå
+ENDRINGSLOGG. Står att frå lista: L5 reserve-relé alltid tilkopla, L6 tillegg på kontorsida)*
 - **H1** Kommandoane `brukar`/`nokkel`/`mountpoint ny` verkar ikkje i Base som køyrer, og blir sletta når kontorsida
   lagrar (stadfesta). Til retta: stopp Base før slike kommandoar.
 - **H2** Ingen ventetid før Base byter tilbake til eigen base → blafring mellom basar (stadfesta: 20 byte på 10 epokar).
@@ -436,6 +437,10 @@ at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetrin
   ekstern caster, åtvaring ved same stasjons-ID på eigen base og reserve.
 - Tilrådd oppsett: Base på Raspberry Pi ved antenna (ZED-F9P på USB). Tilgang som Norman sin base krev offentleg IP,
   DDNS og port 2101; elles Tailscale eller vidaresending til ekstern caster.
+
+**Base v1.2.0 (2026-10-31, eigaren):** innlogging med **brukarnamn og passord, ingen nøklar** («nøklar er lett å
+miste»). Rolla ntrip (maskinene – same innlogging for NTRIP og API) og kontor (administrator). Anlegget har fiber →
+tilgang som Norman sin base (DDNS + port 2101); Base held det faste namnet oppdatert (fana «Tilgang»).
 
 **Står att (neste steg):**
 1. SNOWMAN snødjupne: klient mot API v1 (deling og anleggspakke) – v1.8.

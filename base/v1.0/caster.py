@@ -11,6 +11,8 @@ til nyaste korreksjonar (gamle korreksjonar er verdilause for RTK).
 """
 import base64
 import itertools
+import os
+import select
 import socket
 import socketserver
 import threading
@@ -95,6 +97,18 @@ class Handler(socketserver.BaseRequestHandler):
     def handle(self):
         b = self.base
         peer = self.client_address[0]
+        if b.vern.is_blocked(peer):
+            return                                   # sperra etter mange feil passord – lukk utan svar
+        if not b.vern.open_conn(peer):
+            b.events.add(f"For mange samtidige tilkoplingar – avviste {peer}", "feil")
+            return
+        try:
+            self._handle(peer)
+        finally:
+            b.vern.close_conn(peer)
+
+    def _handle(self, peer):
+        b = self.base
         try:
             req = self._line()
             headers = {}
@@ -132,11 +146,14 @@ class Handler(socketserver.BaseRequestHandler):
             return self.sourcetable(False)          # NTRIP 1: ukjent mountpoint → kjeldetabellen (standard)
         user, pw = self.basic(headers)
         if b.cfg["caster"].get("krev_innlogging", True) and not b.cfg.user_ok(user, pw, mp):
-            b.events.add(f"Avvist innlogging «{user or '–'}» til {mp} frå {peer}", "feil")
+            if user or pw:                           # utan innlogging: berre «manglar», ikkje teljande forsøk
+                b.vern.failed(peer, "NTRIP")
+            b.events.add(f"Avvist innlogging «{(user or '–')[:32]}» til {mp} frå {peer}", "feil")
             time.sleep(1)                            # bremsar gjetting av passord
             return self.send(("HTTP/1.1" if v2 else "HTTP/1.0") +
                              f" 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"/{mp}\"\r\n"
                              + ("Ntrip-Version: Ntrip/2.0\r\n" if v2 else "") + "Connection: close\r\n\r\n")
+        b.vern.ok(peer)
         self.stream(m, user, peer, v2, headers)
 
     @staticmethod
@@ -154,7 +171,7 @@ class Handler(socketserver.BaseRequestHandler):
         b = self.base
         lines = [f"CAS;{b.host_hint()};{b.cfg['caster']['port']};SNOWMAN Base;Alpindata;0;NOR;0.00;0.00;0.0.0.0;0;",
                  "NET;SNOWMAN;Alpindata;B;N;;;;"]
-        lines += [m.str_line() for m in b.mounts.values()]
+        lines += [m.str_line() for m in list(b.mounts.values())]
         body = ("\r\n".join(lines) + "\r\nENDSOURCETABLE\r\n").encode("utf-8")
         if v2:
             head = ("HTTP/1.1 200 OK\r\nNtrip-Version: Ntrip/2.0\r\n"
@@ -178,9 +195,12 @@ class Handler(socketserver.BaseRequestHandler):
         b.on_client(c, True)
         stop = threading.Event()
 
+        # Sending: lang frist (30 s), så eit kort stopp i mobilnettet ikkje kuttar ei ramme. Lesing (GGA): select med
+        # 1 s, så lesetråden ikkje endrar fristen for sendinga på same socket.
+        self.request.settimeout(30)
+
         def reader():                       # GGA og anna frå maskina (NTRIP 1: rett i straumen)
             data = self.buf
-            self.request.settimeout(1)
             while not stop.is_set():
                 while b"\n" in data:
                     i = data.find(b"\n")
@@ -191,10 +211,11 @@ class Handler(socketserver.BaseRequestHandler):
                 if len(data) > 8192:
                     data = b""
                 try:
+                    r, _, _ = select.select([self.request], [], [], 1.0)
+                    if not r:
+                        continue
                     d = self.request.recv(4096)
-                except socket.timeout:
-                    continue
-                except OSError:
+                except (OSError, ValueError):
                     break
                 if not d:
                     break
@@ -227,6 +248,8 @@ class Handler(socketserver.BaseRequestHandler):
         src = m.upload_source() if m else None
         ok = src is not None and check_pw(pw, src.cfg.get("hash", ""))
         if not ok:
+            if pw:
+                b.vern.failed(peer, "opplasting")
             b.events.add(f"Avvist opplasting til {mp} frå {peer}", "feil")
             time.sleep(1)
             if v2:
@@ -236,29 +259,52 @@ class Handler(socketserver.BaseRequestHandler):
             self.send("HTTP/1.1 200 OK\r\nNtrip-Version: Ntrip/2.0\r\nConnection: close\r\n\r\n")
         else:
             self.send("ICY 200 OK\r\n")
-        src.attach(peer)
+        b.vern.ok(peer)
+        tok = src.attach(peer)               # ny opplasting tek over ei gammal (t.d. etter brot i nettet til Pi-en)
         # NTRIP 2-opplasting kan kome «chunked» (t.d. frå str2str) – pakkast ut før rammene blir funne
         dech = Dechunker() if "chunked" in headers.get("transfer-encoding", "").lower() else None
         try:
             if self.buf:
-                src.push(dech.feed(self.buf) if dech else self.buf)
-            self.request.settimeout(60)
-            while not m.closed:
-                d = self.request.recv(8192)
+                src.push(dech.feed(self.buf) if dech else self.buf, tok)
+            self.request.settimeout(2)
+            quiet = time.time()
+            while not m.closed and src.current == tok:
+                try:
+                    d = self.request.recv(8192)
+                except socket.timeout:
+                    if time.time() - quiet > 60:
+                        break                        # ingen data på 60 s
+                    continue
                 if not d:
                     break
-                src.push(dech.feed(d) if dech else d)
+                quiet = time.time()
+                src.push(dech.feed(d) if dech else d, tok)
         except OSError:
             pass
         finally:
-            src.detach()
+            src.detach(tok)
+
+
+class ExclusiveMixin:
+    """Éin Base per port. Linux: SO_REUSEADDR (rask omstart). Windows: SO_REUSEADDR ville late to program binde same
+    port utan feil – der blir SO_EXCLUSIVEADDRUSE brukt i staden, så to Base på same PC gir feilmelding."""
+    allow_reuse_address = os.name != "nt"
+
+    def server_bind(self):
+        if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 class Caster:
-    def __init__(self, cfg, mounts, events):
+    def __init__(self, cfg, mounts, events, vern=None):
         self.cfg = cfg
         self.mounts = mounts
         self.events = events
+        if vern is None:
+            from vern import Vern
+            vern = Vern(cfg, events)
+        self.vern = vern
         self.stats = {"sendt": 0, "tilkoplingar": 0}
         self.history = []            # (tid, brukar, ip, mountpoint, "inn"/"ut")
         self.server = None
@@ -283,9 +329,8 @@ class Caster:
     def start(self, port=None):
         h = type("H", (Handler,), {"base": self})
 
-        class Srv(socketserver.ThreadingTCPServer):
+        class Srv(ExclusiveMixin, socketserver.ThreadingTCPServer):
             daemon_threads = True
-            allow_reuse_address = True
 
         self.server = Srv(("0.0.0.0", int(self.cfg["caster"]["port"] if port is None else port)), h)
         threading.Thread(target=self.server.serve_forever, daemon=True, name="caster").start()

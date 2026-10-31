@@ -4,9 +4,15 @@
 Sider:   /           statussida (straumar, kjelder, maskiner, hendingar)
          /kontor/    kontorsida (maskiner, anleggspakke, forslag, forbetringar, AI, oppdatering)
 
-API v1 (JSON). Innlogging: «Authorization: Bearer <nøkkel>».
+API v1 (JSON). Innlogging med brukarnamn og passord (ingen nøklar):
+  Maskin-API:  «Authorization: Basic» med NTRIP-brukaren (same brukarnamn og passord som SNOWMAN brukar mot casteren)
+  Kontor-API:  økt frå POST /api/v1/logg-inn («Authorization: Bearer <økt>»), eller Basic med ein kontor-brukar
   Ope:        GET  /api/v1/info                     versjon, API-versjon, funksjonar, minste SNOWMAN-versjon
-              GET  /api/status                      status (om web.status_open, elles kontornøkkel)
+              GET  /api/status                      status (om web.status_open, elles kontor)
+              GET  /api/v1/oppsett                  {treng_admin, lokal} – må første administrator lagast?
+              POST /api/v1/oppsett                  {brukar, passord, ntrip_brukar?, ntrip_passord?} – berre når ingen
+                                                    administrator finst, og berre frå det lokale nettet
+              POST /api/v1/logg-inn {brukar, passord} → {okt}   ·   POST /api/v1/logg-ut
   Maskin:     POST /api/v1/maskin                   hjarteslag {id, namn, versjon, pakke, lat, lon, fix, fixdel}
   (anleggs-   POST /api/v1/maalingar                {maskin, punkt: [{t, lat, lon, h, djupne, fix, kalibrert}]}
    nøkkel)    GET  /api/v1/maalingar?etter=&utan=   delte målingar siste 12 t (berre nye sidan «etter»)
@@ -32,8 +38,13 @@ API v1 (JSON). Innlogging: «Authorization: Bearer <nøkkel>».
               POST /api/v1/kjeldetabell             {caster, port, brukar, passord | kjelde_id} – mountpoints
                                                     på ein annan caster (til relé)
               GET  /api/v1/serieportar              COM-portar / USB-einingar på maskina Base køyrer på
+              GET  /api/v1/brukarar  ·  POST /api/v1/brukar {namn, passord?, roller?, mountpoints?}
+              POST /api/v1/brukar/fjern {namn}
+              GET  /api/v1/tilgang                  lokale og offentleg IP, CGNAT-sjekk, DDNS – kva maskinene skal bruke
+              POST /api/v1/ddns {url}               lagre og køyr oppdatering av dynamisk DNS
 Brot i API-et gir ny API-versjon (/api/v2/…); v1 blir verande så lenge maskiner brukar han.
 """
+import base64
 import http.server
 import json
 import mimetypes
@@ -47,7 +58,8 @@ from pathlib import Path
 import forbetring
 import mountoppsett
 import ntripklient
-from konfig import API_VERSION, FUNKSJONAR, SNOWMAN_MIN, VERSION
+import vern as vernmod
+from konfig import API_VERSION, FUNKSJONAR, SNOWMAN_MIN, VERSION, valid_name, valid_pw
 
 HERE = Path(__file__).resolve().parent
 STATIC = {"/": HERE / "web" / "status.html", "/kontor": HERE / "kontor" / "index.html",
@@ -102,20 +114,57 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     # ---------- innlogging ----------
+    def ip(self):
+        return self.client_address[0]
+
     def key(self):
         a = self.headers.get("Authorization", "")
         return a[7:].strip() if a.lower().startswith("bearer ") else ""
 
+    def basic(self):
+        a = self.headers.get("Authorization", "")
+        if a.lower().startswith("basic "):
+            try:
+                u, _, p = base64.b64decode(a[6:].strip()).decode("utf-8", "replace").partition(":")
+                return u, p
+            except Exception:
+                pass
+        return None, None
+
+    def _user(self, role):
+        """Brukarnamnet når innlogginga gjeld rolla, elles None. Feil passord blir talt (sperre)."""
+        b = self.base
+        tok = self.key()
+        if tok:
+            name = b.vern.session_user(tok)
+            u = b.cfg.find_user(name) if name else None
+            if u and "kontor" in u.get("roller", []):
+                return u["namn"]                    # kontoret har tilgang til alt
+            return None
+        name, pw = self.basic()
+        if name is None:
+            return None
+        if b.vern.is_blocked(self.ip()):
+            return None
+        u = b.cfg.check_user(name, pw)
+        if u is None:
+            b.vern.failed(self.ip(), "nettside/API")
+            return None
+        b.vern.ok(self.ip())
+        roles = u.get("roller", [])
+        return u["namn"] if (role in roles or "kontor" in roles) else None
+
     def is_office(self):
-        return self.base.cfg.key_ok(self.key(), "kontor")
+        return self._user("kontor") is not None
 
     def is_machine(self):
-        k = self.key()
-        return self.base.cfg.key_ok(k, "anlegg") or self.base.cfg.key_ok(k, "kontor")
+        return self._user("ntrip") is not None
 
     def deny(self):
-        time.sleep(1)                               # bremsar gjetting av nøklar
-        self.send_json({"ok": False, "feil": "Manglar eller feil nøkkel"}, 401)
+        time.sleep(1)                               # bremsar gjetting av passord
+        if self.base.vern.is_blocked(self.ip()):
+            return self.send_json({"ok": False, "feil": "For mange feil innloggingar – prøv att om litt"}, 429)
+        self.send_json({"ok": False, "feil": "Manglar innlogging, eller feil brukarnamn/passord"}, 401)
 
     def body_json(self, limit=20_000_000):
         n = int(self.headers.get("Content-Length") or 0)
@@ -142,6 +191,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.send_json({"ok": True, "namn": b.cfg["namn"], "anlegg": b.cfg["anlegg"], "versjon": VERSION,
                                        "api": API_VERSION, "snowman_min": SNOWMAN_MIN, "funksjonar": FUNKSJONAR,
                                        "caster_port": b.caster_port, "mountpoints": list(b.mounts)})
+            if p == "/api/v1/oppsett":
+                return self.send_json({"ok": True, "treng_admin": not b.cfg.has_admin(),
+                                       "lokal": vernmod.is_local(self.ip())})
             if p == "/api/status":
                 if not b.cfg["web"].get("status_open", True) and not self.is_office():
                     return self.deny()
@@ -204,6 +256,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json({"ok": True, "hendingar": b.events.latest(int(q.get("n") or 200))})
         if p == "konfig":
             return self.send_json({"ok": True, "konfig": b.cfg.public()})
+        if p == "brukarar":
+            return self.send_json({"ok": True, "brukarar": b.cfg.users_public(), "eg": self._user("kontor"),
+                                   "mountpoints": list(b.mounts)})
+        if p == "tilgang":
+            return self.send_json({"ok": True, **b.tilgang.info(q.get("frisk") == "1")})
         if p == "mountpoints":
             st_ = {m.name: m for m in list(b.mounts.values())}
             ut = []
@@ -244,6 +301,50 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def api_post(self, p):
         b, st = self.base, self.base.store
         ip = self.client_address[0]
+        if p == "logg-inn":
+            d = self.body_json(10_000)
+            if b.vern.is_blocked(ip):
+                time.sleep(1)
+                return self.send_json({"ok": False, "feil": "For mange feil innloggingar – prøv att om litt"}, 429)
+            u = b.cfg.check_user(d.get("brukar"), d.get("passord"), "kontor")
+            if u is None:
+                b.vern.failed(ip, "kontorsida")
+                b.events.add(f"Feil innlogging på kontorsida («{str(d.get('brukar') or '–')[:32]}») frå {ip}", "feil")
+                time.sleep(1)
+                return self.send_json({"ok": False, "feil": "Feil brukarnamn eller passord (eller brukaren har ikkje "
+                                                            "kontor-rolla)"}, 401)
+            b.vern.ok(ip)
+            b.events.add(f"{u['namn']} logga inn på kontorsida frå {ip}", "info")
+            return self.send_json({"ok": True, "okt": b.vern.new_session(u["namn"]), "brukar": u["namn"]})
+        if p == "logg-ut":
+            b.vern.end_session(self.key())
+            return self.send_json({"ok": True})
+        if p == "oppsett":
+            d = self.body_json(10_000)
+            if not vernmod.is_local(ip):
+                return self.send_json({"ok": False, "feil": "Første administrator kan berre lagast frå det lokale "
+                                                            "nettet (eller med kommandoen på maskina)."}, 403)
+            name, pw = valid_name(d.get("brukar")), valid_pw(d.get("passord"))
+            nb, npw = str(d.get("ntrip_brukar") or "").strip(), d.get("ntrip_passord")
+            if nb:
+                valid_name(nb)
+                valid_pw(npw)
+                if nb.lower() == name.lower():
+                    raise ValueError("NTRIP-brukaren til maskinene må ha eit anna namn enn administratoren")
+
+            def fn(data):
+                if any("kontor" in u.get("roller", []) for u in data["brukarar"]):
+                    raise PermissionError("Administrator finst alt – logg inn")
+                return True
+            try:
+                b.cfg.update(fn)
+            except PermissionError as e:
+                return self.send_json({"ok": False, "feil": str(e)}, 409)
+            b.cfg.set_user(name, pw, roles=["kontor"])
+            if nb:
+                b.cfg.set_user(nb, npw, roles=["ntrip"])
+            b.events.add(f"Første administrator «{name}» laga frå {ip}" + (f", og NTRIP-brukaren «{nb}»" if nb else ""), "ok")
+            return self.send_json({"ok": True, "okt": b.vern.new_session(name), "brukar": name})
         if p in ("maskin", "maalingar", "forslag"):
             if not self.is_machine():
                 return self.deny()
@@ -291,10 +392,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             found = forbetring.run(b)
             return self.send_json({"ok": True, "tal": len(found)})
         if p == "ai/innstillingar":
-            c = b.cfg["ai"]
             if d.get("leverandor") not in ("av", "ollama", "anthropic"):
                 raise ValueError("leverandor må vere av, ollama eller anthropic")
-            with b.cfg.lock:
+
+            def fn(data):
+                c = data["ai"]
                 c["leverandor"] = d["leverandor"]
                 c["modell"] = str(d.get("modell") or "")[:80]
                 c["adresse"] = str(d.get("adresse") or "")[:200]
@@ -302,7 +404,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     c["api_nokkel"] = str(d["api_nokkel"]).strip()
                 if d.get("fjern_nokkel"):
                     c["api_nokkel"] = ""
-                b.cfg.save()
+                return dict(c)
+            c = b.cfg.update(fn)
             b.events.add(f"AI: {c['leverandor']}" + (f" ({c['modell']})" if c["modell"] else ""), "info")
             return self.send_json({"ok": True})
         if p == "ai/analyser":
@@ -310,6 +413,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json({"ok": True, "tal": len(items), "forslag": items})
         if p == "ai/sporsmal":
             return self.send_json({"ok": True, "svar": b.ai.ask(b, d.get("tekst", ""))})
+        if p == "brukar":
+            name = valid_name(d.get("namn"))
+            pw = d.get("passord") or None
+            roles = d.get("roller")
+            mounts = d.get("mountpoints")
+            if mounts is not None and (not isinstance(mounts, list) or not all(isinstance(x, str) for x in mounts)):
+                raise ValueError("mountpoints må vere ei liste")
+            ny = b.cfg.find_user(name) is None
+            u = b.cfg.set_user(name, pw, mounts, roles)
+            if pw and not ny:
+                b.vern.end_user_sessions(name)
+            b.events.add(f"Brukar «{name}» {'oppretta' if ny else 'endra'}" + (" (nytt passord)" if pw and not ny else "")
+                         + f" av {self._user('kontor')}", "info")
+            return self.send_json({"ok": True, "brukar": {"namn": u["namn"], "roller": u["roller"],
+                                                          "mountpoints": u["mountpoints"]}})
+        if p == "brukar/fjern":
+            name = str(d.get("namn") or "")
+            ok = b.cfg.remove_user(name)
+            if ok:
+                b.vern.end_user_sessions(name)
+                b.events.add(f"Brukar «{name}» sletta av {self._user('kontor')}", "info")
+            return self.send_json({"ok": ok})
+        if p == "ddns":
+            url = str(d.get("url") or "").strip()
+            if url and not url.lower().startswith("https://"):
+                raise ValueError("Adressa må byrje med https://")
+            b.cfg.update(lambda data: data["ddns"].__setitem__("url", url[:500]))
+            return self.send_json({"ok": True, **b.tilgang.ddns_now()})
         if p == "mountpoint":
             m, melding = b.lagre_mountpoint(d, d.get("gamalt_namn") or None)
             return self.send_json({"ok": True, "mountpoint": mountoppsett.offentleg(m), "melding": melding})
@@ -381,9 +512,10 @@ def _safe(x):
 def start(base, port):
     h = type("H", (Handler,), {"base": base})
 
-    class Srv(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    from caster import ExclusiveMixin
+
+    class Srv(ExclusiveMixin, socketserver.ThreadingMixIn, http.server.HTTPServer):
         daemon_threads = True
-        allow_reuse_address = True
 
     srv = Srv(("0.0.0.0", int(port)), h)
     threading.Thread(target=srv.serve_forever, daemon=True, name="web").start()
