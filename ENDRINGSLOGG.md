@@ -49,6 +49,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
   Ført inn i VEGEN-VIDARE kap. 18 med tilrådd rekkjefølgje for Base v1.2.
 - **Ingen kodeendring.**
 
+## 2026-11-16
+
+### Dokumentasjon: oppsett av GNSS-korta UM981-02 (maskin) og UM980 (base)
+- **Nytt:** `docs/GNSS-OPPSETT-UM981-UM980.docx` (steg-for-steg med avkryssing) og `docs/GNSS-OPPSETT-UM981-UM980.md`
+  (kortversjon). Kopling, tryggleiksreglar, kommandoar i UPrecise, oppsett i SNOWMAN og SNOWMAN Base, feilsøking.
+- **Kvifor:** korta er kjøpte og komne; eigaren skal setje dei opp sjølv utan feil.
+- **Avgjerd:** basen får fast koordinat med **ellipsoidehøgd** og `CONFIG UNDULATION 0.0` før `MODE BASE`. Unicore les
+  elles høgda som høgd over sin eigen geoide. NN2000 blir rekna i SNOWMAN som før.
+- **Avgjerd:** begge korta sender RTCM MSM4 for GPS, GLONASS, Galileo og BeiDou kvart sekund og satellittbaner
+  (1019/1020/1042/1046) kvart 10. sekund. Oppsettet blir gjort éin gong i UPrecise; SNOWMAN les berre.
+
+---
+
 ## 2026-10-29
 
 ### PC-prototype v1.6.115 – ingen tappar frå gamle feilmålingar i snøflata i 3D
