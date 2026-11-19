@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Leica-simulator for testing utan mottakar (berre Linux/macOS).
+"""Simulert GNSS-mottakar for testing utan mottakar (berre Linux/macOS). Filnamnet er historisk (først Leica).
 
 Lagar ein virtuell seriellport og sender NMEA GGA med RTK FIX, 5 Hz.
 Maskina står i ro 8 s, køyrer så lanar på 120 m med 5 m mellomrom i 2,2 m/s (ca. 8 km/t).
@@ -77,7 +77,7 @@ def send(data):
         try: c.sendall(data)
         except OSError:
             clients.remove(c)
-print("Virtuell Leica på", port,
+print("Virtuell GNSS-mottakar på", port,
       "(høgd frå testterreng + fasit-snø)" if a.terreng else "(over terrengbiblioteket, simulert snø)" if a.anlegg else "",
       flush=True)
 

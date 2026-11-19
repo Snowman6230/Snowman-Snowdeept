@@ -51,6 +51,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.120 – «GNSS-mottakar» i staden for «Leica»
+- **Endra:** tekstar som føraren og brukaren ser: startmenyen «1 Start (GNSS-mottakar)», under fix-status
+  «Mottakar / mobil / demo», satellittpanelet «Ekstern GNSS-mottakar (RTK) …», knappen «GNSS / CPOS / NTRIP-OPPSETT»,
+  `LES-MEG-WINDOWS.txt` (GNSS-MOTTAKAR, USB/USB-RS232/Bluetooth), `pc/v1.6/LES-MEG.txt`, `start-snowman.sh`,
+  `docs/FELTPROVE.md` og det simulatoren skriv ut. Kommentarar i `snowman_pc.py` og `driver.html` same stad.
+- **Ikkje endra:** filnamnet `simuler-leica.py` (brukt i arbeidsreglar, skript og dokumentasjon), eldre versjonar
+  (v1.2–v1.5) og historiske oppføringar i endringsloggen.
+- **Avgjerd:** eigaren valde ordet «GNSS-mottakar» (ikkje «GPS-mottakar»). Kvifor: SNOWMAN er leverandøruavhengig
+  (Leica støtta, ikkje kravd), maskinkortet er no Unicore UM981, og mottakaren brukar fire satellittsystem.
+- **Test:** ingen funksjon er endra. `start_snowman.py` og `simuler-leica.py` vart kompilerte, og `driver.html`
+  vart opna i Chromium utan JavaScript-feil.
+
 ### Verktøy: SJEKK-IMU.bat – roleg visning av kva mottakaren sender
 - **Nytt:** `pc/SJEKK-IMU.bat` og `pc/v1.6/sjekk_imu.py`. Les porten (berre lesing, DTR/RTS av, som SNOWMAN) og skriv
   éi linje i sekundet: tal på RTCM-rammer, GGA og INSPVAXA det siste sekundet, og siste helling frå IMU-en

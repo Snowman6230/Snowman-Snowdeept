@@ -5,7 +5,7 @@
 Gjer det same som start-snowman.sh: startar eventuelt simulatoren, så den lokale tenesta, og opnar
 førarskjermen i nettlesaren. Ctrl + C (eller å lukke vindauget) stoppar alt.
 
-  python start_snowman.py                 seriellporten som er lagra i innstillingane (Leica)
+  python start_snowman.py                 seriellporten som er lagra i innstillingane (GNSS-mottakaren)
   python start_snowman.py COM3            denne porten (Windows), eller /dev/ttyUSB0 (Linux)
   python start_snowman.py sim             simulert mottakar
   python start_snowman.py simterreng      simulert mottakar over testterreng med fasit
@@ -202,7 +202,7 @@ def meny():
     print()
     print(f"  SNOWMAN by Alpindata  (v{version()})")
     print("  ─────────────────────────────")
-    print("  1  Start (Leica-mottakar)")
+    print("  1  Start (GNSS-mottakar)")
     print("  2  Demo – simulert mottakar")
     print("  3  Test over terrengmodellane dine")
     print("  4  Start i kioskmodus (trakkemaskin)")

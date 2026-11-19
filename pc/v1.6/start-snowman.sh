@@ -3,10 +3,10 @@
 # SNOWMAN PC v1.6 – oppstart på Linux.
 #
 #   ./start-snowman.sh              brukar seriellporten som er lagra i innstillingane
-#   ./start-snowman.sh /dev/ttyUSB0 brukar denne seriellporten (Leica via USB-RS232)
-#   ./start-snowman.sh sim          test utan mottakar: startar ein simulert Leica
-#   ./start-snowman.sh simterreng   simulert Leica over testterreng med kjend snødjupne (test av Terrain Engine)
-#   ./start-snowman.sh simanlegg    simulert Leica over terrengmodellane du har lagt inn (t.d. Topocad frå Fjellsætra), med simulert snø
+#   ./start-snowman.sh /dev/ttyUSB0 brukar denne seriellporten (GNSS-mottakar på USB eller USB-RS232)
+#   ./start-snowman.sh sim          test utan mottakar: startar ein simulert GNSS-mottakar
+#   ./start-snowman.sh simterreng   simulert GNSS-mottakar over testterreng med kjend snødjupne (test av Terrain Engine)
+#   ./start-snowman.sh simanlegg    simulert GNSS-mottakar over terrengmodellane du har lagt inn (t.d. Topocad frå Fjellsætra), med simulert snø
 #
 # KIOSK=1 ./start-snowman.sh ...    opnar førarskjermen i fullskjerm (for trakkemaskina). Avslutt med Alt+F4.
 # HUD=1   ./start-snowman.sh ...    opnar òg HUD-visinga (frontruta) i eit eige vindauge.

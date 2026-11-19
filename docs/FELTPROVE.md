@@ -17,7 +17,7 @@ BeiDou), Bluetooth, GSM-modem, UHF-radio og Tilt&Go (hellingsmålar, opptil 15�
 1. Windows: Innstillingar › Bluetooth › Legg til eining › «Zenith35 …» (PIN 0000 om han spør). Deretter «Fleire
    Bluetooth-innstillingar» › fana **COM-portar** › noter **utgåande** COM-port (t.d. COM5).
    Linux: `bluetoothctl` (pair/trust), så `sudo rfcomm bind 0 <adresse>` → `/dev/rfcomm0`.
-2. SNOWMAN › Innst. › Kart › LEICA / CPOS / NTRIP-OPPSETT: vel COM-porten, lagre. Start feltlogg (Innst. › System).
+2. SNOWMAN › Innst. › Kart › GNSS / CPOS / NTRIP-OPPSETT: vel COM-porten, lagre. Start feltlogg (Innst. › System).
 3. Kjem det **$GNGGA**-linjer i loggen, er alt klart. Kjem det ingenting, må NMEA GGA (5 Hz) slåast på for Bluetooth-porten
    i GeoMax sitt oppsettprogram (X-PAD) – send loggen til Alpindata.
 4. RTK: CPOS via SNOWMAN (RTCM over same Bluetooth-kopling) eller via SIM-kortet i Zenith-en sjølv (set opp i X-PAD).
@@ -26,7 +26,7 @@ Bluetooth Class II rekk om lag 10 m – nok frå taket til førarhuset. Til fast
 - [ ] SNOWMAN er oppdatert (Innst. › System › HENT SISTE VERSJON).
 - [ ] Terrengmodell for området er lagt inn (Innst. › Terreng), med NN2000 stadfesta.
 - [ ] Leica er sett opp til å sende **NMEA GGA** (gjerne 5 Hz) på seriellporten, og høgd i **NN2000** (ikkje ellipsoidisk).
-- [ ] CPOS-brukar og mountpoint er klare (Innst. › Kart › LEICA / CPOS / NTRIP-OPPSETT).
+- [ ] CPOS-brukar og mountpoint er klare (Innst. › Kart › GNSS / CPOS / NTRIP-OPPSETT).
 - [ ] Mål antennehøgda frå botnen av antennefestet ned til underkanten av belta, og kor langt fram/bak og til sida antenna sit.
 - [ ] Ta med snøsonde og meterstokk.
 

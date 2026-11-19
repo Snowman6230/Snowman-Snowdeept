@@ -5,14 +5,14 @@ SNOWMAN PC Prototype v1.6 – lokal teneste
 GNSS/NTRIP-bru, Terrain Engine (snødjupne), førargrensesnitt og lagring av arbeidsøkter.
 
 Flow:
-  GNSS/Leica serial <-> SNOWMAN NTRIP <-> NTRIP caster
+  GNSS-mottakar (seriell) <-> SNOWMAN NTRIP <-> NTRIP caster
   Browser UI         <-> localhost HTTP/WebSocket-like polling API
 
 No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.119"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.120"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1891,7 +1891,7 @@ def main():
         try: SURF.save(force=True)
         except Exception: pass
         try:
-            if serial_obj: serial_obj.close()   # frigjer COM-porten til Leica
+            if serial_obj: serial_obj.close()   # frigjer COM-porten til GNSS-mottakaren
         except Exception: pass
         print("SNOWMAN-tenesta er avslutta.")
     if RESTART[0]: sys.exit(3)   # oppstartsprogrammet startar tenesta og vindauget på nytt

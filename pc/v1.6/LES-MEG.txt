@@ -79,7 +79,7 @@ TERRENGDATA
 - Utan eiga skanning: DTM 1 m frå hoydedata.no (stengt fre 16 – må 07).
 - Sjå docs/TERRAIN-ENGINE.md for detaljar.
 
-TEST UTAN LEICA (LINUX)
+TEST UTAN MOTTAKAR (LINUX)
   ./start-snowman.sh simterreng
   1) Innst. › Terreng: vel testterreng.tif (ligg i mappa) › ANALYSER › IMPORTER
   2) Innst. › Kalibrering: antennehøgd 2.8 › LAGRE KALIBRERING
@@ -93,7 +93,7 @@ START – LINUX (t.d. Surface / Omarchy)
   Første gong lagar start-snowman.sh eit eige python-miljø (.venv) og installerer
   biblioteka sjølv (krev nett éin gong). Seriellport: sudo usermod -aG uucp $USER (Arch)
   eller dialout (Ubuntu/Debian).
-  Med Leica:        ./start-snowman.sh /dev/ttyUSB0
+  Med mottakar:     ./start-snowman.sh /dev/ttyUSB0
   I trakkemaskina:  KIOSK=1 ./start-snowman.sh /dev/ttyUSB0
   Med HUD-vindauge: HUD=1 ./start-snowman.sh simterreng
   HUD på mobil:     trykk HUD › HUD PÅ MOBIL: PÅ (eller LAN=1 ./start-snowman.sh simterreng)

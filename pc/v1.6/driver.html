@@ -2518,7 +2518,7 @@
         <div id="aheadBox" class="ahead hide"><label id="aheadLabel">FRAMFOR · ESTIMERT</label><b id="aheadD">--</b><small id="aheadNote"></small></div>
         <div id="legend" class="legend"></div>
         <div class="rtk" onclick="toggleSatStatus()">
-          <b id="fix">GNSS AV</b><span id="acc">VENTAR PÅ DATA</span><small id="fixSub">Leica / mobil / demo</small>
+          <b id="fix">GNSS AV</b><span id="acc">VENTAR PÅ DATA</span><small id="fixSub">Mottakar / mobil / demo</small>
         </div>
       </div>
       <div id="compass" onclick="toggleNorth()" title="Lås / frigjer kartrotasjon">
@@ -2534,7 +2534,7 @@
           <div class="satcell">Kjelde<b id="satSource">Mobil</b></div>
         </div>
         <small id="satNote" style="display: block; margin-top: 10px; color: #9ab3c1"
-          >Ekstern GNSS (Leica/RTK) blir lesen automatisk frå den lokale SNOWMAN-tenesta. Mobil-GPS kan brukast til test, men gir ikkje satellittal.</small
+          >Ekstern GNSS-mottakar (RTK) blir lesen automatisk frå den lokale SNOWMAN-tenesta. Mobil-GPS kan brukast til test, men gir ikkje satellittal.</small
         ><small id="satRtk" style="display: block; margin-top: 8px; color: #ffd27a; font-weight: 700"></small
         ><button class="btn" onclick="location.href = 'feilsok'" title="Går gjennom alle stega frå mottakar til RTK FIX og viser kvar det stoppar">🔍 FEILSØK RTK</button
         ><button class="btn mobGpsBtn" onclick="toggleGPS()">START MOBIL-GPS (TEST)</button>
@@ -2657,7 +2657,7 @@
           <button id="snowSet" class="btn toggle on" onclick="toggleSnow()">SNØDJUPNE: PÅ</button
           ><button id="machineMapSet" class="btn toggle on" onclick="toggleMachine()">VIS MASKIN: PÅ</button
           ><button class="btn" onclick="centerMap()">SENTRER</button
-          ><button class="btn" onclick="location.href = 'ntrip'">LEICA / CPOS / NTRIP-OPPSETT</button
+          ><button class="btn" onclick="location.href = 'ntrip'">GNSS / CPOS / NTRIP-OPPSETT</button
           ><button class="btn" onclick="window.open('hud', 'snowmanHUD')">OPNE HUD-VISING (FRONTRUTE)</button
           ><button class="btn mobGpsBtn" onclick="toggleGPS()">START MOBIL-GPS (TEST)</button>
           <div id="gnssInfo" class="history">Ingen kontakt med lokal SNOWMAN-teneste.</div>
@@ -3157,12 +3157,12 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.119";
+      const APP_VERSION = "1.6.120";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
       /* SNOWMAN PC v1.6 – førargrensesnitt frå Driver v24, kopla til lokal GNSS-teneste og Terrain Engine.
-         Kjelder for posisjon: "gnss" (Leica/RTK via snowman_pc.py), "mobile" (nettlesar-GPS, test), "demo" (simulert). */
+         Kjelder for posisjon: "gnss" (GNSS-mottakar/RTK via snowman_pc.py), "mobile" (nettlesar-GPS, test), "demo" (simulert). */
       const $ = (x) => document.getElementById(x),
         colors = ["#ed2024", "#ff9412", "#e9ed16", "#27d84d", "#08cbea", "#075de5"],
         NEUTRAL = "#7fb2d6",
