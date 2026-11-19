@@ -271,7 +271,7 @@
       <div class="row" id="bottom">
         <span id="speed">0,0<small>km/t</small></span>
         <span id="ahead" class="hide"></span>
-        <span id="course" class="dim">--°</span>
+        <span id="course" class="dim">--</span>
       </div>
     </div>
     <div id="stale"><div>VENTAR PÅ SNOWMAN …<div id="staleWhy" style="font-size: 3vh; margin-top: 2vh"></div></div></div>
@@ -402,7 +402,7 @@
         $("ahead").classList.toggle("hide", !a);
         if (a) $("ahead").innerHTML = "<small>FRAMFOR · ESTIMERT" + (h.demo ? " (DEMO)" : "") + (a.ageH != null ? " · TIDL. FLATE" : "") + "</small>≈" + fmt(a.mean) + " m<small>minst " + fmt(a.min) + " m" + (a.ageH != null ? " · " + (a.ageH < 1 ? "&lt; 1" : Math.round(a.ageH)) + " t" : "") + "</small>";
         setWarn(h.warn, h.warnLevel);
-        $("course").textContent = (h.heading ?? "--") + "°";
+        $("course").textContent = h.heading == null ? "--" : ["N", "NØ", "Ø", "SØ", "S", "SV", "V", "NV"][Math.round(((((+h.heading) % 360) + 360) % 360) / 45) % 8];
       }
       // Varsel: minkar skrifta til teksten får plass i breidda (lange namn på hindringar)
       let warnText = null;

@@ -51,6 +51,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.122 – kursen som himmelretning
+- **Endra:** KURS på førarskjermen (og ved avspeling) og kursen på HUD-en viser himmelretning med åtte retningar –
+  N, NØ, Ø, SØ, S, SV, V, NV – i staden for grader. Kvar retning dekkjer 45° (N = 338°–22°).
+- **Kvifor:** eigaren ønskte himmelretning, lettare å lese for føraren enn grader.
+- **Test:** omrekninga kontrollert for 0, 22, 23, 45, 90 … 359, −10 og 725°. Simulator mot SNOWMAN i Chromium:
+  førarskjermen og HUD viser «N» på lanane mot nord, ingen JavaScript-feil.
+
 ### PC-prototype v1.6.121 – breiare fargestolpar, og «Tal» skjuler òg hellinga
 - **Endra:** fargestolpane i teiknforklaringa for snødjupne øvst er breiare: 40 × 30 px (før 20 × 32), og 30 × 18 px
   når fargane bryt til to rader (før 16 × 18). Grensa for to rader er flytt frå 1250 til 1600 px skjermbreidd, så

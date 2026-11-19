@@ -3157,7 +3157,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.121";
+      const APP_VERSION = "1.6.122";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -5064,6 +5064,11 @@
         persistCfg();
         tiltCell(lastTilt);
       }
+      // v1.6.122 (eigaren): kursen som himmelretning (N, NØ, Ø, SØ, S, SV, V, NV) i staden for grader
+      function retning(h) {
+        if (h == null || isNaN(h)) return "--";
+        return ["N", "NØ", "Ø", "SØ", "S", "SV", "V", "NV"][Math.round((((+h % 360) + 360) % 360) / 45) % 8];
+      }
       function teleLabel() {
         let on = cfg.teleOn !== false;
         $("tele").classList.toggle("off", !on);
@@ -6041,7 +6046,7 @@
         $("speed").textContent = (speed * 3.6).toFixed(1).replace(".", ",") + " km/t";
         if (hdg != null && !isNaN(hdg)) {
           heading = hdg;
-          $("course").textContent = Math.round(heading) + "°";
+          $("course").textContent = retning(heading);
           if (kind === "demo" || speed > 0.5) rotateMap(heading);
         }
         if (!$("satPanel").classList.contains("hide")) renderSat();
@@ -6493,7 +6498,7 @@
           }
           if (i > 0 && i % 15 === 0) addArrow(route[i - 1], route[i], p.heading || bearing(route[i - 1], route[i]), replayGroup, "replay-icon", "➤");
           $("elapsed").textContent = fmtTime((p.t || s.start) - s.start);
-          $("course").textContent = Math.round(p.heading || 0) + "°";
+          $("course").textContent = retning(p.heading || 0);
           $("speed").textContent = ((p.speed || 0) * 3.6).toFixed(1).replace(".", ",") + " km/t";
           pos = route[i];
           map.panTo(route[i], { animate: false });
