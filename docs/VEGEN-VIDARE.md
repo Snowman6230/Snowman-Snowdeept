@@ -497,6 +497,47 @@ Base sjølv går over til reserven (t.d. TH), får SNOWMAN ein annan base i same
 **Rekkjefølgje:** 1) nullstilling av RTK ved byte av base og vising av aktiv base, 2) reservecaster med ventetid før
 byte tilbake og logg av kjelde, 3) i drift: berre innmålte basar som hovudkjelde og reserve.
 
+## 20. Språk: nynorsk, bokmål, engelsk og svensk (analyse 2026-11-20, ventar)
+
+**Ønske frå eigaren:** ein språkmodul der ein kan velje språk, helst ved oppstart. Det må gjelde alle menyar og
+tekstar.
+
+**Omfang (målt i v1.6.124):** om lag 2 500–3 000 tekstar:
+- førarskjermen (`driver.html`): om lag 840 tekstar i menyar og knappar og om lag 1 500 tekstar som blir laga medan
+  programmet køyrer;
+- leiarsida, HUD, NTRIP-oppsett og feilsøkaren: om lag 450 tekstar;
+- meldingar frå tenesta: feilsøkaren, status, PDF-rapporten, startmenyen og AI;
+- SNOWMAN Base (status og kontor): om lag 200 tekstar.
+
+**Tre måtar som er vurderte:**
+- **A. Nøkkelsystem** (`t("btn.start")` og éi fil per språk). Standardmåten, men alle om lag 3 000 stadene i koden
+  må endrast, og kvar ny funksjon krev nøklar i alle språkfilene.
+- **B. Nynorsk som nøkkel (tilrådd).** Koden blir ståande med nynorsk tekst, og kvart språk får ei ordliste frå
+  nynorsk. Førarskjermen omset tekst og knappar automatisk, også når innhaldet endrar seg. Tekstar som blir laga i
+  JavaScript og Python, går gjennom `T()`. Manglar ei omsetjing, blir nynorsken ståande, så ingenting blir tomt. Ein
+  test listar tekstar utan omsetjing. Kan byggjast steg for steg.
+- **C. Omsetjing i nettlesaren.** Dårlege fagord, verkar ikkje offline og rører ikkje meldingane frå tenesta.
+  Forkasta.
+
+**Val av språk:** første gong i startmenyen og i installasjonsprogrammet, og seinare under Innst. › System › Språk
+(gjeld med ein gong, utan omstart). Valet blir lagra per maskin. SNOWMAN Base får sitt eige språkval på kontorsida.
+
+**Fagord:** det blir laga ei ordliste før omsetjinga, t.d. svensk «pistmaskin, snödjup, preparering» og engelsk
+«groomer, snow depth, tiller». Ein svensk og ein engelsk fagperson bør lese gjennom før sal.
+
+**Plan i fire steg:**
+1. Grunnmur: språkmodul, språkval, test for tekstar utan omsetjing og ordliste.
+2. Førarskjermen og HUD. Etter dette steget kan ein svensk eller engelsk førar bruke SNOWMAN.
+3. Feilsøkaren, NTRIP-sida og meldingane frå tenesta.
+4. Leiarsida, PDF-rapporten og SNOWMAN Base. Rettleiingane (LES-MEG og Word) blir omsette for seg.
+
+**Avgjerder (eigaren 2026-11-20):**
+- Språkvala blir **nynorsk, bokmål, engelsk og svensk**.
+- Feltloggen og hendingane blir skrivne på **same språk som føraren har valt**. Konsekvens for feilsøking: ein logg
+  frå ei svensk maskin er på svensk. Kvar hending bør difor òg få ei fast kode (t.d. `NTRIP_FEIL`), så loggar på alle
+  språk kan lesast og analyserast likt.
+- **Ventar:** ingen endringar no. Plasserast i vegplanen seinare (truleg før v2.0, første salsversjon).
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |

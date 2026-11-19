@@ -51,6 +51,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### Analyse: språkmodul (nynorsk, bokmål, engelsk, svensk) – VEGEN-VIDARE kap. 20
+- **Nytt (dokumentasjon):** analyse av språkval. Omfanget er om lag 2 500–3 000 tekstar. Tilrådd måte: nynorsk som
+  nøkkel og ei ordliste per språk, med automatisk omsetjing på skjermen og `T()` for meldingar. Plan i fire steg.
+- **Avgjerd:** språka blir nynorsk, bokmål, engelsk og svensk. Feltloggen blir skriven på same språk som føraren har
+  valt (med faste koder per hending for felles analyse). Ventar – ingen kode er endra.
+
 ### PC-prototype v1.6.124 – tydelegare namn i Innstillingar, fargane står ved grensene
 - **Endra (fanenamn):** «Snøintervall» → **Snødjupne**, «Målprofil» → **Måldjupne**, «Kart» → **Kart og GNSS**,
   «Kalibrering» → **Antenne og helling**, «Kontroll» → **Kontrollmåling**. Overskrifter i fanene same stad
