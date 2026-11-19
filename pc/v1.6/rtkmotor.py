@@ -169,6 +169,11 @@ def _nmea(body):
     return f"${body}*{cs:02X}"
 
 
+# v1.6.116: ein satellitt må ha halde fasen i så mange epokar på rad før heiltalet hans blir med i FIX-testen.
+# Opptak med UM981 i bil 19.11: fase­brot på éin satellitt (tre, låg vinkel) gjorde at RTKLIB tok med eit nytt, ukjent
+# heiltal i testen, ratio fall under 3 og FIX forsvann – 23 skifte på 7 min, 32 % FIX. Med 5: 90 % FIX, same posisjon
+# (≤ 2 mm) der begge hadde FIX, jamt spor. R12i-opptaket 29.10 (i ro): uendra, 225 av 227.
+MIN_LOCK = 5
 RAIM_FDE = 1          # v1.6.113: RTKLIB RAIM-FDE – kastar ut éin satellitt med stor feil i staden for heile epoka
 GLO_EXT_MIN = 90        # min – GLONASS-baner blir rekna fram i tid så langt (sjå extend_glonass)
 GLO_EXT_STEP = 15       # min mellom framrekna baner
@@ -281,6 +286,7 @@ class RtkMotor:
             # utelate éin satellitt om gongen og brukar løysinga som består kontrollen (krev minst 6 satellittar).
             opt.posopt[4] = RAIM_FDE
             opt.thresar[0] = 3.0                            # ratio-test for FIX
+            opt.minlock = MIN_LOCK                          # nye/brotne satellittar ikkje med i FIX-testen (v1.6.116)
             # SNR-maske for roveren (v1.6.105): felttest 28.10 med Reach RS+ – satellittar under ~30 dBHz hadde 2–5 m
             # kodestøy og fasebrot, gav «large residual» og tok ned heile løysinga. Masken blir berre slått på når
             # mottakaren faktisk rapporterer SNR (sjå _solve), elles ville alle satellittar falle bort.

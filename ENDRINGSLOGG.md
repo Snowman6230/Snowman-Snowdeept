@@ -49,6 +49,29 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
   Ført inn i VEGEN-VIDARE kap. 18 med tilrådd rekkjefølgje for Base v1.2.
 - **Ingen kodeendring.**
 
+## 2026-11-19
+
+### PC-prototype v1.6.116 – FIX held seg når éin satellitt mistar fasen
+- **Bakgrunn:** første køyretur med UM981-02 (rover) mot TH-basen, 19.11. FIX kom og gjekk: 23 skifte mellom FIX og
+  FLOAT på 7 min, FIX berre 32 % av tida, sjølv med 17 satellittar heile vegen. Opptaket viste at kvar gong éin
+  satellitt fekk fasebrot (tre, låg vinkel – t.d. GPS 20 i 15 s, GLONASS 37 i 45 s), tok RTKLIB med det nye, ukjende
+  heiltalet i FIX-testen. Ratio fall under 3, og heile løysinga gjekk tilbake til FLOAT.
+- **Endra:** `rtkmotor.py` – `MIN_LOCK = 5` (`opt.minlock`): ein satellitt må ha halde fasen i 5 epokar på rad før
+  heiltalet hans er med i FIX-testen. Han er med i flytløysinga heile tida.
+- **Test (avspeling av opptaka):**
+  - Køyretur 19.11 (UM981, 7 min, ~20 km/t): FIX 142 → 399 av 441 (32 % → 90 %), 23 → 2 skifte. Der begge hadde FIX:
+    same posisjon (≤ 2 mm). Sporet er jamt (største akselerasjon 1,8 m/s², som før).
+  - R12i i ro 29.10: uendra, 225 av 227 FIX.
+  - Verandaen 19.11 (skugge frå huset): framleis ingen FIX – rett, det var ingen gode data.
+  - Prøvd og forkasta: ratio 2 (fleire FIX, men lågare tryggleik), kontinuerleg AR (14 %), GLONASS-AR av (0 %),
+    høgare grense for fasebrot og kode/fase-forhold (ingen verknad), AR-elevasjonsmaske 25° (82 %).
+  - `test/rtk/replay.py`: 108 av 115 (før 113) – første FIX kjem 5 s seinare etter oppstart. `testraim`, `testubx`,
+    `testrekkjefolgje`, `testautoport`, `testsnoklynge`: ALT OK.
+- **Avgjerd:** UM981-02 fungerer som rover med RTK i SNOWMAN (MSM4 + baner frå kortet). Oppsettet står i
+  `docs/GNSS-OPPSETT-UM981-UM980.md`.
+
+---
+
 ## 2026-11-16
 
 ### Dokumentasjon: oppsett av GNSS-korta UM981-02 (maskin) og UM980 (base)
