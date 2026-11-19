@@ -40,6 +40,8 @@ SNOWMAN: same COM-port og baud (venta 115200), «Kvar blir RTK rekna?» = I SNOW
   - **IMU på** (tilrådd): hellinga frå IMU-en i UM981; når IMU-en ikkje er klar, reknar SNOWMAN sjølv.
   - **IMU av**: SNOWMAN reknar hellinga frå GPS-høgda og terrengmodellen.
   - **Av**: ingen hellingskorreksjon.
+- Sjekk at kortet sender: lukk SNOWMAN og UPrecise og køyr `pc/SJEKK-IMU.bat` (éi linje i sekundet med
+  tal på meldingar og hellinga frå IMU-en).
 - INSPVAXA blir berre brukt med rett CRC og når INS-en har retta seg inn (ikkje INS_INACTIVE/INS_ALIGNING).
   Kursen frå INS-en blir brukt berre ved INS_SOLUTION_GOOD.
 - Kontroll: rett opp ein bakke → fram/bak +. Høgre side ned → side +.

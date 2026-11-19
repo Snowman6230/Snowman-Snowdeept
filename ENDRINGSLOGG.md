@@ -51,6 +51,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### Verktøy: SJEKK-IMU.bat – roleg visning av kva mottakaren sender
+- **Nytt:** `pc/SJEKK-IMU.bat` og `pc/v1.6/sjekk_imu.py`. Les porten (berre lesing, DTR/RTS av, som SNOWMAN) og skriv
+  éi linje i sekundet: tal på RTCM-rammer, GGA og INSPVAXA det siste sekundet, og siste helling frå IMU-en
+  (status, fram/bak, side, kurs, CRC). Manglar INSPVAXA etter 5 s, seier han kva som må skrivast i UPrecise.
+  Porten blir henta frå SNOWMAN-innstillingane, eller gitt som `SJEKK-IMU.bat COM3`.
+- **Kvifor:** Data Stream i UPrecise går for fort til å lese om INSPVAXA kjem.
+- **Test:** mot simulatoren med og utan `--ins`: rett helling (fram/bak +14°) og rett melding når INSPVAXA manglar.
+  Teljinga av RTCM-rammer gav om lag 4,8 i sekundet på opptaket frå UM981 19.11 (venta 4 MSM + baner).
+
 ### PC-prototype v1.6.119 – «Mottakaren sender helling»
 - **Endra:** Innst. › Kalibrering › Helling skriv «Mottakaren sender helling: …» / «Mottakaren har ikkje sendt
   hellingsmåling» i staden for «Antenna …». På UM981 sit IMU-en på kortet, ikkje i antenna. Når ingen helling er
