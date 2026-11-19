@@ -362,7 +362,7 @@
         margin: 0 auto 3px;
       }
       /* Fart, kurs, spor, areal og tid kan slåast av med knappen «Tal» nede (trasé-ruta blir ståande) */
-      .tele.off > div:not(.traCell):not(.tiltCell) {
+      .tele.off > div:not(.traCell) {
         display: none;
       }
       /* Handtak på venstre kant av innstillingane: dra for å gjere panelet breiare (høgst 50 % av skjermen) */
@@ -1974,10 +1974,10 @@
         font-size: 12px;
         white-space: nowrap;
       }
-      /* v1.6.110 (eigaren): høgare og breiare fargestolpar, lettare å sjå */
+      /* v1.6.110 (eigaren): høgare og breiare fargestolpar, lettare å sjå. v1.6.121 (eigaren): endå breiare */
       .top .sw {
-        width: 20px;
-        height: 32px;
+        width: 40px;
+        height: 30px;
         border-radius: 4px;
         flex: none;
       }
@@ -1987,16 +1987,16 @@
       }
       /* Estimatboksen (FRAMFOR) tek plass: fargane bryt til to rader, då med lågare stolpar */
       .top:has(#aheadBox:not(.hide)) .sw {
-        width: 16px;
+        width: 30px;
         height: 18px;
       }
       .top:has(#aheadBox:not(.hide)) .leg {
         font-size: 12px;
       }
-      /* smalare vindauge: fargane bryt til to rader, då med lågare stolpar */
-      @media (max-width: 1250px) {
+      /* smalare vindauge: fargane bryt til to rader, då med lågare stolpar (v1.6.121: frå 1600 px, sidan stolpane er breiare) */
+      @media (max-width: 1600px) {
         .top .sw {
-          width: 16px;
+          width: 30px;
           height: 18px;
         }
         .top .leg {
@@ -3027,7 +3027,7 @@
         </div>
       </div>
       <div class="toolbar">
-        <button id="teleBtn" class="tool on" onclick="toggleTele()" title="Vis eller skjul fart, kurs, spor, areal og tid"><i>⏱</i>Tal</button
+        <button id="teleBtn" class="tool on" onclick="toggleTele()" title="Vis eller skjul helling, fart, kurs, spor, areal og tid"><i>⏱</i>Tal</button
         ><button id="snowBtn" class="tool on" onclick="toggleSnow()"><i>▰</i>Snødjupne</button
         ><button id="trackBtn" class="tool on" onclick="toggleTrack()"><i>↝</i>Spor</button
         ><button id="machineBtn" class="tool on" onclick="toggleMachine()">
@@ -3157,7 +3157,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.120";
+      const APP_VERSION = "1.6.121";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));

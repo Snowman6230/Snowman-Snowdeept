@@ -51,6 +51,17 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.121 – breiare fargestolpar, og «Tal» skjuler òg hellinga
+- **Endra:** fargestolpane i teiknforklaringa for snødjupne øvst er breiare: 40 × 30 px (før 20 × 32), og 30 × 18 px
+  når fargane bryt til to rader (før 16 × 18). Grensa for to rader er flytt frå 1250 til 1600 px skjermbreidd, så
+  alle sju fargane får plass. Kontrollert i Chromium på 1024–1920 px: alle sju synlege. På 800 px blir tre borte, som
+  før endringa.
+- **Endra:** knappen «Tal» skjuler no òg hellingsfeltet (før stod det att). «Vis hellinga på førarskjermen» i
+  Innst. › Kalibrering › Helling gjeld framleis åleine.
+- **Kvifor:** eigaren ville ha breiare fargar som er lettare å tolke, og venta at «Tal» tok med seg hellinga.
+- **Merknad:** skjermbiletet frå eigaren viste «0.8–0.8 m» for gult – to av grensene i Snøintervall er like (0,8),
+  så gult er tomt. Det er innstillinga, ikkje koden.
+
 ### PC-prototype v1.6.120 – «GNSS-mottakar» i staden for «Leica»
 - **Endra:** tekstar som føraren og brukaren ser: startmenyen «1 Start (GNSS-mottakar)», under fix-status
   «Mottakar / mobil / demo», satellittpanelet «Ekstern GNSS-mottakar (RTK) …», knappen «GNSS / CPOS / NTRIP-OPPSETT»,
