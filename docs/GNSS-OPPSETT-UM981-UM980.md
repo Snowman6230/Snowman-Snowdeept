@@ -43,6 +43,8 @@ SNOWMAN: same COM-port og baud (venta 115200), «Kvar blir RTK rekna?» = I SNOW
 - INSPVAXA blir berre brukt med rett CRC og når INS-en har retta seg inn (ikkje INS_INACTIVE/INS_ALIGNING).
   Kursen frå INS-en blir brukt berre ved INS_SOLUTION_GOOD.
 - Kontroll: rett opp ein bakke → fram/bak +. Høgre side ned → side +.
+- Førarskjermen (v1.6.118): «HELLING · IMU» nede til venstre med fram/bak og side i grader og ein liten maskinfigur
+  bakfrå som hallar med sidehellinga. Slå av/på: Innst. › Kalibrering › Helling › «Vis hellinga på førarskjermen».
 
 ## Base – UM980
 ```

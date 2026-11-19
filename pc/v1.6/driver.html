@@ -362,7 +362,7 @@
         margin: 0 auto 3px;
       }
       /* Fart, kurs, spor, areal og tid kan slåast av med knappen «Tal» nede (trasé-ruta blir ståande) */
-      .tele.off > div:not(.traCell) {
+      .tele.off > div:not(.traCell):not(.tiltCell) {
         display: none;
       }
       /* Handtak på venstre kant av innstillingane: dra for å gjere panelet breiare (høgst 50 % av skjermen) */
@@ -2322,6 +2322,25 @@
           background: #7a0d0d;
         }
       }
+      /* v1.6.118: hellinga på førarskjermen – tal og ein liten maskinfigur bakfrå som hallar med sidehellinga */
+      .tele .tiltCell b {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 17px;
+        white-space: nowrap;
+      }
+      .tele .tiltCell svg {
+        width: 46px;
+        height: 32px;
+        flex: none;
+      }
+      .tele .tiltCell em {
+        font-style: normal;
+        font-size: 11px;
+        color: #9ab3c1;
+        margin-right: 2px;
+      }
       .tele .traCell b {
         max-width: 230px;
         overflow: hidden;
@@ -2522,6 +2541,20 @@
       </div>
       <div id="tele" class="tele">
         <div id="traCell" class="traCell hide"><small id="traCellLbl">TRASÉ</small><b id="traCellV">--</b></div>
+        <div id="tiltCell" class="tiltCell hide" title="Hellinga til maskina: fram/bak (+ = fronten opp) og side (+ = høgre side ned)">
+          <small id="tiltLbl">HELLING</small
+          ><b
+            ><svg viewBox="-23 -16 46 32">
+              <line x1="-22" y1="10" x2="22" y2="10" stroke="#5d7584" stroke-width="1.2" stroke-dasharray="2 2" />
+              <g id="tiltRot">
+                <rect x="-6" y="-14" width="12" height="7" rx="1.5" fill="#cfe6f3" />
+                <rect x="-14" y="-8" width="28" height="11" rx="2" fill="#e23b32" />
+                <rect x="-18" y="3" width="11" height="6" rx="2" fill="#b8c6cf" />
+                <rect x="7" y="3" width="11" height="6" rx="2" fill="#b8c6cf" />
+              </g></svg
+            ><span id="tiltV">--</span></b
+          >
+        </div>
         <div><small>FART</small><b id="speed">0,0 km/t</b></div>
         <div><small>KURS</small><b id="course">--</b></div>
         <div><small>SPOR</small><b id="distance">0 m</b></div>
@@ -2693,6 +2726,7 @@
           </div>
           <label class="chk" style="display: block"><input id="tiltFlipPitch" type="checkbox" onchange="saveTilt()" /> Snu fram/bak-helling (berre om kontrollen under viser feil retning)</label>
           <label class="chk" style="display: block"><input id="tiltFlipRoll" type="checkbox" onchange="saveTilt()" /> Snu side-helling (berre om kontrollen under viser feil retning)</label>
+          <label class="chk" style="display: block"><input id="tiltShow" type="checkbox" onchange="toggleTiltShow(this.checked)" /> Vis hellinga på førarskjermen (tal og figur nede til venstre)</label>
                     <div id="tiltInfo" class="history">–</div>
           <div class="history" style="font-size: 12px">
             Antenna sit høgt. I bakke står ho ikkje rett over belta, og snødjupna blir for høg utan korreksjon (ca. 4 cm ved 10°,
@@ -3123,7 +3157,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.117";
+      const APP_VERSION = "1.6.118";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3159,6 +3193,7 @@
           snow3d: true, // v1.6.110: snøflate i 3D (overflata oppå barmarka der maskina har køyrt)
           kbMode: "auto", // tastatur på skjermen: auto | alltid | av
           teleOn: true, // fart, kurs, spor, areal og tid nede til venstre
+          tiltShow: true, // v1.6.118: hellinga (fram/bak og side) nede til venstre
           surfMem: true, // estimat frå tidlegare trakka overflate
           surfH: 24, // … frå dei siste surfH timane (3–72)
           terrain: null,
@@ -3364,6 +3399,7 @@
         lastGnssAt = Date.now();
         simGnss = !!x.simulated; // simulatoren: alt blir merka som TEST
         if ($("panelCal").classList.contains("on") && !$("settings").classList.contains("hide")) showTilt(x);
+        tiltCell(x.tilt);
         $("demoTag").textContent = simGnss ? "TEST – SIMULERT MOTTAKAR OG SNØ" : "DEMO – SIMULERTE DATA";
         $("demoTag").classList.toggle("hide", !simGnss);
         let p = [x.lat, x.lon],
@@ -5004,6 +5040,30 @@
         updateAhead(true);
         surfStatus();
       }
+      // v1.6.118: hellinga på førarskjermen. Figuren er maskina sett bakfrå; ho hallar med sidehellinga (+ = høgre side ned).
+      let lastTilt = null;
+      function tiltCell(t) {
+        lastTilt = t || null;
+        let on = cfg.tiltShow !== false && !!t;
+        $("tiltCell").classList.toggle("hide", !on);
+        if (!on) return;
+        let f = (v) => (v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(0) + "°");
+        let src = t.src === "IMU" ? "IMU" : t.src === "av" ? "AV" : t.src === "antenne" ? "ANTENNE" : t.src && t.src.startsWith("utrekna") ? "REKNA" : "";
+        $("tiltLbl").textContent = "HELLING" + (src ? " · " + src : "");
+        if (t.src === "av" || t.total == null) {
+          $("tiltV").textContent = t.src === "av" ? "av" : "--";
+          $("tiltRot").setAttribute("transform", "");
+          return;
+        }
+        $("tiltV").innerHTML = "<em>FRAM</em>" + f(t.pitch) + " <em>SIDE</em>" + f(t.roll);
+        let r = Math.max(-45, Math.min(45, t.roll || 0));
+        $("tiltRot").setAttribute("transform", "rotate(" + r.toFixed(1) + " 0 9)");
+      }
+      function toggleTiltShow(on) {
+        cfg.tiltShow = !!on;
+        persistCfg();
+        tiltCell(lastTilt);
+      }
       function teleLabel() {
         let on = cfg.teleOn !== false;
         $("tele").classList.toggle("off", !on);
@@ -6614,6 +6674,7 @@
           $("tiltMode").value = c.tiltMode || "auto";
           $("tiltFlipPitch").checked = !!c.tiltFlipPitch;
           $("tiltFlipRoll").checked = !!c.tiltFlipRoll;
+          $("tiltShow").checked = cfg.tiltShow !== false;
           TILT_SENT = TERR.tiltSentences || [];
           $("heightOld").classList.toggle("hide", !c.heightOld);
           $("heightOld").textContent = c.heightOld

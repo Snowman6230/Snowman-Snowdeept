@@ -51,6 +51,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.118 – hellinga på førarskjermen
+- **Nytt:** eige felt nede til venstre (over FART): «HELLING · IMU / REKNA / ANTENNE / AV», fram/bak og side i heile
+  grader (+ = fronten opp, + = høgre side ned) og ein liten maskinfigur sett bakfrå som hallar med sidehellinga mot ei
+  vatnrett strek. Feltet blir verande når «Tal» er skjult. Ingen fargeåtvaring (avgjerd).
+- **Nytt:** Innst. › Kalibrering › Helling › «Vis hellinga på førarskjermen» (på som standard, lagra i UI-oppsettet).
+- **Kvifor:** eigaren ønskte hellinga vist med tal og figur – kontroll av IMU-en og forteikna, og forklaring på
+  hellingsrettinga av snødjupna.
+- **Avgjerd:** eigaren valde «tal + liten figur» og **ingen åtvaring** for stor sidehelling.
+- **Test:** simulator `--terreng --helling --ins` mot SNOWMAN i Chromium (1280 × 800 og 390 × 800): feltet viser
+  «HELLING · IMU», fram/bak og side følgjer simulatoren (t.d. +7° / +13°), figuren hallar; av/på i innstillingane
+  skjuler og viser feltet. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.117 – helling frå IMU-en i UM981 (INSPVAXA), lett å slå av og på
 - **Nytt:** `helling.py` les Unicore `#INSPVAXA` (UM981): roll, pitch og asimut. CRC32 blir sjekka (stadfesta mot
   eksempelet i Unicore-manualen); linjer med feil blir forkasta. Brukt berre når INS-en har retta seg inn
