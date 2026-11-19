@@ -3157,7 +3157,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.118";
+      const APP_VERSION = "1.6.119";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -8040,7 +8040,7 @@
                 "<br>Kjelde: <b>" + esc(t.src + (t.sentence ? " (" + t.sentence + ")" : "")) + "</b> · målepunktet flytt " +
                 (t.shift != null ? t.shift.toFixed(2).replace(".", ",") : "–") + " m · høgd retta " +
                 (t.dz != null ? Math.round(t.dz * 100) : "–") + " cm" +
-                "<br><small>" + ((t.ant || TILT_SENT).length ? "Antenna sender helling: " + esc((t.ant || TILT_SENT).join(", ")) : "Antenna har ikkje sendt hellingsmåling (vanleg for GS07/GS16).") +
+                "<br><small>" + ((t.ant || TILT_SENT).length ? "Mottakaren sender helling: " + esc((t.ant || TILT_SENT).join(", ")) : "Mottakaren har ikkje sendt hellingsmåling (vanleg for GS07/GS16; på UM981: legg inn INSPVAXA 1).") +
                 (t.ins ? " · IMU (INS): " + esc(insText(t.ins)) : "") +
                 (t.mode === "estimat" && (t.ant || TILT_SENT).length ? " · IMU-en blir ikkje brukt (IMU av)." : "") + "</small>";
       }

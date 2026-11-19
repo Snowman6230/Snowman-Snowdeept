@@ -51,6 +51,12 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.119 – «Mottakaren sender helling»
+- **Endra:** Innst. › Kalibrering › Helling skriv «Mottakaren sender helling: …» / «Mottakaren har ikkje sendt
+  hellingsmåling» i staden for «Antenna …». På UM981 sit IMU-en på kortet, ikkje i antenna. Når ingen helling er
+  komen, står det òg at UM981 treng `INSPVAXA 1`.
+- **Kvifor:** eigaren spurde om IMU-en sit i kortet eller i antenna – teksten var misvisande.
+
 ### PC-prototype v1.6.118 – hellinga på førarskjermen
 - **Nytt:** eige felt nede til venstre (over FART): «HELLING · IMU / REKNA / ANTENNE / AV», fram/bak og side i heile
   grader (+ = fronten opp, + = høgre side ned) og ein liten maskinfigur sett bakfrå som hallar med sidehellinga mot ei
