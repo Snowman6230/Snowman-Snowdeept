@@ -53,7 +53,7 @@ class Kontroll:
         if not ter or "raw" not in det:
             raise ValueError("Ingen terrengmodell eller utrekning her. Sjå status for snødjupne.")
         if not cfg.get("calibrated"):
-            raise ValueError("Lagre kalibreringa først (Innst. › Kalibrering).")
+            raise ValueError("Lagre kalibreringa først (Innst. › Antenne og helling).")
         known = float(known)
         if not (0 <= known <= 15):
             raise ValueError("Kjend snødjupne må vere mellom 0 og 15 m.")

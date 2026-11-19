@@ -7,7 +7,7 @@ Antenna sit antZ meter over snøflata, vinkelrett på maskina. På skrå (hellin
 Utan korreksjon blir snødjupna for høg med h·(1/cos θ − 1): 4 cm ved 10°, 18 cm ved 20°, 43 cm ved 30° (h = 2,8 m).
 Berre høgdekorreksjon utan å flytte punktet gjer feilen STØRRE, så begge delar blir alltid gjorde saman.
 
-Kjelder for hellinga (Innst. › Kalibrering › Helling):
+Kjelder for hellinga (Innst. › Antenne og helling › Helling):
   auto    – «IMU på»: hellingsmålar i mottakaren/antenna om han sender (Unicore INSPVAXA frå UM981, NMEA HPR,
             PSAT,HPR, PASHR eller PTNL,AVR), elles utrekna som «estimat»
   estimat – «IMU av»: SNOWMAN reknar sjølv: helling langs køyreretninga frå GNSS-høgda (presist når maskina køyrer),

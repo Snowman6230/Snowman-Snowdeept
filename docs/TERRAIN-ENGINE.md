@@ -127,7 +127,7 @@ rett. Estimatet framfor maskina kan derimot bruke at ei planert overflate er jam
 - **Estimat:** same rutemønster som før (2 × 2 m, 4–40 m framfor), berre overflate under 72 t, minst 3 målingar
   innanfor 8 m og den næraste innanfor 6 m. Alltid merka «ESTIMERT · TIDL. FLATE» med alder.
 - **Timar og av/på (v1.6.59):** knappen «≋ Flate» nedst opnar ein meny: AV · 3 · 5 · 10 · 15 · 24 · 48 · 72 t (standard
-  24 t), same val i Innst. › Kart. Fungerer før og under «Start prep». AV = estimatet byggjer berre på snødjupna målt i
+  24 t), same val i Innst. › Kart og GNSS. Fungerer før og under «Start prep». AV = estimatet byggjer berre på snødjupna målt i
   denne økta. «Gløym tidlegare overflate» slettar minnet (t.d. etter mykje nysnø).
 - **Førre besøk (v1.6.59):** kvar rute hugsar også overflata frå førre preparering (målingar med over 2 t mellomrom =
   nytt besøk). HUD-en viser då «OVERFLATE SIDAN SIST ±x cm» når snødjupna blir målt, og «SIST MÅLT HER ≈x m»

@@ -8,4 +8,4 @@ Innhald: geoidehøgd N (meter) over Noreg, rutenett 0,04° × 0,02°, EUREF89.
 NN2000-høgd = ellipsoidisk høgd (EUREF89) − N.
 
 SNOWMAN brukar fila når «GNSS-høgd frå mottakaren» er sett til «Ellipsoidisk – Kartverket geoidemodell»
-(Innst. › Kalibrering). Fila er ikkje endra.
+(Innst. › Antenne og helling). Fila er ikkje endra.

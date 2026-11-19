@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.123"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.124"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1843,7 +1843,7 @@ def snowmap_encode(ctx,q):
        "z":base64.b64encode(np.where(np.isfinite(H),H,-9999).astype("<f4").tobytes()).decode(),
        "attr":"Varsel: MET Norway (CC BY 4.0) · Målingar: MET Frost · Terreng: "+", ".join(P["layers"])}
 def ui_bounds():
-    """Snøintervalla frå førarskjermen (Innst. › Snøintervall), til fargane i PDF-rapporten."""
+    """Snøintervalla frå førarskjermen (Innst. › Snødjupne), til fargane i PDF-rapporten."""
     try: return (lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8"))).get("bounds")
     except Exception: return None
 def ui_machine():

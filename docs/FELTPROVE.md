@@ -10,23 +10,23 @@ hellingsmålar. Ho må koplast til ein GNSS-mottakar som gir NMEA til PC-en:
 - Leica-mottakaren som høyrde til (t.d. MNS1200 / GX1200-serien) om han finst – sjekk at han tek imot RTCM frå CPOS.
 - eller ein rimeleg RTK-mottakar (t.d. u-blox ZED-F9P-kort over USB). Desse gir berre 3,3 V til antenna, så det trengst ein
   **bias-tee** (straummatar) med 5–12 V mellom mottakar og antenne, og overgang TNC → SMA.
-SNOWMAN er uavhengig av mottakar, så begge vegar fungerer. Hellinga blir då rekna ut (Innst. › Kalibrering › Helling: Auto).
+SNOWMAN er uavhengig av mottakar, så begge vegar fungerer. Hellinga blir då rekna ut (Innst. › Antenne og helling › Helling: Auto).
 
 **GeoMax Zenith35 Pro (GSM-UHF-TAG, 2018)** er òg tilgjengeleg: komplett smartantenne med mottakar (GPS, GLONASS, Galileo,
 BeiDou), Bluetooth, GSM-modem, UHF-radio og Tilt&Go (hellingsmålar, opptil 15–30°). Straum 9–18 V. Kopling via **Bluetooth**:
 1. Windows: Innstillingar › Bluetooth › Legg til eining › «Zenith35 …» (PIN 0000 om han spør). Deretter «Fleire
    Bluetooth-innstillingar» › fana **COM-portar** › noter **utgåande** COM-port (t.d. COM5).
    Linux: `bluetoothctl` (pair/trust), så `sudo rfcomm bind 0 <adresse>` → `/dev/rfcomm0`.
-2. SNOWMAN › Innst. › Kart › GNSS / CPOS / NTRIP-OPPSETT: vel COM-porten, lagre. Start feltlogg (Innst. › System).
+2. SNOWMAN › Innst. › Kart og GNSS › GNSS / CPOS / NTRIP-OPPSETT: vel COM-porten, lagre. Start feltlogg (Innst. › System).
 3. Kjem det **$GNGGA**-linjer i loggen, er alt klart. Kjem det ingenting, må NMEA GGA (5 Hz) slåast på for Bluetooth-porten
    i GeoMax sitt oppsettprogram (X-PAD) – send loggen til Alpindata.
 4. RTK: CPOS via SNOWMAN (RTCM over same Bluetooth-kopling) eller via SIM-kortet i Zenith-en sjølv (set opp i X-PAD).
-5. Sender Zenith-en helling i NMEA, tek SNOWMAN han i bruk automatisk; kjelda står i Innst. › Kalibrering › Helling.
+5. Sender Zenith-en helling i NMEA, tek SNOWMAN han i bruk automatisk; kjelda står i Innst. › Antenne og helling › Helling.
 Bluetooth Class II rekk om lag 10 m – nok frå taket til førarhuset. Til fast bruk i maskina er kabel tryggare.
 - [ ] SNOWMAN er oppdatert (Innst. › System › HENT SISTE VERSJON).
 - [ ] Terrengmodell for området er lagt inn (Innst. › Terreng), med NN2000 stadfesta.
 - [ ] Leica er sett opp til å sende **NMEA GGA** (gjerne 5 Hz) på seriellporten, og høgd i **NN2000** (ikkje ellipsoidisk).
-- [ ] CPOS-brukar og mountpoint er klare (Innst. › Kart › GNSS / CPOS / NTRIP-OPPSETT).
+- [ ] CPOS-brukar og mountpoint er klare (Innst. › Kart og GNSS › GNSS / CPOS / NTRIP-OPPSETT).
 - [ ] Mål antennehøgda frå botnen av antennefestet ned til underkanten av belta, og kor langt fram/bak og til sida antenna sit.
 - [ ] Ta med snøsonde og meterstokk.
 
@@ -34,13 +34,13 @@ Bluetooth Class II rekk om lag 10 m – nok frå taket til førarhuset. Til fast
 1. Kople til Leica (USB-RS232). Start SNOWMAN med val 1 (eller kiosk).
 2. **Innst. › System › START LOGG** – eller slå på «Logg alltid».
 3. Sjekk øvst til høgre: **RTK FIX**, satellittar, HDOP. Noter kor lang tid det tek frå start til RTK FIX.
-4. **Innst. › Kalibrering:** antennehøgd, høgdekorreksjon 0, og kva høgd mottakaren sender (Zenith: «rå GPS-høgd – Kartverket-modellen»). LAGRE KALIBRERING.
+4. **Innst. › Antenne og helling:** antennehøgd, høgdekorreksjon 0, og kva høgd mottakaren sender (Zenith: «rå GPS-høgd – Kartverket-modellen»). LAGRE KALIBRERING.
    **Helling:** la stå på «Auto». Sjå kva «Kjelde» seier – «antenne (…)» betyr at antenna sender helling, «utrekna» at ho ikkje gjer det.
    Køyr rett opp ein bakke: **stamp skal vere positiv**. Stå med høgre side ned i ein sidebakke: **krenging skal vere positiv**.
    Er forteiknet feil når kjelda er antenna, kryss av for «Snu forteikn». Noter antennemodellen (står på etiketten).
-5. **Kontrollmåling på barmark:** stå på brøyta veg/parkeringsplass innanfor terrengmodellen. Innst. › Kontroll, skriv 0, LAGRE.
+5. **Kontrollmåling på barmark:** stå på brøyta veg/parkeringsplass innanfor terrengmodellen. Innst. › Kontrollmåling, skriv 0, LAGRE.
    Gjenta på 2–3 stader. Avviket viser om kalibreringa og terrengmodellen stemmer.
-6. **Kontrollmåling i snø:** stopp der det er **flatt** (helling under 3° i Innst. › Kalibrering – i bakke blir målepunktet flytt
+6. **Kontrollmåling i snø:** stopp der det er **flatt** (helling under 3° i Innst. › Antenne og helling – i bakke blir målepunktet flytt
    mot midten av maskina), stikk snøsonda ned rett ved sida av maskina på høgd med antenna, skriv inn djupna, LAGRE. 3–5 stader.
 7. Køyr ein vanleg tur med **Start prep**. Prøv kart, førar, 3D-terreng og frontrute. Noter om Surface-en hakkar.
 8. Prøv HUD på mobil.

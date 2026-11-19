@@ -36,7 +36,7 @@ SNOWMAN: same COM-port og baud (venta 115200), «Kvar blir RTK rekna?» = I SNOW
 ### IMU-helling (v1.6.117)
 - Kort som alt er sette opp: `INSPVAXA 1` og `SAVECONFIG` i UPrecise (SNOWMAN lukka). Data Stream viser då
   `#INSPVAXA…` kvart sekund.
-- SNOWMAN: Innst. › Kalibrering › Helling › Hellingskorreksjon:
+- SNOWMAN: Innst. › Antenne og helling › Helling › Hellingskorreksjon:
   - **IMU på** (tilrådd): hellinga frå IMU-en i UM981; når IMU-en ikkje er klar, reknar SNOWMAN sjølv.
   - **IMU av**: SNOWMAN reknar hellinga frå GPS-høgda og terrengmodellen.
   - **Av**: ingen hellingskorreksjon.
@@ -46,7 +46,7 @@ SNOWMAN: same COM-port og baud (venta 115200), «Kvar blir RTK rekna?» = I SNOW
   Kursen frå INS-en blir brukt berre ved INS_SOLUTION_GOOD.
 - Kontroll: rett opp ein bakke → fram/bak +. Høgre side ned → side +.
 - Førarskjermen (v1.6.118): «HELLING · IMU» nede til venstre med fram/bak og side i grader og ein liten maskinfigur
-  bakfrå som hallar med sidehellinga. Slå av/på: Innst. › Kalibrering › Helling › «Vis hellinga på førarskjermen».
+  bakfrå som hallar med sidehellinga. Slå av/på: Innst. › Antenne og helling › Helling › «Vis hellinga på førarskjermen».
 
 ## Base – UM980
 ```

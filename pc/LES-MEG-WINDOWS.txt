@@ -28,7 +28,7 @@ GNSS-MOTTAKAR
 Kople mottakaren til med USB-kabel (t.d. UM981), USB-RS232-kabel (t.d. Leica) eller Bluetooth.
 Sjå kva COM-port han får i Einingshandsaming
 (høgreklikk på Start-knappen › Einingshandsaming › Portar), t.d. COM3.
-Legg porten inn i SNOWMAN under Innst. › Kart › GNSS / CPOS / NTRIP-OPPSETT.
+Legg porten inn i SNOWMAN under Innst. › Kart og GNSS › GNSS / CPOS / NTRIP-OPPSETT.
 
 HUD PÅ MOBIL
 Første gong spør Windows om Python får bruke nettverket. Vel «Privat nettverk» og Tillat.

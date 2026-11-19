@@ -51,6 +51,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.124 – tydelegare namn i Innstillingar, fargane står ved grensene
+- **Endra (fanenamn):** «Snøintervall» → **Snødjupne**, «Målprofil» → **Måldjupne**, «Kart» → **Kart og GNSS**,
+  «Kalibrering» → **Antenne og helling**, «Kontroll» → **Kontrollmåling**. Overskrifter i fanene same stad
+  (SNØDJUPNE – FARGAR, MÅLDJUPNE). Alle tilvisingar «Innst. › …» i SNOWMAN, LES-MEG-filene, `docs/` og
+  Word-rettleiinga for UM981/UM980 er oppdaterte (30 stader). Historiske oppføringar i endringsloggen er ikkje endra.
+- **Endra:** i Snødjupne står kvar grense med fargane ho skil, t.d. «■ raud → ■ oransje», i staden for «Grense 1».
+- **Nytt:** åtvaring når grensene ikkje aukar: «⚠ gul har inga snødjupne: grensa over må vere større enn grensa
+  under.» (eigaren hadde to grenser på 0,8, så gult var tomt).
+- **Kvifor / avgjerd:** eigaren bad om «Snødjupne» i staden for «Snøintervall» og valde dei fire andre namna etter
+  forslag, for at det skal vere lettare å forstå kva fanene inneheld.
+- **Test:** Chromium: fanene har dei nye namna, fargane står ved grensene, åtvaringa kjem med like grenser og
+  forsvinn når dei er retta. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.123 – kvadratiske fargar i teiknforklaringa
 - **Endra:** fargane for snødjupne øvst er like høge som breie: 32 × 32 px på brei skjerm, 30 × 30 px opp til 1600 px
   og 22 × 22 px opp til 1300 px (der fargane kan bryte til to rader, og begge radene må få plass). Med estimat-boksen

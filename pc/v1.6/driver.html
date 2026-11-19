@@ -2579,11 +2579,11 @@
         </h2>
         <div class="tabs">
           <button id="tabMachine" class="on" onclick="showTab('machine')">Maskin</button
-          ><button id="tabSnow" onclick="showTab('snow')">Snøintervall</button
-          ><button id="tabTarget" onclick="showTab('target')">Målprofil</button><button id="tabMap" onclick="showTab('map')">Kart</button
-          ><button id="tabCal" onclick="showTab('cal')">Kalibrering</button
+          ><button id="tabSnow" onclick="showTab('snow')">Snødjupne</button
+          ><button id="tabTarget" onclick="showTab('target')">Måldjupne</button><button id="tabMap" onclick="showTab('map')">Kart og GNSS</button
+          ><button id="tabCal" onclick="showTab('cal')">Antenne og helling</button
           ><button id="tabTerrain" onclick="showTab('terrain')">Terreng</button
-          ><button id="tabCtl" onclick="showTab('ctl')">Kontroll</button
+          ><button id="tabCtl" onclick="showTab('ctl')">Kontrollmåling</button
           ><button id="tabTrase" onclick="showTab('trase')">Trasear</button
           ><button id="tabFuel" onclick="showTab('fuel')">Drivstoff</button
           ><button id="tabReport" onclick="showTab('report')">Rapport</button
@@ -2603,13 +2603,18 @@
           ><button id="toolMode" class="btn" onclick="toggleTools()">ARBEIDSSTILLING: FULL BREIDDE</button>
         </section>
         <section id="panelSnow" class="panel">
-          <h3>SNØINTERVALL</h3>
+          <h3>SNØDJUPNE – FARGAR</h3>
+          <div class="history" style="font-size: 12px">
+            Grensene (m) skil fargane på kartet og i teiknforklaringa øvst. Dei må auke nedover: like grenser gir ein farge
+            utan område.
+          </div>
           <div id="bounds"></div>
+          <div id="boundsWarn" class="history hide" style="color: #ffd27a"></div>
         </section>
         <section id="panelTarget" class="panel">
-          <h3>MÅLPROFIL</h3>
+          <h3>MÅLDJUPNE</h3>
           <div class="history" style="font-size: 12px">
-            Målprofilen seier kor mykje snø løypa skal ha. Er snødjupna innanfor toleransen, står det «✓ PÅ MÅL». Under målet blir
+            Måldjupna seier kor mykje snø løypa skal ha. Er snødjupna innanfor toleransen, står det «✓ PÅ MÅL». Under målet blir
             talet raudt («▼ UNDER MÅL»), over målet blått («▲ OVER MÅL»).
           </div>
           <div class="row"><span>Måldjupne (m) – snødjupna løypa skal ha</span><input id="target" type="number" step=".05" /></div>
@@ -3164,7 +3169,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.123";
+      const APP_VERSION = "1.6.124";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3325,7 +3330,7 @@
           return [gnss.fix, "SAT " + gnss.satellites + " · HDOP " + h, gnss.ntrip_connected ? "GNSS + NTRIP" : "GNSS"];
         }
         if (src === "mobile") return ["MOBIL GPS", $("acc").textContent, "Test – ikkje RTK"];
-        return ["GNSS AV", backendOK ? "IKKJE TILKOPLA" : "INGA TENESTE", "Innst. › Kart, GNSS"];
+        return ["GNSS AV", backendOK ? "IKKJE TILKOPLA" : "INGA TENESTE", "Innst. › Kart og GNSS"];
       }
       function toggleSatStatus() {
         $("satPanel").classList.toggle("hide");
@@ -3598,7 +3603,7 @@
           raf = null,
           lastFrame = 0,
           // Detaljflate nær maskina (v1.6.45): eiga skarp tekstur ±DR m rundt maskina oppå terrenget.
-          // Nivå (Innst. › Kart): høg 16 px/m, normal 12 px/m, av. Resten av utsnittet har 4 px/m.
+          // Nivå (Innst. › Kart og GNSS): høg 16 px/m, normal 12 px/m, av. Resten av utsnittet har 4 px/m.
           DR = 40,
           dMesh = null,
           dCv = null,
@@ -4521,7 +4526,7 @@
           snowReload() {
             if (patch && renderer) loadSnow(patch);
           },
-          // Snøflate i 3D av/på (Innst. › Kart): rekn ut synleg overflate på nytt for heile utsnittet
+          // Snøflate i 3D av/på (Innst. › Kart og GNSS): rekn ut synleg overflate på nytt for heile utsnittet
           snowChanged() {
             if (!patch || !G) return;
             for (let k = 0; k < G.length; k++) snowTop(k);
@@ -4586,7 +4591,7 @@
         return VIEWS[cfg.viewMode] ? cfg.viewMode : cfg.view3d ? "forar" : "kart";
       }
       // Kart, kompass og rotasjon
-      // Kartet roterer etter køyreretninga, eller er låst med nord opp (kompassknappen / Innst. › Kart).
+      // Kartet roterer etter køyreretninga, eller er låst med nord opp (kompassknappen / Innst. › Kart og GNSS).
       // Vinkelen blir halden samanhengande (359° → 1° er +2°, ikkje ein heil runde baklengs).
       let bearCont = 0,
         headCont = 0,
@@ -5236,7 +5241,7 @@
         detailLabel();
         T3D.detailChanged(false);
         logClient("action", "Skjermkortvern: 3D-detalj sett ned til " + DETAIL_TXT[nv] + " (ca. " + fps + " bilete/s)");
-        toast("3D-detalj sett ned til " + DETAIL_TXT[nv] + " – skjermkortet klarte berre ca. " + fps + " bilete i sekundet. Kan endrast i Innst. › Kart.");
+        toast("3D-detalj sett ned til " + DETAIL_TXT[nv] + " – skjermkortet klarte berre ca. " + fps + " bilete i sekundet. Kan endrast i Innst. › Kart og GNSS.");
       }
       function toggleNorth() {
         cfg.northUp = !cfg.northUp;
@@ -5387,10 +5392,17 @@
         $("antN").value = String(cfg.antN || 1);
         $("mname").value = cfg.mname;
         $("mname").onchange = save;
+        // v1.6.124 (eigaren): kvar grense viser fargane ho skil (under → over)
+        const CNAME = ["raud", "oransje", "gul", "grøn", "lyseblå", "mørkeblå"],
+          dot = (i) => '<i class="sw" style="display:inline-block;width:14px;height:14px;vertical-align:-2px;background:' + colors[i] + '"></i>';
         $("bounds").innerHTML = cfg.bounds
-          .map((v, i) => '<div class="row"><span>Grense ' + (i + 1) + '</span><input id="b' + i + '" type="number" step=".05" value="' + v + '"></div>')
+          .map(
+            (v, i) =>
+              '<div class="row"><span>' + dot(i) + " " + CNAME[i] + " → " + dot(i + 1) + " " + CNAME[i + 1] + '</span><input id="b' + i + '" type="number" step=".05" value="' + v + '"></div>',
+          )
           .join("");
         cfg.bounds.forEach((v, i) => ($("b" + i).onchange = save));
+        boundsCheck();
         $("northSet").textContent = "KARTRETNING: " + (cfg.northUp ? "NORD OPP" : "KØYRERETNING OPP");
         detailLabel();
         snow3dLabel();
@@ -5433,9 +5445,20 @@
         cfg.mname = $("mname").value.trim() || cfg.mname;
         cfg.antN = parseInt($("antN").value) || 1;
         cfg.bounds = cfg.bounds.map((v, i) => parseFloat($("b" + i).value) || v);
+        boundsCheck();
         persistCfg();
         renderLegend();
         updateMachine();
+      }
+      // v1.6.124: grensene for snødjupne må auke – like eller fallande grenser gir fargar utan område
+      function boundsCheck() {
+        const CN = ["raud", "oransje", "gul", "grøn", "lyseblå", "mørkeblå"],
+          b = cfg.bounds,
+          bad = [];
+        for (let i = 1; i < b.length; i++) if (!(b[i] > b[i - 1])) bad.push(CN[i]);
+        if (!$("boundsWarn")) return;
+        $("boundsWarn").classList.toggle("hide", !bad.length);
+        $("boundsWarn").textContent = bad.length ? "⚠ " + bad.join(" og ") + " har inga snødjupne: grensa over må vere større enn grensa under." : "";
       }
       function renderLegend() {
         let row = (c, t) => '<div class=leg><i class=sw style="background:' + c + '"></i>' + t + "</div>",
@@ -5492,7 +5515,7 @@
       }
       /* ---------- Maskinteikning (ovanfrå, front opp) i meter ----------
          Origo = midten av beltet. x = til høgre, y = bakover. Brukt på kartet (i målestokk, antenna i midten av skjermen),
-         i Innst. › Maskin (med mål) og i Innst. › Kalibrering (med GPS-antenner). Teikninga er skjematisk: berre breiddene
+         i Innst. › Maskin (med mål) og i Innst. › Antenne og helling (med GPS-antenner). Teikninga er skjematisk: berre breiddene
          er måla; lengdene er typiske for ein PistenBully 600-klasse. */
       let GROOMER_VB = { w: 8, h: 11 };
       const MFIG = { trackHalf: 2.3, bladeFront: -4.25, bladeBack: -3.45, tillerFront: 3.05, tillerBack: 3.95, flapBack: 4.45 };
@@ -8030,7 +8053,7 @@
         await api("api/control/point/delete", { id });
         loadControl();
       }
-      // Hellingskorreksjon (Innst. › Kalibrering › Helling): blir lagra med éin gong
+      // Hellingskorreksjon (Innst. › Antenne og helling › Helling): blir lagra med éin gong
       let TILT_SENT = [];
       async function saveTilt() {
         try {

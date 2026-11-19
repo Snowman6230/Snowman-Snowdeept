@@ -10,7 +10,7 @@ KVA ER NYTT I v1.6
 - Støttar GeoTIFF (.tif) i EUREF89 UTM 32 og 33, med NN2000. LAS/LAZ og XYZ kjem i v1.7.
 - Topocad DTM (.dtm) kan lastast opp direkte (v1.6.3). Trekantmodellen blir gjort om
   til 0,5 m rutenett. Stadfest at høgdene er NN2000.
-- Kalibrering (Innst. › Kalibrering): antennehøgd, høgdekorreksjon og kva høgd mottakaren
+- Kalibrering (Innst. › Antenne og helling): antennehøgd, høgdekorreksjon og kva høgd mottakaren
   leverer (NN2000 eller ellipsoidisk + geoidehøgd). Må lagrast før snødjupne blir vist.
 - Snødjupne blir berre vist når RTK FIX + terreng dekkjer posisjonen + kalibrering er lagra.
   Elles står det kvifor: UTANFOR TERRENGMODELL, KALIBRERING MANGLAR, KREV RTK FIX osv.
@@ -46,7 +46,7 @@ DRIFTSLEIAR PÅ MOBIL (v1.6.92) – berre lesing
 - Ingenting på sida kan endre eller styre SNOWMAN. Demo og simulator er alltid merka.
 - Mobilen må vere på same nett som maskina. Tilgang heimanfrå kjem med deling mellom maskiner (v1.8).
 
-KONTROLL (v1.6.7) – Innst. › Kontroll
+KONTROLL (v1.6.7) – Innst. › Kontrollmåling
 - Kontrollmåling: stopp maskina, stikk snøsonda ned under antenna (eller stå på barmark
   og skriv 0), vent på RTK FIX og trykk LAGRE. Ta minst 3 på ulike stader.
   Er avviket likt overalt, kan SNOWMAN justere høgdekorreksjonen med eitt trykk.
@@ -61,16 +61,16 @@ VISINGAR (v1.6.5)
 - Perspektivknappen (viser t.d. «Kart») opnar ein meny: Kart, Førar, Horisont, 3D-terreng
   og Frontrute. Knappen «Bakgrunn» ved sida av slår bakgrunnskartet av og på (v1.6.8).
   Frontrute (v1.6.6) er som å sjå ut frå førarhuset. Zoom inn/ut endrar synsfeltet.
-- Innst. › Kart: «Bakgrunn» av gir berre spor og snødjupne. «Snødjupne framfor» viser
+- Innst. › Kart og GNSS: «Bakgrunn» av gir berre spor og snødjupne. «Snødjupne framfor» viser
   eit estimat frå målingar i nærleiken (stipla boks øvst, blekt/skravert framfor maskina).
-  Du kan også velje under Innst. › Kart.
+  Du kan også velje under Innst. › Kart og GNSS.
 - 3D-terreng viser ekte relieff frå terrengmodellen, med sporet måla på bakken.
   Zoom inn/ut flyttar kameraet. Utan terrengmodell under maskina blir horisont vist.
 
 TEST MED EIGEN TERRENGMODELL (v1.6.4)
   ./start-snowman.sh simanlegg
   1. Innst. › Terreng: legg inn terrengmodellen (t.d. .dtm frå Topocad), hak av NN2000.
-  2. Innst. › Kalibrering: antennehøgd 2,8 og LAGRE KALIBRERING.
+  2. Innst. › Antenne og helling: antennehøgd 2,8 og LAGRE KALIBRERING.
   3. Maskina køyrer over modellen innan nokre sekund. Trykk Start prep.
   Snøen er simulert, og skjermen er merka «TEST – SIMULERT MOTTAKAR OG SNØ».
 
@@ -82,7 +82,7 @@ TERRENGDATA
 TEST UTAN MOTTAKAR (LINUX)
   ./start-snowman.sh simterreng
   1) Innst. › Terreng: vel testterreng.tif (ligg i mappa) › ANALYSER › IMPORTER
-  2) Innst. › Kalibrering: antennehøgd 2.8 › LAGRE KALIBRERING
+  2) Innst. › Antenne og helling: antennehøgd 2.8 › LAGRE KALIBRERING
   3) Start prep – sporet får fargar etter snødjupna, og tala skal vere 0,2–1,3 m.
 
 START – WINDOWS

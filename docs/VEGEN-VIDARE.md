@@ -41,7 +41,7 @@ Med måla til maskina og køyreretninga kan SNOWMAN rekne ut kvar fres og skjer 
 midten av fresen og til enden av finisheren (og sidevegs, om antenna ikkje sit midt).
 
 **Plan når det blir aktuelt:**
-1. Maskingeometri i Innst. › Kalibrering (antenne, skjer, fres). Snødjupne og spor ved fresen, eige estimat ved skjeret.
+1. Maskingeometri i Innst. › Antenne og helling (antenne, skjer, fres). Snødjupne og spor ved fresen, eige estimat ved skjeret.
    Ved rygging: hald opp med å registrere i staden for å teikne på feil stad.
 2. IMU for helling (bratt terreng) og retning (rygging).
 3. To antenner (retning også i ro og ved rygging).
@@ -93,7 +93,7 @@ så serveren er naudsynt. Han kan vere kontor-PC-en på anlegget eller ein liten
 - Nyaste måling på ein stad gjeld – snø blir flytt når ein preparerer. Eigne nye målingar går alltid framfor eldre frå andre.
 - Målingar eldre enn 12 timar blir ikkje viste. Alder blir vist («målt av PB 2 for 3 t sidan»).
 - Berre målingar med RTK FIX frå kalibrerte maskiner blir delte. Demo og simulator blir aldri delte.
-- Kvar maskin må vere kontrollmålt (Innst. › Kontroll) – ein høgdefeil på éi maskin blir elles delt med alle.
+- Kvar maskin må vere kontrollmålt (Innst. › Kontrollmåling) – ein høgdefeil på éi maskin blir elles delt med alle.
 - Dei andre maskinene blir viste på kartet (posisjon, sist sett).
 - Eigen nøkkel per anlegg; ingen passord i koden.
 
