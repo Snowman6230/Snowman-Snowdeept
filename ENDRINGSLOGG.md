@@ -51,6 +51,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.123 – kvadratiske fargar i teiknforklaringa
+- **Endra:** fargane for snødjupne øvst er like høge som breie: 32 × 32 px på brei skjerm, 30 × 30 px opp til 1600 px
+  og 22 × 22 px opp til 1300 px (der fargane kan bryte til to rader, og begge radene må få plass). Med estimat-boksen
+  (FRAMFOR) synleg: 22 × 22 px.
+- **Kvifor:** eigaren ville ha fargane like høge som breie.
+- **Test:** Chromium på 900–1920 px: alle sju fargane synlege frå 1024 px og oppover; 6 av 7 på 900 px
+  (v1.6.120: 4 av 7 på 800 px).
+
 ### PC-prototype v1.6.122 – kursen som himmelretning
 - **Endra:** KURS på førarskjermen (og ved avspeling) og kursen på HUD-en viser himmelretning med åtte retningar –
   N, NØ, Ø, SØ, S, SV, V, NV – i staden for grader. Kvar retning dekkjer 45° (N = 338°–22°).

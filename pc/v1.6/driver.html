@@ -1976,8 +1976,8 @@
       }
       /* v1.6.110 (eigaren): høgare og breiare fargestolpar, lettare å sjå. v1.6.121 (eigaren): endå breiare */
       .top .sw {
-        width: 40px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         border-radius: 4px;
         flex: none;
       }
@@ -1987,8 +1987,8 @@
       }
       /* Estimatboksen (FRAMFOR) tek plass: fargane bryt til to rader, då med lågare stolpar */
       .top:has(#aheadBox:not(.hide)) .sw {
-        width: 30px;
-        height: 18px;
+        width: 22px;
+        height: 22px;
       }
       .top:has(#aheadBox:not(.hide)) .leg {
         font-size: 12px;
@@ -1997,10 +1997,17 @@
       @media (max-width: 1600px) {
         .top .sw {
           width: 30px;
-          height: 18px;
+          height: 30px;
         }
         .top .leg {
           font-size: 12px;
+        }
+      }
+      /* v1.6.123 (eigaren: kvadratiske fargar): når fargane bryt til to rader, må begge radene få plass (22 + 3 + 22 px) */
+      @media (max-width: 1300px) {
+        .top .sw {
+          width: 22px;
+          height: 22px;
         }
       }
       /* v1.6.109: teksten under snødjupna (terrengmodell, mål, status) står inne i feltet */
@@ -3157,7 +3164,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.122";
+      const APP_VERSION = "1.6.123";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
