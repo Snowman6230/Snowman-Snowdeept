@@ -15,7 +15,7 @@ mottakaren.
 - Utan portnamn gjeld kommandoen porten ein er kopla til. Ved ERROR: prøv med portnamn, t.d. `RTCM1074 COM1 1`.
 
 ## Maskin – UM981-02
-Kortet stivt fast, X-pila framover (IMU).
+Kortet stivt fast og flatt. Aksemerket på UM981-modulen: **Y framover**, X mot høgre (IMU).
 ```
 UNLOG
 MODE ROVER
@@ -28,9 +28,21 @@ RTCM1020 10
 RTCM1042 10
 RTCM1046 10
 GPGGA 1
+INSPVAXA 1
 SAVECONFIG
 ```
 SNOWMAN: same COM-port og baud (venta 115200), «Kvar blir RTK rekna?» = I SNOWMAN.
+
+### IMU-helling (v1.6.117)
+- Kort som alt er sette opp: `INSPVAXA 1` og `SAVECONFIG` i UPrecise (SNOWMAN lukka). Data Stream viser då
+  `#INSPVAXA…` kvart sekund.
+- SNOWMAN: Innst. › Kalibrering › Helling › Hellingskorreksjon:
+  - **IMU på** (tilrådd): hellinga frå IMU-en i UM981; når IMU-en ikkje er klar, reknar SNOWMAN sjølv.
+  - **IMU av**: SNOWMAN reknar hellinga frå GPS-høgda og terrengmodellen.
+  - **Av**: ingen hellingskorreksjon.
+- INSPVAXA blir berre brukt med rett CRC og når INS-en har retta seg inn (ikkje INS_INACTIVE/INS_ALIGNING).
+  Kursen frå INS-en blir brukt berre ved INS_SOLUTION_GOOD.
+- Kontroll: rett opp ein bakke → fram/bak +. Høgre side ned → side +.
 
 ## Base – UM980
 ```

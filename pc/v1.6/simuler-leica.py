@@ -20,8 +20,9 @@ SNOWMAN les TCP som seriellporten «socket://127.0.0.1:PORT».
 Helling (v1.6.31): med --terreng og --anlegg står maskina på snøflata og antenna sit --antenne meter ut frå
 maskina, vinkelrett på snøflata – som i ei ekte maskin på skrå. Fasit er snødjupna under midten av maskina.
 Med --helling sender simulatoren òg hellinga som om antenna har hellingsmålar ($PASHR: kurs, krenging, stamp).
+Med --ins (v1.6.117) blir hellinga i staden send som Unicore INSPVAXA (IMU i UM981), éin gong i sekundet.
 
-Bruk: python3 simuler-leica.py [fil-for-portnamn] [--terreng | --anlegg] [--antenne 2.8] [--helling] [--tcp 7777]
+Bruk: python3 simuler-leica.py [fil-for-portnamn] [--terreng | --anlegg] [--antenne 2.8] [--helling [--ins]] [--tcp 7777]
 """
 import argparse, os, socket, threading, time, math, random
 from pathlib import Path
@@ -45,6 +46,7 @@ ap.add_argument("--ellipsoidisk", action="store_true",
 ap.add_argument("--anlegg", action="store_true", help="køyr over øvste aktive lag i terrengbiblioteket, med simulert snø")
 ap.add_argument("--antenne", type=float, default=2.8, help="antennehøgd over snøoverflata (m)")
 ap.add_argument("--helling", action="store_true", help="send hellingsmåling frå «antenna» ($PASHR)")
+ap.add_argument("--ins", action="store_true", help="med --helling: send hellinga som Unicore INSPVAXA (UM981) i staden for $PASHR")
 ap.add_argument("--tcp", type=int, help="send NMEA over TCP på denne porten i staden for virtuell seriellport (krevst på Windows)")
 a = ap.parse_args()
 if a.terreng:
@@ -107,6 +109,19 @@ def pashr(heading, g):
     roll, pitch = -math.degrees(math.atan(right)), math.degrees(math.atan(along))
     body = f"PASHR,{time.strftime('%H%M%S')}.00,{heading:.2f},T,{roll:+.2f},{pitch:+.2f},0.00,0.050,0.050,0.100,1,1"
     return f"${body}*{cs(body)}\r\n".encode()
+
+
+def inspvaxa(heading, g):
+    """Unicore INSPVAXA (UM981) med INS_SOLUTION_GOOD, roll (+ = høgre side ned), pitch (+ = fronten opp) og asimut."""
+    from helling import crc32_novatel
+    hr = math.radians(heading)
+    along = g[0] * math.sin(hr) + g[1] * math.cos(hr)
+    right = g[0] * math.cos(hr) - g[1] * math.sin(hr)
+    roll, pitch = -math.degrees(math.atan(right)), math.degrees(math.atan(along))
+    body = (f"INSPVAXA,COM1,0,80.0,FINESTEERING,0,{time.time() % 604800:.3f},00000000,0000,1;INS_SOLUTION_GOOD,"
+            f"INS_RTKFIXED,0,0,0,0,0,0,0,{roll:.6f},{pitch:.6f},{heading % 360:.6f},"
+            "0.01,0.01,0.02,0.01,0.01,0.01,0.05,0.05,0.2,0,0")
+    return f"#{body}*{crc32_novatel(body.encode()):08x}\r\n".encode()
 
 
 def dm(val, deg):
@@ -266,5 +281,10 @@ while True:
     body = f"GNGGA,{time.strftime('%H%M%S')}.00,{dm(lat,2)},N,{dm(lon,3)},E,{q},19,0.6,{alt:.3f},M,{sep:.3f},M,1.0,0001"
     send(f"${body}*{cs(body)}\r\n".encode())
     if a.helling and grad is not None:
-        send(pashr(heading, grad))
+        if a.ins:
+            if int(time.time()) != getattr(inspvaxa, "sist", None):   # INSPVAXA 1 = éin gong i sekundet
+                inspvaxa.sist = int(time.time())
+                send(inspvaxa(heading, grad))
+        else:
+            send(pashr(heading, grad))
     time.sleep(1 / hz)

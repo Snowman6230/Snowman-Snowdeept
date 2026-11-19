@@ -8,10 +8,17 @@ Utan korreksjon blir snødjupna for høg med h·(1/cos θ − 1): 4 cm ved 10°,
 Berre høgdekorreksjon utan å flytte punktet gjer feilen STØRRE, så begge delar blir alltid gjorde saman.
 
 Kjelder for hellinga (Innst. › Kalibrering › Helling):
-  auto    – hellingsmålar i antenna om ho sender han (NMEA HPR, PSAT,HPR, PASHR eller PTNL,AVR), elles utrekna
-  estimat – alltid utrekna: helling langs køyreretninga frå GNSS-høgda (presist når maskina køyrer),
+  auto    – «IMU på»: hellingsmålar i mottakaren/antenna om han sender (Unicore INSPVAXA frå UM981, NMEA HPR,
+            PSAT,HPR, PASHR eller PTNL,AVR), elles utrekna som «estimat»
+  estimat – «IMU av»: SNOWMAN reknar sjølv: helling langs køyreretninga frå GNSS-høgda (presist når maskina køyrer),
             sidehelling frå terrengmodellen der maskina står
   av      – ingen korreksjon (som før v1.6.31)
+
+Unicore INSPVAXA (UM981, v1.6.117): «#INSPVAXA,<hovud>;<INS-status>,<posisjonstype>,breidd,lengd,høgd,undulasjon,
+fart N,fart A,fart opp,roll,pitch,asimut,…*<CRC32>». Aksane i modulen: X høgre, Y fram, Z opp. Roll er høgrehandsdreiing
+om Y (høgre side ned = +), pitch om X (fronten opp = +) – same forteikn som SNOWMAN. Linja blir berre brukt når CRC-en
+stemmer og INS-en har retta seg inn (ikkje INS_INACTIVE / INS_ALIGNING). Asimuten frå INS-en blir brukt som kurs berre
+ved INS_SOLUTION_GOOD; elles kursen frå GNSS.
 
 Forteikn (kan snuast i innstillingane om antenna er montert annleis): stamp + = fronten opp, krenging + = høgre side ned.
 """
@@ -20,6 +27,20 @@ from collections import deque
 
 MAX_SLOPE = math.tan(math.radians(40))  # meir enn 40° er ikkje truverdig for ei trakkemaskin
 ANT_FRESH = 2.0  # sekund: så lenge er ei hellingsmåling frå antenna gyldig
+
+
+INS_OK = {"INS_HIGH_VARIANCE", "INS_SOLUTION_GOOD", "INS_SOLUTION_FREE", "INS_ALIGNMENT_COMPLETE"}
+
+
+def crc32_novatel(data):
+    """32-bits CRC for Unicore/NovAtel ASCII-loggar (mellom «#» og «*»)."""
+    crc = 0
+    for b in data:
+        t = (crc ^ b) & 0xFF
+        for _ in range(8):
+            t = (t >> 1) ^ 0xEDB88320 if t & 1 else t >> 1
+        crc = ((crc >> 8) & 0x00FFFFFF) ^ t
+    return crc
 
 
 def _f(x):
@@ -34,10 +55,40 @@ class Helling:
         self.ant = None  # siste måling frå antenna: {roll, pitch, heading, t, src}
         self.hist = deque(maxlen=200)  # (t, lat, lon, alt) – til helling langs køyreretninga
         self.sentences = set()  # kva hellingsmeldingar antenna har sendt (vist i innstillingane)
+        self.ins = None  # siste INS-status frå INSPVAXA (t.d. INS_ALIGNING) – vist i innstillingane
+        self.ins_bad = 0  # INSPVAXA-linjer med feil CRC (forkasta)
+
+    def _inspvax(self, line):
+        """Unicore INSPVAXA (UM981). Returnerer True når linja gav helling."""
+        if "*" not in line or ";" not in line:
+            return False
+        body, crc = line[1:].rsplit("*", 1)
+        try:
+            if int(crc.strip()[:8], 16) != crc32_novatel(body.encode("ascii", "ignore")):
+                self.ins_bad += 1
+                return False
+        except ValueError:
+            self.ins_bad += 1
+            return False
+        p = body.split(";", 1)[1].split(",")
+        if len(p) < 12:
+            return False
+        self.ins = p[0]
+        self.sentences.add("INSPVAXA")
+        if p[0] not in INS_OK:
+            return False  # INS ikkje klar (ventar på innretting) – SNOWMAN reknar sjølv i mellomtida
+        roll, pitch, az = _f(p[9]), _f(p[10]), _f(p[11])
+        if roll is None or pitch is None:
+            return False
+        hdg = az % 360 if az is not None and p[0] == "INS_SOLUTION_GOOD" else None
+        self.ant = {"roll": roll, "pitch": pitch, "heading": hdg, "t": time.time(), "src": "INSPVAXA"}
+        return True
 
     # ---------- hellingsmålar i antenna ----------
     def feed(self, line):
-        """Les ei NMEA-linje. Returnerer True om ho hadde helling."""
+        """Les ei NMEA-linje (eller Unicore INSPVAXA). Returnerer True om ho hadde helling."""
+        if line.startswith("#INSPVAXA"):
+            return self._inspvax(line)
         if not line.startswith("$"):
             return False
         body = line[1:].split("*")[0]
@@ -103,7 +154,7 @@ class Helling:
         """Helling på snøflata der maskina står som (gE, gN) = dz/dE, dz/dN, og info til skjerm og logg.
         Returnerer (None, info) når det ikkje skal korrigerast."""
         mode = cfg.get("tiltMode") or "auto"
-        info = {"mode": mode, "src": "av"}
+        info = {"mode": mode, "src": "av", "ins": self.ins}
         if mode == "av" or lat is None:
             return None, info
         g = None
@@ -116,7 +167,7 @@ class Helling:
                 along, right = math.tan(math.radians(pitch)), -math.tan(math.radians(roll))  # høgre side ned → fell mot høgre
                 h = math.radians(hdg)
                 g = (along * math.sin(h) + right * math.cos(h), along * math.cos(h) - right * math.sin(h))
-                info.update(src="antenne", sentence=a["src"])
+                info.update(src="IMU" if a["src"] == "INSPVAXA" else "antenne", sentence=a["src"])
         if g is None:
             tg = self._terrain_grad(terr, lat, lon)
             ts = self._track_slope(lat, lon, alt, heading) if (speed or 0) > 0.8 else None

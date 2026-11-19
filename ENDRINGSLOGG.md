@@ -51,6 +51,25 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.117 – helling frå IMU-en i UM981 (INSPVAXA), lett å slå av og på
+- **Nytt:** `helling.py` les Unicore `#INSPVAXA` (UM981): roll, pitch og asimut. CRC32 blir sjekka (stadfesta mot
+  eksempelet i Unicore-manualen); linjer med feil blir forkasta. Brukt berre når INS-en har retta seg inn
+  (INS_HIGH_VARIANCE, INS_SOLUTION_GOOD, INS_SOLUTION_FREE, INS_ALIGNMENT_COMPLETE). Asimuten blir brukt som kurs
+  berre ved INS_SOLUTION_GOOD, elles kursen frå GNSS. Forteikna i Unicore (X høgre, Y fram, Z opp; roll + = høgre side
+  ned, pitch + = fronten opp) er dei same som i SNOWMAN.
+- **Endra:** `snowman_pc.py` sender `#INSPVAXA`-linjer frå mottakaren til hellingsmodulen (før berre `$`-linjer).
+- **Endra:** Innst. › Kalibrering › Helling har no vala «IMU på (tilrådd)», «IMU av – SNOWMAN reknar hellinga frå GPS
+  og terreng» og «Av». Same innstilling som før (auto/estimat/av), berre tydelegare namn. Under valet står kjelda
+  («IMU (INSPVAXA)») og status for IMU-en (t.d. «rettar seg inn – køyr litt»).
+- **Nytt:** `simuler-leica.py --helling --ins` sender hellinga som INSPVAXA. `test/testimu.py` (CRC, INS-status,
+  forteikn, IMU av, gammal måling).
+- **Retta (dokumentasjon):** UM981 skal monterast med **Y**-aksen framover (ikkje X). `INSPVAXA 1` er lagt til i
+  oppsettet for UM981 (`docs/GNSS-OPPSETT-UM981-UM980.*`).
+- **Kvifor:** eigaren vil ha IMU-en i bruk og kunne slå han av, slik at SNOWMAN sin eigen korreksjon blir brukt.
+- **Test:** `testimu.py` ALT OK. Simulator med `--terreng --helling --ins` mot SNOWMAN: kjelde «IMU», fram/bak og
+  side følgjer simulatoren (14° i bakken); «IMU av» via `/api/calibration` gav «utrekna (GNSS)», «IMU på» tilbake til
+  «IMU». `testautoport`, `testsnoklynge`: ALT OK.
+
 ### PC-prototype v1.6.116 – FIX held seg når éin satellitt mistar fasen
 - **Bakgrunn:** første køyretur med UM981-02 (rover) mot TH-basen, 19.11. FIX kom og gjekk: 23 skifte mellom FIX og
   FLOAT på 7 min, FIX berre 32 % av tida, sjølv med 17 satellittar heile vegen. Opptaket viste at kvar gong éin

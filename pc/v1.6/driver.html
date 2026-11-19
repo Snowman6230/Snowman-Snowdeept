@@ -2686,8 +2686,8 @@
           <div class="rowWide">
             <div>Hellingskorreksjon</div
             ><select id="tiltMode" style="width: 100%" onchange="saveTilt()">
-              <option value="auto">Auto (tilrådd) – hellingsmålar i antenna om ho har</option>
-              <option value="estimat">Berre utrekna frå GPS og terreng</option>
+              <option value="auto">IMU på (tilrådd) – hellinga frå IMU-en i mottakaren, elles SNOWMAN sin</option>
+              <option value="estimat">IMU av – SNOWMAN reknar hellinga frå GPS og terreng</option>
               <option value="av">Av – ingen hellingskorreksjon</option>
             </select>
           </div>
@@ -3123,7 +3123,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.116";
+      const APP_VERSION = "1.6.117";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -7979,7 +7979,21 @@
                 "<br>Kjelde: <b>" + esc(t.src + (t.sentence ? " (" + t.sentence + ")" : "")) + "</b> · målepunktet flytt " +
                 (t.shift != null ? t.shift.toFixed(2).replace(".", ",") : "–") + " m · høgd retta " +
                 (t.dz != null ? Math.round(t.dz * 100) : "–") + " cm" +
-                "<br><small>" + ((t.ant || TILT_SENT).length ? "Antenna sender helling: " + esc((t.ant || TILT_SENT).join(", ")) : "Antenna har ikkje sendt hellingsmåling (vanleg for GS07/GS16).") + "</small>";
+                "<br><small>" + ((t.ant || TILT_SENT).length ? "Antenna sender helling: " + esc((t.ant || TILT_SENT).join(", ")) : "Antenna har ikkje sendt hellingsmåling (vanleg for GS07/GS16).") +
+                (t.ins ? " · IMU (INS): " + esc(insText(t.ins)) : "") +
+                (t.mode === "estimat" && (t.ant || TILT_SENT).length ? " · IMU-en blir ikkje brukt (IMU av)." : "") + "</small>";
+      }
+      function insText(s) {
+        return (
+          {
+            INS_INACTIVE: "ikkje aktiv",
+            INS_ALIGNING: "rettar seg inn – køyr litt, SNOWMAN reknar sjølv så lenge",
+            INS_HIGH_VARIANCE: "i bruk (kursen usikker)",
+            INS_SOLUTION_GOOD: "i bruk",
+            INS_SOLUTION_FREE: "i bruk (utan GNSS)",
+            INS_ALIGNMENT_COMPLETE: "i bruk (køyr litt for full nøyaktigheit)",
+          }[s] || s
+        );
       }
       async function saveCalibration() {
         save();

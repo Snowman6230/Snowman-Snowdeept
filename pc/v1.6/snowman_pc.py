@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.116"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.117"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -627,7 +627,7 @@ def serial_loop():
                             # ikkje har hatt løysing på 3 s (kart og status held fram, men utan RTK frå mottakaren).
                             if m is None or not m.stats.get("last_sol") or time.time()-m.stats["last_sol"]>3:
                                 update(rtk_src="mottakar"); parse_gga(line)
-                        elif line.startswith("$"): HEL.feed(line)   # hellingsmålar i antenna, om ho har
+                        elif line.startswith("$") or line.startswith("#INSPVAXA"): HEL.feed(line)   # hellingsmålar i antenna/IMU, om ho har
                         elif line and line.isprintable(): update(rx_text=line[:120],rx_time=time.time())   # svar på kommandoar o.l. (t.d. «<OK»)
                 else: time.sleep(.02)
             update(serial_connected=False)   # løkka slutta (port lukka/endra) – aldri «TILKOPLA» utan open port
