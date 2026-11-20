@@ -73,6 +73,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.131 – UTM-sona blir funnen også utan GNSS
+- **Retta:** .pxy-fila for Sykkylven Skisenter gjekk gjennom på Fjellsætra (v1.6.128, med GNSS-posisjon), men vart
+  avvist heime i v1.6.130: «Fila manglar koordinatsystem». Fila har ingen koordinatsystem, og sona vart berre funnen
+  frå GNSS-posisjonen til maskina i augeblinken.
+- **Endra:** `punktsky.epsg_from_hint` tek imot fleire kjende stader. SNOWMAN prøver i rekkjefølgje maskina no, sist
+  kjende posisjon (`data/sist-posisjon.json`, same som Vêr brukar) og midten av kvart terrenglag i biblioteket, og vel
+  sona der midten av fila ligg innan 30 km av ein av dei.
+- **Test:** `test/testpxy.py` (no 13 punkt, m.a. inga sone utan stad, inga sone med berre ein stad 45 km unna, sone 32
+  frå eit terrenglag når GNSS manglar): ALT OK. Analyse frå sti utan GNSS i SNOWMAN: «EUREF89 UTM 32N», ingen feil.
+
 ### PC-prototype v1.6.130 – terrenganalysen held fram når ein går ut av Terreng
 - **Retta:** gjekk føraren ut av Terreng-fana, lukka innstillingane eller lasta sida på nytt medan ei stor fil vart
   analysert, forsvann analysen eller resultatet (melding frå eigaren).

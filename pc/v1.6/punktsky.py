@@ -149,18 +149,24 @@ def epsg_from_name(name):
 
 
 def epsg_from_hint(cx, cy, hint, utm_inverse):
-    """Utan koordinatsystem: vel den sona der midten av fila ligg nær maskina (innan 30 km)."""
-    if not hint or hint[0] is None:
+    """Utan koordinatsystem: vel den sona der midten av fila ligg nær ein kjend stad (innan 30 km).
+    hint = (lat, lon) eller ei liste med fleire stader (v1.6.131: maskina no, sist kjende posisjon, midten av dei
+    terrenglaga som alt er i biblioteket) – så sona blir funnen også når PC-en ikkje har GNSS (t.d. heime)."""
+    if not hint:
         return None
-    lat0, lon0 = hint
-    for z, e in ((32, 25832), (33, 25833), (35, 25835)):
-        try:
-            la, lo = utm_inverse(cx, cy, z)
-        except Exception:
+    hints = [hint] if isinstance(hint, tuple) and len(hint) == 2 and not isinstance(hint[0], (tuple, list)) else hint
+    for h in hints:
+        if not h or h[0] is None or h[1] is None:
             continue
-        d = math.hypot((la - lat0) * 111.32, (lo - lon0) * 111.32 * math.cos(math.radians(lat0)))
-        if d < 30:
-            return e
+        lat0, lon0 = h
+        for z, e in ((32, 25832), (33, 25833), (35, 25835)):
+            try:
+                la, lo = utm_inverse(cx, cy, z)
+            except Exception:
+                continue
+            d = math.hypot((la - lat0) * 111.32, (lo - lon0) * 111.32 * math.cos(math.radians(lat0)))
+            if d < 30:
+                return e
     return None
 
 

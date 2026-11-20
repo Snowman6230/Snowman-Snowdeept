@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.130"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.131"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -758,6 +758,20 @@ def tprog_done(name,r):
     """v1.6.130: resultatet blir verande i tenesta til førarskjermen har vist det – også om føraren gjekk ut av
     Terreng-fana, lukka innstillingane eller lasta sida på nytt medan analysen gjekk."""
     TPROG.clear(); TPROG.update(active=False,finished=True,file=name,result=r,t=time.time())
+def terr_hints():
+    """v1.6.131: kjende stader for å finne UTM-sona til ei fil utan koordinatsystem: maskina no / sist kjende posisjon,
+    og midten av kvart terrenglag i biblioteket. Før vart berre GNSS-posisjonen no brukt, så same fila som gjekk
+    gjennom på Fjellsætra, vart avvist heime («Fila manglar koordinatsystem», 20.11)."""
+    out=[]
+    try:
+        a,b,_=stad()
+        if a is not None: out.append((a,b))
+    except Exception: pass
+    try:
+        for m in (TERR.listing() if T.AVAILABLE else []):
+            out.append(tuple(T.utm_inverse(m["x0"]+m["nx"]*m["dx"]/2,m["y0"]-m["ny"]*m["dy"]/2,m["zone"])))
+    except Exception: pass
+    return out
 def terr_path_job(p,hint):
     try:
         r=TERR.analyse(p,p.name,hint=hint,progress=tprog_cb("Les punkta"),keep_source=True)
@@ -1155,7 +1169,7 @@ class API(http.server.BaseHTTPRequestHandler):
                         if time.time()-last>0.5: tprog("Tek imot fila",n-left,n,file=name); last=time.time()
                 if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
                 tprog("Les punkta",0,n,file=name)
-                r=TERR.analyse(f,name,hint=(STATE.get("lat"),STATE.get("lon")),progress=tprog_cb("Les punkta"))
+                r=TERR.analyse(f,name,hint=terr_hints(),progress=tprog_cb("Les punkta"))
             except Exception as e:
                 r={"ok":False,"errors":[str(e)],"warnings":[],"info":{}}
             finally:
@@ -1177,7 +1191,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 tprog("Les punkta",0,p.stat().st_size,file=p.name)
                 # v1.6.130: analysen går i bakgrunnen i tenesta – førarskjermen kan gå ut av Terreng, lukke innstillingane
                 # eller lastast på nytt utan at analysen stoppar
-                threading.Thread(target=terr_path_job,args=(p,(STATE.get("lat"),STATE.get("lon"))),daemon=True).start()
+                threading.Thread(target=terr_path_job,args=(p,terr_hints()),daemon=True).start()
                 self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"job":True,"file":p.name}).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"errors":[str(e)],"warnings":[],"info":{}}).encode())

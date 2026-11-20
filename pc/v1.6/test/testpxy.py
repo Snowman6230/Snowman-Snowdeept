@@ -58,5 +58,13 @@ PS.sample_xyz = orig
 sjekk("8 for små kantar → les på nytt, heile området kjem med", not err and info["points"] == n and abs(info["hmax"] - 630) < 0.5,
       (err, info.get("points"), info.get("hmax")))
 sjekk("9 framdrift seier frå om ny gjennomgang", any("ein gong til" in (f or "") for f in fasar), fasar)
+# v1.6.131: utan GNSS (heime) – sona blir funnen frå sist kjende posisjon eller midten av eit terrenglag
+cx, cy = 383150.0, 6913450.0
+sjekk("10 ingen stad → inga sone", PS.epsg_from_hint(cx, cy, [], T.utm_inverse) is None)
+sjekk("11 berre posisjon heime (Ålesund, 45 km) → inga sone", PS.epsg_from_hint(cx, cy, [(62.47, 6.15)], T.utm_inverse) is None)
+lag = T.utm_inverse(383500, 6914000, 32)   # midten av eit terrenglag ved Fjellsætra
+sjekk("12 GNSS manglar, men terrenglag i nærleiken → sone 32",
+      PS.epsg_from_hint(cx, cy, [(None, None), (62.47, 6.15), lag], T.utm_inverse) == 25832)
+sjekk("13 éin stad som tuppel fungerer som før", PS.epsg_from_hint(cx, cy, (62.36, 6.76), T.utm_inverse) == 25832)
 print("ALT OK" if not feil else f"FEIL: {feil}")
 sys.exit(1 if feil else 0)
