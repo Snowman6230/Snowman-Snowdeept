@@ -3175,7 +3175,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.132";
+      const APP_VERSION = "1.6.133";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -4185,7 +4185,116 @@
           paintCells(dCx, (x) => (x - ox) * s, (y) => (oy - y) * s, s);
           segs.forEach(dSeg);
           if (changeMode()) paintCells(dCx, (x) => (x - ox) * s, (y) => (oy - y) * s, s, chgCells);
+          paintTra(dCx, (x) => (x - ox) * s, (y) => (oy - y) * s, s, true);
           dDirty = true;
+        }
+        // v1.6.133 (eigaren): trasear, forbodne område og hindringar i 3D og Frontrute. Dei blir måla inn i same tekstur som
+        // høgdekurvene og spora – ikkje teikna som 3D-linjer – så dei ligg alltid på flata og følgjer terrenget og snøflata
+        // (snøflata løftar nettet, og teksturen blir med). Detaljflata nær maskina får smalare og skarpare linjer.
+        let traHatch = null;
+        function paintTra(cx, X, Y, s, detail) {
+          let g = typeof TRA !== "undefined" && TRA.geo3d ? TRA.geo3d() : null;
+          if (!g || !g.show || !patch) return;
+          let lw = (detail ? 0.6 : 1.5) * s,
+            far = (pts) => pts.every((p) => Math.abs(p[0]) > HALF + 50 || Math.abs(p[1]) > HALF + 50);
+          cx.save();
+          cx.lineJoin = "round";
+          g.list.forEach((t) => {
+            let pts = t.poly.map(local);
+            if (pts.length < 3 || far(pts)) return;
+            cx.beginPath();
+            pts.forEach((p, i) => (i ? cx.lineTo(X(p[0]), Y(p[1])) : cx.moveTo(X(p[0]), Y(p[1]))));
+            cx.closePath();
+            if (t.kind === "forbode") {
+              if (!traHatch) {
+                let c = document.createElement("canvas");
+                c.width = c.height = 16;
+                let h = c.getContext("2d");
+                h.strokeStyle = "rgba(226,59,50,0.55)";
+                h.lineWidth = 3;
+                h.beginPath();
+                h.moveTo(-4, 20);
+                h.lineTo(20, -4);
+                h.moveTo(-4, 4);
+                h.lineTo(4, -4);
+                h.moveTo(12, 20);
+                h.lineTo(20, 12);
+                h.stroke();
+                traHatch = c;
+              }
+              cx.fillStyle = cx.createPattern(traHatch, "repeat");
+              cx.fill();
+              cx.setLineDash([3 * s, 2 * s]);
+              cx.strokeStyle = "#e23b32";
+            } else {
+              cx.globalAlpha = 0.08;
+              cx.fillStyle = t.color;
+              cx.fill();
+              cx.globalAlpha = 1;
+              cx.setLineDash([]);
+              cx.strokeStyle = t.color;
+            }
+            cx.lineWidth = lw;
+            cx.stroke();
+          });
+          cx.setLineDash([]);
+          g.objs.forEach((o) => {
+            let p = local([o.lat, o.lng]);
+            if (Math.abs(p[0]) > HALF + 20 || Math.abs(p[1]) > HALF + 20) return;
+            cx.beginPath();
+            cx.arc(X(p[0]), Y(p[1]), Math.max(0.3, o.radius) * s, 0, 2 * Math.PI);
+            cx.fillStyle = "rgba(255,59,48,0.25)";
+            cx.fill();
+            cx.strokeStyle = "#ff3b30";
+            cx.lineWidth = (detail ? 0.25 : 0.8) * s;
+            cx.stroke();
+          });
+          cx.restore();
+        }
+        // namnelappar for hindringar: små skilt om lag 1,5 m over flata (eigaren valde «ring + liten namnelapp»)
+        let objLbl = null;
+        function buildObjLbl() {
+          if (!scene) return;
+          if (objLbl) {
+            objLbl.children.forEach((c) => {
+              c.material.map.dispose();
+              c.material.dispose();
+            });
+            scene.remove(objLbl);
+          }
+          objLbl = new THREE.Group();
+          scene.add(objLbl);
+          let g = typeof TRA !== "undefined" && TRA.geo3d ? TRA.geo3d() : null;
+          if (!g || !g.show || !patch) return;
+          g.objs.forEach((o) => {
+            let p = local([o.lat, o.lng]),
+              h = hAt(p[0], p[1]);
+            if (isNaN(h) || Math.abs(p[0]) > HALF || Math.abs(p[1]) > HALF) return;
+            let c = document.createElement("canvas"),
+              x = c.getContext("2d"),
+              txt = (o.sym ? o.sym + " " : "") + o.name;
+            x.font = "bold 40px Arial";
+            c.width = Math.min(1024, Math.ceil(x.measureText(txt).width) + 36);
+            c.height = 60;
+            x.font = "bold 40px Arial";
+            x.fillStyle = "rgba(20,30,38,0.85)";
+            x.fillRect(0, 0, c.width, c.height);
+            x.strokeStyle = "#ff3b30";
+            x.lineWidth = 6;
+            x.strokeRect(3, 3, c.width - 6, c.height - 6);
+            x.fillStyle = "#fff";
+            x.textBaseline = "middle";
+            x.fillText(txt, 18, 32);
+            // Sprite finst ikkje i den avgrensa three-pakka: flat plate som alltid snur seg mot kamera (sjå frame)
+            let t = new THREE.CanvasTexture(c),
+              ht = 0.8,
+              sp = new THREE.Mesh(
+                new THREE.PlaneGeometry((c.width / c.height) * ht, ht),
+                new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide }),
+              );
+            sp.position.set(p[0], h - hRef + 1.5, -p[1]);
+            objLbl.add(sp);
+          });
         }
         function dSeg(sg) {
           if (!dCx || !dC) return;
@@ -4290,8 +4399,10 @@
           paintCells(texCx, (x) => (x + HALF) * PX, (y) => (HALF - y) * PX, PX);
           segs.forEach(paintSeg);
           if (changeMode()) paintCells(texCx, (x) => (x + HALF) * PX, (y) => (HALF - y) * PX, PX, chgCells);
+          paintTra(texCx, (x) => (x + HALF) * PX, (y) => (HALF - y) * PX, PX, false);
           tex.needsUpdate = true;
           paintEst();
+          buildObjLbl();
         }
         function paintEst() {
           if (!estCx || !patch) return;
@@ -4485,6 +4596,7 @@
             Math.round(sm.h) +
             " moh." +
             (snowInfo ? " · SNØFLATE " + Math.round(snowInfo) + " m²" + (src === "demo" ? " (DEMO)" : simGnss ? " (SIMULERT)" : "") : "");
+          if (objLbl) objLbl.children.forEach((m) => m.quaternion.copy(camera.quaternion)); // namnelappane vender mot føraren
           renderer.render(scene, camera);
         }
         return {
@@ -4507,6 +4619,10 @@
             if (!VIEWS[viewMode()].gl) return;
             request(p);
             check();
+          },
+          traChanged() {
+            // trasear, forbodne område eller hindringar er endra (eller vist/skjult)
+            if (patch && renderer) repaint();
           },
           addSeg(a, b, w, color, d) {
             let sg = { a, b, w, color, d: d == null || isNaN(d) ? null : d };
@@ -7145,6 +7261,7 @@
                 )
                 .join("")
             : '<div class="history">Ingen hindringar lagt inn.</div>';
+          if (typeof T3D !== "undefined" && T3D.traChanged) T3D.traChanged(); // v1.6.133: same teikning i 3D og Frontrute
           if (!show || D) return;
           objs.forEach((o) => {
             L.circle([o.lat, o.lng], { radius: o.radius, color: "#ff3b30", weight: 2, fillOpacity: 0.25, interactive: false }).addTo(objGroup);
@@ -7479,6 +7596,12 @@
           return list.find((t) => t.id === id);
         }
         return {
+          // v1.6.133: geometrien til 3D og Frontrute
+          geo3d: () => ({
+            show: show && !D,
+            list: list.map((t) => ({ kind: t.kind, color: t.color, poly: t.poly })),
+            objs: objs.map((o) => ({ lat: o.lat, lng: o.lng, radius: +o.radius || 1, name: o.name, sym: (objTypes[o.type] || {}).sym || "" })),
+          }),
           load,
           refresh,
           render,

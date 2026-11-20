@@ -73,6 +73,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.133 – trasear, forbodne område og hindringar i 3D og Frontrute
+- **Nytt:** 3D-terreng og Frontrute viser no det som er teikna på kartet: trasear som kantlinje i fargen til traseen
+  (svak farge inni), forbodne område med raud stipla kant og raud skravering, og hindringar som raud ring på bakken med
+  radiusen til hindringa og ein liten namnelapp om lag 1,5 m over flata (snur seg alltid mot føraren).
+- **Korleis (analyse og avgjerd):** teikninga blir måla inn i same tekstur som høgdekurvene, snødjupna og spora – både
+  grunnbiletet (±150 m, 4 px/m, linjer 1,5 m) og detaljflata nær maskina (12–16 px/m, linjer 0,6 m). Ingen 3D-linjer:
+  det som er måla inn, ligg alltid på flata og følgjer terrenget, og når snøflata løftar nettet, blir teikninga med opp.
+  Eigaren valde «ring + liten namnelapp» for hindringar.
+- **Endra:** `TRA.geo3d()` gir geometrien til 3D; `T3D.traChanged()` teiknar på nytt når trasear eller hindringar blir
+  endra, viste eller skjulte. «VIS TRASEAR PÅ KARTET» gjeld òg 3D og Frontrute.
+- **Merknad:** three-pakka i SNOWMAN har ikkje `Sprite`; namnelappane er flate plater som blir snudde mot kamera kvar
+  ramme.
+- **Test:** simulator med testterreng, éin trasé («Nedfarten»), eitt forbode område («Bekk») og ein hydrant via API.
+  Chromium (WebGL): 3D-terreng viser kantane til traseen som gule linjer som følgjer bakken, det forbodne området med
+  raud skravering og namnelappen «H Hydrant 3»; Frontrute viser kanten til traseen framfor maskina. `node --check` på
+  skriptet og ingen JavaScript-feil.
+
 ### PC-prototype v1.6.132 – store punktfiler blir alltid lesne berre éin gong
 - **Bakgrunn:** importen av «Sykkylven Skisenter terreng pxy fil.pxy» (9,2 GB, 119 464 803 punkt) i v1.6.131: prøvane
   bomma på kantane, så tryggleiksnettet las heile fila ein gong til (om lag 30 min totalt). Resultatet var rett: 0,5 m
