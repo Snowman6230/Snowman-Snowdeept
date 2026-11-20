@@ -55,9 +55,14 @@ fasar = []
 grid, info, err, warns = PS.analyse_pointcloud(p, os.path.basename(p), (62.36, 6.76), T.utm_inverse, lambda e: f"EPSG:{e}",
                                                progress=lambda d, t, f=None: fasar.append(f) if f else None)
 PS.sample_xyz = orig
-sjekk("8 for små kantar → les på nytt, heile området kjem med", not err and info["points"] == n and abs(info["hmax"] - 630) < 0.5,
-      (err, info.get("points"), info.get("hmax")))
-sjekk("9 framdrift seier frå om ny gjennomgang", any("ein gong til" in (f or "") for f in fasar), fasar)
+sjekk("8 for små kantar → rutenettet blir utvida, heile området kjem med", not err and info["points"] == n and abs(info["hmax"] - 630) < 0.5
+      and abs(info["hmin"] - 600) < 0.5, (err, info.get("points"), info.get("hmin"), info.get("hmax")))
+sjekk("9 fila blir lesen berre éin gong (ingen ny gjennomgang)", not any("ein gong til" in (f or "") for f in fasar)
+      and any("utvida" in w for w in warns), (fasar, warns))
+# rutenettet etter utviding skal gi same høgder som utan
+g_ref, i_ref, _, _ = PS.analyse_pointcloud(p, os.path.basename(p), (62.36, 6.76), T.utm_inverse, lambda e: f"EPSG:{e}")
+sjekk("9b same høgder som utan utviding (snitt)", abs(float(np.nanmean(grid)) - float(np.nanmean(g_ref))) < 0.05,
+      (float(np.nanmean(grid)), float(np.nanmean(g_ref))))
 # v1.6.131: utan GNSS (heime) – sona blir funnen frå sist kjende posisjon eller midten av eit terrenglag
 cx, cy = 383150.0, 6913450.0
 sjekk("10 ingen stad → inga sone", PS.epsg_from_hint(cx, cy, [], T.utm_inverse) is None)

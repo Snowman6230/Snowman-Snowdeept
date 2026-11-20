@@ -354,6 +354,9 @@ def choose_res(npts, area, ground_share=0.5):
     return r
 
 
+GROW_MAX_CELLS = 4 * MAX_CELLS   # utvida rutenett: høgst om lag 650 MB minne – større område må delast opp
+
+
 class Gridder:
     def __init__(self, minx, miny, maxx, maxy, res):
         self.res = res
@@ -398,6 +401,29 @@ class Gridder:
 
     def use_ground(self):
         return self.n_ground >= max(1000, 0.02 * self.n_all)
+
+    def covers(self, x, y):
+        return (x.min() >= self.x0 and x.max() < self.x0 + self.nx * self.res and
+                y.max() <= self.y0 and y.min() > self.y0 - self.ny * self.res)
+
+    def grow(self, minx, miny, maxx, maxy):
+        """v1.6.132: utvid rutenettet så det dekkjer (minx … maxy) i tillegg – det som alt er samla, blir flytta over.
+        Då treng ei fil aldri lesast to gonger sjølv om prøvane bomma på kantane. Ruter er alltid på heile res-steg."""
+        r = self.res
+        nx0 = min(self.x0, math.floor(minx / r) * r)
+        ny0 = max(self.y0, math.ceil(maxy / r) * r)
+        nnx = int(math.floor((max(maxx, self.x0 + (self.nx - 1) * r) - nx0) / r)) + 1
+        nny = int(math.floor((ny0 - min(miny, self.y0 - (self.ny - 1) * r)) / r)) + 1
+        if nnx * nny > GROW_MAX_CELLS:
+            raise ValueError(f"Punkta dekkjer eit for stort område ({nnx * r / 1000:.1f} × {nny * r / 1000:.1f} km ved {r} m rute). "
+                             "Del fila opp, eller fjern punkt langt unna resten.")
+        dc, dr = int(round((self.x0 - nx0) / r)), int(round((ny0 - self.y0) / r))
+        for name, fill in (("gsum", 0.0), ("gcnt", 0), ("amin", np.inf)):
+            old = getattr(self, name).reshape(self.ny, self.nx)
+            new = np.full((nny, nnx), fill, old.dtype)
+            new[dr:dr + self.ny, dc:dc + self.nx] = old
+            setattr(self, name, new.ravel())
+        self.x0, self.y0, self.nx, self.ny = nx0, ny0, nnx, nny
 
     def add_low(self, x, y, z, c):
         """Andre gjennomgang (uklassifisert sky): summer punkta som ligg mindre enn BAND over lågaste punkt i ruta."""
@@ -495,7 +521,7 @@ def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=Non
         elif utm_inverse:
             epsg = epsg_from_hint((minx + maxx) / 2, (miny + maxy) / 2, hint, utm_inverse)
             if epsg:
-                warns.append(f"Koordinatsystemet står ikkje i fila – tolka ut frå posisjonen til maskina som {crs_name(epsg)}. "
+                warns.append(f"Koordinatsystemet står ikkje i fila – tolka ut frå ein kjend stad i nærleiken (maskina, sist kjende posisjon eller eit terrenglag) som {crs_name(epsg)}. "
                              "Sjekk at laget ligg rett på kartet.")
     if not epsg:
         return None, info, ["Fila manglar koordinatsystem. Eksporter med EUREF89 UTM 32 eller 33, eller skriv sona i filnamnet "
@@ -508,19 +534,15 @@ def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=Non
     res = choose_res(npts, area, 0.5 if ext in (".las", ".laz") else 1.0)
     G = Gridder(minx, miny, maxx, maxy, res)
     try:
+        grew = 0
         for x, y, z, c in src():
+            if seen is not None and len(x) and not G.covers(x, y):
+                # v1.6.132: prøvane bomma på kantane – utvid rutenettet (med margin) i staden for å lese fila på nytt.
+                # Før (v1.6.129–131) vart heile fila lesen ein gong til (Sykkylven Skisenter: 9,2 GB to gonger).
+                w = max(100.0, 0.1 * max(G.nx, G.ny) * G.res)
+                G.grow(float(x.min()) - w, float(y.min()) - w, float(x.max()) + w, float(y.max()) + w)
+                grew += 1
             G.add(x, y, z, c)
-        if seen is not None and seen[0] is not None and (
-                seen[0][0] < minx or seen[0][1] < miny or seen[1][0] > maxx or seen[1][1] > maxy):
-            # prøvane bomma på ytterkantane: les ein gong til med dei faktiske kantane (sjeldan – fila er då uvanleg sortert)
-            minx, miny, maxx, maxy = float(seen[0][0]), float(seen[0][1]), float(seen[1][0]), float(seen[1][1])
-            area = (maxx - minx) * (maxy - miny)
-            res = choose_res(npts, area, 1.0)
-            G = Gridder(minx, miny, maxx, maxy, res)
-            if progress:
-                progress(0, 1, "Les punkta ein gong til (fila dekkjer meir enn prøvane viste)")
-            for x, y, z, c in src():
-                G.add(x, y, z, c)
         if not G.use_ground():  # uklassifisert: andre gjennomgang for snittet nær botnen i kvar rute
             for x, y, z, c in src():
                 G.add_low(x, y, z, c)
@@ -529,6 +551,17 @@ def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=Non
     grid, ground = G.grid()
     if seen is not None:   # XYZ: talet frå prøvane var eit anslag – no veit vi det faktiske
         npts = G.n_all
+        info["ground"] = True   # XYZ/PXY: alle punkta er rekna som terreng (fila har ingen klassar)
+        # skjer bort tomme kantar (margin frå prøvane eller utvidinga), så laget berre dekkjer der det finst punkt
+        fin = np.isfinite(grid)
+        if fin.any():
+            rr, cc = np.flatnonzero(fin.any(axis=1)), np.flatnonzero(fin.any(axis=0))
+            r0, r1, c0, c1 = int(rr[0]), int(rr[-1]) + 1, int(cc[0]), int(cc[-1]) + 1
+            grid = grid[r0:r1, c0:c1]
+            G.x0, G.y0, G.nx, G.ny = G.x0 + c0 * G.res, G.y0 - r0 * G.res, c1 - c0, r1 - r0
+        if grew:
+            warns.append(f"Punkta dekte meir enn prøvane viste – rutenettet vart utvida {grew} gong(er) undervegs "
+                         "(fila vart likevel berre lesen éin gong).")
     valid = np.isfinite(grid)
     frac = float(valid.mean()) if grid.size else 0.0
     if not valid.any():

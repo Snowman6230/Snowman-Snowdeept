@@ -73,6 +73,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.132 – store punktfiler blir alltid lesne berre éin gong
+- **Bakgrunn:** importen av «Sykkylven Skisenter terreng pxy fil.pxy» (9,2 GB, 119 464 803 punkt) i v1.6.131: prøvane
+  bomma på kantane, så tryggleiksnettet las heile fila ein gong til (om lag 30 min totalt). Resultatet var rett: 0,5 m
+  rute, 2385 × 2379 ruter, 0,92 km², høgd 347–777 m, +0,03 m mot «Fjellsetra GEOData» (NN2000).
+- **Endra:** `punktsky.Gridder.grow` – når punkt fell utanfor rutenettet, blir det utvida undervegs (med margin), og det
+  som alt er samla, blir flytta over. Fila blir aldri lesen på nytt. Tomme kantar blir skorne bort til slutt. Tak på
+  utvidinga: 4 × `MAX_CELLS` (om lag 650 MB minne), elles melding om å dele opp fila.
+- **Endra:** XYZ/PXY blir merkt som terrengpunkt («bakkepunkt brukte») i staden for «ikkje klassifisert».
+  Åtvaringa om koordinatsystem seier no «ein kjend stad i nærleiken (maskina, sist kjende posisjon eller eit
+  terrenglag)».
+- **Test:** `test/testpxy.py` (no 14 punkt – m.a. for små prøvekantar: utvida éin gong, ingen ny gjennomgang, same
+  høgder): ALT OK. `test/lidar/testlidar.py`: ALLE TESTAR OK. 760 MB-fila: 15 s, tomme kantar skorne bort.
+
 ### PC-prototype v1.6.131 – UTM-sona blir funnen også utan GNSS
 - **Retta:** .pxy-fila for Sykkylven Skisenter gjekk gjennom på Fjellsætra (v1.6.128, med GNSS-posisjon), men vart
   avvist heime i v1.6.130: «Fila manglar koordinatsystem». Fila har ingen koordinatsystem, og sona vart berre funnen
