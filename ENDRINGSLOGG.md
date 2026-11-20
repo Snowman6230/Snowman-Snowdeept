@@ -73,6 +73,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.127 – nytt namn på terrenglag
+- **Nytt:** knappen «NYTT NAMN» på kvart lag i Innst. › Terreng › Terrengbibliotek. Ein dialog (med skjermtastatur
+  når det er slått på) viser det noverande namnet, som kan rettast. Namnet blir lagra i laget, og endringa blir skriven
+  i feltloggen («Terrenglag fekk nytt namn: «…» → «…»»). Tomme namn blir avviste, og namnet er høgst 60 teikn.
+- **Endra:** `tastatur.js` – `SKB.ask(tittel, {value})` kan fylle ut feltet på førehand.
+- **Kvifor:** eigaren har fleire lag med same namn («dtm1_33_111_134 (utsnitt)») og ville kunne skilje dei,
+  t.d. «Fjellsætra».
+- **Test:** testterreng importert som «dtm1_33_111_134 (utsnitt)» via API og omdøypt i Chromium til
+  «Fjellsætra 2026»: dialogen viste det gamle namnet, lista og `/api/terrain` viste det nye. Ingen JavaScript-feil.
+
 ### PC-prototype v1.6.126 – mottakaren kjem att av seg sjølv etter USB-brot
 - **Bakgrunn (logg 20.11, Fjellsætra):** kl. 11:54:32 forsvann COM3 i Windows (USB-kortet UM981 mista sambandet). Porten
   kom att etter 13 s, og det kom bytes, men verken posisjon (GGA) eller rådata i 4 min – til føraren tok USB-kabelen ut

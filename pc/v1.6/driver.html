@@ -3169,7 +3169,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.126";
+      const APP_VERSION = "1.6.127";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -6740,6 +6740,7 @@
                 " · importert " + l.imported + (l.versions && l.versions.length ? " · " + l.versions.length + " eldre versjon(ar)" : "") +
                 '<div class="acts"><button onclick="moveLayer(\'' + l.id + "',1)\">▲</button><button onclick=\"moveLayer('" + l.id + "',-1)\">▼</button>" +
                 '<button onclick="toggleLayer(\'' + l.id + "')\">" + (l.active ? "SLÅ AV" : "SLÅ PÅ") + "</button>" +
+                '<button onclick="renameLayer(\'' + l.id + "')\">NYTT NAMN</button>" +
                 '<button onclick="startReplace(\'' + l.id + "')\">ERSTATT</button>" +
                 '<button onclick="deleteLayer(\'' + l.id + "')\">SLETT</button></div></div>",
             ).join("")
@@ -7899,6 +7900,19 @@
         $("terrType").value = l.type;
         toast("Vel ny fil for «" + l.name + "». Den gamle blir teken vare på som eldre versjon.");
         $("terrFile").scrollIntoView({ behavior: "smooth" });
+      }
+      // v1.6.127 (eigaren): gi terrenglaget eit eige namn, t.d. «Fjellsætra 2026» i staden for «dtm1_33_111_134 (utsnitt)»
+      async function renameLayer(id) {
+        let l = TERR.layers.find((x) => x.id === id);
+        if (!l) return;
+        let n = window.SKB ? await SKB.ask("Nytt namn på terrenglaget:", { value: l.name }) : prompt("Nytt namn på terrenglaget:", l.name);
+        if (n == null) return;
+        n = n.trim().slice(0, 60);
+        if (!n || n === l.name) return;
+        await api("api/terrain/update", { id, name: n })
+          .then(() => toast("Terrenglaget heiter no «" + n + "»"))
+          .catch((e) => toast(e.message));
+        loadTerrain();
       }
       async function toggleLayer(id) {
         let l = TERR.layers.find((x) => x.id === id);

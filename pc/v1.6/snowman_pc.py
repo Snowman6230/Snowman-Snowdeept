@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.126"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.127"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1258,7 +1258,13 @@ class API(http.server.BaseHTTPRequestHandler):
                         d.get("priority"),d.get("replace") or None,d.get("source",""),bool(d.get("vdatumConfirmed")),
                         d.get("heights") if d.get("heights") in ("nn2000","ell") else None)}
                 elif self.path=="/api/terrain/update":
-                    r={"ok":True,"layer":TERR.update(d["id"],name=d.get("name"),active=d.get("active"),priority=d.get("priority"))}
+                    nm=d.get("name")
+                    if nm is not None:   # v1.6.127: nytt namn frå førarskjermen
+                        nm=" ".join(str(nm).split())[:60]
+                        if not nm: raise ValueError("Namnet kan ikkje vere tomt")
+                        old=TERR.layers.get(d["id"],{}).get("name")
+                        if old!=nm: LOG.event(f"Terrenglag fekk nytt namn: «{old}» → «{nm}»")
+                    r={"ok":True,"layer":TERR.update(d["id"],name=nm,active=d.get("active"),priority=d.get("priority"))}
                 else:
                     TERR.delete(d["id"]); r={"ok":True}
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())

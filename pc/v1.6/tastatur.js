@@ -343,6 +343,7 @@
       let inp = bg.querySelector("input");
       inp.type = opt.password ? "password" : "text";
       if (opt.numeric) inp.setAttribute("inputmode", "numeric");
+      if (opt.value != null) inp.value = String(opt.value); // v1.6.127: førehandsutfylt (t.d. noverande namn)
       document.body.appendChild(bg);
       let done = (v) => {
         if (el === inp) hide();
