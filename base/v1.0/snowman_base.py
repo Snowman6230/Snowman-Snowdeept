@@ -80,6 +80,7 @@ class SnowmanBase:
             m.start()
         self.caster_port = self.caster.start(self._caster_port)
         self.web = api.start(self, self._web_port if self._web_port is not None else self.cfg["web"]["port"])
+        self.caster.api_ekstern = api.ekstern(self)         # maskin-API òg på casterporten (Base 1.3)
         self.web_port = self.web.server_address[1]
         for target in (lambda: straum.ticker(self.mounts, self.stop_ev), self._analyse_loop, self._config_loop,
                        lambda: self.updates.loop(self.stop_ev), lambda: self.baner.loop(self.stop_ev),
@@ -259,6 +260,8 @@ def parse_caster(s):
 
 def cmd_mountpoint(a, cfg):
     name = a.namn
+    if name.lower() == "api":
+        sys.exit("«api» er reservert (maskin-API-et på casterporten) – vel eit anna namn.")
     if any(m["namn"] == name for m in cfg["mountpoints"]):
         sys.exit(f"Mountpointet {name} finst alt (endre det på kontorsida › Mountpoints).")
     src, extra = [], []

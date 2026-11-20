@@ -43,6 +43,9 @@ class Store:
         self.lock = threading.Lock()
         with self.lock:
             self.db.executescript(SCHEMA)
+            cols = {r[1] for r in self.db.execute("PRAGMA table_info(pakkar)")}
+            if "innhald" not in cols:                    # Base 1.3: innhaldet i pakka (manifest og tal)
+                self.db.execute("ALTER TABLE pakkar ADD COLUMN innhald TEXT")
             self.db.commit()
 
     def close(self):
@@ -128,7 +131,7 @@ class Store:
         self.x("DELETE FROM maalingar WHERE t<?", (time.time() - keep_days * 86400,))
 
     # ---------- anleggspakke ----------
-    def add_package(self, src_path, note="", keep=20):
+    def add_package(self, src_path, note="", keep=20, innhald=None):
         h = hashlib.sha256()
         with open(src_path, "rb") as f:
             for chunk in iter(lambda: f.read(1 << 20), b""):
@@ -138,21 +141,32 @@ class Store:
         dst = self.pkgdir / f"anleggspakke-v{v}.zip"
         shutil.move(str(src_path), dst)
         self.x("UPDATE pakkar SET aktiv=0")
-        self.x("INSERT INTO pakkar (versjon, fil, sha256, storleik, dato, merknad, aktiv) VALUES (?,?,?,?,?,?,1)",
-               (v, dst.name, h.hexdigest(), dst.stat().st_size, time.time(), str(note)[:500]))
+        self.x("INSERT INTO pakkar (versjon, fil, sha256, storleik, dato, merknad, aktiv, innhald) "
+               "VALUES (?,?,?,?,?,?,1,?)",
+               (v, dst.name, h.hexdigest(), dst.stat().st_size, time.time(), str(note)[:500],
+                json.dumps(innhald, ensure_ascii=False) if innhald else None))
         old = self.q("SELECT versjon, fil FROM pakkar WHERE aktiv=0 ORDER BY versjon DESC")
         for r in old[max(0, keep - 1):]:
             (self.pkgdir / r["fil"]).unlink(missing_ok=True)
             self.x("DELETE FROM pakkar WHERE versjon=?", (r["versjon"],))
         return self.package(v)
 
+    @staticmethod
+    def _pkg(r):
+        if r is not None:
+            try:
+                r["innhald"] = json.loads(r["innhald"]) if r.get("innhald") else None
+            except ValueError:
+                r["innhald"] = None
+        return r
+
     def package(self, version=None):
         if version is None:
-            return self.q("SELECT * FROM pakkar WHERE aktiv=1", one=True)
-        return self.q("SELECT * FROM pakkar WHERE versjon=?", (int(version),), one=True)
+            return self._pkg(self.q("SELECT * FROM pakkar WHERE aktiv=1", one=True))
+        return self._pkg(self.q("SELECT * FROM pakkar WHERE versjon=?", (int(version),), one=True))
 
     def packages(self):
-        return self.q("SELECT * FROM pakkar ORDER BY versjon DESC")
+        return [self._pkg(r) for r in self.q("SELECT * FROM pakkar ORDER BY versjon DESC")]
 
     def activate(self, version):
         if not self.package(version):

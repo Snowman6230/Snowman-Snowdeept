@@ -85,6 +85,8 @@ def lag(inn, alle, gamalt_namn=None, reserverte_portar=()):
     namn = _txt(inn.get("namn"), 32, "Namnet", False)
     if not NAMN_RE.match(namn):
         raise ValueError("Namnet kan berre ha bokstavane A–Z, tal, - og _ (utan mellomrom eller æøå), maks 32 teikn")
+    if namn.lower() == "api":
+        raise ValueError("«api» er reservert (maskin-API-et på casterporten) – vel eit anna namn")
     gamal = next((m for m in alle if m.get("namn") == gamalt_namn), None) if gamalt_namn else None
     if gamalt_namn and gamal is None:
         raise ValueError(f"Fann ikkje mountpointet {gamalt_namn}")

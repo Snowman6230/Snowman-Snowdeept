@@ -7,6 +7,28 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-11-20
+
+### SNOWMAN Base v1.3.0 – maskin-API på port 2101 og format for anleggspakka («SNOWMAN Kontor», VEGEN-VIDARE kap. 16)
+- **Avgjerder (eigaren):** kontordelen blir verande i Base. Rekkjefølgje: format for anleggspakka → maskina tek imot
+  (pc/v1.7) → kartfane i 2D på kontoret → innstillingar → 3D. Lokal redigering når maskina er kopla til Base: berre
+  forslag for trasear, men ny hindring lokalt med éin gong. Terreng blir ikkje sendt i første versjon (fingeravtrykk i
+  staden). Innstillingar i tre grupper (automatisk / føraren godtek / berre ved maskina). Maskinene når Base gjennom
+  port 2101 som Norman sin base. Base skal stå åleine på Raspberry Pi 5 ved antenna.
+- **Nytt:** maskindelen av API-et (info, hjarteslag, målingar, maskiner, anleggspakke, forslag, baner) svarar òg på
+  casterporten. **Kvifor:** maskinene på mobilnettet nådde berre korreksjonane – API-et låg på 8780, som aldri skal
+  opnast. No treng ruteren berre port 2101. Kontoret, innlogging til kontoret og økter er aldri tilgjengelege på 2101.
+  «api» er reservert og kan ikkje brukast som mountpoint-namn.
+- **Nytt:** format for anleggspakka, formatversjon 1 (`anleggspakke.py`): `manifest.json` med sha256 per fil, og
+  `trasear.json`, `objekt.json`, `kontrollpunkt.json` i same format som SNOWMAN snødjupne lagrar. Base kontrollerer
+  pakka ved opplasting (manifest, sha256, ukjende filer, filnamn, storleik utpakka, koordinatar, radius, UTM-sone,
+  like id-ar) og avviser feil med forklaring. Innhaldet blir lagra og vist på kontorsida (tal på trasear, hindringar …).
+  **Kvifor:** pakka var ei zip-fil utan definert innhald, så maskina kunne ikkje vite kva ho skulle gjere med henne.
+- **Endra:** opplasting av anleggspakke utan manifest blir no avvist (ingen pakker er i bruk i drift).
+- Testar: 8 nye (format, API på 2101, kontoret stengt på 2101, NTRIP uendra, reservert namn). Alle 56 går gjennom.
+
+---
+
 ## 2026-10-31
 
 ### SNOWMAN Base v1.2.0 – brukarnamn og passord, rettingar frå analysen, tilgang som Norman sin base

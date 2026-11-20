@@ -3,6 +3,9 @@
 
     GET /                   kjeldetabellen (lista over mountpoints)
     GET /<mountpoint>       korreksjonar til ei maskin (Basic-innlogging). GGA frå maskina blir lagra (posisjon på kartet)
+    GET|POST /api/v1/…      maskindelen av API-et (anleggspakke, deling, forslag) – same port, så ruteren berre
+                            treng 2101 open. Kontoret er aldri tilgjengeleg her (sjå api.Ekstern). «api» kan difor
+                            ikkje brukast som namn på mountpoint.
     SOURCE <pw> /<mp>       NTRIP 1-opplasting inn i Base (t.d. str2str på ein Raspberry Pi ved antenna)
     POST /<mp>              NTRIP 2-opplasting inn i Base
 
@@ -111,6 +114,12 @@ class Handler(socketserver.BaseRequestHandler):
         b = self.base
         try:
             req = self._line()
+            parts = req.split()
+            if len(parts) >= 2 and parts[1].startswith("/api/") and parts[0].upper() in ("GET", "POST", "HEAD"):
+                if b.api_ekstern is None:
+                    return self.send("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                self.request.settimeout(30)
+                return b.api_ekstern(self.request, self.client_address, (req + "\r\n").encode("latin1") + self.buf)
             headers = {}
             while True:
                 ln = self._line()
@@ -308,6 +317,7 @@ class Caster:
         self.stats = {"sendt": 0, "tilkoplingar": 0}
         self.history = []            # (tid, brukar, ip, mountpoint, "inn"/"ut")
         self.server = None
+        self.api_ekstern = None      # Base 1.3: maskin-API på same port (sett av SnowmanBase) – sjå api.Ekstern
 
     def host_hint(self):
         try:

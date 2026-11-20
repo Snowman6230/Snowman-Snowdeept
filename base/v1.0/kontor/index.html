@@ -145,7 +145,7 @@ input,select,textarea{width:100%}
   </div>
   <div id="t-pakke" class="hidden">
     <section class="card"><h2>Anleggspakke</h2>
-      <p class="dim">Anleggspakka (zip: terrengmodellar, trasear, hindringar, kontrollpunkt, kartfliser) blir henta av alle maskinene når dei har dekning. Ny versjon blir aktiv med éin gong. Du kan rulle tilbake.</p>
+      <p class="dim">Anleggspakka (zip med manifest.json og trasear.json, objekt.json og/eller kontrollpunkt.json – same format som i SNOWMAN snødjupne) blir henta av alle maskinene når dei har dekning. Base kontrollerer pakka før ho blir teken imot. Ny versjon blir aktiv med éin gong. Du kan rulle tilbake.</p>
       <div class="row"><input type="file" id="pkgFile" accept=".zip"><input id="pkgNote" placeholder="Merknad (kva er endra)"><button class="pri" id="pkgUp">Last opp</button></div>
       <div id="pkgMsg" class="msg"></div>
       <div class="scroll" id="pkgList"></div></section>
@@ -371,7 +371,7 @@ $("#uSave").onclick=async()=>{const m=$("#uMsg");
 async function rmMachine(id){if(!confirm("Fjerne maskina frå lista? Ho blir lagt til att neste gong ho melder seg."))return;await api("/api/v1/maskin/fjern",{method:"POST",json:{id}});refresh()}
 async function pakke(){
   const d=await api("/api/v1/anleggspakke/versjonar");
-  $("#pkgList").innerHTML=d.versjonar.length?`<table><tr><th>Versjon</th><th>Dato</th><th>Storleik</th><th>Merknad</th><th></th></tr>${d.versjonar.map(p=>`<tr><td>v${p.versjon}${p.aktiv?' <span class="pill" style="color:var(--ok)">aktiv</span>':''}</td><td>${tid(p.dato)}</td><td>${(p.storleik/1e6).toFixed(1)} MB</td><td>${esc(p.merknad)}</td><td>${p.aktiv?'':`<button onclick="activate(${p.versjon})">Gjer aktiv</button>`}</td></tr>`).join("")}</table>`:'<p class="dim">Ingen anleggspakke lasta opp enno.</p>';
+  $("#pkgList").innerHTML=d.versjonar.length?`<table><tr><th>Versjon</th><th>Dato</th><th>Innhald</th><th>Storleik</th><th>Merknad</th><th></th></tr>${d.versjonar.map(p=>`<tr><td>v${p.versjon}${p.aktiv?' <span class="pill" style="color:var(--ok)">aktiv</span>':''}</td><td>${tid(p.dato)}</td><td>${p.innhald?Object.entries(p.innhald.tal).map(([k,v])=>esc(v+' '+k.replace('_',' '))).join(', ')+(p.innhald.laga_av?`<div class="dim">laga av ${esc(p.innhald.laga_av)}</div>`:''):'<span class="dim">gammalt format</span>'}</td><td>${(p.storleik/1e6).toFixed(2)} MB</td><td>${esc(p.merknad)}</td><td>${p.aktiv?'':`<button onclick="activate(${p.versjon})">Gjer aktiv</button>`}</td></tr>`).join("")}</table>`:'<p class="dim">Ingen anleggspakke lasta opp enno.</p>';
 }
 async function activate(v){if(!confirm(`Gjere v${v} aktiv? Maskinene hentar henne når dei har dekning.`))return;await api("/api/v1/anleggspakke/aktiv",{method:"POST",json:{versjon:v}});pakke()}
 $("#pkgUp").onclick=async()=>{const f=$("#pkgFile").files[0];if(!f)return;$("#pkgMsg").textContent="Lastar opp …";

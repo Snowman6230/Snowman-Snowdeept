@@ -46,6 +46,7 @@ Brot i API-et gir ny API-versjon (/api/v2/…); v1 blir verande så lenge maskin
 """
 import base64
 import http.server
+import io
 import json
 import mimetypes
 import os
@@ -55,6 +56,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
+import anleggspakke
 import forbetring
 import mountoppsett
 import ntripklient
@@ -495,14 +497,88 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if left:
             tmp.unlink(missing_ok=True)
             raise ValueError("opplastinga vart avbroten")
-        with open(tmp, "rb") as f:
-            if f.read(2) != b"PK":
-                tmp.unlink(missing_ok=True)
-                raise ValueError("anleggspakka må vere ei zip-fil")
+        try:
+            innhald = anleggspakke.kontroller(tmp, limit * 4)
+        except anleggspakke.Feil:
+            tmp.unlink(missing_ok=True)
+            raise
         note = urllib.parse.unquote(self.headers.get("X-Merknad", ""))
-        pk = b.store.add_package(tmp, note, int(b.cfg["anleggspakke"].get("behald_versjonar", 20)))
-        b.events.add(f"Ny anleggspakke v{pk['versjon']} ({pk['storleik'] // 1024} kB) – maskinene hentar henne", "ok")
+        pk = b.store.add_package(tmp, note, int(b.cfg["anleggspakke"].get("behald_versjonar", 20)), innhald)
+        tal = ", ".join(f"{v} {k.replace('_', ' ')}" for k, v in innhald["tal"].items())
+        b.events.add(f"Ny anleggspakke v{pk['versjon']} ({tal}) – maskinene hentar henne", "ok")
         return self.send_json({"ok": True, "pakke": pk})
+
+
+# ---------- maskin-API på casterporten (2101) ----------
+# Base 1.3 (avgjerd 2026-11-20): maskinene når API-et gjennom same port som korreksjonane, slik at ruteren berre
+# treng port 2101 open (som Norman sin base). Berre maskindelen er open her – aldri kontoret, innlogging til
+# kontoret eller økter. Port 8780 (status og kontor) skal framleis aldri opnast mot internett.
+EKSTERN_GET = {"/api/v1/info", "/api/v1/maalingar", "/api/v1/maskiner", "/api/v1/anleggspakke",
+               "/api/v1/anleggspakke/fil", "/api/v1/baner"}
+EKSTERN_POST = {"/api/v1/maskin", "/api/v1/maalingar", "/api/v1/forslag"}
+
+
+class _Prefixed(io.RawIOBase):
+    """Lesestraum som først gir byta casteren alt har lese (førespurnadslina), så resten frå socketen."""
+
+    def __init__(self, prefix, sock):
+        self.prefix, self.sock = bytes(prefix), sock
+
+    def readable(self):
+        return True
+
+    def readinto(self, b):
+        if self.prefix:
+            n = min(len(b), len(self.prefix))
+            b[:n] = self.prefix[:n]
+            self.prefix = self.prefix[n:]
+            return n
+        return self.sock.recv_into(b)
+
+
+class Ekstern(Handler):
+    """API-et slik det er ope på casterporten: berre maskindelen, berre NTRIP-brukarar (Basic)."""
+    prefix = b""
+
+    def __init__(self, request, client_address, server, prefix=b""):
+        self.prefix = prefix
+        super().__init__(request, client_address, server)
+
+    def setup(self):
+        self.connection = self.request
+        self.connection.settimeout(30)
+        self.rfile = io.BufferedReader(_Prefixed(self.prefix, self.connection))
+        self.wfile = socketserver._SocketWriter(self.connection)
+
+    def key(self):
+        return ""                                   # økter frå kontorsida gjeld ikkje her
+
+    def is_office(self):
+        return False
+
+    def is_machine(self):
+        name = super()._user("ntrip")
+        u = self.base.cfg.find_user(name) if name else None
+        return bool(u and "ntrip" in u.get("roller", []))
+
+    def do_GET(self):
+        if urllib.parse.urlparse(self.path).path not in EKSTERN_GET:
+            return self.send_json({"ok": False, "feil": "ukjend adresse"}, 404)
+        return super().do_GET()
+
+    def do_POST(self):
+        if urllib.parse.urlparse(self.path).path not in EKSTERN_POST:
+            return self.send_json({"ok": False, "feil": "ukjend adresse"}, 404)
+        return super().do_POST()
+
+
+def ekstern(base):
+    """Funksjon casteren kallar når ein førespurnad på 2101 byrjar med /api/."""
+    h = type("HE", (Ekstern,), {"base": base})
+
+    def serve(sock, client_address, prefix):
+        h(sock, client_address, None, prefix)
+    return serve
 
 
 def _safe(x):

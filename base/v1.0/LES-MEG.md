@@ -24,7 +24,8 @@ reserve: TH / CPOS ─────────────relé─────�
 | **Rådatalogg** | Alt mottakaren sender, éi fil per time (grunnlag for PPP-innmåling av basen og feilsøking). Blir sletta etter 30 dagar. |
 | **Satellittbaner (BRDC)** | Valfritt: Base hentar dagleg banefil frå BKG/IGS og deler henne med maskinene. |
 | **Deling (API v1)** | Snødjupne frå maskinene siste 12 t (berre RTK FIX frå kalibrerte maskiner), hjarteslag og maskinliste. For SNOWMAN v1.8. |
-| **Anleggspakke** | Kontoret lastar opp ny versjon, maskinene hentar henne. Alle versjonar blir tekne vare på, og ein kan rulle tilbake. |
+| **Anleggspakke** | Kontoret lastar opp ny versjon, maskinene hentar henne. Base kontrollerer formatet (sjå «Anleggspakke – format»). Alle versjonar blir tekne vare på, og ein kan rulle tilbake. |
+| **Maskin-API på port 2101** | Maskinene hentar anleggspakke og deler data gjennom same port som korreksjonane. Berre port 2101 treng vere open i ruteren. Kontoret er aldri tilgjengeleg der. |
 | **Forslag** | Førarane kan melde ny hindring, merknad eller ønske til programmet. Kontoret godkjenner. |
 | **Forbetringar** | Reglar (alltid på) og AI (valfri) foreslår forbetringar i oppsett, utstyr, drift og i SNOWMAN-programma. Kan eksporterast som oppgåveliste til utviklaren. |
 | **Oppdatering** | Same som SNOWMAN snødjupne: git pull eller zip frå GitHub. Éin knapp på kontorsida. `data/` blir aldri rørt. |
@@ -275,9 +276,35 @@ Forbetringsmotoren køyrer kvart 15. minutt og finn mellom anna: MSM3, manglande
 
 AI får eit anonymisert samandrag (ingen namn, IP-adresser, posisjonar eller nøklar). Ønske frå førarane blir sende som tekst. «Førehandsvis» viser nøyaktig kva som blir sendt. AI foreslår, men styrer aldri noko. Forslaga kan lastast ned som Markdown og givast til utviklaren som oppgåveliste.
 
+## Anleggspakke – format (formatversjon 1)
+
+Anleggspakka er ei zip-fil med **dei same filene som SNOWMAN snødjupne lagrar** i `data/`, pluss eit manifest:
+
+| Fil | Innhald | Frå maskina |
+|---|---|---|
+| `manifest.json` | påkravd – sjå under | – |
+| `trasear.json` | `{"trasear": [...]}` – trasear og forbodne område | `data/trasear.json` |
+| `objekt.json` | `{"objekt": [...]}` – hindringar | `data/objekt.json` |
+| `kontrollpunkt.json` | `{"points": [...]}` – kontrollpunkt (ikkje kontrollmålingane) | `points` i `data/kontroll.json` |
+| `terreng/…` | terrenglag – plass i formatet, blir ikkje sendt enno | – |
+
+```json
+{"format": "snowman-anleggspakke", "formatversjon": 1, "anlegg": "Fjellsætra",
+ "laga": "2026-11-20T09:00:00+0100", "laga_av": "admin", "snowman_min": "1.7.0",
+ "filer": {"trasear.json": "<sha256>", "objekt.json": "<sha256>"}}
+```
+
+Alle innhaldsfilene er valfrie, men pakka må ha minst éi. Ei fil som manglar, betyr at maskina held på det ho har.
+Base avviser pakka med forklaring om manifestet manglar, sha256 ikkje stemmer, ei fil er ukjend, eller trasear,
+hindringar eller kontrollpunkt har ugyldige verdiar. Versjonsnummeret (1, 2, 3 …) set Base. `innstillingar.json`
+(innstillingar til maskinene) kjem seinare. Sjå `anleggspakke.py` – `lag()` lagar ei gyldig pakke.
+
 ## Samspel med SNOWMAN snødjupne
 
 - Casteren fungerer med alle SNOWMAN-versjonar.
+- Maskin-API-et svarar på **både** port 2101 (casteren – for maskinene ute i bakken) og 8780. På 2101 er berre desse
+  opne, med NTRIP-brukaren (Basic): `GET /api/v1/info`, `maalingar`, `maskiner`, `anleggspakke`, `anleggspakke/fil`,
+  `baner`, og `POST /api/v1/maskin`, `maalingar`, `forslag`. «api» kan ikkje brukast som namn på mountpoint.
 - API v1 (deling, anleggspakke, forslag) er klart for SNOWMAN v1.8. `/api/v1/info` viser versjon, API-versjon, funksjonar og minste SNOWMAN-versjon. Maskiner som er for gamle, blir viste på kontorsida.
 - Endrar du casteren eller API-et: køyr testane (under). Kompatibilitetstesten brukar NTRIP-klienten frå `pc/v1.6`. Eit brot i API-et gir ny API-versjon (`/api/v2/`), og v1 blir verande.
 
@@ -290,6 +317,9 @@ cd base/v1.0 && python -m unittest discover -s test -v
 ## Tryggleik og drift
 
 - Opne berre port **2101** mot internett, aldri 8780 (statusside og kontor). Bruk Tailscale eller VPN for kontoret utanfrå.
+  Maskinene når både korreksjonar og anleggspakke gjennom 2101 (sidan Base 1.3).
+- Tilrådd oppsett: Base åleine på ein **Raspberry Pi 5 ved antenna**, med SSD (ikkje minnekort – rådataloggen skriv
+  heile tida) og UPS. Ikkje på ein PC som blir brukt til anna (oppdateringar, dvale, nokon slår han av).
 - Bruk sterke passord (minst 8 teikn). Etter 10 feil passord frå same IP-adresse blir adressa sperra i 10 minutt
   (`vern` i `data/base.json`). Maks 20 samtidige tilkoplingar per adresse og 200 i alt.
 - NTRIP sender brukarnamn og passord ukryptert (som alle NTRIP 1/2-castarar, også TH og CPOS). Bruk difor ein eigen

@@ -24,6 +24,7 @@ sys.path.insert(0, str(HERE))
 import rtcm                                   # noqa: E402
 import konfig                                 # noqa: E402
 import snowman_base as SB                     # noqa: E402
+import anleggspakke as AP                     # noqa: E402
 
 PC = HERE.parent.parent / "pc" / "v1.6" / "ntripklient.py"
 spec = importlib.util.spec_from_file_location("pc_ntripklient", PC)
@@ -63,6 +64,12 @@ def read_for(stream, secs):
     while time.time() - t0 < secs:
         got += stream.read()
     return got
+
+
+TRASE = {"id": "t1", "name": "Bakke 1", "kind": "trase", "level": "bla", "target": 0.6,
+         "poly": [[62.38, 6.78], [62.381, 6.78], [62.381, 6.782]]}
+HINDRING = {"id": "o1", "type": "hydrant", "name": "Hydrant 4", "lat": 62.3805, "lng": 6.781, "radius": 0.5}
+KPUNKT = {"id": "k1", "name": "Bolt ved heishus", "E": 389000.0, "N": 6918000.0, "zone": 32, "h": 702.3}
 
 
 class BaseCase(unittest.TestCase):
@@ -718,16 +725,15 @@ class TestApi(BaseCase):
         self.assertEqual(d3["maalingar"], [])
 
     def test_anleggspakke(self):
-        import io
-        import zipfile
-        bio = io.BytesIO()
-        with zipfile.ZipFile(bio, "w") as z:
-            z.writestr("trasear.json", "[]")
-        zipdata = bio.getvalue()
+        zipdata = Path(AP.lag(self.dir / "p.zip", "Fjellsætra", "admin", trasear=[TRASE], objekt=[HINDRING],
+                              kontrollpunkt=[KPUNKT])).read_bytes()
         self.assertEqual(self.call("/api/v1/anleggspakke", raw=zipdata, key=self.akey)[0], 401)
         self.assertEqual(self.call("/api/v1/anleggspakke", raw=b"ikkje zip", key=self.kkey)[0], 400)
         c, d = self.call("/api/v1/anleggspakke", raw=zipdata, key=self.kkey, headers={"X-Merknad": "Ny%20tras%C3%A9"})
         self.assertEqual(d["pakke"]["versjon"], 1)
+        self.assertEqual(d["pakke"]["innhald"]["tal"], {"trasear": 1, "forbodne_omrade": 0, "hindringar": 1,
+                                                        "kontrollpunkt": 1})
+        self.assertEqual(d["pakke"]["innhald"]["anlegg"], "Fjellsætra")
         self.call("/api/v1/anleggspakke", raw=zipdata, key=self.kkey)
         c, d = self.call("/api/v1/anleggspakke", key=self.akey)
         self.assertEqual(d["pakke"]["versjon"], 2)
@@ -791,6 +797,124 @@ class TestApi(BaseCase):
         for p in ("/", "/kontor/", "/vendor/leaflet.js"):
             with urllib.request.urlopen(self.web + p, timeout=5) as r:
                 self.assertEqual(r.status, 200)
+
+
+class TestAnleggspakkeFormat(unittest.TestCase):
+    """Base 1.3: anleggspakka må følgje formatversjon 1 (anleggspakke.py) – feil blir avviste med forklaring."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def zipp(self, files, manifest=None, fix_sha=True):
+        import hashlib
+        import zipfile
+        data = {n: (b if isinstance(b, bytes) else json.dumps(b).encode()) for n, b in files.items()}
+        m = {"format": AP.FORMAT, "formatversjon": 1, "filer": {n: hashlib.sha256(b).hexdigest() for n, b in data.items()}}
+        if manifest is not None:
+            m.update(manifest)
+        p = self.dir / "x.zip"
+        with zipfile.ZipFile(p, "w") as z:
+            z.writestr("manifest.json", json.dumps(m))
+            for n, b in data.items():
+                z.writestr(n, b)
+        return p
+
+    def feil(self, p, tekst):
+        with self.assertRaises(AP.Feil) as e:
+            AP.kontroller(p, 10**9)
+        self.assertIn(tekst, str(e.exception))
+
+    def test_gyldig(self):
+        r = AP.kontroller(AP.lag(self.dir / "ok.zip", trasear=[TRASE, dict(TRASE, id="t2", kind="forbode")]), 10**9)
+        self.assertEqual(r["tal"], {"trasear": 1, "forbodne_omrade": 1})
+        self.assertEqual(r["filer"], ["trasear.json"])
+
+    def test_feil_blir_avviste(self):
+        self.feil(self.write_raw(b"ikkje zip"), "zip-fil")
+        self.feil(self.zipp({"trasear.json": {"trasear": []}}, {"format": "anna"}), "format må vere")
+        self.feil(self.zipp({"trasear.json": {"trasear": []}}, {"formatversjon": 2}), "formatversjon 2")
+        self.feil(self.zipp({}), "ingen innhaldsfiler")
+        self.feil(self.zipp({"trasear.json": {"trasear": []}}, {"filer": {"trasear.json": "0" * 64}}), "sha256")
+        self.feil(self.zipp({"trasear.json": [TRASE]}), '{"trasear": [...]}')
+        self.feil(self.zipp({"trasear.json": {"trasear": [dict(TRASE, poly=[[62, 6], [62, 7]])]}}), "minst 3 hjørne")
+        self.feil(self.zipp({"trasear.json": {"trasear": [dict(TRASE, poly=[[95, 6], [62, 7], [62, 8]])]}}),
+                  "breiddegrad")
+        self.feil(self.zipp({"trasear.json": {"trasear": [TRASE, TRASE]}}), "same id")
+        self.feil(self.zipp({"objekt.json": {"objekt": [dict(HINDRING, radius=50)]}}), "radius")
+        self.feil(self.zipp({"kontrollpunkt.json": {"points": [dict(KPUNKT, zone=31)]}}), "UTM-sone")
+        self.feil(self.zipp({"innstillingar.json": {}}), "ikkje støtta enno")
+        self.feil(self.zipp({"virus.exe": b"MZ"}), "ukjend fil")
+        self.feil(self.zipp({"../ut.json": b"{}"}), "ugyldig filnamn")
+
+    def test_terreng_er_lov_i_formatet(self):
+        r = AP.kontroller(self.zipp({"objekt.json": {"objekt": [HINDRING]}, "terreng/dtm1.tif": b"II*\0"}), 10**9)
+        self.assertEqual(r["tal"]["terrengfiler"], 1)
+
+    def test_zipbombe(self):
+        with self.assertRaises(AP.Feil):
+            AP.kontroller(self.zipp({"trasear.json": {"trasear": [TRASE]}}), 10)
+
+    def write_raw(self, b):
+        p = self.dir / "r.zip"
+        p.write_bytes(b)
+        return p
+
+
+class TestApiPaCasterport(BaseCase):
+    """Base 1.3: maskindelen av API-et svarar òg på casterporten (2101), slik at berre éin port må vere open."""
+
+    def make_mounts(self):
+        return [{"namn": "FJELL", "kjelder": [{"type": "fil", "sti": self.write("a.rtcm3", epoch() * 40),
+                                                "byte_per_s": 20000}]}]
+
+    def ext(self, path, body=None, key=None, raw=None, method=None):
+        old = self.web
+        self.web = f"http://127.0.0.1:{self.port}"
+        try:
+            return self.call(path, body, key, method, raw)
+        finally:
+            self.web = old
+
+    def test_maskindelen_fungerer(self):
+        c, d = self.ext("/api/v1/info")
+        self.assertEqual((c, d["versjon"]), (200, konfig.VERSION))
+        self.assertIn("api-casterport", d["funksjonar"])
+        self.assertEqual(self.ext("/api/v1/maskiner")[0], 401)
+        self.assertEqual(self.ext("/api/v1/maskiner", key=self.akey)[0], 200)
+        c, d = self.ext("/api/v1/maskin", {"id": "PB1", "namn": "PB 1", "versjon": "1.8.0"}, self.akey)
+        self.assertEqual(c, 200)
+        zipdata = Path(AP.lag(self.dir / "p.zip", trasear=[TRASE])).read_bytes()
+        self.call("/api/v1/anleggspakke", raw=zipdata, key=self.kkey)            # kontoret lastar opp på 8780
+        c, d = self.ext("/api/v1/anleggspakke", key=self.akey)
+        self.assertEqual(d["pakke"]["versjon"], 1)
+        c, b = self.ext("/api/v1/anleggspakke/fil", key=self.akey)
+        self.assertEqual(b, zipdata)
+        c, d = self.ext("/api/v1/forslag", {"maskin": "PB1", "type": "hindring", "tekst": "Stein", "lat": LAT,
+                                            "lon": LON}, self.akey)
+        self.assertTrue(d["ok"])
+
+    def test_kontoret_er_stengt(self):
+        # kontorbrukaren kan ikkje bruke noko på 2101, heller ikkje kontoradresser eller innlogging
+        self.assertEqual(self.ext("/api/v1/maskiner", key=self.kkey)[0], 401)
+        self.assertEqual(self.ext("/api/v1/forslag", key=self.kkey)[0], 404)
+        self.assertEqual(self.ext("/api/v1/brukarar", key=self.kkey)[0], 404)
+        self.assertEqual(self.ext("/api/v1/logg-inn", {"brukar": "admin", "passord": "kontor-passord-1"})[0], 404)
+        self.assertEqual(self.ext("/api/v1/anleggspakke", raw=b"PK", key=self.kkey)[0], 404)
+        c, d = self.call("/api/v1/logg-inn", {"brukar": "admin", "passord": "kontor-passord-1"})
+        self.assertEqual(self.ext("/api/v1/maskiner", key=d["okt"])[0], 401)     # økt frå kontorsida gjeld ikkje
+
+    def test_ntrip_fungerer_framleis(self):
+        r = PCN.fetch_sourcetable("127.0.0.1", self.port, "", "", "test", timeout=5)
+        self.assertIn("FJELL", [m["mountpoint"] for m in r["mounts"]])
+
+    def test_api_er_reservert_namn(self):
+        c, d = self.call("/api/v1/mountpoint", {"namn": "api", "kjelder": []}, self.kkey)
+        self.assertEqual(c, 400)
+        self.assertIn("reservert", d["feil"])
 
 
 class TestDiverse(unittest.TestCase):
