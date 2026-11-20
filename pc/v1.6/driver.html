@@ -2831,6 +2831,12 @@
           </div>
           <input id="terrFile" type="file" accept=".tif,.tiff,.dtm,.las,.laz,.xyz,.csv,.txt,.pxy" style="width: 100%; margin: 8px 0" />
           <button class="btn" onclick="analyseTerrain()">ANALYSER FIL</button>
+          <div class="history" style="font-size: 12px; margin-top: 8px">
+            <b>Stor fil (over 1 GB)?</b> La SNOWMAN lese ho der ho ligg – raskare, og ingen kopi på disken. I Utforskar:
+            hald inne Shift, høgreklikk fila og vel «Kopier som bane». Lim inn her:
+          </div>
+          <input id="terrPath" type="text" placeholder="D:\Snowman Terreng\Fjellseter\fil.pxy" style="width: 100%; margin: 6px 0" />
+          <button class="btn" onclick="analysePath()">ANALYSER FRÅ STI (FIL PÅ DENNE PC-EN)</button>
           <div id="terrResult"></div>
           <div id="terrCrop" class="hide">
             <div class="row">
@@ -3169,7 +3175,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.128";
+      const APP_VERSION = "1.6.129";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -6777,13 +6783,65 @@
         $("terrCrop").classList.add("hide");
         cropGroup.clearLayers();
         let r;
+        terrProgress(true);
         try {
           r = await (await fetch("api/terrain/analyse?file=" + encodeURIComponent(f.name), { method: "POST", body: f })).json();
         } catch (e) {
           r = { ok: false, errors: ["Ingen kontakt med SNOWMAN-tenesta."], warnings: [], info: {} };
         }
+        terrProgress(false);
         if (r.big) return showBig(r);
         showAnalysis(r, f.name);
+      }
+      // v1.6.129: les fila der ho ligg på PC-en (ingen opplasting og ingen kopi – raskast for filer på fleire GB)
+      async function analysePath() {
+        let p = $("terrPath").value.trim().replace(/^"+|"+$/g, "");
+        if (!p) return toast("Lim inn stien til fila først");
+        let name = p.split(/[\\/]/).pop();
+        $("terrResult").innerHTML = '<div class="history">Analyserer ' + esc(name) + " der fila ligg …</div>";
+        $("terrImport").classList.add("hide");
+        $("terrCrop").classList.add("hide");
+        cropGroup.clearLayers();
+        let r;
+        terrProgress(true);
+        try {
+          r = await (await fetch("api/terrain/analyse_path", { method: "POST", body: JSON.stringify({ path: p }) })).json();
+        } catch (e) {
+          r = { ok: false, errors: ["Ingen kontakt med SNOWMAN-tenesta."], warnings: [], info: {} };
+        }
+        terrProgress(false);
+        if (r.big) return showBig(r);
+        showAnalysis(r, name);
+      }
+      // v1.6.129: framdrift (prosent, GB og tid att) medan fila blir teken imot og lesen
+      let terrProgT = null;
+      function terrProgress(on) {
+        clearInterval(terrProgT);
+        terrProgT = null;
+        if (!on) return;
+        let el = document.createElement("div");
+        el.id = "terrProg";
+        el.className = "history";
+        el.style.marginTop = "6px";
+        $("terrResult").appendChild(el);
+        terrProgT = setInterval(async () => {
+          let p;
+          try {
+            p = await (await fetch("api/terrain/progress")).json();
+          } catch (e) {
+            return;
+          }
+          let x = $("terrProg");
+          if (!x || !p.active) return;
+          let pct = p.total ? Math.min(100, (100 * p.done) / p.total) : 0,
+            gb = (v) => (v / 1e9).toFixed(1).replace(".", ","),
+            el2 = p.now - (p.phase_t0 || p.now),
+            left = pct > 1 && el2 > 3 ? (el2 * (100 - pct)) / pct : null;
+          x.innerHTML =
+            "<b>" + esc(p.phase || "Arbeider") + ":</b> " + pct.toFixed(0) + " %" + (p.total > 50e6 ? " (" + gb(p.done) + " av " + gb(p.total) + " GB)" : "") +
+            (left != null ? " – om lag " + (left < 90 ? Math.max(1, Math.round(left)) + " s" : Math.round(left / 60) + " min") + " att" : "") +
+            '<div style="height:8px;background:#0b1c25;border-radius:4px;margin-top:6px"><div style="height:8px;width:' + pct.toFixed(1) + '%;background:#2aa8e0;border-radius:4px"></div></div>';
+        }, 1000);
       }
       // Stor fil (t.d. Kartverket DTM1 «som kildedata», fleire GB): føraren vel utsnitt rundt anlegget
       function showBig(r) {

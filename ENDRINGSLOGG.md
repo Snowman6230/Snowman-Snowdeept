@@ -73,6 +73,24 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.129 – store terrengfiler: lesing der fila ligg, framdrift og éin gjennomgang
+- **Bakgrunn:** eigaren importerte .pxy-fila for Sykkylven Skisenter (8,7 GB). Det tok over 30 min utan teikn til
+  framdrift: nettlesaren kopierte heile fila til SNOWMAN (om lag 13 MB/s), og fila vart så lesen to gonger.
+- **Nytt – les fila der ho ligg:** Innst. › Terreng har eit felt for stien til fila på PC-en («Kopier som bane» i
+  Utforskar) og knappen «ANALYSER FRÅ STI». SNOWMAN les fila direkte (`POST /api/terrain/analyse_path`): ingen
+  opplasting, ingen kopi på disken, og fila blir aldri flytta eller sletta. Store GeoTIFF-filer blir klipte rett frå
+  originalfila.
+- **Nytt – framdrift:** «Tek imot fila» / «Les punkta»: prosent, GB og tid att, med stolpe. Førarskjermen spør
+  `GET /api/terrain/progress` kvart sekund. Gjeld både opplasting og lesing frå sti.
+- **Endra – éin gjennomgang:** for XYZ/PXY blir ytterkantane og talet på punkt anslått frå 64 prøvar spreidde over
+  fila (med margin), i staden for å lese heile fila éin gong ekstra. Fell punkt likevel utanfor, blir fila lesen ein gong
+  til med dei faktiske kantane (og framdrifta seier frå). Små filer (under 64 MB) blir lesne heilt som før.
+- **Kvifor / avgjerd:** eigaren bad om alle tre forbetringane etter importen av .pxy-fila.
+- **Test:** `test/testpxy.py` (no 9 punkt, m.a. prøvar og ny gjennomgang): ALT OK. `test/lidar/testlidar.py`: ALLE
+  TESTAR OK. Laga .pxy med 10 mill. punkt (760 MB): 13 s med éin gjennomgang (før 22 s). I Chromium frå sti: framdrift
+  «Les punkta: 9 % (0,1 av 0,8 GB) – om lag 2 min att», resultat utan feil, ingen kopi i `data/upload`. Ingen
+  JavaScript-feil.
+
 ### PC-prototype v1.6.128 – .pxy (XYZ-koordinatfil) og store punktfiler
 - **Bakgrunn:** eigaren har terrengmodellen for Sykkylven Skisenter som «Sykkylven Skisenter terreng pxy fil.pxy»
   (8,56 GB). Dei første 4 KB viste ei tekstfil: overskrifta «XYZ-COORD-FILE ,V1.00,2025-11-21» og deretter éin

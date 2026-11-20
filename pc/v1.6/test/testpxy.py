@@ -46,5 +46,17 @@ grid, info, err, warns = PS.analyse_pointcloud(p, os.path.basename(p), (62.36, 6
 sjekk("4 analyse utan feil, sone 32 ut frå posisjonen", not err and info.get("zone") == 32, (err, info.get("zone")))
 sjekk("5 format PXY", info.get("format", "").startswith("PXY"), info.get("format"))
 sjekk("6 høgdene stemmer (600–630 m)", abs(info["hmin"] - 600) < 0.5 and abs(info["hmax"] - 630) < 0.5, (info["hmin"], info["hmax"]))
+# v1.6.129: éin gjennomgang med anslåtte kantar frå prøvar, og ny gjennomgang når prøvane bommar
+n2, sw2, lo2, hi2, exact = PS.sample_xyz(p, k=8, size=4096)
+sjekk("7 prøvar: anslag på tal punkt og kantar", not exact and sw2 and 0.7 * n < n2 < 1.3 * n and lo2[0] < 383050, (n2, lo2, hi2))
+orig = PS.sample_xyz
+PS.sample_xyz = lambda path: (n, True, np.array([383100.0, 6913400.0, 0]), np.array([383150.0, 6913450.0, 0]), True)
+fasar = []
+grid, info, err, warns = PS.analyse_pointcloud(p, os.path.basename(p), (62.36, 6.76), T.utm_inverse, lambda e: f"EPSG:{e}",
+                                               progress=lambda d, t, f=None: fasar.append(f) if f else None)
+PS.sample_xyz = orig
+sjekk("8 for små kantar → les på nytt, heile området kjem med", not err and info["points"] == n and abs(info["hmax"] - 630) < 0.5,
+      (err, info.get("points"), info.get("hmax")))
+sjekk("9 framdrift seier frå om ny gjennomgang", any("ein gong til" in (f or "") for f in fasar), fasar)
 print("ALT OK" if not feil else f"FEIL: {feil}")
 sys.exit(1 if feil else 0)

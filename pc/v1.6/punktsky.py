@@ -247,12 +247,16 @@ def _xyz_block(text):
     return np.asarray(rows, dtype=np.float64).reshape(-1, 3)
 
 
-def iter_xyz_blocks(path, block=XYZ_BLOCK):
-    """Gir (n × 3)-tabellar frå ei tekstfil, éin bit om gongen (kuttar alltid ved linjeskift)."""
+def iter_xyz_blocks(path, block=XYZ_BLOCK, progress=None):
+    """Gir (n × 3)-tabellar frå ei tekstfil, éin bit om gongen (kuttar alltid ved linjeskift).
+    progress(lese_byte, totalt) blir kalla etter kvar bit (v1.6.129: framdrift på skjermen)."""
     rest = b""
+    total = Path(path).stat().st_size
     with open(path, "rb") as f:
         while True:
             b = f.read(block)
+            if progress:
+                progress(f.tell(), total)
             if not b:
                 break
             b = rest + b
@@ -287,11 +291,46 @@ def scan_xyz(path):
     return n, bool(swapped), lo, hi
 
 
-def iter_xyz(path, swapped):
-    for a in iter_xyz_blocks(path):
+def iter_xyz(path, swapped, progress=None, seen=None):
+    """seen = [lo, hi] blir oppdatert med dei faktiske ytterkantane medan punkta blir lesne."""
+    for a in iter_xyz_blocks(path, progress=progress):
         if swapped:
             a = a[:, [1, 0, 2]]
+        if seen is not None:
+            bl, bh = a.min(axis=0), a.max(axis=0)
+            seen[0] = bl if seen[0] is None else np.minimum(seen[0], bl)
+            seen[1] = bh if seen[1] is None else np.maximum(seen[1], bh)
         yield a[:, 0], a[:, 1], a[:, 2], np.full(len(a), GROUND, np.uint8)
+
+
+def sample_xyz(path, k=64, size=1 << 20):
+    """v1.6.129 – éin gjennomgang: anslå ytterkantar og tal punkt frå k små prøvar spreidde over fila, i staden for å
+    lese heile fila éin gong ekstra. Små filer (≤ k × size) blir lesne heilt, og då er tala nøyaktige.
+    Returnerer (tal_punkt, ombytt, lo, hi, nøyaktig)."""
+    total = Path(path).stat().st_size
+    if total <= k * size:
+        n, sw, lo, hi = scan_xyz(path)
+        return n, sw, lo, hi, True
+    blocks, nbytes = [], 0
+    with open(path, "rb") as f:
+        for i in range(k):
+            f.seek(int(i * (total - size) / (k - 1)))
+            b = f.read(size)
+            if i:   # hopp over den kutta første linja
+                b = b[b.find(b"\n") + 1:]
+            b = b[: b.rfind(b"\n") + 1]
+            a = _xyz_block(b.decode("ascii", "ignore"))
+            if len(a):
+                blocks.append(a)
+                nbytes += len(b)
+    if not blocks:
+        raise ValueError("Fann ingen punkt (venta tre tal per linje: austing nording høgd).")
+    a = np.vstack(blocks)
+    sw = bool(np.median(blocks[0][:, 0]) > 1e6 > np.median(blocks[0][:, 1]))
+    if sw:
+        a = a[:, [1, 0, 2]]
+    lo, hi = a.min(axis=0), a.max(axis=0)
+    return int(len(a) * total / max(nbytes, 1)), sw, lo, hi, False
 
 
 # ---------------------------------------------------------------------------------------------
@@ -407,10 +446,11 @@ def fill_holes(g, rounds=3):
 # ---------------------------------------------------------------------------------------------
 # Analyse
 # ---------------------------------------------------------------------------------------------
-def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=None):
+def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=None, progress=None):
     """Returnerer (rutenett, info, feil, åtvaringar) for LAS/LAZ/XYZ. hint = (lat, lon) til maskina, eller None."""
     ext = Path(filename).suffix.lower()
     errors, warns = [], []
+    seen = None
     info = {"format": {".las": "LAS (punktsky)", ".laz": "LAZ (komprimert punktsky)",
                        ".pxy": "PXY (XYZ-koordinatfil)"}.get(ext, "XYZ (punkt i tekst)")}
     try:
@@ -426,12 +466,18 @@ def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=Non
             info.update(lasVersion=h["version"], pointFormat=h["fmt"])
             src = (lambda: iter_laz(path)) if ext == ".laz" else (lambda: iter_las(path, h))
         else:
-            npts, swapped, lo, hi = scan_xyz(path)   # v1.6.128: bit for bit – også fleire GB
+            # v1.6.128: bit for bit. v1.6.129: éin gjennomgang – ytterkantane blir anslått frå prøvar (med margin), og
+            # berre om punkt likevel fell utanfor, blir fila lesen ein gong til med dei faktiske kantane.
+            npts, swapped, lo, hi, exact = sample_xyz(path)
             if swapped:
                 warns.append("Kolonnane såg ut som nording, austing – dei er bytte om til austing, nording.")
+            if not exact:
+                m = max(50.0, 0.02 * float(max(hi[0] - lo[0], hi[1] - lo[1])))
+                lo, hi = lo - [m, m, 0], hi + [m, m, 0]
             minx, miny, maxx, maxy = float(lo[0]), float(lo[1]), float(hi[0]), float(hi[1])
             epsg, vd = None, None
-            src = lambda: iter_xyz(path, swapped)
+            seen = [None, None]
+            src = lambda: iter_xyz(path, swapped, progress, seen)
     except Exception as e:
         return None, info, [f"Kunne ikkje lese fila: {e}"], warns
     if npts == 0 or not (maxx > minx and maxy > miny):
@@ -458,12 +504,25 @@ def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=Non
     try:
         for x, y, z, c in src():
             G.add(x, y, z, c)
+        if seen is not None and seen[0] is not None and (
+                seen[0][0] < minx or seen[0][1] < miny or seen[1][0] > maxx or seen[1][1] > maxy):
+            # prøvane bomma på ytterkantane: les ein gong til med dei faktiske kantane (sjeldan – fila er då uvanleg sortert)
+            minx, miny, maxx, maxy = float(seen[0][0]), float(seen[0][1]), float(seen[1][0]), float(seen[1][1])
+            area = (maxx - minx) * (maxy - miny)
+            res = choose_res(npts, area, 1.0)
+            G = Gridder(minx, miny, maxx, maxy, res)
+            if progress:
+                progress(0, 1, "Les punkta ein gong til (fila dekkjer meir enn prøvane viste)")
+            for x, y, z, c in src():
+                G.add(x, y, z, c)
         if not G.use_ground():  # uklassifisert: andre gjennomgang for snittet nær botnen i kvar rute
             for x, y, z, c in src():
                 G.add_low(x, y, z, c)
     except Exception as e:
         return None, info, [f"Kunne ikkje lese punkta: {e}"], warns
     grid, ground = G.grid()
+    if seen is not None:   # XYZ: talet frå prøvane var eit anslag – no veit vi det faktiske
+        npts = G.n_all
     valid = np.isfinite(grid)
     frac = float(valid.mean()) if grid.size else 0.0
     if not valid.any():

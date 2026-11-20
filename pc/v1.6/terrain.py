@@ -422,19 +422,21 @@ class TerrainLibrary:
             return sorted(self.layers.values(), key=lambda m: -m["priority"])
 
     # --- opplasting ---
-    def analyse(self, tmp_path, filename, hint=None):
-        """hint = (lat, lon) til maskina: brukt når ei punktsky manglar koordinatsystem."""
+    def analyse(self, tmp_path, filename, hint=None, progress=None, keep_source=False):
+        """hint = (lat, lon) til maskina: brukt når ei punktsky manglar koordinatsystem.
+        progress(gjort, totalt, fase=None) – framdrift (v1.6.129). keep_source = fila ligg der føraren har ho (lesen frå
+        sti, ikkje lasta opp): ho blir aldri flytta eller sletta."""
         ext = Path(filename).suffix.lower()
         if ext in (".tif", ".tiff"):
             grid, info, errors, warns = analyse_geotiff(tmp_path, filename=filename)
             if info.get("big") and not errors:
-                return self._keep_big(tmp_path, filename, info, warns)
+                return self._keep_big(tmp_path, filename, info, warns, keep_source)
         elif ext == ".dtm":
             grid, info, errors, warns = analyse_topocad(tmp_path)
         elif ext in (".las", ".laz", ".xyz", ".csv", ".txt", ".pxy"):   # eigen LiDAR / punkt (v1.6.95), .pxy (v1.6.128)
             import punktsky as PS
             grid, info, errors, warns = PS.analyse_pointcloud(tmp_path, filename, hint, utm_inverse,
-                                                              lambda e: CRS_NAME.get(e, f"EPSG:{e}"))
+                                                              lambda e: CRS_NAME.get(e, f"EPSG:{e}"), progress=progress)
             if grid is not None:
                 info["outline"] = _outline(info)
         else:
@@ -530,10 +532,13 @@ class TerrainLibrary:
                 f.unlink(missing_ok=True)
         return d
 
-    def _keep_big(self, tmp_path, filename, info, warns):
+    def _keep_big(self, tmp_path, filename, info, warns, keep_source=False):
         token = uuid.uuid4().hex
-        dst = self._big_dir() / f"stor-{token}{Path(filename).suffix.lower()}"
-        shutil.move(str(tmp_path), str(dst))
+        if keep_source:   # lesen der ho ligg: utsnittet blir klipt rett frå originalfila, som aldri blir flytta
+            dst = Path(tmp_path)
+        else:
+            dst = self._big_dir() / f"stor-{token}{Path(filename).suffix.lower()}"
+            shutil.move(str(tmp_path), str(dst))
         with self.lock:
             self.big = {k: v for k, v in getattr(self, "big", {}).items() if time.time() - v["t"] < self.BIG_TTL and Path(v["path"]).exists()}
             self.big[token] = {"path": str(dst), "file": filename, "info": dict(info), "t": time.time()}

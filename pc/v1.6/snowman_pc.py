@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.128"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.129"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -741,6 +741,19 @@ def ntrip_loop():
             ntrip_sock=None
             time.sleep(10 if isinstance(e,NK.NtripError) and e.code in ("auth","mount") else 3)
 
+# v1.6.129: framdrift for terrenganalyse (opplasting og lesing av store filer) – førarskjermen spør kvart sekund
+TPROG={"active":False}
+def tprog(phase=None,done=0,total=0,**kw):
+    if phase is None: TPROG.clear(); TPROG["active"]=False; return
+    if TPROG.get("phase")!=phase: TPROG.update(phase_t0=time.time())
+    TPROG.update(active=True,phase=phase,done=int(done),total=int(total),t=time.time(),**kw)
+def tprog_cb(phase):
+    """Framdrift frå punktsky.py: progress(gjort, totalt, ny_fase=None)."""
+    def cb(done,total,new_phase=None):
+        tprog(new_phase or (TPROG.get("phase") if new_phase is None and TPROG.get("phase") else phase),done,total,file=TPROG.get("file",""))
+    return cb
+TERR_EXT=(".tif",".tiff",".dtm",".las",".laz",".xyz",".csv",".txt",".pxy")
+
 class API(http.server.BaseHTTPRequestHandler):
     def log_message(self,*a): pass
     def headers_ok(self, code=200, typ="application/json"):
@@ -783,6 +796,8 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path=="/":
             p=Path(__file__).with_name("driver.html")
             self.headers_ok(200,"text/html; charset=utf-8"); self.wfile.write(p.read_bytes()); return
+        if u.path=="/api/terrain/progress":   # v1.6.129: framdrift for terrenganalysen
+            self.headers_ok(); self.wfile.write(json.dumps(dict(TPROG,now=time.time())).encode()); return
         if u.path=="/api/terrain":
             self.headers_ok(); self.wfile.write(json.dumps({"available":T.AVAILABLE,"error":T.IMPORT_ERROR,
                 "types":T.TYPES,"layers":TERR.listing() if T.AVAILABLE else [],
@@ -1113,20 +1128,40 @@ class API(http.server.BaseHTTPRequestHandler):
             tmp=DATA/"upload"; tmp.mkdir(parents=True,exist_ok=True)
             f=tmp/(uuid4hex()+Path(name).suffix.lower())
             try:
-                left=n
+                left=n; tprog("Tek imot fila",0,n,file=name); last=0
                 with open(f,"wb") as out:
                     while left>0:
                         b=self.rfile.read(min(1<<20,left))
                         if not b: break
                         out.write(b); left-=len(b)
+                        if time.time()-last>0.5: tprog("Tek imot fila",n-left,n,file=name); last=time.time()
                 if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
-                r=TERR.analyse(f,name,hint=(STATE.get("lat"),STATE.get("lon")))
+                tprog("Les punkta",0,n,file=name)
+                r=TERR.analyse(f,name,hint=(STATE.get("lat"),STATE.get("lon")),progress=tprog_cb("Les punkta"))
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"errors":[str(e)],"warnings":[],"info":{}}).encode())
             finally:
+                tprog()
                 try: f.unlink()
                 except Exception: pass
+            return
+        if u.path=="/api/terrain/analyse_path":   # v1.6.129: les fila der ho ligg på PC-en – ingen kopi, aldri sletta
+            r=None
+            try:
+                d=json.loads(self.rfile.read(n) or b"{}")
+                p=Path(str(d.get("path","")).strip().strip('"').strip("'"))
+                if not str(p) or not p.is_file(): raise ValueError(f"Fann inga fil på «{p}». Sjekk stien (t.d. D:\\Mappe\\fil.pxy).")
+                if p.suffix.lower() not in TERR_EXT: raise ValueError(f"Filtypen {p.suffix or '(ingen)'} blir ikkje godteken her.")
+                if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
+                LOG.event(f"Terrenganalyse frå sti: {p} ({p.stat().st_size/1e9:.2f} GB)")
+                tprog("Les punkta",0,p.stat().st_size,file=p.name)
+                r=TERR.analyse(p,p.name,hint=(STATE.get("lat"),STATE.get("lon")),progress=tprog_cb("Les punkta"),keep_source=True)
+                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"errors":[str(e)],"warnings":[],"info":{}}).encode())
+            finally:
+                tprog()
             return
         body=self.rfile.read(n)
         if self.path=="/api/opptak":   # start opptak av rådata: {"sek": 300}
