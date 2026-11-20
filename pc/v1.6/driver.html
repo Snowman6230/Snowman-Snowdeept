@@ -3169,7 +3169,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.125";
+      const APP_VERSION = "1.6.126";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -9534,7 +9534,8 @@
             target: TRA.target() ? TRA.target().target : cfg.target,
             trase: TRA.target() ? TRA.target().name : null,
             // varsel på HUD: hindring i køyrebana (nedteljing), elles forbode område
-            warn: TRA.objWarn() ? TRA.objWarn().text : $("traseWarn").classList.contains("bad") && !$("traseWarn").classList.contains("hide") ? $("traseWarn").textContent : null,
+            // v1.6.126: $("traseWarn") kan vere null når SNOWMAN blir avslutta (feil i loggen 20.11 kl. 11:52:39)
+            warn: TRA.objWarn() ? TRA.objWarn().text : $("traseWarn") && $("traseWarn").classList.contains("bad") && !$("traseWarn").classList.contains("hide") ? $("traseWarn").textContent : null,
             warnLevel: TRA.objWarn() ? (TRA.objWarn().dist <= 3 ? "near" : "obst") : "zone",
             tol: cfg.tol,
             bounds: cfg.bounds,

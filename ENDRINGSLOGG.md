@@ -73,6 +73,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.126 – mottakaren kjem att av seg sjølv etter USB-brot
+- **Bakgrunn (logg 20.11, Fjellsætra):** kl. 11:54:32 forsvann COM3 i Windows (USB-kortet UM981 mista sambandet). Porten
+  kom att etter 13 s, og det kom bytes, men verken posisjon (GGA) eller rådata i 4 min – til føraren tok USB-kabelen ut
+  og inn kl. 11:58:53. Vakthunden såg at det kom bytes og opna difor ikkje porten på nytt.
+- **Nytt:** `snowman_pc.py` – kjem det bytes, men ingen gyldig NMEA og ingen RTCM-rådata på 30 s (`SERIAL_JUNK`),
+  blir porten opna på nytt. Dei siste 48 bytane blir skrivne i loggen som hex, så vi ser kva mottakaren sende.
+- **Retta:** førarskjermen gav ein JavaScript-feil når SNOWMAN vart avslutta (`traseWarn` var borte, 11:52:39).
+- **Funne i loggen – ikkje feil i SNOWMAN:** NTRIP kopla seg til att av seg sjølv ved begge brota (11:18:51 etter 33 s
+  utan korreksjonar, 11:23:50 då casteren lukka sambandet) og stod tilkopla heile tida etter omstarten 11:52:57.
+  Problemet var mottakaren, ikkje innlogginga. COM3 mangla 08:35–09:39 (kortet ikkje kopla til).
+- **Test:** tilfeldige bytes over TCP i staden for mottakar: porten vart opna på nytt etter ~30 s. Ingen endring med
+  simulatoren (gyldige data).
+
 ### PC-prototype v1.6.125 – hellingsfeltet står alltid når det er slått på
 - **Retta:** hellingsfeltet på førarskjermen kom berre fram når mottakaren sende posisjon (GGA). Utan posisjon var det
   borte, og det såg ut som funksjonen ikkje fanst (melding frå eigaren med skjermbilete). No står feltet heile tida

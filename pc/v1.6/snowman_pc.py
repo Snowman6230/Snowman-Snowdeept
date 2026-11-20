@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.125"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.126"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -469,6 +469,7 @@ def opptak_zip():
 
 SERIAL_REOPEN=threading.Event()   # «LAGRE / KOPLE TIL» eller døyande samband: lukk porten og opne han på nytt
 SERIAL_IDLE=15.0                   # s utan data frå mottakaren før porten blir opna på nytt (mottakarar sender minst 1 Hz)
+SERIAL_JUNK=30.0                   # v1.6.126: s med bytes, men utan gyldig NMEA eller RTCM-rådata, før porten blir opna på nytt
 
 # ---------- Automatisk portval for Bluetooth (v1.6.113) ----------
 # Felttest 29.10 med R12i: Windows laga nye utgåande Bluetooth-portar etter brot og ny paring (COM9 → COM8 → COM4, og
@@ -571,6 +572,12 @@ def serial_loop():
             LOG.event(f"Mottakar tilkopla: {CFG['serial_port']} @ {CFG['baud']} – berre lesing")
             buf=b""; opened=(CFG["serial_port"],int(CFG["baud"])); bad_n=0; gnss_lost=False
             SERIAL_REOPEN.clear(); last_rx=time.time()
+            # v1.6.126: 20.11 på Fjellsætra kom USB-kortet attende etter eit brot (COM3 forsvann i 13 s) og sende bytes,
+            # men verken posisjon (GGA) eller rådata i 4 min – til føraren tok USB-kabelen ut og inn. Vakthunden over såg
+            # bytes og trudde alt var i orden. No: kjem det bytes, men ingenting gyldig på SERIAL_JUNK s, blir porten opna på
+            # nytt, og dei siste bytane blir skrivne i loggen (hex) så vi ser kva som kom.
+            t_open=time.time(); last_good=t_open; junk=b""
+            rover_t0=(MOTOR[0].stats.get("rover_time") or 0) if MOTOR[0] is not None else 0
             while not STOP.is_set() and serial_obj.is_open:
                 if (CFG["serial_port"],int(CFG["baud"]))!=opened:   # endra i oppsettet: opne på nytt
                     LOG.event("Mottakaroppsett endra – opnar porten på nytt"); serial_obj.close()
@@ -592,7 +599,17 @@ def serial_loop():
                     if STATE.get("serial_silent_run",0)>=2: autoport_try(f"ingen data på {CFG['serial_port']}")
                     break
                 b=serial_obj.read(4096)
-                if b: last_rx=time.time(); STATE["serial_silent_run"]=0
+                if b: last_rx=time.time(); STATE["serial_silent_run"]=0; junk=(junk+b)[-48:]
+                if MOTOR[0] is not None and (MOTOR[0].stats.get("rover_time") or 0)>rover_t0:
+                    rover_t0=MOTOR[0].stats["rover_time"]; last_good=time.time()   # gyldige RTCM-rådata frå mottakaren
+                if time.time()-last_good>SERIAL_JUNK and time.time()-last_rx<2:
+                    LOG.event(f"Mottakaren sender bytes, men ingen gyldig posisjon eller rådata på {SERIAL_JUNK:.0f} s – "
+                              f"opnar porten på nytt. Siste bytes: {junk.hex(' ')}",err=True)
+                    update(serial_reopens=STATE.get("serial_reopens",0)+1,serial_reopen_time=time.time(),serial_connected=False,
+                           last_error=f"Serial: berre ugyldige data frå mottakaren på {SERIAL_JUNK:.0f} s – koplar til på nytt")
+                    try: serial_obj.close()
+                    except Exception: pass
+                    serial_obj=None; time.sleep(1); break
                 ga=time.time()-(STATE.get("gga_time") or time.time())
                 if ga>5 and not gnss_lost:
                     gnss_lost=True; LOG.event(f"Mottakaren har slutta å sende posisjon (ingen GGA på {ga:.0f} s)",err=True)
@@ -617,6 +634,7 @@ def serial_loop():
                                     LOGRATE["cs"]=time.time(); LOG.event(f"NMEA med feil sjekksum forkasta: {bad_n} sidan sist",err=True); bad_n=0
                                 continue
                             if ok is None: update(nmea_nock=STATE.get("nmea_nock",0)+1)
+                            last_good=time.time()
                         if line.startswith("$") and "GGA" in line:
                             STATE["rx_gga"]=line   # GGA frå mottakaren, uredigert – blir send slik til casteren (NTRIP)
                             m=MOTOR[0] if rtk_snowman() else None
