@@ -3169,7 +3169,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.124";
+      const APP_VERSION = "1.6.125";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -5056,9 +5056,16 @@
       let lastTilt = null;
       function tiltCell(t) {
         lastTilt = t || null;
-        let on = cfg.tiltShow !== false && !!t;
+        // v1.6.125: feltet står heile tida når det er slått på – utan posisjon frå mottakaren står det «--»
+        let on = cfg.tiltShow !== false;
         $("tiltCell").classList.toggle("hide", !on);
         if (!on) return;
+        if (!t) {
+          $("tiltLbl").textContent = "HELLING";
+          $("tiltV").textContent = "--";
+          $("tiltRot").setAttribute("transform", "");
+          return;
+        }
         let f = (v) => (v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(0) + "°");
         let src = t.src === "IMU" ? "IMU" : t.src === "av" ? "AV" : t.src === "antenne" ? "ANTENNE" : t.src && t.src.startsWith("utrekna") ? "REKNA" : "";
         $("tiltLbl").textContent = "HELLING" + (src ? " · " + src : "");
@@ -5085,6 +5092,7 @@
         let on = cfg.teleOn !== false;
         $("tele").classList.toggle("off", !on);
         $("teleBtn").classList.toggle("on", on);
+        tiltCell(lastTilt);
       }
       function toggleTele() {
         cfg.teleOn = cfg.teleOn === false;

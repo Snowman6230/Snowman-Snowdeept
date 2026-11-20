@@ -73,6 +73,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.125 – hellingsfeltet står alltid når det er slått på
+- **Retta:** hellingsfeltet på førarskjermen kom berre fram når mottakaren sende posisjon (GGA). Utan posisjon var det
+  borte, og det såg ut som funksjonen ikkje fanst (melding frå eigaren med skjermbilete). No står feltet heile tida
+  når «Vis hellinga på førarskjermen» er på, med «HELLING --» til det kjem data. «Tal» skjuler det framleis.
+- **Test:** Chromium utan mottakar: feltet viser «HELLING --»; «Tal» av skjuler det, «Tal» på viser det att.
+  Ingen JavaScript-feil.
+
 ### Analyse: språkmodul (nynorsk, bokmål, engelsk, svensk) – VEGEN-VIDARE kap. 20
 - **Nytt (dokumentasjon):** analyse av språkval. Omfanget er om lag 2 500–3 000 tekstar. Tilrådd måte: nynorsk som
   nøkkel og ei ordliste per språk, med automatisk omsetjing på skjermen og `T()` for meldingar. Plan i fire steg.
