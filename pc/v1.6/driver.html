@@ -3175,7 +3175,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.129";
+      const APP_VERSION = "1.6.130";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -5380,6 +5380,7 @@
         $("panel" + a[n]).classList.add("on");
         $("tab" + a[n]).classList.add("on");
         if (n === "ctl") loadControl();
+        if (n === "terrain") terrResume();
         if (n === "map") surfStatus();
         if (n === "sys") loadLog();
         if (n === "trase") TRA.load();
@@ -6790,8 +6791,27 @@
           r = { ok: false, errors: ["Ingen kontakt med SNOWMAN-tenesta."], warnings: [], info: {} };
         }
         terrProgress(false);
+        terrShow(r, f.name);
+      }
+      // v1.6.130: vis resultatet éin gong og sei til tenesta at det er vist
+      function terrShow(r, name) {
+        fetch("api/terrain/progress/clear", { method: "POST" }).catch(() => {});
         if (r.big) return showBig(r);
-        showAnalysis(r, f.name);
+        showAnalysis(r, name);
+      }
+      // v1.6.130: når Terreng-fana blir opna – går det ei analyse, eller ligg det eit resultat som ikkje er vist?
+      async function terrResume() {
+        if (terrProgT) return;
+        let p;
+        try {
+          p = await (await fetch("api/terrain/progress")).json();
+        } catch (e) {
+          return;
+        }
+        if (p.active) {
+          $("terrResult").innerHTML = '<div class="history">Analyserer ' + esc(p.file || "fila") + " …</div>";
+          terrProgress(true);
+        } else if (p.finished && p.result) terrShow(p.result, p.file || "");
       }
       // v1.6.129: les fila der ho ligg på PC-en (ingen opplasting og ingen kopi – raskast for filer på fleire GB)
       async function analysePath() {
@@ -6803,15 +6823,18 @@
         $("terrCrop").classList.add("hide");
         cropGroup.clearLayers();
         let r;
-        terrProgress(true);
         try {
           r = await (await fetch("api/terrain/analyse_path", { method: "POST", body: JSON.stringify({ path: p }) })).json();
         } catch (e) {
           r = { ok: false, errors: ["Ingen kontakt med SNOWMAN-tenesta."], warnings: [], info: {} };
         }
-        terrProgress(false);
-        if (r.big) return showBig(r);
-        showAnalysis(r, name);
+        // Analysen går i bakgrunnen i tenesta: du kan gå ut av fana – resultatet ventar til du kjem tilbake
+        if (r.job) {
+          $("terrResult").innerHTML +=
+            '<div class="history" style="font-size:12px">Du kan gå ut av Terreng eller lukke innstillingane – analysen held fram, og resultatet ventar her.</div>';
+          return terrProgress(true);
+        }
+        terrShow(r, name);
       }
       // v1.6.129: framdrift (prosent, GB og tid att) medan fila blir teken imot og lesen
       let terrProgT = null;
@@ -6830,6 +6853,10 @@
             p = await (await fetch("api/terrain/progress")).json();
           } catch (e) {
             return;
+          }
+          if (!p.active && p.finished && p.result) {   // v1.6.130: analysen i bakgrunnen er ferdig
+            terrProgress(false);
+            return terrShow(p.result, p.file || "");
           }
           let x = $("terrProg");
           if (!x || !p.active) return;

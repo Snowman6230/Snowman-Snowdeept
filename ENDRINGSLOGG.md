@@ -73,6 +73,19 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.130 – terrenganalysen held fram når ein går ut av Terreng
+- **Retta:** gjekk føraren ut av Terreng-fana, lukka innstillingane eller lasta sida på nytt medan ei stor fil vart
+  analysert, forsvann analysen eller resultatet (melding frå eigaren).
+- **Endra:** «ANALYSER FRÅ STI» køyrer no analysen i bakgrunnen i SNOWMAN-tenesta. Resultatet blir verande i tenesta
+  til førarskjermen har vist det (`/api/terrain/progress` gir `result`, `/api/terrain/progress/clear` etter visning).
+  Når Terreng-fana blir opna, held framdrifta fram der ho var, eller resultatet blir vist. Med opplasting blir
+  resultatet òg teke vare på (men opplastinga sjølv krev at sida er open – bruk «frå sti» for store filer).
+  Berre éi analyse om gongen; ei ny blir avvist med melding medan den første går. Start og slutt blir skrivne i
+  feltloggen.
+- **Test:** Chromium: analyse frå sti (760 MB), byte fane, lukk innstillingane, last sida på nytt, opne Terreng:
+  «Les punkta: 62 % … om lag 7 s att», deretter resultatet. Tenesta tømde resultatet etter visning. Ingen
+  JavaScript-feil.
+
 ### PC-prototype v1.6.129 – store terrengfiler: lesing der fila ligg, framdrift og éin gjennomgang
 - **Bakgrunn:** eigaren importerte .pxy-fila for Sykkylven Skisenter (8,7 GB). Det tok over 30 min utan teikn til
   framdrift: nettlesaren kopierte heile fila til SNOWMAN (om lag 13 MB/s), og fila vart så lesen to gonger.

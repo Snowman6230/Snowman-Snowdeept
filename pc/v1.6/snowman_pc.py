@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.129"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.130"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -745,6 +745,7 @@ def ntrip_loop():
 TPROG={"active":False}
 def tprog(phase=None,done=0,total=0,**kw):
     if phase is None: TPROG.clear(); TPROG["active"]=False; return
+    if not TPROG.get("active"): TPROG.pop("finished",None); TPROG.pop("result",None)
     if TPROG.get("phase")!=phase: TPROG.update(phase_t0=time.time())
     TPROG.update(active=True,phase=phase,done=int(done),total=int(total),t=time.time(),**kw)
 def tprog_cb(phase):
@@ -753,6 +754,17 @@ def tprog_cb(phase):
         tprog(new_phase or (TPROG.get("phase") if new_phase is None and TPROG.get("phase") else phase),done,total,file=TPROG.get("file",""))
     return cb
 TERR_EXT=(".tif",".tiff",".dtm",".las",".laz",".xyz",".csv",".txt",".pxy")
+def tprog_done(name,r):
+    """v1.6.130: resultatet blir verande i tenesta til førarskjermen har vist det – også om føraren gjekk ut av
+    Terreng-fana, lukka innstillingane eller lasta sida på nytt medan analysen gjekk."""
+    TPROG.clear(); TPROG.update(active=False,finished=True,file=name,result=r,t=time.time())
+def terr_path_job(p,hint):
+    try:
+        r=TERR.analyse(p,p.name,hint=hint,progress=tprog_cb("Les punkta"),keep_source=True)
+    except Exception as e:
+        r={"ok":False,"errors":[str(e)],"warnings":[],"info":{}}
+    LOG.event(f"Terrenganalyse ferdig: {p.name} – {'OK' if r.get('ok') or r.get('big') else 'feil: '+'; '.join(r.get('errors') or [])[:200]}")
+    tprog_done(p.name,r)
 
 class API(http.server.BaseHTTPRequestHandler):
     def log_message(self,*a): pass
@@ -1123,6 +1135,12 @@ class API(http.server.BaseHTTPRequestHandler):
             self.headers_ok(403); self.wfile.write(json.dumps({"ok":False,"error":"Endringar er berre tillatne frå SNOWMAN sjølv"}).encode()); return
         n=int(self.headers.get("Content-Length","0"))
         u=urllib.parse.urlparse(self.path)
+        if u.path in ("/api/terrain/analyse","/api/terrain/analyse_path") and TPROG.get("active"):
+            self.headers_ok(409); self.wfile.write(json.dumps({"ok":False,"errors":[f"Ein annan terrenganalyse går alt ({TPROG.get('file','')}). "
+                "Vent til ho er ferdig."],"warnings":[],"info":{}}).encode()); return
+        if u.path=="/api/terrain/progress/clear":   # førarskjermen har vist resultatet
+            if not TPROG.get("active"): tprog()
+            self.headers_ok(); self.wfile.write(b'{"ok":true}'); return
         if u.path=="/api/terrain/analyse":  # filopplasting blir straumd til disk
             name=urllib.parse.parse_qs(u.query).get("file",["opplasting"])[0]
             tmp=DATA/"upload"; tmp.mkdir(parents=True,exist_ok=True)
@@ -1138,13 +1156,14 @@ class API(http.server.BaseHTTPRequestHandler):
                 if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
                 tprog("Les punkta",0,n,file=name)
                 r=TERR.analyse(f,name,hint=(STATE.get("lat"),STATE.get("lon")),progress=tprog_cb("Les punkta"))
-                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
-                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"errors":[str(e)],"warnings":[],"info":{}}).encode())
+                r={"ok":False,"errors":[str(e)],"warnings":[],"info":{}}
             finally:
-                tprog()
                 try: f.unlink()
                 except Exception: pass
+            tprog_done(name,r)
+            try: self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+            except Exception: pass   # sida er lukka – resultatet ligg i TPROG til ho spør
             return
         if u.path=="/api/terrain/analyse_path":   # v1.6.129: les fila der ho ligg på PC-en – ingen kopi, aldri sletta
             r=None
@@ -1156,12 +1175,12 @@ class API(http.server.BaseHTTPRequestHandler):
                 if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
                 LOG.event(f"Terrenganalyse frå sti: {p} ({p.stat().st_size/1e9:.2f} GB)")
                 tprog("Les punkta",0,p.stat().st_size,file=p.name)
-                r=TERR.analyse(p,p.name,hint=(STATE.get("lat"),STATE.get("lon")),progress=tprog_cb("Les punkta"),keep_source=True)
-                self.headers_ok(); self.wfile.write(json.dumps(r).encode())
+                # v1.6.130: analysen går i bakgrunnen i tenesta – førarskjermen kan gå ut av Terreng, lukke innstillingane
+                # eller lastast på nytt utan at analysen stoppar
+                threading.Thread(target=terr_path_job,args=(p,(STATE.get("lat"),STATE.get("lon"))),daemon=True).start()
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"job":True,"file":p.name}).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"errors":[str(e)],"warnings":[],"info":{}}).encode())
-            finally:
-                tprog()
             return
         body=self.rfile.read(n)
         if self.path=="/api/opptak":   # start opptak av rådata: {"sek": 300}
