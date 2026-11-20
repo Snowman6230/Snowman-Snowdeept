@@ -431,7 +431,7 @@ class TerrainLibrary:
                 return self._keep_big(tmp_path, filename, info, warns)
         elif ext == ".dtm":
             grid, info, errors, warns = analyse_topocad(tmp_path)
-        elif ext in (".las", ".laz", ".xyz", ".csv", ".txt"):   # eigen LiDAR / punkt (v1.6.95)
+        elif ext in (".las", ".laz", ".xyz", ".csv", ".txt", ".pxy"):   # eigen LiDAR / punkt (v1.6.95), .pxy (v1.6.128)
             import punktsky as PS
             grid, info, errors, warns = PS.analyse_pointcloud(tmp_path, filename, hint, utm_inverse,
                                                               lambda e: CRS_NAME.get(e, f"EPSG:{e}"))

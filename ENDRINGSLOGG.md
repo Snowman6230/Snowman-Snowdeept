@@ -73,6 +73,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-19
 
+### PC-prototype v1.6.128 – .pxy (XYZ-koordinatfil) og store punktfiler
+- **Bakgrunn:** eigaren har terrengmodellen for Sykkylven Skisenter som «Sykkylven Skisenter terreng pxy fil.pxy»
+  (8,56 GB). Dei første 4 KB viste ei tekstfil: overskrifta «XYZ-COORD-FILE ,V1.00,2025-11-21» og deretter éin
+  punkt per linje: **nording austing høgd** (t.d. 6913803.858 383462.862 620.026) og komma til slutt. Koordinatane
+  passar med EUREF89 UTM 32 ved Fjellsætra.
+- **Nytt:** `.pxy` blir godteke i Terreng › Legg til terreng og lese som XYZ (format «PXY (XYZ-koordinatfil)»).
+- **Endra:** XYZ/CSV/TXT/PXY blir lesne bit for bit (64 MB om gongen, to gjennomgangar) i staden for alt inn i minnet.
+  Før ville ei fil på 8,6 GB krevje langt meir enn 10 GB RAM. Nording/austing-rekkjefølgja blir avgjord frå første bit.
+- **Test:** `test/testpxy.py` (overskrift hoppa over, nording/austing bytt, linjer kutta mellom bitar, sone 32 frå
+  posisjonen, høgder rette): ALT OK. Laga .pxy med 10 mill. punkt (760 MB): 21 s og 528 MB minne – fila på 8,6 GB
+  tek då om lag 4–5 min. `test/lidar/testlidar.py`: ALLE TESTAR OK.
+
 ### PC-prototype v1.6.127 – nytt namn på terrenglag
 - **Nytt:** knappen «NYTT NAMN» på kvart lag i Innst. › Terreng › Terrengbibliotek. Ein dialog (med skjermtastatur
   når det er slått på) viser det noverande namnet, som kan rettast. Namnet blir lagra i laget, og endringa blir skriven

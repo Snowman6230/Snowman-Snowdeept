@@ -218,6 +218,82 @@ def read_xyz(path):
     return a, swapped
 
 
+# v1.6.128: store tekstfiler (t.d. «XYZ-COORD-FILE» .pxy på 8,6 GB frå Sykkylven Skisenter) blir lesne bit for bit.
+# read_xyz over les alt inn i minnet og ville bruke langt meir enn 10 GB RAM på ei slik fil.
+XYZ_BLOCK = 64 << 20   # byte per bit
+_NUMSTART = set("0123456789-+.")
+
+
+def _xyz_block(text):
+    """Tal frå ein tekstbit: (n × 3)-tabell med dei tre første tala per linje. Overskrifter og kommentarar blir hoppa over."""
+    if ";" in text:
+        text = text.replace(",", ".").replace(";", " ")
+    else:
+        text = text.replace(",", " ")
+    lines = [l for l in text.split("\n") if l.lstrip()[:1] in _NUMSTART and l.strip()]
+    if not lines:
+        return np.empty((0, 3))
+    v = np.fromstring(" ".join(lines), sep=" ")
+    if v.size % len(lines) == 0 and v.size // len(lines) >= 3:   # same tal kolonnar på alle linjer (vanleg)
+        return v.reshape(len(lines), -1)[:, :3]
+    rows = []   # ujamne linjer: les éi og éi
+    for l in lines:
+        p = l.split()
+        if len(p) >= 3:
+            try:
+                rows.append((float(p[0]), float(p[1]), float(p[2])))
+            except ValueError:
+                pass
+    return np.asarray(rows, dtype=np.float64).reshape(-1, 3)
+
+
+def iter_xyz_blocks(path, block=XYZ_BLOCK):
+    """Gir (n × 3)-tabellar frå ei tekstfil, éin bit om gongen (kuttar alltid ved linjeskift)."""
+    rest = b""
+    with open(path, "rb") as f:
+        while True:
+            b = f.read(block)
+            if not b:
+                break
+            b = rest + b
+            k = b.rfind(b"\n")
+            if k < 0:
+                rest = b
+                continue
+            rest = b[k + 1:]
+            a = _xyz_block(b[:k].decode("ascii", "ignore"))
+            if len(a):
+                yield a
+    if rest.strip():
+        a = _xyz_block(rest.decode("ascii", "ignore"))
+        if len(a):
+            yield a
+
+
+def scan_xyz(path):
+    """Første gjennomgang: tal på punkt, ytterkantar og om kolonnane er nording, austing (avgjort frå første bit)."""
+    n, swapped, lo, hi = 0, None, None, None
+    for a in iter_xyz_blocks(path):
+        if swapped is None:
+            swapped = bool(np.median(a[:, 0]) > 1e6 > np.median(a[:, 1]))
+        if swapped:
+            a = a[:, [1, 0, 2]]
+        bl, bh = a.min(axis=0), a.max(axis=0)
+        lo = bl if lo is None else np.minimum(lo, bl)
+        hi = bh if hi is None else np.maximum(hi, bh)
+        n += len(a)
+    if not n:
+        raise ValueError("Fann ingen punkt (venta tre tal per linje: austing nording høgd).")
+    return n, bool(swapped), lo, hi
+
+
+def iter_xyz(path, swapped):
+    for a in iter_xyz_blocks(path):
+        if swapped:
+            a = a[:, [1, 0, 2]]
+        yield a[:, 0], a[:, 1], a[:, 2], np.full(len(a), GROUND, np.uint8)
+
+
 # ---------------------------------------------------------------------------------------------
 # Rutenett
 # ---------------------------------------------------------------------------------------------
@@ -335,7 +411,8 @@ def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=Non
     """Returnerer (rutenett, info, feil, åtvaringar) for LAS/LAZ/XYZ. hint = (lat, lon) til maskina, eller None."""
     ext = Path(filename).suffix.lower()
     errors, warns = [], []
-    info = {"format": {".las": "LAS (punktsky)", ".laz": "LAZ (komprimert punktsky)"}.get(ext, "XYZ (punkt i tekst)")}
+    info = {"format": {".las": "LAS (punktsky)", ".laz": "LAZ (komprimert punktsky)",
+                       ".pxy": "PXY (XYZ-koordinatfil)"}.get(ext, "XYZ (punkt i tekst)")}
     try:
         if ext in (".las", ".laz"):
             h = read_las_header(path)
@@ -349,13 +426,12 @@ def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=Non
             info.update(lasVersion=h["version"], pointFormat=h["fmt"])
             src = (lambda: iter_laz(path)) if ext == ".laz" else (lambda: iter_las(path, h))
         else:
-            a, swapped = read_xyz(path)
+            npts, swapped, lo, hi = scan_xyz(path)   # v1.6.128: bit for bit – også fleire GB
             if swapped:
                 warns.append("Kolonnane såg ut som nording, austing – dei er bytte om til austing, nording.")
-            minx, miny = a[:, 0].min(), a[:, 1].min()
-            maxx, maxy = a[:, 0].max(), a[:, 1].max()
-            npts, epsg, vd = len(a), None, None
-            src = lambda: iter([(a[:, 0], a[:, 1], a[:, 2], np.full(len(a), GROUND, np.uint8))])
+            minx, miny, maxx, maxy = float(lo[0]), float(lo[1]), float(hi[0]), float(hi[1])
+            epsg, vd = None, None
+            src = lambda: iter_xyz(path, swapped)
     except Exception as e:
         return None, info, [f"Kunne ikkje lese fila: {e}"], warns
     if npts == 0 or not (maxx > minx and maxy > miny):
