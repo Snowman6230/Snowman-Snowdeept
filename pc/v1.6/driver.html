@@ -2227,7 +2227,12 @@
         margin-top: 6px;
         flex-wrap: wrap;
       }
+      .tlayer .dgArea {
+        margin-top: 4px;
+        font-size: 13px;
+      }
       .tlayer .acts button,
+      .tlayer .dgArea button,
       .mini {
         background: #173545;
         color: #fff;
@@ -3175,7 +3180,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.134";
+      const APP_VERSION = "1.6.135";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -6868,15 +6873,18 @@
                 "<br>" + (TERR.types[l.type] || l.type) + " · " + l.res + " m · " + l.crs + " · " + l.vdatum +
                 "<br>" + l.area_km2 + " km² · høgd " + Math.round(l.hmin) + "–" + Math.round(l.hmax) + " m · prioritet " + (L2.length - i) +
                 " · importert " + l.imported + (l.versions && l.versions.length ? " · " + l.versions.length + " eldre versjon(ar)" : "") +
-                (l.degrove ? "<br>🌲 Tre og bygg fjerna " + l.degrove.t + " (" + l.degrove.frac + " % av rutene)" : "") +
+                (l.degrove ? "<br>🌲 Jamna ut " + l.degrove.t + ": " + (dgWhole(l) ? "tre fjerna på heile laget" : "berre eigne område") + " · " + l.degrove.frac + " % av rutene endra" : "") +
+                dgAreas(l) +
                 '<div class="acts"><button onclick="moveLayer(\'' + l.id + "',1)\">▲</button><button onclick=\"moveLayer('" + l.id + "',-1)\">▼</button>" +
                 '<button onclick="toggleLayer(\'' + l.id + "')\">" + (l.active ? "SLÅ AV" : "SLÅ PÅ") + "</button>" +
                 '<button onclick="renameLayer(\'' + l.id + "')\">NYTT NAMN</button>" +
-                (l.degrove
-                  ? '<button onclick="degroveLayer(\'' + l.id + "',true)\">ANGRE JAMNING</button>"
-                  : '<button onclick="degroveLayer(\'' + l.id + "')\">FJERN TRE</button>") +
+                '<button onclick="degroveLayer(\'' + l.id + "')\">" + (dgWhole(l) ? "FJERN TRE: PÅ" : "FJERN TRE") + "</button>" +
                 '<button onclick="startReplace(\'' + l.id + "')\">ERSTATT</button>" +
-                '<button onclick="deleteLayer(\'' + l.id + "')\">SLETT</button></div></div>",
+                '<button onclick="deleteLayer(\'' + l.id + "')\">SLETT</button></div>" +
+                '<div class="acts"><span style="opacity:.75">Teikn område:</span>' +
+                Object.keys(DG_KIND).map((k) => '<button onclick="drawDgArea(\'' + l.id + "','" + k + "')\">" + DG_KIND[k].btn + "</button>").join("") +
+                (l.degrove ? '<button onclick="degroveLayer(\'' + l.id + "',true)\">ANGRE ALT</button>" : "") +
+                "</div></div>",
             ).join("")
           : '<div class="history">Biblioteket er tomt. Legg til ein terrengmodell (barmark) under.</div>';
         drawOutlines();
@@ -6888,6 +6896,11 @@
         if (!outlinesOn) return;
         (TERR.layers || []).forEach((l) =>
           L.polygon(l.outline, { color: l.active ? "#ffd33f" : "#888", weight: 2, dashArray: "8 6", fill: false, interactive: false }).addTo(outlineGroup),
+        );
+        (TERR.layers || []).forEach((l) =>
+          ((l.degrove && l.degrove.areas) || []).forEach((a) =>
+            L.polygon(a.poly, { color: DG_KIND[a.kind].color, weight: 2, dashArray: "4 4", fillOpacity: 0.1, interactive: false }).addTo(outlineGroup),
+          ),
         );
       }
       function toggleOutlines() {
@@ -7499,7 +7512,7 @@
         function drawShape() {
           drawGroup.clearLayers();
           if (!D) return;
-          let c = D.kind === "forbode" ? "#ed2024" : "#4db8ff";
+          let c = D.meta.cb ? D.meta.color : D.kind === "forbode" ? "#ed2024" : "#4db8ff";
           if (D.poly.length > 1) L.polygon(D.poly, { color: c, weight: 3, fillOpacity: 0.12, interactive: false }).addTo(drawGroup);
           D.poly.forEach((p, i) => {
             let m = L.marker(p, {
@@ -7528,7 +7541,7 @@
             return;
           }
           $("drawTxt").innerHTML =
-            "<b>" + (D.edit ? "ENDRE" : "TEIKN") + " " + (D.kind === "forbode" ? "FORBODE OMRÅDE" : "TRASÉ") + "</b> · " + n + " hjørne" +
+            "<b>" + (D.edit ? "ENDRE" : "TEIKN") + " " + (D.meta.cb ? esc(D.meta.label) : D.kind === "forbode" ? "FORBODE OMRÅDE" : "TRASÉ") + "</b> · " + n + " hjørne" +
             (n > 2 ? " · " + fmt(polyArea(D.poly) / 1000, 1) + " daa" : "") +
             "<br><small>Trykk på kartet for nytt hjørne · dra for å flytte · trykk på eit hjørne for å fjerne</small>";
         }
@@ -7566,6 +7579,13 @@
           if (!D) return;
           if (D.kind === "objekt") return D.poly.length ? openObjDlg(D.poly[0]) : toast("Trykk på kartet der hindringa er");
           if (D.poly.length < 3) return toast("Set minst 3 hjørne");
+          if (D.meta.cb) {
+            // v1.6.135: område i terrenget – ingen dialog, lagra med éin gong
+            let poly = D.poly.map((p) => p.slice()),
+              cb = D.meta.cb;
+            end();
+            return cb(poly);
+          }
           let m = D.meta;
           $("traDlgT").textContent = D.edit ? "LAGRE ENDRINGA" : D.kind === "forbode" ? "LAGRE FORBODE OMRÅDE" : "LAGRE TRASÉ";
           $("traName").value = m.name || "";
@@ -7622,6 +7642,8 @@
           saveDlg,
           finish,
           draw: (kind) => begin(kind),
+          drawArea: (label, color, cb) => begin("terreng", [], null, { kind: "terreng", label, color, cb }),
+          area: polyArea,
           edit(id) {
             let t = find(id);
             if (t) begin(t.kind, t.poly, t.id, t);
@@ -8133,22 +8155,74 @@
           .catch((e) => toast(e.message));
         loadTerrain();
       }
-      // v1.6.134 (eigaren): punktsky utan klassar (.pxy) gir tre og bygg som piggar i 3D – fjern dei utan ny import
+      // v1.6.134 (eigaren): punktsky utan klassar (.pxy) gir tre og bygg som piggar i 3D – fjern dei utan ny import.
+      // v1.6.135 (eigaren): eigne område – fjern tre berre her, jamn ut heilt, eller vern (blir aldri endra)
+      const DG_KIND = {
+        fjern: { btn: "🌲 FJERN TRE HER", name: "Fjern tre her", color: "#3fbf5f" },
+        jamn: { btn: "▭ JAMN UT HEILT", name: "Jamn ut heilt", color: "#ff9f1c" },
+        vern: { btn: "🛡 VERN", name: "Vern (blir ikkje endra)", color: "#4db8ff" },
+      };
+      const dgWhole = (l) => !!(l.degrove && (l.degrove.whole || (l.degrove.whole == null && !l.degrove.areas)));
+      function dgAreas(l) {
+        let A = (l.degrove && l.degrove.areas) || [];
+        return A.map(
+          (a) =>
+            '<div class="dgArea"><span style="color:' + DG_KIND[a.kind].color + '">■</span> ' + DG_KIND[a.kind].name + " · " +
+            (TRA.area(a.poly) / 1000).toFixed(1).replace(".", ",") + " daa" +
+            ' <button onclick="showDgArea(\'' + l.id + "','" + a.id + "')\">VIS</button>" +
+            '<button onclick="removeDgArea(\'' + l.id + "','" + a.id + "')\">SLETT</button></div>",
+        ).join("");
+      }
+      async function dgApi(body, busy) {
+        toast(busy);
+        return api("api/terrain/degrove", body)
+          .then((r) => {
+            if (typeof T3D !== "undefined" && T3D.terrainChanged) T3D.terrainChanged();
+            return r;
+          })
+          .catch((e) => {
+            toast(e.message);
+            return null;
+          })
+          .finally(loadTerrain);
+      }
       async function degroveLayer(id, undo) {
         let l = TERR.layers.find((x) => x.id === id);
         if (!l) return;
-        let q = undo
-          ? "Gå tilbake til originalen for «" + l.name + "» (med tre og bygg)?"
-          : "Fjerne tre og bygg frå «" + l.name + "»?\n\nRuter som stikk opp over bakken rundt får høgda frå bakken. Originalen blir teken vare på, så du kan angre.\n\nNB: smale, bratte kantar (t.d. ein hoppkant) kan òg bli jamna ut.";
-        if (!confirm(q)) return;
-        toast(undo ? "Hentar originalen …" : "Fjernar tre og bygg … (kan ta nokre sekund)");
-        await api("api/terrain/degrove", { id, undo: !!undo })
-          .then((r) => {
-            toast(undo ? "Originalen er tilbake" : "Ferdig: " + r.layer.degrove.frac + " % av rutene vart jamna ut");
-            if (typeof T3D !== "undefined" && T3D.terrainChanged) T3D.terrainChanged();
-          })
-          .catch((e) => toast(e.message));
-        loadTerrain();
+        if (undo) {
+          if (!confirm("Gå tilbake til originalen for «" + l.name + "»? Alle eigne område for laget blir òg sletta.")) return;
+          if (await dgApi({ id, undo: true }, "Hentar originalen …")) toast("Originalen er tilbake");
+          return;
+        }
+        let on = !dgWhole(l);
+        if (on && !confirm("Fjerne tre og bygg frå heile «" + l.name + "»?\n\nRuter som stikk opp over bakken rundt får høgda frå bakken. Originalen blir teken vare på, så du kan angre.\n\nNB: smale, bratte kantar (t.d. ein hoppkant) kan òg bli jamna ut – teikn eit VERN-område rundt slike.")) return;
+        let r = await dgApi({ id, whole: on }, on ? "Fjernar tre og bygg … (kan ta nokre sekund)" : "Slår av filteret på heile laget …");
+        if (r) toast(on ? "Ferdig: " + r.layer.degrove.frac + " % av rutene vart jamna ut" : "Filteret på heile laget er slått av");
+      }
+      function drawDgArea(id, kind) {
+        let l = TERR.layers.find((x) => x.id === id);
+        if (!l) return;
+        let K = DG_KIND[kind];
+        TRA.drawArea(K.name.toUpperCase() + " · " + l.name, K.color, async (poly) => {
+          let r = await dgApi({ id, add: { kind, poly } }, "Reknar ut terrenget på nytt …");
+          if (r) toast(K.name + ": lagra · " + r.layer.degrove.frac + " % av rutene i laget er endra");
+        });
+      }
+      async function removeDgArea(id, aid) {
+        let l = TERR.layers.find((x) => x.id === id);
+        if (!l || !confirm("Slette området? Terrenget der blir som før.")) return;
+        if (await dgApi({ id, remove: aid }, "Reknar ut terrenget på nytt …")) toast("Området er sletta");
+      }
+      function showDgArea(id, aid) {
+        let l = TERR.layers.find((x) => x.id === id),
+          a = l && l.degrove && (l.degrove.areas || []).find((x) => x.id === aid);
+        if (!a) return;
+        $("settings").classList.add("hide");
+        cfg.viewMode = "kart";
+        followMap = false;
+        applyView();
+        if (!outlinesOn) toggleOutlines();
+        setTimeout(() => map.fitBounds(L.latLngBounds(a.poly).pad(0.3), { animate: false }), 120);
       }
       async function toggleLayer(id) {
         let l = TERR.layers.find((x) => x.id === id);

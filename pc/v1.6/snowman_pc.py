@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.134"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.135"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1333,15 +1333,29 @@ class API(http.server.BaseHTTPRequestHandler):
                         old=TERR.layers.get(d["id"],{}).get("name")
                         if old!=nm: LOG.event(f"Terrenglag fekk nytt namn: «{old}» → «{nm}»")
                     r={"ok":True,"layer":TERR.update(d["id"],name=nm,active=d.get("active"),priority=d.get("priority"))}
-                elif self.path=="/api/terrain/degrove":   # v1.6.134: fjern tre og bygg (eller angre)
-                    nm=TERR.layers.get(d["id"],{}).get("name")
+                elif self.path=="/api/terrain/degrove":   # v1.6.134: fjern tre og bygg; v1.6.135: eigne område
+                    lid=d["id"]; nm=TERR.layers.get(lid,{}).get("name"); KN={"fjern":"fjern tre her","jamn":"jamn ut heilt","vern":"vern"}
                     if d.get("undo"):
-                        r={"ok":True,"layer":TERR.degrove_undo(d["id"])}
-                        LOG.event(f"Terrenglag «{nm}»: tre/bygg-filter angra – originalen er tilbake")
+                        r={"ok":True,"layer":TERR.degrove_undo(lid)}
+                        LOG.event(f"Terrenglag «{nm}»: jamninga er angra – originalen er tilbake")
                     else:
-                        t0=time.time(); m=TERR.degrove(d["id"]); dg=m["degrove"]
-                        LOG.event(f"Terrenglag «{nm}»: tre og bygg fjerna – {dg['frac']} % av rutene endra, "
-                                  f"største endring {dg['maxdiff']} m ({time.time()-t0:.1f} s)")
+                        dg=TERR.layers[lid].get("degrove") or {}
+                        areas=list(dg.get("areas",[])); what=[]
+                        if d.get("add"):
+                            a=d["add"]; k=a.get("kind"); poly=a.get("poly") or []
+                            if k not in KN: raise ValueError("Ukjend type område")
+                            if not (3<=len(poly)<=500): raise ValueError("Området må ha 3–500 hjørne")
+                            poly=[[float(p[0]),float(p[1])] for p in poly]
+                            areas.append({"id":uuid4hex()[:8],"kind":k,"poly":poly}); what.append("nytt område: "+KN[k])
+                        if d.get("remove"):
+                            k=next((x["kind"] for x in areas if x["id"]==d["remove"]),None)
+                            areas=[x for x in areas if x["id"]!=d["remove"]]; what.append("sletta område: "+KN.get(k,"?"))
+                        whole=d.get("whole")
+                        if whole is not None: what.append("heile laget: "+("på" if whole else "av"))
+                        t0=time.time(); m=TERR.degrove(lid,whole=whole,areas=areas); g=m.get("degrove")
+                        if g: LOG.event(f"Terrenglag «{nm}»: {', '.join(what) or 'jamna ut'} – {g['frac']} % av rutene endra, "
+                                        f"største endring {g['maxdiff']} m ({time.time()-t0:.1f} s)")
+                        else: LOG.event(f"Terrenglag «{nm}»: {', '.join(what)} – ingen jamning att, originalen er tilbake")
                         r={"ok":True,"layer":m}
                 else:
                     TERR.delete(d["id"]); r={"ok":True}

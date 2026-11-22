@@ -623,6 +623,58 @@ def ground_filter(g, res, max_window=24.0, dh0=0.4, slope=0.25, dh_max=2.5, flan
     return out.astype(np.float32), float(nonground.sum() / max(valid.sum(), 1))
 
 
+def poly_mask(shape, cols, rows):
+    """Rutene (rad, kolonne) med senter inni polygonet (kolonne/rad-koordinatar, partal-oddetal-regelen)."""
+    cols = np.asarray(cols, float); rows = np.asarray(rows, float)
+    M = np.zeros(shape, bool)
+    c0, c1 = max(0, int(np.floor(cols.min()))), min(shape[1] - 1, int(np.ceil(cols.max())))
+    r0, r1 = max(0, int(np.floor(rows.min()))), min(shape[0] - 1, int(np.ceil(rows.max())))
+    if c0 > c1 or r0 > r1:
+        return M
+    yy, xx = np.mgrid[r0:r1 + 1, c0:c1 + 1].astype(float)
+    inside = np.zeros(yy.shape, bool)
+    j = len(cols) - 1
+    for i in range(len(cols)):
+        xi, yi, xj, yj = cols[i], rows[i], cols[j], rows[j]
+        if yi != yj:
+            cross = ((yi > yy) != (yj > yy)) & (xx < (xj - xi) * (yy - yi) / (yj - yi) + xi)
+            inside ^= cross
+        j = i
+    M[r0:r1 + 1, c0:c1 + 1] = inside
+    return M
+
+
+def flatten_area(g, M, ring=6):
+    """«Jamn ut heilt» (v1.6.135): alt inni M blir glatt bakke frå kanten rundt.
+
+    Eit plan blir tilpassa ruter i ein ring rundt området (minste kvadrat); avviket frå planet i ringen blir
+    interpolert inn over området, så både skråning og små former langs kanten held fram. Returnerer ny g."""
+    g = np.asarray(g, dtype=np.float32)
+    valid = np.isfinite(g)
+    M = M & valid
+    if not M.any():
+        return g.copy()
+    R = (_dilate(M.astype(np.float32), 2 * ring + 1) > 0) & ~M & valid
+    if R.sum() < 3:
+        return g.copy()
+    rr, cc = np.nonzero(R)
+    A = np.c_[cc, rr, np.ones(len(rr))].astype(np.float64)
+    coef, *_ = np.linalg.lstsq(A, g[R].astype(np.float64), rcond=None)
+    r_all, c_all = np.nonzero(M | R)
+    rmin, rmax, cmin, cmax = r_all.min(), r_all.max() + 1, c_all.min(), c_all.max() + 1
+    sub = (slice(rmin, rmax), slice(cmin, cmax))
+    yy, xx = np.mgrid[rmin:rmax, cmin:cmax]
+    plane = (coef[0] * xx + coef[1] * yy + coef[2]).astype(np.float32)
+    resid = np.where(R[sub], g[sub] - plane, np.nan).astype(np.float32)
+    rf = push_pull_fill(resid)
+    out = g.copy()
+    Ms = M[sub]
+    blk = out[sub]
+    blk[Ms] = (plane + rf)[Ms]
+    out[sub] = blk
+    return out
+
+
 # ---------------------------------------------------------------------------------------------
 # Analyse
 # ---------------------------------------------------------------------------------------------

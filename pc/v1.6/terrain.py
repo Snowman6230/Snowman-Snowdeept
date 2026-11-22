@@ -637,17 +637,64 @@ class TerrainLibrary:
                 time.sleep(0.25)
         raise RuntimeError("Fila til terrenglaget er i bruk – prøv igjen om litt.")
 
-    def degrove(self, lid):
-        """Fjern tre og bygg frå laget (punktsky utan klassar). Originalen blir teken vare på som grid_orig.npy."""
+    def area_mask(self, m, shape, poly):
+        """Polygon i lat/lon → maske i rutenettet til laget."""
+        import punktsky as PS
+        cols, rows = [], []
+        for lat, lon in poly:
+            E, N = utm_forward(float(lat), float(lon), m["zone"])
+            cols.append((E - m["x0"]) / m["dx"] - 0.5)
+            rows.append((m["y0"] - N) / m["dy"] - 0.5)
+        return PS.poly_mask(shape, cols, rows)
+
+    def degrove(self, lid, whole=None, areas=None):
+        """Fjern tre og bygg (v1.6.134) og eigne område (v1.6.135). Alltid rekna frå originalen (grid_orig.npy).
+
+        whole = filteret på heile laget. areas = [{"id","kind","poly"}], kind: fjern (filteret berre inni),
+        jamn (alt inni blir glatt bakke frå kanten), vern (aldri endra). Rekkjefølgje: fjern → jamn → vern.
+        Utan filter og utan område går laget tilbake til originalen."""
         import punktsky as PS
         with self.lock:
             m = self.layers[lid]
+            dg = m.get("degrove") or {}
+            if whole is None:   # uendra; v1.6.134-lag utan «whole» = heile laget; nytt lag utan argument = heile laget
+                whole = bool(dg.get("whole", "areas" not in dg)) if "degrove" in m else areas is None
+            whole = bool(whole)
+            areas = list(dg.get("areas", [])) if areas is None else list(areas)
+            if not whole and not areas:
+                if "degrove" in m:
+                    return self.degrove_undo(lid)
+                return m
             d = self.root / lid
             orig = d / "grid_orig.npy"
             src = orig if orig.exists() else d / "grid.npy"
             g = np.array(np.load(src, mmap_mode="r"), dtype=np.float32)
-        out, frac = PS.ground_filter(g, abs(float(m.get("dx") or m["res"])))
+        masks = {}
+        for a in areas:
+            M = self.area_mask(m, g.shape, a["poly"])
+            if not (M & np.isfinite(g)).any():
+                raise ValueError("Området «" + {"fjern": "fjern tre", "jamn": "jamn ut", "vern": "vern"}.get(a["kind"], a["kind"])
+                                 + "» ligg utanfor terrenglaget.")
+            masks[a["id"]] = M
+        out = g.copy()
+        fj = [masks[a["id"]] for a in areas if a["kind"] == "fjern"]
+        if whole or fj:
+            F, _ = PS.ground_filter(g, abs(float(m.get("dx") or m["res"])))
+            if whole:
+                out = F
+            else:
+                U = np.logical_or.reduce(fj)
+                out[U] = F[U]
+        for a in areas:
+            if a["kind"] == "jamn":
+                out = PS.flatten_area(out, masks[a["id"]])
+        for a in areas:
+            if a["kind"] == "vern":
+                V = masks[a["id"]]
+                out[V] = g[V]
         diff = np.abs(out - g)
+        changed = np.isfinite(diff) & (diff > 0.05)
+        frac = float(changed.sum() / max(np.isfinite(g).sum(), 1))
         with self.lock:
             if not orig.exists():
                 shutil.copy2(d / "grid.npy", orig)
@@ -655,7 +702,8 @@ class TerrainLibrary:
             np.save(tmp, out)
             self._swap_grid(lid, tmp)
             m["degrove"] = {"t": time.strftime("%Y-%m-%d %H:%M"), "frac": round(frac * 100, 1),
-                            "maxdiff": round(float(np.nanmax(diff)) if np.isfinite(diff).any() else 0.0, 1)}
+                            "maxdiff": round(float(np.nanmax(diff)) if np.isfinite(diff).any() else 0.0, 1),
+                            "whole": whole, "areas": areas}
             m["hmin"], m["hmax"] = float(np.nanmin(out)), float(np.nanmax(out))
             self._save_meta(lid)
             return m

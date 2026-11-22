@@ -80,6 +80,52 @@ with tempfile.TemporaryDirectory() as td:
     go = np.asarray(L._grid(lid))
     sjekk("angre gir originalen tilbake", np.array_equal(np.isnan(go), np.isnan(g)) and np.nanmax(np.abs(go - g)) == 0)
     sjekk("angre fjernar merket", "degrove" not in mm and not (d / "grid_orig.npy").exists())
+
+    # --- eigne område (v1.6.135) ---
+    x0, y0 = 383000.0, 6914000.0
+    L.layers[lid].update(zone=32, x0=x0, y0=y0, nx=n, ny=n)
+
+    def ll(px, py):   # meter i testterrenget (x aust, y = rad·res nedover) → lat/lon
+        la, lo = T.utm_inverse(x0 + px, y0 - py, 32)
+        return [la, lo]
+
+    def sq(cx, cy, r):
+        return [ll(cx - r, cy - r), ll(cx + r, cy - r), ll(cx + r, cy + r), ll(cx - r, cy + r)]
+
+    tre = (g - fasit) > 2
+    # eit tre utanfor knausen og huset å verne / fjerne
+    ty, tx = np.argwhere(tre & (np.hypot(x - 450, y - 150) > 60) & ~hus & (x > 100) & (x < 540) & (y > 60) & (y < 540))[0]
+    tcx, tcy = tx * res, ty * res
+    A_vern = {"id": "v1", "kind": "vern", "poly": sq(tcx, tcy, 8)}
+    mm = L.degrove(lid, whole=True, areas=[A_vern])
+    gv = np.asarray(L._grid(lid))
+    V = L.area_mask(mm, g.shape, A_vern["poly"])
+    sjekk("vern: treet inni er uendra", np.nanmax(np.abs(gv[V] - g[V])) == 0 and V.sum() > 900, f"{V.sum()} ruter")
+    sjekk("vern: resten er filtrert", np.nanmax(np.abs(gv[~V] - f[~V])) < 1e-4)
+    A_fj = {"id": "f1", "kind": "fjern", "poly": sq(tcx, tcy, 10)}
+    mm = L.degrove(lid, whole=False, areas=[A_fj])
+    gf = np.asarray(L._grid(lid))
+    Fm = L.area_mask(mm, g.shape, A_fj["poly"])
+    sjekk("fjern tre her: berre inni er endra", np.nanmax(np.abs(gf[~Fm] - g[~Fm])) == 0 and np.nanmax(np.abs(gf[Fm] - f[Fm])) < 1e-4)
+    sjekk("fjern tre her: treet er borte (maks under 1,5 m)", np.nanmax(np.abs(gf[Fm] - fasit[Fm])) < 1.5, f"{np.nanmax(np.abs(gf[Fm] - fasit[Fm])):.2f} m")
+    # jamn ut heilt: eit 40 × 40 m område med tett skog (filteret åleine tek ikkje skog breiare enn vindauget)
+    skog = (x > 380) & (x < 420) & (y > 400) & (y < 440)
+    g2 = g.copy(); g2[skog] = fasit[skog] + 12 + rng.random(skog.sum()).astype(np.float32) * 4
+    np.save(d / "grid_orig.npy", g2)
+    A_j = {"id": "j1", "kind": "jamn", "poly": sq(400, 420, 23)}
+    mm = L.degrove(lid, whole=False, areas=[A_j])
+    gj = np.asarray(L._grid(lid))
+    J = L.area_mask(mm, g.shape, A_j["poly"])
+    ej = np.abs(gj - fasit)[J & np.isfinite(gj)]
+    sjekk("jamn ut heilt: tett skog 40 × 40 m er borte", ej.max() < 1.0, f"maks feil {ej.max():.2f} m, snitt {ej.mean():.2f} m (før 12–16 m)")
+    sjekk("jamn ut heilt: utanfor er uendra", np.nanmax(np.abs(gj[~J] - g2[~J])) == 0)
+    try:
+        L.degrove(lid, whole=False, areas=[{"id": "u", "kind": "jamn", "poly": [ll(-900, -900), ll(-800, -900), ll(-800, -800)]}])
+        sjekk("område utanfor laget blir avvist", False)
+    except ValueError as e:
+        sjekk("område utanfor laget blir avvist", "utanfor" in str(e), str(e))
+    mm = L.degrove(lid, whole=False, areas=[])
+    sjekk("ingen område og filter av = originalen", "degrove" not in mm and np.array_equal(np.asarray(L._grid(lid)), g2, equal_nan=True))
     L.grids.clear()
 
 print("ALT OK" if not feil else f"{len(feil)} FEIL: {feil}")

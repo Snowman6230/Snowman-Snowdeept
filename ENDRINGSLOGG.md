@@ -9,6 +9,21 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-22
 
+### PC-prototype v1.6.135 – eigne område for jamning av terrenget
+- **Avgjerd (eigaren):** føraren skal kunne markere område sjølv, med alle tre typane.
+- **Nytt:** under kvart lag i Terrengbiblioteket: «Teikn område» med **🌲 FJERN TRE HER** (filteret berre inni),
+  **▭ JAMN UT HEILT** (alt inni blir glatt bakke frå kanten – for tett skog eller bygg som filteret ikkje tek) og
+  **🛡 VERN** (blir aldri endra – t.d. ein hoppkant). Teikninga brukar same verktøy som trasear (trykk hjørne på kartet,
+  ✓ FERDIG), og terrenget blir rekna ut på nytt med éin gong. Områda står i lista under laget med VIS og SLETT, og blir
+  viste på kartet saman med terrengomrisset (grøn, oransje, blå). **FJERN TRE** slår no filteret på heile laget av og på;
+  **ANGRE ALT** gir originalen tilbake og slettar områda.
+- **Korleis:** alt blir alltid rekna frå originalen i rekkjefølgja fjern → jamn → vern, så eit område kan slettast
+  utan at noko blir ståande att. «Jamn ut heilt» tilpassar eit plan til ein ring på 3 m rundt området og interpolerer
+  avviket frå planet inn over området, så skråninga held fram. Område utanfor laget blir avviste. Kvar endring blir
+  logga.
+- **Test:** `test/testtre.py` utvida: vern, fjern tre her, jamn ut heilt (tett skog 40 × 40 m, 12–16 m høg → maks feil
+  0,39 m), område utanfor laget, og attende til originalen. Flyten i førarskjermen er testa i nettlesar utan JS-feil.
+
 ### PC-prototype v1.6.134 – «FJERN TRE»: jamn ut tre og bygg i terrengmodellen
 - **Bakgrunn:** 3D-biletet frå laget «Sykkylven Skisenter» (.pxy, 119 mill. punkt) hadde mange piggar. Fila har ingen
   klassar (bakke/vegetasjon/bygg), så SNOWMAN brukar snittet av alle punkt i kvar rute på 0,5 m – då kjem trekroner
