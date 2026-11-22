@@ -10,7 +10,7 @@
 Prepareringsdøgnet går frå kl. 12 til kl. 12 neste dag, slik at ei natt med preparering (t.d. 17–03) blir
 rekna som éin dag. Data blir lagra i data/trasear.json og høyrer til anlegget.
 """
-import base64, json, math, threading, time, uuid
+import base64, json, math, re, threading, time, uuid
 from collections import deque
 from pathlib import Path
 
@@ -228,6 +228,44 @@ class Trasear:
     def listing(self):
         with self.lock:
             return [dict(t) for t in self.items]
+
+    @staticmethod
+    def _norm(d):
+        """Kontrollerer og reinskar éin trasé (frå skjemaet eller frå anleggspakka). Kastar ValueError ved feil."""
+        poly = [[float(p[0]), float(p[1])] for p in d.get("poly") or []]
+        if len(poly) < 3:
+            raise ValueError("Ein trasé må ha minst 3 hjørne.")
+        if any(not (-90 <= a <= 90 and -180 <= b <= 180) for a, b in poly):
+            raise ValueError("Ugyldig koordinat i omrisset.")
+        name = str(d.get("name") or "").strip()[:60]
+        if not name:
+            raise ValueError("Gi traseen eit namn.")
+        kind = d.get("kind") if d.get("kind") in KINDS else "trase"
+        level = d.get("level") if d.get("level") in LEVELS else ("raud" if kind == "forbode" else "anna")
+        tgt = d.get("target")
+        tgt = None if tgt in (None, "") else float(tgt)
+        if tgt is not None and not (0 <= tgt <= 10):
+            raise ValueError("Måldjupna må vere mellom 0 og 10 m.")
+        return dict(name=name, kind=kind, level=level, color=LEVELS[level], target=tgt,
+                    poly=[[round(a, 8), round(b, 8)] for a, b in poly], area=round(poly_area_m2(poly)))
+
+    def replace_all(self, items, source="kontoret", dry=False):
+        """v1.6.136: alle trasear og forbodne område frå anleggspakka (SNOWMAN Base) – erstattar dei lokale."""
+        out = []
+        for d in items:
+            t = self._norm(d)
+            tid = re.sub(r"[^A-Za-z0-9_-]", "", str(d.get("id") or ""))[:40] or uuid.uuid4().hex[:8]
+            out.append(dict(t, id=tid, created=str(d.get("created") or time.strftime("%Y-%m-%d %H:%M"))[:20],
+                            source=str(d.get("source") or source)[:80],
+                            updated=str(d.get("updated") or time.strftime("%Y-%m-%d %H:%M:%S"))[:20]))
+        if len({t["id"] for t in out}) != len(out):
+            raise ValueError("To trasear i anleggspakka har same id.")
+        if dry:
+            return
+        with self.lock:
+            self.items = out
+            self._masks.clear()
+            self._save()
 
     def save(self, d):
         poly = [[float(p[0]), float(p[1])] for p in d.get("poly") or []]
@@ -583,6 +621,8 @@ class Objekt:
             o.update(type=typ, name=str(d.get("name") or "").strip()[:60] or OBJ_TYPES[typ][0], lat=round(lat, 8), lng=round(lng, 8),
                      radius=round(r, 2), note=str(d.get("note") or "")[:120], source=str(d.get("source") or o.get("source") or "kart")[:40],
                      updated=time.strftime("%Y-%m-%d %H:%M:%S"))
+            if d.get("lokal"):          # v1.6.136: lagd i maskina medan ho er styrt frå kontoret – ventar på kontoret
+                o["lokal"] = True
             if not old:
                 self.items.append(o)
             self._save()
@@ -592,3 +632,48 @@ class Objekt:
         with self.lock:
             self.items = [o for o in self.items if o["id"] != oid]
             self._save()
+
+    def get(self, oid):
+        with self.lock:
+            return next((dict(o) for o in self.items if o["id"] == oid), None)
+
+    def replace_from_package(self, items, dry=False):
+        """v1.6.136: hindringane frå anleggspakka erstattar dei lokale – men lokale hindringar som ventar på kontoret
+        («lokal»: True) blir verande (VEGEN-VIDARE kap. 16, avgjerd 1). Ei lokal hindring blir fjerna når kontoret har
+        teke ho med (same id, eller same type innan 2 m). Returnerer kor mange lokale som vart godkjende."""
+        out = []
+        for d in items:
+            lat, lng = float(d["lat"]), float(d["lng"])
+            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                raise ValueError("Ugyldig koordinat for ei hindring i anleggspakka.")
+            typ = d.get("type") if d.get("type") in OBJ_TYPES else "anna"
+            r = d.get("radius")
+            r = OBJ_TYPES[typ][1] if r in (None, "") else float(r)
+            if not (0 < r <= 30):
+                raise ValueError("Radius for ei hindring i anleggspakka må vere mellom 0 og 30 m.")
+            oid = re.sub(r"[^A-Za-z0-9_-]", "", str(d.get("id") or ""))[:40] or uuid.uuid4().hex[:8]
+            out.append({"id": oid, "type": typ, "name": str(d.get("name") or "").strip()[:60] or OBJ_TYPES[typ][0],
+                        "lat": round(lat, 8), "lng": round(lng, 8), "radius": round(r, 2),
+                        "note": str(d.get("note") or "")[:120], "source": "kontoret",
+                        "created": str(d.get("created") or time.strftime("%Y-%m-%d %H:%M"))[:20],
+                        "updated": str(d.get("updated") or time.strftime("%Y-%m-%d %H:%M:%S"))[:20]})
+        ids = {o["id"] for o in out}
+        if len(ids) != len(out):
+            raise ValueError("To hindringar i anleggspakka har same id.")
+        if dry:
+            return 0
+
+        def teken_med(l):
+            if l["id"] in ids:
+                return True
+            for o in out:
+                if o["type"] == l["type"] and abs(o["lat"] - l["lat"]) * 111320 < 2 and \
+                        abs(o["lng"] - l["lng"]) * 111320 * math.cos(math.radians(l["lat"])) < 2:
+                    return True
+            return False
+        with self.lock:
+            lokale = [o for o in self.items if o.get("lokal")]
+            att = [o for o in lokale if not teken_med(o)]
+            self.items = out + att
+            self._save()
+        return len(lokale) - len(att)

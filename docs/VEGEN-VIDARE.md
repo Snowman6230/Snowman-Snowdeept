@@ -360,8 +360,11 @@ skal opnast mot internett). Trasear og hindringar for Fjellsætra er alt teikna 
 1. **Format for anleggspakka** – formatversjon 1, same filer som maskina alt har (`base/v1.0/anleggspakke.py`):
    `manifest.json` + `trasear.json`, `objekt.json`, `kontrollpunkt.json`; `terreng/` har plass i formatet.
    *Laga i Base v1.3.0.*
-2. **Maskina tek imot (pc/v1.7):** valfri bolk «Kopling til SNOWMAN Base» (av som standard), knappen «Hent frå Base»
+2. **Maskina tek imot:** valfri bolk «Kopling til SNOWMAN Base» (av som standard), knappen «Hent frå Base»
    først, automatisk henting seinare. Lagrar lokalt; siste pakke gjeld om Base er borte.
+   *Laga i PC v1.6.136 (2026-11-22, `pc/v1.6/basekopling.py`):* Innst. › Trasear › «Anleggsdata frå kontoret».
+   Står att: automatisk henting, administrator-PIN på av-brytaren (kap. 10 finst ikkje enno), fingeravtrykk av
+   terrenget i hjarteslaget (avgjerd 2), og at kontoret ser lokale hindringar på kartet før dei er godkjende.
 3. **Kartfane på kontoret i 2D (Base):** «Hent frå maskin» (første versjon frå det som alt er teikna), redigere,
    «Publiser» (Base lagar pakka sjølv), forslag frå maskinene på kartet.
 4. **Innstillingar til maskinene** (sjå avgjerd 3 under).
@@ -503,7 +506,7 @@ tilgang som Norman sin base (DDNS + port 2101); Base held det faste namnet oppda
 (formatversjon 1, kontrollert ved opplasting). Base skal stå på Raspberry Pi 5 ved antenna.
 
 **Står att (neste steg):**
-1. SNOWMAN snødjupne: klient mot API v1 – anleggspakke i v1.7 (kap. 16), deling i v1.8.
+1. SNOWMAN snødjupne: klient mot API v1 – anleggspakke laga i v1.6.136 (kap. 16), deling i v1.8.
 2. Kontordelen: kartfane i 2D med «Hent frå maskin» og «Publiser», så 3D i v1.9 (kap. 16).
    Inkluderer utsending av innstillingar til maskinene, felles og per maskin (eigaren 2026-10-29). API v1 har i dag
    éi anleggspakke for heile flåten; innstillingar per maskin krev eit tillegg i API-et (t.d. `GET /api/v1/innstillingar`

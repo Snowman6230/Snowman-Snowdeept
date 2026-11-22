@@ -9,6 +9,29 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-22
 
+### PC-prototype v1.6.136 – anleggspakke frå kontoret (SNOWMAN Base), VEGEN-VIDARE kap. 16 steg 2
+- **Nytt:** Innst. › Trasear › «Anleggsdata frå kontoret (SNOWMAN Base)». Valfri kopling (av som standard). Tomme felt
+  = same adresse, port og innlogging som NTRIP, sidan Base 1.3.0 svarar på maskin-API-et på port 2101.
+  **HENT FRÅ BASE** hentar den aktive anleggspakka (trasear, forbodne område, hindringar, kontrollpunkt).
+  **Kvifor:** første steg i at kontoret kan styre anlegget – kontorsida har ingen verknad før maskina kan ta imot.
+- Pakka blir kontrollert (sha256 for heile pakka og kvar fil, manifest, formatversjon, innhald) og teken i bruk heilt
+  eller ikkje i det heile. Ho blir lagra i `data/anleggspakke/` og gjeld sjølv om Base er borte. Det som låg i maskina
+  før, blir teke vare på i `data/anleggspakke/forrige/`. Ei fil som manglar i pakka, betyr at maskina held på det ho har.
+- **Avgjerd 1 (2026-11-20) er innført:** når koplinga er på og ei pakke er henta, er trasear, forbodne område og
+  kontrollpunkt **styrte frå kontoret** (låste i maskina, merkte 🔒). Ei **ny hindring** kan framleis leggjast inn: ho
+  gir varsel med éin gong, er merkt «lokal – ventar på kontoret» og blir sendt som forslag. Når kontoret tek ho med i ei
+  ny pakke (same id, eller same type innan 2 m), blir den lokale fjerna. Slår ein av koplinga, kan alt redigerast att.
+- **SEND FORSLAG TIL KONTORET:** fritekst med posisjonen til maskina. Forslag som ikkje kjem fram, ligg i kø og blir
+  sende ved neste henting.
+- Maskina sender hjarteslag med namn, SNOWMAN-versjon og pakkeversjon, så kontoret ser kva versjon kvar maskin har.
+  Fast maskin-ID i `data/maskin-id.txt`.
+- Passordet til Base blir aldri sendt til nettlesaren; endringar blir skrivne i feltloggen utan passord.
+- Står att: automatisk henting, administrator-PIN på av-brytaren, fingeravtrykk av terrenget, lokale hindringar på
+  kartet på kontorsida.
+- Test: `python3 test/testbasekopling.py` (21 kontrollar mot ein ekte SNOWMAN Base: henting via 2101, lås, lokal
+  hindring som blir godkjend, kø når Base er borte, omstart, skadd pakke). Testa med simulert GNSS (RTK FIX) og
+  skjermbilete av Trasear-fana.
+
 ### PC-prototype v1.6.135 – eigne område for jamning av terrenget
 - **Avgjerd (eigaren):** føraren skal kunne markere område sjølv, med alle tre typane.
 - **Nytt:** under kvart lag i Terrengbiblioteket: «Teikn område» med **🌲 FJERN TRE HER** (filteret berre inni),

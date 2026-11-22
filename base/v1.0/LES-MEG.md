@@ -305,7 +305,7 @@ hindringar eller kontrollpunkt har ugyldige verdiar. Versjonsnummeret (1, 2, 3 �
 - Maskin-API-et svarar på **både** port 2101 (casteren – for maskinene ute i bakken) og 8780. På 2101 er berre desse
   opne, med NTRIP-brukaren (Basic): `GET /api/v1/info`, `maalingar`, `maskiner`, `anleggspakke`, `anleggspakke/fil`,
   `baner`, og `POST /api/v1/maskin`, `maalingar`, `forslag`. «api» kan ikkje brukast som namn på mountpoint.
-- API v1 (deling, anleggspakke, forslag) er klart for SNOWMAN v1.8. `/api/v1/info` viser versjon, API-versjon, funksjonar og minste SNOWMAN-versjon. Maskiner som er for gamle, blir viste på kontorsida.
+- Anleggspakke og forslag blir brukte av SNOWMAN snødjupne frå v1.6.136 (Innst. › Trasear › «Anleggsdata frå kontoret»). Deling kjem i v1.8. `/api/v1/info` viser versjon, API-versjon, funksjonar og minste SNOWMAN-versjon. Maskiner som er for gamle, blir viste på kontorsida.
 - Endrar du casteren eller API-et: køyr testane (under). Kompatibilitetstesten brukar NTRIP-klienten frå `pc/v1.6`. Eit brot i API-et gir ny API-versjon (`/api/v2/`), og v1 blir verande.
 
 ## Testar

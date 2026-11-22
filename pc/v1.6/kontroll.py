@@ -107,6 +107,22 @@ class Kontroll:
             self._save()
         return p
 
+    def replace_points(self, points, dry=False):
+        """v1.6.136: kontrollpunkta frå anleggspakka (SNOWMAN Base). Kontrollmålingane til maskina blir ikkje rørte."""
+        out = []
+        for p in points:
+            E, N, zone, h = float(p["E"]), float(p["N"]), int(p["zone"]), float(p["h"])
+            if zone not in (32, 33, 35) or not (100000 < E < 900000 and 6000000 < N < 8000000):
+                raise ValueError("Eit kontrollpunkt i anleggspakka har ugyldige koordinatar.")
+            out.append({"id": str(p.get("id") or uuid.uuid4().hex[:8])[:40], "name": str(p.get("name") or "Kontrollpunkt")[:60],
+                        "E": E, "N": N, "zone": zone, "h": h, "created": str(p.get("created") or time.strftime("%Y-%m-%d %H:%M"))[:20],
+                        "source": "kontoret"})
+        if dry:
+            return
+        with self.lock:
+            self.data["points"] = out
+            self._save()
+
     def delete_point(self, pid):
         with self.lock:
             self.data["points"] = [p for p in self.data["points"] if p["id"] != pid]
