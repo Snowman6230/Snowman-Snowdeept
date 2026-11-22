@@ -598,6 +598,74 @@ tekstar.
   språk kan lesast og analyserast likt.
 - **Ventar:** ingen endringar no. Plasserast i vegplanen seinare (truleg før v2.0, første salsversjon).
 
+## 21. Snødjupne når FIX blir tapt: FLOAT med vern («FIX-bru») (analyse 2026-11-22, ventar)
+
+**Avgjerd (eigaren 2026-11-22):** ingen endring enno. Kapittelet dokumenterer ei mogleg løysing på FIX-problemet, til
+vurdering når det finst data frå bakken og eigen base.
+
+**Problemet:** snødjupna blir berre vist med RTK FIX («IKKJE MÅLT – KREV RTK FIX»). Når FIX blir tapt, manglar
+snødjupna, sjølv om posisjonen ofte framleis er god.
+- Antennetest 22.11.2026 (UM981-02 + A-SKY, statisk 2 t, TH 0,49 km, hus mot aust): **18,5 % av tida utan FIX**,
+  60 FIX-tap, 12 periodar over 30 s, lengste 153 s.
+- Årsaker: fasebrot på skugga satellittar (47 av 60 tap kom etter brot på to GPS-satellittar bak huset), og at TH
+  berre sender GPS + GLONASS (RTK brukte 15–16 av 38 satellittar).
+- I tråkkemaskina kjem skugge frå terreng, tre og maskina sjølv, vibrasjon og nettbrot i tillegg.
+
+**Moglege løysingar, frå minst til mest inngrep i SNOWMAN:**
+1. Fleire satellittar i RTK: eigen UM980-base med MSM og alle fire system (kap. 18). Inga kodeendring.
+2. Snødjupne i FLOAT med vern (FIX-bru) – sjå under.
+3. Halde ute satellittar med gjentekne fasebrot, t.d. ≥ 3 brot på 2 min → ute av RTK i 5 min (RTKLIB `exsats`).
+   Kan simulerast på opptak før det blir innført.
+4. Forklaring til føraren når FIX blir tapt (t.d. «fasebrot på G25, lågt mot aust» eller «ingen korreksjonar»).
+   Ingen verknad på målinga.
+
+**FIX-bru – kan det gjerast?** Ja, teknisk. RTK-motoren reknar posisjon og høgd også i FLOAT. Spørsmålet er tryggleik:
+i FLOAT er ikkje fasen låst, og motoren kan ikkje sjølv avgjere om løysinga er god. FLOAT kan vere nesten like god som
+FIX – eller fleire meter feil.
+
+**Kva testane viser:**
+
+| | Resultat |
+|---|---|
+| FLOAT **etter** at FIX var oppnådd (22.11, statisk, 0,49 km) | 95 % innanfor 1,8–2,4 cm, **maks 2,7 cm**, uansett kor lenge sidan FIX |
+| Del av FLOAT-sekunda innan 30 / 60 s etter FIX (22.11) | 60 % / 81 % |
+| FLOAT **før første FIX** (22.11, første minuttet) | opptil **1,7 m** feil |
+| FLOAT i fart (R12i 29.10, 0,6–0,7 km) | sd 1,4–1,5 cm, mot FIX i fart 1,5–1,6 cm |
+
+**Vilkår om FIX-brua blir innført (forslag):**
+1. **Aldri FLOAT før første FIX**, og aldri etter at RTK er nullstilt (bytte av base, langt brot i korreksjonane, ny
+   oppstart) – jf. kap. 19.
+2. **Berre kort tid etter siste FIX**, t.d. 30–60 s (grense i koden).
+3. **Hoppvakt:** FLOAT-høgda kan ikkje avvike meir enn t.d. 3 cm frå det som er venta ut frå siste FIX-høgd, rørsla og
+   terrengmodellen. Større avvik → «IKKJE MÅLT».
+4. **Tydeleg merking:** t.d. gul snødjupne og «FLOAT – usikker» på førarskjermen og i HUD.
+5. **Ikkje lagre eller dele** FLOAT-verdiar (preparert areal, snøflateminne, deling i v1.8) før det er testa og godkjent.
+6. **Av/på-innstilling**, av som standard, så prinsippet «berre FIX» kan haldast.
+7. **Logging:** kvar FLOAT-verdi som blir vist, blir merkt i feltloggen.
+
+**Risiko:** testane er korte basislinjer (0,5–0,7 km). Ved Fjellsætra blir avstand og høgdeskilnad til basen større.
+Fart, helling og vibrasjon i bakken kan gi raskare drift i FLOAT. Ein feil i hoppvakta kan sleppe gjennom ein feil
+snødjupne utan at føraren merkar det.
+
+**Test før avgjerd:**
+1. Opptak i fart i bakken med eigen base, målt antennehøgd og terrengmodell (DTM1).
+2. Spele av opptaka med og utan FIX-bru og telje: kor mykje meir tid med snødjupne, største avvik i viste FLOAT-verdiar,
+   kor ofte hoppvakta stoppar, og om ein feil verdi slapp gjennom.
+3. Innføre berre om FLOAT-verdiane held seg innanfor om lag 3 cm (95 %) og ingen feil verdi slapp gjennom.
+
+**Stadfesta i same test (inga endring):** SNR-maske 35 dBHz (38–42 gav ikkje betre FIX-del), elevasjonsmaske 15°
+(20° gav 92,5 % FIX, men færre satellittar, meir spreiing og eitt hopp på 2,9 cm), MIN_LOCK 5 og FIX_RUN 3 (0 hopp
+over 3 cm medan FIX), baner frå kortet, eigen geoide (HREF2018B) og regelen «aldri autonom høgd til snødjupne»
+(autonom høgd vandra over 3 m).
+
+**Rekkjefølgje:** 1) ny statisk test på open stad og test i fart i bakken med målt antennehøgd, 2) eigen UM980-base i
+drift, 3) simulere punkt 3 og FIX-brua på opptaka, 4) avgjerd om FIX-brua. Punkt 4 (forklaring til føraren) kan
+gjerast når som helst.
+
+Grunnlag: `claude/felttest-presisjon-um981-2026-11-22.md`, `claude/snowman-endringar-etter-presisjonstest-2026-11-22.md`
+og `Antennevurdering_UM981-02_2026-11-22.docx` i prosjektet. Målingane er gjorde med SNOWMAN Satellite Precision Test
+1.1.0 (eige program, same RTK-motor som `pc/v1.6`).
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
@@ -609,7 +677,7 @@ tekstar.
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). Kontor publiserer, maskiner sender forslag, enkel kontorside i 2D (kap. 16). Lisensplassar på serveren (kap. 17). |
 | **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin (kap. 17), full kontordel med 3D-redigering og import (kap. 16), driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
-| Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
+| Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. Snødjupne i FLOAT med vern ved tapt FIX (kap. 21) – ventar på test i bakken og eigen base. |
 | Seinare | CAN-bus (drivstoff, motordata, feilkodar med varsling, vinsj – ulikt for PistenBully og Prinoth) – forundersøking for PB600 i kap. 12 og `PB600-CAN.md`. LiDAR for snødjupne framfor maskina. |
 
 Maskingeometrien blir flytt fram til v1.7 om feltprøva viser at målinga ved antenna er for upresis.
