@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-22
 
+### Dokumentasjon – snødjupne når FIX blir tapt (VEGEN-VIDARE kap. 21)
+- **Avgjerd (eigaren):** ingen endring i SNOWMAN no. Snødjupne i FLOAT med vern («FIX-bru») er dokumentert som mogleg
+  løysing på FIX-problemet, til vurdering etter test i bakken og med eigen base.
+- **Bakgrunn:** antennetest 22.11 (UM981-02 + A-SKY, 2 t mot TH, hus mot aust): 18,5 % av tida utan FIX. FLOAT etter
+  FIX var maks 2,7 cm feil, FLOAT før første FIX opptil 1,7 m. SNR-maske, elevasjonsmaske, MIN_LOCK og FIX_RUN er
+  stadfesta – inga endring.
+- **Nytt:** kap. 21 med problemet, fire moglege løysingar, sju vilkår for FIX-brua, risiko og testplan. Vegplanen
+  viser kap. 21 under «Moglege (ikkje plasserte)».
+
 ### PC-prototype v1.6.135 – eigne område for jamning av terrenget
 - **Avgjerd (eigaren):** føraren skal kunne markere område sjølv, med alle tre typane.
 - **Nytt:** under kvart lag i Terrengbiblioteket: «Teikn område» med **🌲 FJERN TRE HER** (filteret berre inni),
