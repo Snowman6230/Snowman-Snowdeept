@@ -32,6 +32,24 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
   hindring som blir godkjend, kø når Base er borte, omstart, skadd pakke). Testa med simulert GNSS (RTK FIX) og
   skjermbilete av Trasear-fana.
 
+### PC-prototype v1.6.136 – mjuk overgang mellom terrenglag og samanlikning med overlappande lag
+- **Bakgrunn:** når maskina køyrer ut av det detaljerte laget (t.d. Sykkylven Skisenter frå drone), brukar SNOWMAN
+  allereie neste aktive lag i lista. Men er laga ikkje heilt like i høgd, gav det eit trinn i 3D og eit hopp i
+  snødjupna ved grensa. **Avgjerd (eigaren):** lag forslag 1 (mjuk overgang) og 2 (mål skilnaden).
+- **Nytt – mjuk overgang:** dei siste 15 m inn mot kanten av eit lag, og kring hol i laget, blir høgda gradvis blanda
+  med laget under (jamn S-kurve frå 0 til 100 %). Gjeld både snødjupna og 3D/Frontrute. Hol under om lag 4 m blir ikkje
+  rekna som kant. Er det ikkje noko lag under, blir laget brukt som før. Avstanden til kanten blir rekna éin gong per
+  lag (om lag 1,5 s for 5,7 mill. ruter) og lagra som `edge-*.npy`.
+- **Nytt – samanlikning:** ved import blir den nye modellen samanlikna med kvart aktive barmarkslag han overlappar
+  (median, spreiing som 95 % innanfor, største skilnad, del i overlapp). Åtvaring når medianen er 0,10 m eller meir
+  (trinn ved overgangen) eller spreiinga er 0,50 m eller meir (tre, bygg eller endra terreng). Same samanlikning blir
+  vist under kvart lag i Terrengbiblioteket, og blir rekna på nytt i bakgrunnen etter import, sletting, PÅ/AV,
+  prioritet og jamning.
+- **Test:** `test/testovergang.py`: grunnlag 0,20 m over det detaljerte laget → største sprang 0,5 cm per 25 cm (før
+  20 cm), 3D-utsnitt maks 2 cm per meter, hol på 30 × 30 m utan trinn, lite hol utan overgangssone, oppslag 0,3 ms,
+  samanlikninga finn −0,20 m. Testterrenget (`testterreng.py` med og utan `--detalj`) importert gjennom vanleg
+  import: 0,000 m avvik mot fasit over overgangen. `testtre.py` og `testpxy.py` OK.
+
 ### Dokumentasjon – ortofoto som lag (VEGEN-VIDARE kap. 21)
 - **Nytt:** analyse av ortofoto (flybilete) som lag i kart, 3D og Frontrute. Det er mogleg: som bakgrunn med PÅ/AV i
   kartet, og som botnlag i 3D-teksturen, så biletet følgjer terrenget. Krev GeoTIFF eller JPG/PNG med world-fil.

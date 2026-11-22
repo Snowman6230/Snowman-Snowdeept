@@ -386,6 +386,19 @@ def _outline(m):
 # ---------------------------------------------------------------------------------------------
 # Terrengbibliotek
 # ---------------------------------------------------------------------------------------------
+# v1.6.136: mjuk overgang mellom lag. Dei siste BLEND_M meter inn mot kanten (og kring hol) av eit lag blir høgdene
+# gradvis blanda med laget under, så det ikkje blir trinn i 3D eller hopp i snødjupna ved overgangen.
+BLEND_M = 15.0
+CLOSE_M = 2.0          # hol mindre enn om lag 2 × CLOSE_M meter tel ikkje som kant (berre éi rute frå laget under)
+OVL_STEP = 0.10        # median-skilnad mot eit overlappande lag som gir åtvaring (m)
+OVL_SPREAD = 0.50      # 95 % av skilnadene (rundt medianen) innanfor denne – elles åtvaring om store lokale skilnader
+
+
+def _smooth(w):
+    w = np.clip(w, 0.0, 1.0)
+    return w * w * (3 - 2 * w)
+
+
 class TerrainLibrary:
     def __init__(self, root):
         self.root = Path(root)
@@ -393,11 +406,15 @@ class TerrainLibrary:
         self.grids = {}  # id → minnekartlagt rutenett
         self.lock = threading.RLock()
         self.pending = {}  # token → analyse av opplasta fil som ventar på import
+        self.edges = {}  # id → avstand til kanten av laget (ruter, uint8) – v1.6.136
+        self.overlaps = {}  # id → samanlikning med overlappande lag – v1.6.136
+        self._ovl_gen = 0
         if AVAILABLE:
             self.root.mkdir(parents=True, exist_ok=True)
             self._load()
             for f in (self.root.parent / "upload").glob("stor-*"):  # store opplastingar frå førre køyring
                 f.unlink(missing_ok=True)
+            self.refresh_overlaps()
 
     def _load(self):
         for d in self.root.iterdir():
@@ -419,7 +436,168 @@ class TerrainLibrary:
 
     def listing(self):
         with self.lock:
-            return sorted(self.layers.values(), key=lambda m: -m["priority"])
+            out = []
+            for m in sorted(self.layers.values(), key=lambda m: -m["priority"]):
+                m = dict(m)
+                if m["id"] in self.overlaps:
+                    m["overlap"] = self.overlaps[m["id"]]
+                out.append(m)
+            return out
+
+    # --- mjuk overgang mellom lag (v1.6.136) ---
+    def _edge(self, lid):
+        """Avstand (i ruter, maks K) frå kvar rute til kanten av laget eller næraste hol. Lagra som edge.npy."""
+        import punktsky as PS
+        e = self.edges.get(lid)
+        if e is not None:
+            return e
+        m = self.layers[lid]
+        res = abs(float(m.get("dx") or m["res"]))
+        K = int(min(250, max(1, math.ceil(BLEND_M / res))))
+        d = self.root / lid
+        f = d / f"edge-{K}.npy"
+        gpath = d / "grid.npy"
+        try:
+            if f.exists() and f.stat().st_mtime >= gpath.stat().st_mtime:
+                e = np.load(f)
+        except Exception:
+            e = None
+        if e is None:
+            v = np.isfinite(np.asarray(self._grid(lid))).astype(np.float32)
+            kc = 2 * int(round(CLOSE_M / res)) + 1
+            P = K + kc + 1
+            v = np.pad(v, P)                                     # utanfor laget = kant
+            if kc >= 3:
+                v = PS._erode(PS._dilate(v, kc), kc)             # små hol tel ikkje som kant
+                v[:P, :] = 0; v[-P:, :] = 0; v[:, :P] = 0; v[:, -P:] = 0
+            e = np.zeros(v.shape, np.uint8)
+            cur = v
+            for _ in range(K):
+                e += (cur > 0).astype(np.uint8)
+                if not (cur > 0).any():
+                    break
+                cur = PS._erode(cur, 3)
+                cur[0, :] = 0; cur[-1, :] = 0; cur[:, 0] = 0; cur[:, -1] = 0
+            e = e[P:-P, P:-P].copy()
+            for old in d.glob("edge-*.npy"):
+                old.unlink(missing_ok=True)
+            try:
+                np.save(f, e)
+            except Exception:
+                pass
+        e = (e, K)
+        self.edges[lid] = e
+        return e
+
+    def _layer_vals(self, m, E, N):
+        """Verdi (bilineær, NaN utan data) og overgangsvekt (0–1) i eitt lag. E, N = numpy-tabellar i sona til laget."""
+        c = (E - m["x0"]) / m["dx"] - 0.5
+        r = (m["y0"] - N) / m["dy"] - 0.5
+        val = np.full(c.shape, np.nan)
+        wgt = np.zeros(c.shape)
+        inside = (c > -0.5) & (r > -0.5) & (c < m["nx"] - 0.5) & (r < m["ny"] - 0.5)
+        if not inside.any():
+            return val, wgt
+        g = self._grid(m["id"])
+        ci, ri = c[inside], r[inside]
+        c0 = np.clip(np.floor(ci).astype(int), 0, m["nx"] - 1); r0 = np.clip(np.floor(ri).astype(int), 0, m["ny"] - 1)
+        c1 = np.clip(c0 + 1, 0, m["nx"] - 1); r1 = np.clip(r0 + 1, 0, m["ny"] - 1)
+        fc = np.clip(ci - c0, 0, 1); fr = np.clip(ri - r0, 0, 1)
+        vals = np.zeros(ci.shape); wsum = np.zeros(ci.shape)
+        for rr, cc, w in ((r0, c0, (1 - fr) * (1 - fc)), (r0, c1, (1 - fr) * fc), (r1, c0, fr * (1 - fc)), (r1, c1, fr * fc)):
+            v = np.asarray(g[rr, cc], dtype=np.float64)
+            ok = np.isfinite(v) & (w > 0)
+            vals += np.where(ok, w * np.nan_to_num(v), 0); wsum += np.where(ok, w, 0)
+        val[inside] = np.where(wsum > 0.5, vals / np.maximum(wsum, 1e-9), np.nan)
+        e, K = self._edge(m["id"])
+        ev = np.zeros(ci.shape)
+        for rr, cc, w in ((r0, c0, (1 - fr) * (1 - fc)), (r0, c1, (1 - fr) * fc), (r1, c0, fr * (1 - fc)), (r1, c1, fr * fc)):
+            ev += w * e[rr, cc]                     # bilineær, så vekta ikkje hoppar rute for rute
+        # e = 1 i ytste rute → vekt 0 der, full vekt (1) BLEND_M meter inne i laget
+        wgt[inside] = _smooth((ev - 1) / max(K - 1, 1))
+        return val, wgt
+
+    @staticmethod
+    def _compose(stack):
+        """stack = [(verdi, vekt)] frå høgast til lågast prioritet → samansett høgd (lågaste lag først, så blanda oppover)."""
+        H = None
+        for v, w in reversed(stack):
+            if H is None:
+                H = v.copy()
+                continue
+            ok = np.isfinite(v)
+            both = ok & np.isfinite(H)
+            H = np.where(both, w * v + (1 - w) * H, np.where(ok, v, H))
+        return H
+
+    # --- samanlikning med overlappande lag (v1.6.136) ---
+    def _overlap(self, grid, info, exclude=None, samples=1500):
+        """Skilnad mellom eit rutenett og kvart aktive barmarkslag det overlappar (berre det laget, utan blanding)."""
+        with self.lock:
+            others = [m for m in self.layers.values() if m["active"] and m["type"] == "barmark" and m["id"] != exclude]
+        if not others:
+            return []
+        rng = np.random.default_rng(2)
+        rr, cc = np.nonzero(np.isfinite(grid))
+        if not len(rr):
+            return []
+        pick = rng.choice(len(rr), size=min(samples, len(rr)), replace=False)
+        rr, cc = rr[pick], cc[pick]
+        z = np.asarray(grid[rr, cc], dtype=np.float64)
+        Eg, Ng = info["x0"] + (cc + 0.5) * info["dx"], info["y0"] - (rr + 0.5) * info["dy"]
+        ll = [utm_inverse(float(a), float(b), info["zone"]) for a, b in zip(Eg, Ng)]
+        out = []
+        for m in sorted(others, key=lambda m: -m["priority"]):
+            if m["zone"] == info["zone"]:
+                E, N = Eg, Ng
+            else:
+                EN = np.array([utm_forward(la, lo, m["zone"]) for la, lo in ll])
+                E, N = EN[:, 0], EN[:, 1]
+            v, _ = self._layer_vals(m, np.asarray(E, float), np.asarray(N, float))
+            ok = np.isfinite(v)
+            if ok.sum() < 30:
+                continue
+            d = z[ok] - v[ok]
+            med = float(np.median(d))
+            out.append({"layer": m["name"], "id": m["id"], "n": int(ok.sum()), "share": round(float(ok.mean()) * 100),
+                        "median": round(med, 2), "spread": round(float(np.percentile(np.abs(d - med), 95)), 2),
+                        "max": round(float(np.max(np.abs(d))), 1)})
+        return out
+
+    @staticmethod
+    def overlap_warnings(ovl, name="Laget"):
+        w = []
+        for o in ovl or []:
+            if abs(o["median"]) >= OVL_STEP:
+                w.append(f"{name} ligg {o['median']:+.2f} m frå «{o['layer']}» der dei overlappar (median av {o['n']} punkt). "
+                         "Det gir eit trinn i snødjupna ved overgangen – den mjuke overgangen fordeler det over "
+                         f"{BLEND_M:.0f} m. Sjekk høgdesystemet om skilnaden er stor.")
+            if o["spread"] >= OVL_SPREAD:
+                w.append(f"Store lokale skilnader mot «{o['layer']}»: 95 % innanfor ±{o['spread']:.2f} m, største {o['max']:.1f} m. "
+                         "Vanlege årsaker: tre eller bygg i det eine laget, eller endra terreng.")
+        return w
+
+    def refresh_overlaps(self):
+        """Rekn ut samanlikninga for alle lag i bakgrunnen (etter import, sletting, PÅ/AV, prioritet, jamning)."""
+        with self.lock:
+            self._ovl_gen += 1
+            gen = self._ovl_gen
+
+        def job():
+            res = {}
+            for m in list(self.layers.values()):
+                if gen != self._ovl_gen:
+                    return
+                if m["type"] != "barmark":
+                    continue
+                try:
+                    res[m["id"]] = self._overlap(self._grid(m["id"]), m, exclude=m["id"], samples=800)
+                    self._edge(m["id"])        # varm opp kantavstanden før første oppslag
+                except Exception:
+                    pass
+            if gen == self._ovl_gen:
+                self.overlaps = res
+        threading.Thread(target=job, daemon=True).start()
 
     # --- opplasting ---
     def analyse(self, tmp_path, filename, hint=None, progress=None, keep_source=False):
@@ -445,6 +623,11 @@ class TerrainLibrary:
         token = None
         if grid is not None:
             self._compare(grid, info, warns)
+            try:
+                info["overlap"] = self._overlap(grid, info)
+                warns += self.overlap_warnings(info["overlap"], "Den nye modellen")
+            except Exception:
+                pass
             token = uuid.uuid4().hex
             with self.lock:
                 self.pending = {k: v for k, v in self.pending.items() if time.time() - v["t"] < 3600}
@@ -585,6 +768,7 @@ class TerrainLibrary:
                 vdir = self.root / lid / "versjonar" / time.strftime("%Y%m%d-%H%M%S")
                 vdir.mkdir(parents=True, exist_ok=True)
                 self.grids.pop(lid, None)
+                self.edges.pop(lid, None)
                 for f in ("grid.npy", "meta.json", "grid_orig.npy"):
                     if (self.root / lid / f).exists():
                         shutil.move(str(self.root / lid / f), str(vdir / f))
@@ -610,6 +794,7 @@ class TerrainLibrary:
                 "outline": i["outline"], "warnings": p["warns"], "versions": versions,
             }
             self._save_meta(lid)
+            self.refresh_overlaps()
             return self.layers[lid]
 
     def update(self, lid, **kw):
@@ -619,6 +804,8 @@ class TerrainLibrary:
                 if k in kw and kw[k] is not None:
                     m[k] = kw[k]
             self._save_meta(lid)
+            if kw.get("active") is not None or kw.get("priority") is not None or kw.get("name") is not None:
+                self.refresh_overlaps()
             return m
 
     # --- fjern tre og bygg (v1.6.134) ---
@@ -626,6 +813,7 @@ class TerrainLibrary:
         """Byt grid.npy med fila src. Det minnekartlagde rutenettet må lukkast først (Windows låser opne filer)."""
         import gc
         self.grids.pop(lid, None)
+        self.edges.pop(lid, None)
         gc.collect()
         dst = self.root / lid / "grid.npy"
         for i in range(20):
@@ -706,7 +894,8 @@ class TerrainLibrary:
                             "whole": whole, "areas": areas}
             m["hmin"], m["hmax"] = float(np.nanmin(out)), float(np.nanmax(out))
             self._save_meta(lid)
-            return m
+        self.refresh_overlaps()
+        return m
 
     def degrove_undo(self, lid):
         with self.lock:
@@ -720,39 +909,45 @@ class TerrainLibrary:
             m.pop("degrove", None)
             m["hmin"], m["hmax"] = float(np.nanmin(g)), float(np.nanmax(g))
             self._save_meta(lid)
-            return m
+        self.refresh_overlaps()
+        return m
 
     def delete(self, lid):
         with self.lock:
             self.layers.pop(lid)
             self.grids.pop(lid, None)
+            self.edges.pop(lid, None)
+            self.overlaps.pop(lid, None)
             shutil.rmtree(self.root / lid, ignore_errors=True)
+        self.refresh_overlaps()
 
     # --- oppslag ---
     def height(self, lat, lon, ltype="barmark"):
-        """Terrenghøgd ved posisjonen frå det høgast prioriterte aktive laget som har gyldig verdi."""
+        """Terrenghøgd ved posisjonen. Høgast prioriterte aktive lag med gyldig verdi vinn; nær kanten av laget blir det
+        blanda mjukt med laget under (v1.6.136)."""
         if not AVAILABLE:
             return None
         with self.lock:
             layers = sorted((m for m in self.layers.values() if m["active"] and m["type"] == ltype), key=lambda m: -m["priority"])
+        stack, top = [], None
         for m in layers:
             E, N = utm_forward(lat, lon, m["zone"])
-            c, r = (E - m["x0"]) / m["dx"] - 0.5, (m["y0"] - N) / m["dy"] - 0.5  # rutenett med senter i pikselmidten
-            if c < -0.5 or r < -0.5 or c > m["nx"] - 0.5 or r > m["ny"] - 0.5:
+            v, w = self._layer_vals(m, np.array([E]), np.array([N]))
+            if not np.isfinite(v[0]):
                 continue
-            g = self._grid(m["id"])
-            c0, r0 = int(math.floor(c)), int(math.floor(r))
-            fc, fr = c - c0, r - r0
-            vals, wsum, hsum = [], 0.0, 0.0
-            for dr, dc, w in ((0, 0, (1 - fr) * (1 - fc)), (0, 1, (1 - fr) * fc), (1, 0, fr * (1 - fc)), (1, 1, fr * fc)):
-                rr, cc = min(max(r0 + dr, 0), m["ny"] - 1), min(max(c0 + dc, 0), m["nx"] - 1)
-                v = float(g[rr, cc])
-                if math.isfinite(v) and w > 0:
-                    wsum += w
-                    hsum += w * v
-            if wsum > 0.5:  # minst halve vekta må ha gyldige verdiar – elles prøv neste lag
-                return {"h": hsum / wsum, "layer": m["id"], "name": m["name"], "res": m["res"], "vdatum": m["vdatum"]}
-        return None
+            if top is None:
+                top = (m, float(w[0]))
+            stack.append((v, w))
+            if w[0] >= 1.0:
+                break                                 # godt inne i laget: lag under har ingen innverknad
+        if not stack:
+            return None
+        h = float(self._compose(stack)[0])
+        m, w = top
+        r = {"h": h, "layer": m["id"], "name": m["name"], "res": m["res"], "vdatum": m["vdatum"]}
+        if len(stack) > 1 and w < 1.0:
+            r["blend"] = round(w, 2)                  # i overgangssona: del av det øvste laget
+        return r
 
     # --- terrengutsnitt til 3D-visinga ---
     def patch(self, lat0, lon0, half=150.0, step=1.0, ltype="barmark"):
@@ -767,9 +962,10 @@ class TerrainLibrary:
         X, Y = np.meshgrid(xs, -xs)                     # rad 0 = nord (y = +half)
         mlat, mlon = 111320.0, 111320.0 * math.cos(math.radians(lat0))
         H = np.full((n, n), np.nan, dtype=np.float32)
-        names = []
+        names, stack = [], []
         with self.lock:
             layers = sorted((m for m in self.layers.values() if m["active"] and m["type"] == ltype), key=lambda m: -m["priority"])
+        full = np.zeros((n, n), bool)
         for m in layers:
             # lokal (x, y) → UTM med lineær tilnærming rundt midtpunktet (feil under 1 mm innanfor nokre hundre meter)
             z = m["zone"]
@@ -778,25 +974,17 @@ class TerrainLibrary:
             Ey, Ny = utm_forward(lat0 + 10.0 / mlat, lon0, z)
             E = E0 + (Ex - E0) / 10.0 * X + (Ey - E0) / 10.0 * Y
             N = N0 + (Nx - N0) / 10.0 * X + (Ny - N0) / 10.0 * Y
-            c = (E - m["x0"]) / m["dx"] - 0.5
-            r = (m["y0"] - N) / m["dy"] - 0.5
-            inside = (c > -0.5) & (r > -0.5) & (c < m["nx"] - 0.5) & (r < m["ny"] - 0.5) & np.isnan(H)
-            if not inside.any():
-                continue
-            g = self._grid(m["id"])
-            ci, ri = c[inside], r[inside]
-            c0 = np.clip(np.floor(ci).astype(int), 0, m["nx"] - 1); r0 = np.clip(np.floor(ri).astype(int), 0, m["ny"] - 1)
-            c1 = np.clip(c0 + 1, 0, m["nx"] - 1); r1 = np.clip(r0 + 1, 0, m["ny"] - 1)
-            fc = np.clip(ci - c0, 0, 1); fr = np.clip(ri - r0, 0, 1)
-            vals = np.zeros(ci.shape); wsum = np.zeros(ci.shape)
-            for rr, cc, w in ((r0, c0, (1 - fr) * (1 - fc)), (r0, c1, (1 - fr) * fc), (r1, c0, fr * (1 - fc)), (r1, c1, fr * fc)):
-                v = np.asarray(g[rr, cc], dtype=np.float64)
-                ok = np.isfinite(v) & (w > 0)
-                vals += np.where(ok, w * np.nan_to_num(v), 0); wsum += np.where(ok, w, 0)
-            res = np.where(wsum > 0.5, vals / np.maximum(wsum, 1e-9), np.nan)
-            sub = H[inside]; fill = np.isnan(sub) & np.isfinite(res)
-            if fill.any():
-                sub[fill] = res[fill]; H[inside] = sub; names.append(m["name"])
+            v, w = self._layer_vals(m, E, N)
+            ok = np.isfinite(v)
+            if not (ok & ~full).any():
+                continue                              # laget er heilt dekt av lag over (eller utanfor)
+            stack.append((v, w))
+            names.append(m["name"])
+            full |= ok & (w >= 1.0)
+            if full.all():
+                break
+        if stack:
+            H[:] = self._compose(stack).astype(np.float32)
         if not names:
             return None
         return {"lat0": lat0, "lon0": lon0, "half": half, "step": step, "n": n, "h": H, "layers": names}

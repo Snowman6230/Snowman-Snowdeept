@@ -6905,6 +6905,7 @@
                 " · importert " + l.imported + (l.versions && l.versions.length ? " · " + l.versions.length + " eldre versjon(ar)" : "") +
                 (l.degrove ? "<br>🌲 Jamna ut " + l.degrove.t + ": " + (dgWhole(l) ? "tre fjerna på heile laget" : "berre eigne område") + " · " + l.degrove.frac + " % av rutene endra" : "") +
                 dgAreas(l) +
+                ovlInfo(l) +
                 '<div class="acts"><button onclick="moveLayer(\'' + l.id + "',1)\">▲</button><button onclick=\"moveLayer('" + l.id + "',-1)\">▼</button>" +
                 '<button onclick="toggleLayer(\'' + l.id + "')\">" + (l.active ? "SLÅ AV" : "SLÅ PÅ") + "</button>" +
                 '<button onclick="renameLayer(\'' + l.id + "')\">NYTT NAMN</button>" +
@@ -8279,6 +8280,19 @@
         vern: { btn: "🛡 VERN", name: "Vern (blir ikkje endra)", color: "#4db8ff" },
       };
       const dgWhole = (l) => !!(l.degrove && (l.degrove.whole || (l.degrove.whole == null && !l.degrove.areas)));
+      // v1.6.136: skilnad mot lag som overlappar (median og spreiing) – trinn ved overgangen blir mjuka ut over 15 m
+      function ovlInfo(l) {
+        const n2 = (x) => (x > 0 ? "+" : "") + x.toFixed(2).replace(".", ",");
+        return (l.overlap || [])
+          .map((o) => {
+            let bad = Math.abs(o.median) >= 0.1 || o.spread >= 0.5;
+            return (
+              '<div class="dgArea"' + (bad ? ' style="color:#ffb347"' : "") + ">" + (bad ? "⚠️" : "↔") + " Mot «" + esc(o.layer) + "»: " +
+              n2(o.median) + " m (median) · 95 % innan ±" + o.spread.toFixed(2).replace(".", ",") + " m · " + o.share + " % overlapp</div>"
+            );
+          })
+          .join("");
+      }
       function dgAreas(l) {
         let A = (l.degrove && l.degrove.areas) || [];
         return A.map(
