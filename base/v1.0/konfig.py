@@ -1,10 +1,14 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 """Innstillingar for SNOWMAN Base (data/base.json) og innloggingar.
 
+SNOWMAN Base har berre med satellittar og NTRIP å gjere (avgjerd 2026-11-22). Kontorsida, anleggspakkar, forslag,
+deling og AI ligg i SNOWMAN Kontor (eige program på ein PC, kontor/v1.0).
+
 Innlogging er brukarnamn og passord (ingen nøklar). Kvar brukar har éi eller to roller:
-    ntrip   maskinene: korreksjonar frå casteren og API-et (deling, anleggspakke, forslag) – same brukar og passord
-    kontor  administrator: kontorsida (mountpoints, brukarar, anleggspakke …)
-Første administrator blir laga på kontorsida frå det lokale nettet, eller med «brukar legg-til NAMN --rolle kontor».
+    ntrip   maskinene: korreksjonar frå casteren
+    kontor  administrator i Base: oppsettsida (mountpoints, brukarar, tilgang, oppdatering). Namnet på rolla er
+            historisk – ho har ingenting med SNOWMAN Kontor å gjere.
+Første administrator blir laga på oppsettsida frå det lokale nettet, eller med «brukar legg-til NAMN --rolle kontor».
 Gløymt passord: «brukar passord NAMN» på maskina Base køyrer på.
 
 Passord blir lagra som hash (PBKDF2-SHA256 med salt), aldri i klartekst – med eitt unntak: innlogging mot ein ANNAN
@@ -22,17 +26,14 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 API_VERSION = 1
 
-# Samspel med SNOWMAN snødjupne (pc/). Endrar du casteren eller API-et, skal kompatibilitetstesten
-# (test/test_base.py, «Kompatibilitet») køyrast mot pc/v1.6, og desse tala oppdaterast:
-#   - Casteren (NTRIP 1/2) fungerer med alle SNOWMAN-versjonar.
-#   - API v1 (deling, anleggspakke, forslag) krev SNOWMAN med deling – planlagt v1.8.
-#   - Eit brot i API-et gir ny API_VERSION; gamle maskiner får då beskjed om å oppdatere, ikkje feil data.
-SNOWMAN_MIN = "1.8.0"
+# Samspel med SNOWMAN snødjupne (pc/). Endrar du casteren, skal kompatibilitetstesten (test/test_base.py,
+# «Kompatibilitet») køyrast mot pc/v1.6. Casteren (NTRIP 1/2) fungerer med alle SNOWMAN-versjonar.
+SNOWMAN_MIN = "1.0.0"
 FUNKSJONAR = ["ntrip-caster", "ntrip-opplasting", "rele", "reserve", "tillegg-baner", "radata-logg", "basekontroll",
-              "mountpoint-kontor", "innlogging-brukar", "ddns", "deling-v1", "anleggspakke-v1", "anleggspakke-format-1", "api-casterport", "forslag-v1", "baner-brdc", "forbetringar", "ai"]
+              "mountpoint-oppsett", "innlogging-brukar", "ddns", "baner-brdc", "atvaringar"]
 
 DEFAULT = {
     "namn": "SNOWMAN Base",
@@ -42,11 +43,9 @@ DEFAULT = {
     "brukarar": [],                     # {"namn", "hash", "roller": ["ntrip"|"kontor"], "mountpoints": ["*"]}
     "mountpoints": [],
     "logg": {"dagar": 30, "maks_mb": 5000},
-    "deling": {"timar": 12, "behald_dagar": 30, "maskinplassar": 0},
-    "anleggspakke": {"maks_mb": 4000, "behald_versjonar": 20},
     "baner": {"hent": False, "intervall_min": 30},
-    "oppdatering": {"sjekk": True, "auto": False},   # auto: installer ny versjon sjølv om natta (03–05)
-    "ai": {"leverandor": "av", "modell": "", "adresse": "", "api_nokkel": "", "intervall_t": 24},
+    "oppdatering": {"sjekk": True, "auto": False},   # auto: installer ny versjon sjølv om natta (03–05) – lat vere av:
+                                                     # Base startar på nytt, og maskinene mistar korreksjonane litt
     "vern": {"maks_feil": 10, "minutt": 10, "maks_tilkoplingar": 200, "maks_per_ip": 20},
     "ddns": {"url": "", "intervall_min": 10},   # oppdaterings-URL for dynamisk DNS (t.d. DuckDNS)
 }
@@ -105,6 +104,8 @@ class Config:
                 self._merge(data, json.load(f))
             self._mtime = self.path.stat().st_mtime_ns
         data.pop("noklar", None)                       # nøklar (før v1.2) blir ikkje brukte lenger
+        for k in ("deling", "anleggspakke", "ai"):      # flytta til SNOWMAN Kontor (Base 1.4)
+            data.pop(k, None)
         for m in data["mountpoints"]:
             for k, v in MOUNT_DEFAULT.items():
                 m.setdefault(k, copy.deepcopy(v))
@@ -163,7 +164,7 @@ class Config:
             return out
 
     def first_setup(self):
-        """Første oppstart: lag fila. Brukarar blir ikkje laga her – første administrator blir laga på kontorsida
+        """Første oppstart: lag fila. Brukarar blir ikkje laga her – første administrator blir laga på oppsettsida
         (frå det lokale nettet) eller med kommandoen «brukar legg-til NAMN --rolle kontor»."""
         with self.lock:
             if not self.path.exists():
@@ -244,7 +245,6 @@ class Config:
         """Innstillingane utan hash og passord (statussida)."""
         d = copy.deepcopy(self.data)
         d["brukarar"] = self.users_public()
-        d["ai"]["api_nokkel"] = bool(d["ai"].get("api_nokkel"))
         for m in d["mountpoints"]:
             for s in m.get("kjelder", []) + m.get("tillegg", []):
                 for k in ("passord", "hash"):

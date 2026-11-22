@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.136"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.137"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -93,22 +93,22 @@ try:
     FUEL=DS.Drivstoff(DATA/"drivstoff.json",TRA)
 except ImportError as e:
     TR=TRA=FUEL=OBJ=None; TRA_ERR=str(e)
-import basekopling as BK   # v1.6.136: anleggspakke frå kontoret (SNOWMAN Base)
-BASE=BK.BaseKopling(DATA,VERSION,LOG.event)
-STYRT_TXT=("Styrt frå kontoret (SNOWMAN Base): trasear, forbodne område og kontrollpunkt blir endra på kontorsida. "
-           "Send eit forslag, eller slå av koplinga til Base i Innst. › Trasear.")
-def base_styrt(): return BASE.styrt(CFG)
-def base_apply(innhald):
+import kontorkopling as KK   # v1.6.136/137: anleggspakke frå kontoret (SNOWMAN Kontor)
+KONTOR=KK.KontorKopling(DATA,VERSION,LOG.event)
+STYRT_TXT=("Styrt frå kontoret (SNOWMAN Kontor): trasear, forbodne område og kontrollpunkt blir endra på kontorsida. "
+           "Send eit forslag, eller slå av koplinga til Kontor i Innst. › Trasear.")
+def kontor_styrt(): return KONTOR.styrt(CFG)
+def kontor_apply(innhald):
     """Tek ei kontrollert anleggspakke i bruk. Alt blir sjekka før noko blir endra, så pakka gjeld heilt eller ikkje."""
-    if TRA is None or OBJ is None: raise BK.Feil("Trasear og hindringar krev numpy: "+TRA_ERR)
+    if TRA is None or OBJ is None: raise KK.Feil("Trasear og hindringar krev numpy: "+TRA_ERR)
     tra,obj,kp=innhald.get("trasear.json"),innhald.get("objekt.json"),innhald.get("kontrollpunkt.json")
     try:
         if tra is not None: TRA.replace_all(tra,dry=True)
         if obj is not None: OBJ.replace_from_package(obj,dry=True)
         if kp is not None: KON.replace_points(kp,dry=True)
     except (ValueError,KeyError,TypeError) as e:
-        raise BK.Feil("Anleggspakka har ugyldig innhald: "+str(e))
-    BASE.backup([DATA/"trasear.json",DATA/"objekt.json",DATA/"kontroll.json"])
+        raise KK.Feil("Anleggspakka har ugyldig innhald: "+str(e))
+    KONTOR.backup([DATA/"trasear.json",DATA/"objekt.json",DATA/"kontroll.json"])
     godkjende=0
     if tra is not None: TRA.replace_all(tra)
     if obj is not None: godkjende=OBJ.replace_from_package(obj)
@@ -140,10 +140,16 @@ CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint
        "auto_port":True,       # v1.6.113: Bluetooth-porten byter nummer i Windows – SNOWMAN finn sjølv porten som sender
        "frost_client_id":"",   # tomt = SNOWMAN sin innebygde Frost-ID (berre opne data); eit anlegg kan setje sin eigen
        "frost_stations":"",    # tomt = næraste stasjonar etter GPS; elles t.d. "SN60190,SN60225"
-       # v1.6.136: kopling til SNOWMAN Base (valfri, av som standard – kap. 16/19). Tomme felt = same som NTRIP-oppsettet.
-       "base_on":False,"base_host":"","base_port":0,"base_user":"","base_pass":"","base_maskinnamn":""}
+       # v1.6.137: kopling til SNOWMAN Kontor (PC på anlegget, port 8790) – valfri, av som standard (kap. 16/19).
+       # (v1.6.136 heitte det kopling til SNOWMAN Base; base_* blir gjort om til kontor_* ved oppstart.)
+       "kontor_on":False,"kontor_host":"","kontor_port":8790,"kontor_user":"","kontor_pass":"","kontor_maskinnamn":""}
 def load_cfg():
-    try: CFG.update({k:v for k,v in json.loads(CFG_FILE.read_text("utf-8")).items() if k in CFG})
+    try:
+        raw=json.loads(CFG_FILE.read_text("utf-8"))
+        for k in ("on","host","port","user","pass","maskinnamn"):   # v1.6.136 → v1.6.137: Base → Kontor
+            if "base_"+k in raw and "kontor_"+k not in raw: raw["kontor_"+k]=raw["base_"+k]
+        if raw.get("kontor_port") in (0,"",None): raw["kontor_port"]=8790
+        CFG.update({k:v for k,v in raw.items() if k in CFG})
     except FileNotFoundError: pass
     except Exception as e: print("Kunne ikkje lese config:",e)
     if CFG.get("heightMode")!="geoide":   # v1.6.95: berre geoide – eldre val (nn2000/ellipsoid) blir gjort om
@@ -941,10 +947,10 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
-        if u.path=="/api/base":   # v1.6.136: kopling til SNOWMAN Base (passordet blir aldri sendt)
-            self.headers_ok(); self.wfile.write(json.dumps({"ok":True,**BASE.status(CFG),"pass":"***" if CFG.get("base_pass") else ""}).encode()); return
+        if u.path=="/api/kontor":   # v1.6.137: kopling til SNOWMAN Kontor (passordet blir aldri sendt)
+            self.headers_ok(); self.wfile.write(json.dumps({"ok":True,**KONTOR.status(CFG),"pass":"***" if CFG.get("kontor_pass") else ""}).encode()); return
         if u.path=="/api/objekt":
-            r={"ok":True,"styrt":base_styrt(),"objekt":OBJ.listing(),"types":{k:{"name":v[0],"radius":v[1],"sym":v[2]} for k,v in TR.OBJ_TYPES.items()}} if OBJ else {"ok":False,"error":TRA_ERR}
+            r={"ok":True,"styrt":kontor_styrt(),"objekt":OBJ.listing(),"types":{k:{"name":v[0],"radius":v[1],"sym":v[2]} for k,v in TR.OBJ_TYPES.items()}} if OBJ else {"ok":False,"error":TRA_ERR}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/surface/cells":   # v1.6.110: lagra snøoverflate rundt maskina (snøflata i 3D)
             q=urllib.parse.parse_qs(u.query); test=bool(STATE.get("simulated"))
@@ -1068,7 +1074,7 @@ class API(http.server.BaseHTTPRequestHandler):
         if u.path in ("/api/trasear","/api/trasear/status"):
             try:
                 if TRA is None: raise RuntimeError("Trasear krev numpy: "+TRA_ERR)
-                if u.path=="/api/trasear": r={"ok":True,"styrt":base_styrt(),"styrt_txt":STYRT_TXT if base_styrt() else "","trasear":TRA.listing(),"levels":TR.LEVELS,"kinds":TR.KINDS,"dayStartHour":TR.DAY_START_HOUR}
+                if u.path=="/api/trasear": r={"ok":True,"styrt":kontor_styrt(),"styrt_txt":STYRT_TXT if kontor_styrt() else "","trasear":TRA.listing(),"levels":TR.LEVELS,"kinds":TR.KINDS,"dayStartHour":TR.DAY_START_HOUR}
                 else:
                     q=urllib.parse.parse_qs(u.query)
                     since=TR.prep_day_start(date=q["date"][0]) if q.get("date") else (float(q["since"][0])/1000 if q.get("since") else None)
@@ -1270,60 +1276,60 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":"Kunne ikkje bruke mappa: "+str(e)}).encode())
             return
-        if self.path=="/api/base/forslag":   # v1.6.136: forslag frå føraren til kontoret (trasé, merknad), med posisjon
+        if self.path=="/api/kontor/forslag":   # v1.6.136: forslag frå føraren til kontoret (trasé, merknad), med posisjon
             try:
                 d=json.loads(body or b"{}"); tekst=str(d.get("tekst") or "").strip()[:500]
                 if not tekst: raise ValueError("Skriv kva forslaget gjeld.")
-                if not CFG.get("base_on"): raise ValueError("Slå på koplinga til SNOWMAN Base først.")
+                if not CFG.get("kontor_on"): raise ValueError("Slå på koplinga til SNOWMAN Kontor først.")
                 typ=d.get("type") if d.get("type") in ("trase","merknad","anna") else "merknad"
                 f={"type":"anna" if typ=="trase" else typ,"tekst":("Trasé: " if typ=="trase" and not tekst.lower().startswith("tras") else "")+tekst}
                 if STATE.get("lat") is not None and not STATE.get("simulated"): f.update(lat=STATE["lat"],lon=STATE["lon"])
-                ok=BASE.forslag(CFG,f); LOG.event(f"Førar: forslag til kontoret – {'sendt' if ok else 'i kø'}")
-                r={"ok":True,"sendt":ok,**BASE.status(CFG)}
+                ok=KONTOR.forslag(CFG,f); LOG.event(f"Førar: forslag til kontoret – {'sendt' if ok else 'i kø'}")
+                r={"ok":True,"sendt":ok,**KONTOR.status(CFG)}
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
-        if self.path in ("/api/base/config","/api/base/hent"):   # v1.6.136: kopling til SNOWMAN Base
+        if self.path in ("/api/kontor/config","/api/kontor/hent"):   # v1.6.137: kopling til SNOWMAN Kontor
             try:
                 d=json.loads(body or b"{}")
                 if self.path.endswith("config"):
                     before=dict(CFG)
-                    for k in ("base_on","base_host","base_port","base_user","base_pass","base_maskinnamn"):
+                    for k in ("kontor_on","kontor_host","kontor_port","kontor_user","kontor_pass","kontor_maskinnamn"):
                         if k not in d: continue
                         v=d[k]
-                        if k=="base_pass" and re.fullmatch(r"\*{3,}|•{3,}",str(v)): continue
-                        if k=="base_on": v=bool(v)
-                        elif k=="base_port":
-                            v=int(v or 0)
-                            if v and not 1<=v<=65535: raise ValueError("Ugyldig port.")
+                        if k=="kontor_pass" and re.fullmatch(r"\*{3,}|•{3,}",str(v)): continue
+                        if k=="kontor_on": v=bool(v)
+                        elif k=="kontor_port":
+                            v=int(v or 8790)
+                            if not 1<=v<=65535: raise ValueError("Ugyldig port.")
                         else: v=str(v).strip()[:120]
                         CFG[k]=v
-                    log_changes("SNOWMAN Base",before,CFG,("base_on","base_host","base_port","base_maskinnamn"))
-                    if before.get("base_user")!=CFG["base_user"] or before.get("base_pass")!=CFG["base_pass"]:
-                        LOG.event("Innstilling endra (SNOWMAN Base): innlogging endra")
+                    log_changes("SNOWMAN Kontor",before,CFG,("kontor_on","kontor_host","kontor_port","kontor_maskinnamn"))
+                    if before.get("kontor_user")!=CFG["kontor_user"] or before.get("kontor_pass")!=CFG["kontor_pass"]:
+                        LOG.event("Innstilling endra (SNOWMAN Kontor): innlogging endra")
                     save_cfg(); r={"ok":True}
                 else:
-                    if not CFG.get("base_on"): raise BK.Feil("Slå på koplinga til SNOWMAN Base først.")
-                    r=BASE.fetch(CFG,base_apply,force=bool(d.get("force")))
-                r.update({**BASE.status(CFG),"ok":True,"pass":"***" if CFG.get("base_pass") else ""})
+                    if not CFG.get("kontor_on"): raise KK.Feil("Slå på koplinga til SNOWMAN Kontor først.")
+                    r=KONTOR.fetch(CFG,kontor_apply,force=bool(d.get("force")))
+                r.update({**KONTOR.status(CFG),"ok":True,"pass":"***" if CFG.get("kontor_pass") else ""})
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:
-                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e),**BASE.status(CFG)}).encode())
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e),**KONTOR.status(CFG)}).encode())
             return
         if self.path in ("/api/objekt/save","/api/objekt/delete"):
             try:
                 if OBJ is None: raise RuntimeError("Hindringar krev numpy: "+TRA_ERR)
                 d=json.loads(body or b"{}")
-                if base_styrt():   # v1.6.136: ny hindring lokalt med éin gong + forslag; hindringar frå kontoret er låste
+                if kontor_styrt():   # v1.6.136: ny hindring lokalt med éin gong + forslag; hindringar frå kontoret er låste
                     old=OBJ.get(d.get("id")) if d.get("id") else None
                     if old and not old.get("lokal"):
                         raise ValueError("Hindringa kjem frå kontoret og kan berre endrast eller slettast på kontorsida. Send eit forslag om ho er feil.")
                     if self.path.endswith("save"): d["lokal"]=True
                 r={"ok":True,"objekt":OBJ.save(d)} if self.path.endswith("save") else (OBJ.delete(d["id"]) or {"ok":True})
-                if base_styrt() and self.path.endswith("save") and not d.get("id"):
+                if kontor_styrt() and self.path.endswith("save") and not d.get("id"):
                     o=r["objekt"]; tn=TR.OBJ_TYPES.get(o["type"],("Hindring",))[0]
-                    r["sendt"]=BASE.forslag(CFG,{"type":"hindring","lat":o["lat"],"lon":o["lng"],"id":o["id"],
+                    r["sendt"]=KONTOR.forslag(CFG,{"type":"hindring","lat":o["lat"],"lon":o["lng"],"id":o["id"],
                         "tekst":f"Ny hindring: {o['name']} ({tn}, radius {o['radius']} m)"+(f" – {o['note']}" if o.get("note") else "")})
                     LOG.event(f"Førar: ny lokal hindring «{o['name']}» – {'sendt til kontoret' if r['sendt'] else 'i kø til kontoret'}")
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
@@ -1346,7 +1352,7 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 if TRA is None: raise RuntimeError("Trasear krev numpy: "+TRA_ERR)
                 d=json.loads(body or b"{}"); a=self.path[13:]
-                if a in ("save","delete") and base_styrt(): raise ValueError(STYRT_TXT)
+                if a in ("save","delete") and kontor_styrt(): raise ValueError(STYRT_TXT)
                 if a=="save": r={"ok":True,"trase":TRA.save(d)}
                 elif a=="delete": TRA.delete(d["id"]); r={"ok":True}
                 elif a=="from-terrain":   # yttergrensa til eit terrenglag – blir ikkje lagra før føraren har sett på ho
@@ -1368,7 +1374,7 @@ class API(http.server.BaseHTTPRequestHandler):
                     LOG.event(f"Førar: kontrollmåling – kjend {c.get('known')} m, SNOWMAN rå {c.get('raw')} m, avvik "
                               f"{None if c.get('raw') is None else round(c['raw']-float(c['known']),3)} m ({c.get('layerName') or '-'})")
                 elif a=="check/delete": KON.delete_check(d["id"]); r={"ok":True}
-                elif a in ("point","point/delete") and base_styrt(): raise ValueError(STYRT_TXT)
+                elif a in ("point","point/delete") and kontor_styrt(): raise ValueError(STYRT_TXT)
                 elif a=="point": r={"ok":True,"point":KON.add_point(d.get("name"),d.get("E"),d.get("N"),d.get("zone",32),d.get("h"))}
                 elif a=="point/delete": KON.delete_point(d["id"]); r={"ok":True}
                 elif a=="apply-offset":

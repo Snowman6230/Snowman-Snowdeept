@@ -7,7 +7,7 @@ rem SNOWMAN by Alpindata - Copyright 2026 Hans Petter Brunstad Sorensen (Alpinda
 rem Installerer SNOWMAN Base slik at han koyrer heile tida paa denne PC-en:
 rem   1. Python-miljoet (.venv)
 rem   2. oppgaave «SNOWMAN Base» som startar ved oppstart av Windows (ogsaa utan innlogging)
-rem   3. brannmur: port 2101 (NTRIP) inn, port 8780 (kontor) berre fraa privat nett
+rem   3. brannmur: port 2101 (NTRIP) inn, port 8780 (oppsett) berre fraa privat nett
 rem   4. straum: aldri dvale naar PC-en staar i straumen, og USB-straumsparing av (mottakaren blir ikkje kopla fraa)
 rem Avinstallere: INSTALLER-WINDOWS.bat fjern
 rem Fila MAA ha Windows-linjeskift (CRLF).
@@ -62,8 +62,9 @@ echo   [2/4] Oppgåva «SNOWMAN Base» startar Base ved kvar oppstart av Windows
 rem --- 3. Brannmur ---
 netsh advfirewall firewall delete rule name="SNOWMAN Base NTRIP" >nul 2>&1
 netsh advfirewall firewall delete rule name="SNOWMAN Base kontor" >nul 2>&1
+netsh advfirewall firewall delete rule name="SNOWMAN Base oppsett" >nul 2>&1
 netsh advfirewall firewall add rule name="SNOWMAN Base NTRIP" dir=in action=allow protocol=TCP localport=2101 profile=any >nul
-netsh advfirewall firewall add rule name="SNOWMAN Base kontor" dir=in action=allow protocol=TCP localport=8780 profile=private,domain >nul
+netsh advfirewall firewall add rule name="SNOWMAN Base oppsett" dir=in action=allow protocol=TCP localport=8780 profile=private,domain >nul
 echo   [3/4] Brannmur: port 2101 open, port 8780 berre frå privat nett.
 rem --- 4. Straum ---
 powercfg /change standby-timeout-ac 0
@@ -74,7 +75,7 @@ echo   [4/4] Straum: aldri dvale i straumen, USB-straumsparing av.
 schtasks /run /tn "SNOWMAN Base" >nul
 echo.
 echo   SNOWMAN Base køyrer no i bakgrunnen og startar sjølv etter omstart og straumbrot.
-echo   Kontor: http://localhost:8780/kontor/   (første gong: lag administrator)
+echo   Oppsett: http://localhost:8780/oppsett/   (første gong: lag administrator)
 echo   Logg:   %~dp0data\teneste.log
 echo   Bruk IKKJE START-SNOWMAN-BASE.bat i tillegg - då køyrer to Base. Kommandoar (t.d. «brukar passord NAMN»)
 echo   går fint:  START-SNOWMAN-BASE.bat brukar passord NAMN
@@ -87,6 +88,7 @@ schtasks /end /tn "SNOWMAN Base" >nul 2>&1
 schtasks /delete /tn "SNOWMAN Base" /f >nul 2>&1
 netsh advfirewall firewall delete rule name="SNOWMAN Base NTRIP" >nul 2>&1
 netsh advfirewall firewall delete rule name="SNOWMAN Base kontor" >nul 2>&1
+netsh advfirewall firewall delete rule name="SNOWMAN Base oppsett" >nul 2>&1
 echo   Oppgåva og brannmurreglane er fjerna. Mappa og data er ikkje sletta. Straum-innstillingane er uendra.
 pause
 exit /b 0

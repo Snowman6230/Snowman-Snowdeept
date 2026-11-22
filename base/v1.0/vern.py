@@ -1,11 +1,11 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 """Vern av Base når port 2101 (og ev. 8780) er open: sperre ved mange feil passord, grense for tilkoplingar, og
-innloggingsøkter for kontorsida.
+innloggingsøkter for oppsettsida.
 
     Sperre      maks_feil feil innloggingar frå same IP-adresse innanfor «minutt» → sperra like lenge.
-                Gjeld både NTRIP og kontorsida. Lokale adresser (127.0.0.1) blir aldri sperra.
+                Gjeld både NTRIP og oppsettsida. Lokale adresser (127.0.0.1) blir aldri sperra.
     Tilkoplingar maks_tilkoplingar i alt og maks_per_ip frå same adresse samstundes (casteren).
-    Økter       Kontorsida loggar inn med brukarnamn og passord og får ei økt (tilfeldig tekst) som gjeld i 12 timar
+    Økter       Oppsettsida loggar inn med brukarnamn og passord og får ei økt (tilfeldig tekst) som gjeld i 12 timar
                 etter siste bruk. Øktene ligg berre i minnet: etter omstart av Base må ein logge inn på nytt.
 """
 import ipaddress
@@ -97,7 +97,7 @@ class Vern:
             else:
                 self.conns.pop(ip, None)
 
-    # ---------- økter (kontorsida) ----------
+    # ---------- økter (oppsettsida) ----------
     def new_session(self, user):
         tok = secrets.token_urlsafe(32)
         with self.lock:

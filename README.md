@@ -4,18 +4,19 @@ Førar- og snødjupnesystem for trakkemaskiner (RTK-GNSS + LiDAR-terrengmodell).
 
 ## Last ned
 
-SNOWMAN består av to program. Last ned det som passar der du skal installere:
+SNOWMAN består av tre program. Last ned det som passar der du skal installere:
 
 | Skal installerast på | Program | Nedlasting |
 |---|---|---|
 | **Tråkkemaskina** (PC/nettbrett i førarhuset) | **SNOWMAN snødjupne** – kart, RTK og snødjupne for føraren | [SNOWMAN-snodjupne.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-snodjupne.zip) |
-| **Anlegget** (PC, Raspberry Pi, server eller NAS) | **SNOWMAN Base** – eigen RTK-base, NTRIP-caster og kontordelen som sender kartgrenser, hindringar og innstillingar ut til maskinene | [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip) |
+| **Raspberry Pi ved antenna** | **SNOWMAN Base** – eigen RTK-base og NTRIP-caster. Berre korreksjonane til maskinene | [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip) |
+| **Kontor-PC på anlegget** (Windows) | **SNOWMAN Kontor** – kontorsida: anleggspakke (trasear, hindringar, kontrollpunkt) ut til maskinene, forslag frå førarane, maskinoversikt, forbetringar og AI | [SNOWMAN-Kontor.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Kontor.zip) |
 
-Pakk ut zip-fila og følg `LES-MEG-WINDOWS.txt` (snødjupne) eller `LES-MEG.txt` (Base). Kvart program oppdaterer
-seg sjølv og hentar berre si eiga mappe, så dei to installasjonane er heilt åtskilde. Pakkane blir laga på nytt ved
+Pakk ut zip-fila og følg `LES-MEG-WINDOWS.txt` (snødjupne) eller `LES-MEG.txt` (Base og Kontor). Kvart program
+oppdaterer seg sjølv og hentar berre si eiga mappe, så installasjonane er heilt åtskilde. Pakkane blir laga på nytt ved
 kvar endring (`verktoy/lag-pakkar.py`).
 
-Utviklarar: heile repoet (Code › Download ZIP eller `git clone`) inneheld begge programma, og dei blir testa saman.
+Utviklarar: heile repoet (Code › Download ZIP eller `git clone`) inneheld alle tre programma, og dei blir testa saman.
 
 ## Innhald
 
@@ -31,9 +32,10 @@ Utviklarar: heile repoet (Code › Download ZIP eller `git clone`) inneheld begg
 | **`pc/v1.6/`** | **PC-prototype v1.6 – Terrain Engine: ekte snødjupne frå terrengmodell. Gjeldande PC-versjon.** |
 | `pc/snowman`, `pc/installer-linux.sh` | Linux: kommandoen `snowman` (meny) og installasjon |
 | `pc/SNOWMAN.bat`, `pc/INSTALLER-WINDOWS.bat` | Windows: meny og installasjon – sjå `pc/LES-MEG-WINDOWS.txt` |
-| **`base/v1.0/`** | **SNOWMAN Base – RTK-base, NTRIP-caster og anleggsserver (PC, NAS, Linux). Sjå `base/v1.0/LES-MEG.md`.** |
+| **`base/v1.0/`** | **SNOWMAN Base – RTK-base og NTRIP-caster (Raspberry Pi ved antenna). Sjå `base/v1.0/LES-MEG.md`.** |
+| **`kontor/v1.0/`** | **SNOWMAN Kontor – kontorsida og anleggsserveren (Windows-PC på anlegget). Sjå `kontor/v1.0/LES-MEG.md`.** |
 | `ntrip-service/v1.1/` | SNOWMAN NTRIP Service v1.1 – Python-bru mellom COM/Leica og CPOS |
-| `verktoy/lag-pakkar.py`, `.github/workflows/pakkar.yml` | Lagar dei to nedlastingane (snødjupne og Base) |
+| `verktoy/lag-pakkar.py`, `.github/workflows/pakkar.yml` | Lagar dei tre nedlastingane (snødjupne, Base og Kontor) |
 | `worker.js` | Cloudflare Worker – terrengproxy mot Kartverket (eldre test) |
 
 Sjå [docs/VEGEN-VIDARE.md](docs/VEGEN-VIDARE.md) for moglege framtidige løysingar, [ENDRINGSLOGG.md](ENDRINGSLOGG.md) for alle endringar og avgjerder, og [docs/TERRAIN-ENGINE.md](docs/TERRAIN-ENGINE.md) for spesifikasjonen av Terrain Engine.

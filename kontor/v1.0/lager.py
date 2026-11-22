@@ -1,5 +1,5 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Lager i SNOWMAN Base (SQLite, data/base.db): maskiner, delte målingar, anleggspakker, forslag og forbetringar.
+"""Lager i SNOWMAN Kontor (SQLite, data/kontor.db): maskiner, delte målingar, anleggspakker, forslag og forbetringar.
 
     maskiner      siste hjarteslag frå kvar maskin (versjon, anleggspakke, posisjon, FIX-del)
     maalingar     snødjupne frå maskinene (berre RTK FIX frå kalibrerte maskiner) – deling siste 12 t (v1.8)
@@ -38,13 +38,13 @@ class Store:
         self.folder.mkdir(parents=True, exist_ok=True)
         self.pkgdir = self.folder / "anleggspakke"
         self.pkgdir.mkdir(exist_ok=True)
-        self.db = sqlite3.connect(self.folder / "base.db", check_same_thread=False)
+        self.db = sqlite3.connect(self.folder / "kontor.db", check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.lock = threading.Lock()
         with self.lock:
             self.db.executescript(SCHEMA)
             cols = {r[1] for r in self.db.execute("PRAGMA table_info(pakkar)")}
-            if "innhald" not in cols:                    # Base 1.3: innhaldet i pakka (manifest og tal)
+            if "innhald" not in cols:                    # innhaldet i pakka (manifest og tal)
                 self.db.execute("ALTER TABLE pakkar ADD COLUMN innhald TEXT")
             self.db.commit()
 

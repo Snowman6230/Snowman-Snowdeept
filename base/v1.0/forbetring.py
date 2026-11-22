@@ -1,21 +1,18 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Forbetringsmotoren i SNOWMAN Base: finn forbetringar i oppsett, utstyr og program ut frå drifta.
+"""Åtvaringar i SNOWMAN Base: faste reglar om korreksjonane, basemottakaren og Base sjølv.
 
-To lag:
-  1. Reglar (alltid på, lokalt): faste kontrollar av korreksjonane, basen, maskinene og serveren.
-  2. AI (valfritt, ai.py): les eit anonymisert samandrag og foreslår meir – også forbetringar i SNOWMAN-programma.
+Base 1.4 (avgjerd 2026-11-22): Base har berre med satellittar og NTRIP å gjere. Reglane blir rekna på nytt kvar gong
+statusen blir henta, og blir viste på statussida (ingen database, ingen AI). SNOWMAN Kontor les statusen og tek
+åtvaringane med i forbetringslista si – der kan dei godtakast, avvisast og eksporterast.
 
-Kvart forslag har ein fast nøkkel, så same funn blir oppdatert (ikkje dobla). Status: ny → godteke/avvist → gjort.
-Forslag som kjem att etter «gjort», blir opna på nytt. Kontoret kan eksportere lista som Markdown til utviklaren.
-
-Kategoriar:  base (SNOWMAN Base) · snowman (SNOWMAN snødjupne) · utstyr (mottakar/antenne) · drift (anlegget)
+Kvart funn har ein fast nøkkel (same funn får same nøkkel kvar gong).
+Kategoriar:  base (SNOWMAN Base) · utstyr (mottakar/antenne) · drift (anlegget)
 """
 import time
 
-from konfig import SNOWMAN_MIN, VERSION
+from konfig import VERSION
 
-CATEGORIES = {"base": "SNOWMAN Base", "snowman": "SNOWMAN snødjupne", "utstyr": "Mottakar og antenne",
-              "drift": "Drift av anlegget"}
+CATEGORIES = {"base": "SNOWMAN Base", "utstyr": "Mottakar og antenne", "drift": "Drift av anlegget"}
 
 
 def S(key, cat, level, title, why, what):
@@ -109,7 +106,7 @@ def rules(base):
                 out.append(S(f"{k}:{src.name}:crc", "utstyr", "middels", f"{k}/{src.name}: CRC-feil",
                              f"{100 * src.framer.crc_err / fr:.1f} % øydelagde rammer frå kjelda.",
                              "Sjekk kabel, baudrate og at ingen andre program les same port."))
-    # maskiner (gjennom casteren og hjarteslag)
+    # maskiner (gjennom casteren)
     seen = {}
     for t, user, ip, mp, kind, _ in base.caster.history:
         if kind == "inn":
@@ -120,93 +117,19 @@ def rules(base):
                          "Mange nye tilkoplingar tyder på ustabilt mobilnett eller at maskina mistar straum.",
                          "Sjekk dekning der maskina køyrer. SNOWMAN held fram med siste korreksjonar ei stund, "
                          "men FIX kan gå tapt."))
-    for r in base.store.machines():
-        if r["versjon"] and vtuple(r["versjon"]) < vtuple(SNOWMAN_MIN):
-            out.append(S(f"maskin:{r['id']}:gammal", "snowman", "høg", f"{r['namn']}: SNOWMAN {r['versjon']} er for gammal",
-                         f"Base krev minst SNOWMAN {SNOWMAN_MIN} for delinga og anleggspakka.",
-                         "Oppdater SNOWMAN på maskina (Innst. › System › Hent siste versjon)."))
-        if r["fixdel"] is not None and r["age"] is not None and r["age"] < 86400 and r["fixdel"] < 0.6:
-            out.append(S(f"maskin:{r['id']}:fix", "utstyr", "middels",
-                         f"{r['namn']}: berre {100 * r['fixdel']:.0f} % RTK FIX",
-                         "Låg FIX-del gir hol i snødjupna. Vanlege årsaker: antenna er skjerma (vinsj, lys), "
-                         "kabelen er dårleg, eller basen er langt unna.",
-                         "Sjekk antenneplasseringa og kabelen. Samanlikn med andre maskiner i same bakke."))
-        pk = base.store.package()
-        if pk and r["pakke"] and str(r["pakke"]) != str(pk["versjon"]) and r["age"] is not None and r["age"] < 3600:
-            out.append(S(f"maskin:{r['id']}:pakke", "drift", "låg", f"{r['namn']}: gammal anleggspakke",
-                         f"Maskina har v{r['pakke']}, aktiv er v{pk['versjon']}.",
-                         "Maskina hentar ny pakke når ho har dekning. Står det lenge, sjekk samband og nøkkel."))
     # Base sjølv
     free = base.disk_free()
     if free is not None and free < 5:
         out.append(S("disk", "base", "høg", f"Lite diskplass ({free} GB ledig)",
-                     "Rådataloggen og anleggspakkane kan fylle disken.",
+                     "Rådataloggen kan fylle disken.",
                      "Set ned «logg.dagar» eller «logg.maks_mb», eller flytt data/ til ein større disk."))
     up = base.updates.info
     if up.get("ny"):
         out.append(S("oppdatering", "base", "låg", f"Ny versjon av SNOWMAN Base: {up['ny']}",
-                     f"Du har {VERSION}.", "Trykk «Oppdater» på statussida, eller køyr «snowman-base oppdater»."))
+                     f"Du har {VERSION}.", "Oppdater når ingen preparerer (oppsettsida › System), eller køyr "
+                     "«snowman-base oppdater». Maskinene mistar korreksjonane nokre sekund medan Base startar på nytt."))
     if cfg["web"].get("status_open") and cfg["caster"].get("krev_innlogging") is False:
         out.append(S("open-caster", "base", "middels", "Casteren er open utan innlogging",
                      "Kven som helst som når porten, kan bruke korreksjonane.",
                      "Set «caster.krev_innlogging» til true (standard)."))
-    if not base.ai.enabled():
-        out.append(S("ai-av", "base", "låg", "AI-analysen er av",
-                     "Reglane finn kjende problem. AI kan i tillegg sjå mønster og foreslå forbetringar i programma.",
-                     "Slå på AI på kontorsida (lokal modell via Ollama, eller Claude med eigen API-nøkkel). Berre eit "
-                     "anonymisert samandrag blir sendt."))
     return out
-
-
-def day_summary(base):
-    """Samandrag av døgnet så langt – lagra i dagstal (trendar) og brukt av AI."""
-    mounts = {}
-    for m in list(base.mounts.values()):
-        s = m.out.summary()
-        d = m.day
-        mounts[m.name] = {"oppetid": round(d["ok"] / d["tot"], 4) if d["tot"] else None, "bytte": d["bytte"],
-                          "system": s["systems"], "satellittar": s["satsTotal"], "baner": s["eph"],
-                          "bitrate": m.out.bitrate(), "typar": [t["type"] for t in s["types"] if t["aktiv"]],
-                          "basekontroll": (m.base_check() or {}).get("avvik_m")}
-    machines = []
-    for r in base.store.machines():
-        if r["age"] is not None and r["age"] < 86400:
-            machines.append({"versjon": r["versjon"], "fixdel": r["fixdel"], "pakke": r["pakke"]})
-    conns = sum(1 for h in base.caster.history if h[4] == "inn")
-    return {"base": VERSION, "mountpoints": mounts, "maskiner": machines, "tilkoplingar": conns,
-            "forslag_frå_maskiner": len(base.store.proposals("ny")), "disk_gb": base.disk_free()}
-
-
-def run(base):
-    """Køyr reglane, lagre forslaga og dagens samandrag. Returnerer forslaga."""
-    found = rules(base)
-    for s in found:
-        base.store.upsert_improvement(s)
-    base.store.save_day(time.strftime("%Y-%m-%d"), day_summary(base))
-    return found
-
-
-def export_markdown(store, include_done=False):
-    """Forslaga som Markdown – kan givast til utviklaren (eller ein AI-assistent) som oppgåveliste."""
-    rows = store.improvements(include_done)
-    lines = [f"# Forbetringsforslag frå SNOWMAN Base {VERSION}",
-             f"Laga {time.strftime('%Y-%m-%d %H:%M')}. Kjelde: reglar og ev. AI. Alvor: høg / middels / låg.", ""]
-    for cat, title in CATEGORIES.items():
-        part = [r for r in rows if r["kategori"] == cat]
-        if not part:
-            continue
-        lines.append(f"## {title}")
-        for r in part:
-            lines.append(f"- **[{r['alvor']}] {r['tittel']}** ({r['kjelde']}, status: {r['status']}, sett {r['tal']} gonger)")
-            lines.append(f"  - Kvifor: {r['grunn']}")
-            lines.append(f"  - Tiltak: {r['tiltak']}")
-            if r.get("merknad"):
-                lines.append(f"  - Merknad: {r['merknad']}")
-        lines.append("")
-    props = [p for p in store.proposals() if p["type"] == "program" and p["status"] in ("ny", "godkjent")]
-    if props:
-        lines.append("## Ønske frå førarane (SNOWMAN snødjupne)")
-        for p in props:
-            lines.append(f"- {p['tekst']} (maskin {p['maskin']}, {time.strftime('%Y-%m-%d', time.localtime(p['dato']))})")
-        lines.append("")
-    return "\n".join(lines)

@@ -1,7 +1,7 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Oppsett av mountpoints frå kontorsida: kontroll av det som blir skrive inn, og passord som ikkje skal visast.
+"""Oppsett av mountpoints frå oppsettsida: kontroll av det som blir skrive inn, og passord som ikkje skal visast.
 
-Kontorsida får aldri passord eller hash tilbake. Kvar kjelde har ein fast id; når kontoret lagrar med tomt
+Oppsettsida får aldri passord eller hash tilbake. Kvar kjelde har ein fast id; når kontoret lagrar med tomt
 passordfelt, blir det lagra passordet for same id ståande. Opplasting får nytt passord berre når ho er ny, eller
 når kontoret ber om det – og passordet blir då vist éin gong.
 """
@@ -65,7 +65,7 @@ def sikre_id(cfg):
 
 
 def offentleg(m):
-    """Mountpointet slik kontorsida får det: utan passord og hash."""
+    """Mountpointet slik oppsettsida får det: utan passord og hash."""
     d = copy.deepcopy(m)
     for s in d.get("kjelder", []) + d.get("tillegg", []):
         har = bool(s.pop("passord", "")) or bool(s.pop("hash", ""))
@@ -75,7 +75,7 @@ def offentleg(m):
 
 
 def lag(inn, alle, gamalt_namn=None, reserverte_portar=()):
-    """Kontrollerer eit mountpoint frå kontorsida og flettar inn lagra passord.
+    """Kontrollerer eit mountpoint frå oppsettsida og flettar inn lagra passord.
 
     inn          det kontoret sende (namn, skildring, byte_etter_s, innmalt, kjelder)
     alle         noverande mountpoints (lista i base.json)
@@ -86,7 +86,7 @@ def lag(inn, alle, gamalt_namn=None, reserverte_portar=()):
     if not NAMN_RE.match(namn):
         raise ValueError("Namnet kan berre ha bokstavane A–Z, tal, - og _ (utan mellomrom eller æøå), maks 32 teikn")
     if namn.lower() == "api":
-        raise ValueError("«api» er reservert (maskin-API-et på casterporten) – vel eit anna namn")
+        raise ValueError("«api» er reservert – vel eit anna namn")
     gamal = next((m for m in alle if m.get("namn") == gamalt_namn), None) if gamalt_namn else None
     if gamalt_namn and gamal is None:
         raise ValueError(f"Fann ikkje mountpointet {gamalt_namn}")

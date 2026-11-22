@@ -1,10 +1,10 @@
-# Lagar dei to nedlastingane (SNOWMAN snødjupne og SNOWMAN Base) ved kvar push til main
+# Lagar dei tre nedlastingane (SNOWMAN snødjupne, SNOWMAN Base og SNOWMAN Kontor) ved kvar push til main
 # og legg dei på utgivinga «siste». Sjå verktoy/lag-pakkar.py.
 name: Nedlastingar
 on:
   push:
     branches: [main]
-    paths: ["pc/**", "base/**", "LICENSE", "verktoy/lag-pakkar.py", ".github/workflows/pakkar.yml"]
+    paths: ["pc/**", "base/**", "kontor/**", "LICENSE", "verktoy/lag-pakkar.py", ".github/workflows/pakkar.yml"]
   workflow_dispatch:
 permissions:
   contents: write
@@ -26,5 +26,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view siste >/dev/null 2>&1 || gh release create siste --title "Siste versjon" \
-            --notes "Nedlastingar som blir oppdaterte ved kvar endring. SNOWMAN-snodjupne.zip er til tråkkemaskinene, SNOWMAN-Base.zip er til basen/serveren på anlegget."
-          gh release upload siste dist/SNOWMAN-snodjupne.zip dist/SNOWMAN-Base.zip --clobber
+            --notes "Nedlastingar som blir oppdaterte ved kvar endring. SNOWMAN-snodjupne.zip er til tråkkemaskinene, SNOWMAN-Base.zip er til Raspberry Pi-en ved antenna (korreksjonane), SNOWMAN-Kontor.zip er til kontor-PC-en."
+          gh release upload siste dist/SNOWMAN-snodjupne.zip dist/SNOWMAN-Base.zip dist/SNOWMAN-Kontor.zip --clobber

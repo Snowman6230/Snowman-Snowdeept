@@ -42,7 +42,7 @@ details summary{cursor:pointer;color:var(--acc);margin-top:8px}
   <h1>SNOWMAN Base</h1>
   <span class="sub" id="sub">koplar til …</span>
   <span id="upd"></span>
-  <nav><a class="btn" href="/kontor/">Kontor</a></nav>
+  <nav><a class="btn" href="/oppsett/">Oppsett</a></nav>
 </header>
 <div id="err">Får ikkje kontakt med SNOWMAN Base.</div>
 <main id="main"></main>
@@ -82,16 +82,15 @@ async function load(){
     const r=await fetch("/api/status",{cache:"no-store"}); if(!r.ok) throw r.status;
     const s=await r.json(); $("#err").style.display="none";
     $("#sub").textContent=`${s.anlegg?s.anlegg+' · ':''}v${s.versjon} · oppe ${dur(s.oppetid)} · NTRIP port ${s.caster.port} · ${s.caster.klientar} maskiner tilkopla`;
-    $("#upd").innerHTML=s.oppdatering?.ny?`<span class="pill warn">Ny versjon ${esc(s.oppdatering.ny)} – oppdater på kontorsida</span>`:"";
-    const f=s.forbetringar, fsum=f["høg"]+f.middels+f["låg"];
-    const ms=s.maskiner.map(m=>`<tr><td>${esc(m.namn)}</td><td>${esc(m.versjon||'–')}</td><td>${m.fixdel==null?'–':Math.round(m.fixdel*100)+' %'}</td><td>${m.pakke?'v'+esc(m.pakke):'–'}</td><td>${m.age==null?'–':dur(m.age)+' sidan'}</td></tr>`).join("");
+    $("#upd").innerHTML=s.oppdatering?.ny?`<span class="pill warn">Ny versjon ${esc(s.oppdatering.ny)} – oppdater på oppsettsida når ingen preparerer</span>`:"";
+    const at=(s.forslag||[]).slice().sort((a,b)=>["høg","middels","låg"].indexOf(a.alvor)-["høg","middels","låg"].indexOf(b.alvor));
+    const atv=at.map(r=>`<tr><td><span class="pill ${r.alvor==='høg'?'err':r.alvor==='middels'?'warn':''}">${esc(r.alvor)}</span></td><td><b>${esc(r.tittel)}</b><div class="dim">${esc(r.grunn)}</div><div>→ ${esc(r.tiltak)}</div></td></tr>`).join("");
     const ev=s.hendingar.map(e=>`<div class="t">${tid(e.t)}</div><div class="${e.niva}">${esc(e.tekst)}</div>`).join("");
-    const admin=s.treng_admin?`<section class="card"><h2>Lag administrator</h2><p class="dim">SNOWMAN Base har ingen administrator enno. Opne <a href="/kontor/" style="color:var(--acc)">kontorsida</a> og vel brukarnamn og passord.</p></section>`:"";
-    $("#main").innerHTML=admin+(s.mountpoints.length?s.mountpoints.map(mountCard).join(""):`<section class="card"><h2>Ingen mountpoint enno</h2><p class="dim">Set opp eit mountpoint på <a href="/kontor/#mount" style="color:var(--acc)">kontorsida › Mountpoints</a>.</p></section>`)+
-    `<section class="card"><h2>Maskiner med SNOWMAN</h2>${ms?`<div class="scroll"><table><tr><th>Maskin</th><th>SNOWMAN</th><th>FIX</th><th>Anleggspakke</th><th>Sist sett</th></tr>${ms}</table></div>`:'<p class="dim">Ingen maskiner har meldt seg enno (deling kjem med SNOWMAN v1.8). Maskiner som berre hentar korreksjonar, står under mountpointet.</p>'}
-     <div class="kv" style="margin-top:10px"><div>Anleggspakke</div><div>${s.pakke?'v'+s.pakke.versjon+' · '+tid(s.pakke.dato):'ingen lasta opp'}</div>
-     <div>Forbetringsforslag</div><div>${fsum?`${f["høg"]} høg · ${f.middels} middels · ${f["låg"]} låg – <a href="/kontor/#forbetringar" style="color:var(--acc)">sjå kontorsida</a>`:'ingen'}</div>
-     <div>AI</div><div>${s.ai.leverandor==='av'?'av':esc(s.ai.leverandor)}</div>
+    const admin=s.treng_admin?`<section class="card"><h2>Lag administrator</h2><p class="dim">SNOWMAN Base har ingen administrator enno. Opne <a href="/oppsett/" style="color:var(--acc)">oppsettsida</a> og vel brukarnamn og passord.</p></section>`:"";
+    $("#main").innerHTML=admin+(s.mountpoints.length?s.mountpoints.map(mountCard).join(""):`<section class="card"><h2>Ingen mountpoint enno</h2><p class="dim">Set opp eit mountpoint på <a href="/oppsett/#mount" style="color:var(--acc)">oppsettsida › Mountpoints</a>.</p></section>`)+
+    `<section class="card"><h2>Åtvaringar (${at.length})</h2>${atv?`<div class="scroll"><table>${atv}</table></div>`:'<p class="dim">Ingen åtvaringar.</p>'}
+     <p class="dim">Same åtvaringar blir viste i SNOWMAN Kontor (forbetringar) når adressa til Base er sett der.</p>
+     <div class="kv" style="margin-top:10px">
      <div>Diskplass</div><div>${s.disk_gb??'–'} GB ledig${s.radata?` · rådata ${s.radata.mb} MB i ${s.radata.filer} filer`:''}</div></div></section>`+
     `<section class="card wide"><h2>Hendingar</h2><div class="ev">${ev}</div></section>`;
   }catch(e){$("#err").style.display="block"}

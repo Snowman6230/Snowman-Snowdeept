@@ -1,6 +1,6 @@
 # SNOWMAN Base på NAS eller server med Docker.
 #   cd base/v1.0/installasjon && docker compose up -d --build
-# Programmet (base/v1.0) blir montert inn, så «Oppdater» på kontorsida oppdaterer det. Data ligg i base/v1.0/data.
+# Programmet (base/v1.0) blir montert inn, så «Oppdater» på oppsettsida oppdaterer det. Data ligg i base/v1.0/data.
 services:
   snowman-base:
     build: .

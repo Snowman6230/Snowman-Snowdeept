@@ -1,6 +1,6 @@
 # SNOWMAN Base som systemteneste (Linux). Installer med installasjon/installer-linux.sh.
 [Unit]
-Description=SNOWMAN Base (RTK-base, NTRIP-caster og anleggsserver)
+Description=SNOWMAN Base (RTK-base og NTRIP-caster)
 After=network-online.target
 Wants=network-online.target
 

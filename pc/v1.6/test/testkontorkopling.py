@@ -1,9 +1,9 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Test av koplinga til SNOWMAN Base – anleggspakke frå kontoret (v1.6.136).
+"""Test av koplinga til SNOWMAN Kontor – anleggspakke frå kontoret (v1.6.136, v1.6.137: Kontor i staden for Base).
 
-Køyr frå pc/v1.6:  python3 test/testbasekopling.py   → venta «ALT OK».
-Startar ein ekte SNOWMAN Base (base/v1.0) i ei mellombels mappe, lastar opp anleggspakkar som kontoret og hentar dei
-gjennom port 2101 med basekopling.py – med dei same lagra (trasear, hindringar, kontrollpunkt) som SNOWMAN brukar.
+Køyr frå pc/v1.6:  python3 test/testkontorkopling.py   → venta «ALT OK».
+Startar ein ekte SNOWMAN Kontor (kontor/v1.0) i ei mellombels mappe, lastar opp anleggspakkar som kontoret og hentar
+dei med kontorkopling.py – med dei same lagra (trasear, hindringar, kontrollpunkt) som SNOWMAN brukar.
 """
 import base64
 import io
@@ -18,8 +18,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
-BASE_DIR = HERE.parent.parent / "base" / "v1.0"
-import basekopling as BK  # noqa: E402
+KONTOR_DIR = HERE.parent.parent / "kontor" / "v1.0"
+import kontorkopling as BK  # noqa: E402
 import kontroll as K  # noqa: E402
 import trasear as TR  # noqa: E402
 
@@ -40,22 +40,22 @@ K1 = {"id": "k1", "name": "Bolt", "E": 389000.0, "N": 6918000.0, "zone": 32, "h"
 
 
 def main():
-    if not BASE_DIR.is_dir():
-        print("Fann ikkje base/v1.0 – hoppar over testen.")
+    if not KONTOR_DIR.is_dir():
+        print("Fann ikkje kontor/v1.0 – hoppar over testen.")
         return
-    sys.path.insert(0, str(BASE_DIR))
+    sys.path.insert(0, str(KONTOR_DIR))
     import anleggspakke as AP
     import konfig
-    import snowman_base as SB
+    import snowman_kontor as SK
     tmp = tempfile.TemporaryDirectory()
     d = Path(tmp.name)
-    cfg = konfig.Config(d / "base")
+    cfg = konfig.Config(d / "kontor")
     cfg.first_setup()
-    cfg.set_user("snowman", "maskin-pw-1", roles=["ntrip"])
+    cfg.set_user("pb600", "maskin-pw-1", roles=["maskin"])
     cfg.set_user("admin", "kontor-pw-1", roles=["kontor"])
     cfg.data["oppdatering"]["sjekk"] = False
     cfg.save()
-    base = SB.SnowmanBase(d / "base", 0, 0).start()
+    base = SK.SnowmanKontor(d / "kontor", 0).start()
     web = f"http://127.0.0.1:{base.web_port}"
 
     def last_opp(**kw):
@@ -69,9 +69,9 @@ def main():
         tra, obj = TR.Trasear(data / "trasear.json", data / "sessions"), TR.Objekt(data / "objekt.json")
         kon = K.Kontroll(data / "kontroll.json", None, None)
         tra.save({"name": "Lokal trasé", "poly": [[62.39, 6.7], [62.391, 6.7], [62.391, 6.702]]})
-        mcfg = {"caster": "127.0.0.1", "caster_port": base.caster_port, "username": "snowman", "password": "maskin-pw-1",
-                "base_on": True, "base_maskinnamn": "PB 1"}
-        bk = BK.BaseKopling(data, "1.6.136")
+        mcfg = {"kontor_host": "127.0.0.1", "kontor_port": base.web_port, "kontor_user": "pb600",
+                "kontor_pass": "maskin-pw-1", "kontor_on": True, "kontor_maskinnamn": "PB 1"}
+        bk = BK.KontorKopling(data, "1.6.137")
 
         def apply(inn):
             for f, fn in (("trasear.json", tra.replace_all), ("objekt.json", obj.replace_from_package),
@@ -93,7 +93,7 @@ def main():
         sjekk(not bk.styrt(mcfg), "ikkje styrt før ei pakke er henta")
         last_opp(trasear=[T1, F1], objekt=[H1], kontrollpunkt=[K1])
         r = bk.fetch(mcfg, apply)
-        sjekk(r["ny"] and r["aktiv"]["versjon"] == 1, "pakke v1 henta gjennom port 2101")
+        sjekk(r["ny"] and r["aktiv"]["versjon"] == 1, "pakke v1 henta frå Kontor")
         sjekk([t["name"] for t in tra.listing()] == ["Bakke 1", "Vegen"], "trasear frå kontoret erstattar dei lokale")
         sjekk((data / "anleggspakke" / "forrige" / "trasear.json").exists(), "det lokale er teke vare på (forrige/)")
         sjekk([p["name"] for p in kon.data["points"]] == ["Bolt"], "kontrollpunkt frå kontoret")
@@ -117,29 +117,35 @@ def main():
               "lokal hindring blir fjerna når kontoret har teke ho med (same type innan 2 m)")
 
         try:
-            bk.fetch(dict(mcfg, password="feil"), apply)
+            bk.fetch(dict(mcfg, kontor_pass="feil"), apply)
             sjekk(False, "feil passord blir avvist")
         except BK.Feil as e:
             sjekk("avviste innlogginga" in str(e), "feil passord blir avvist")
-        rq = urllib.request.Request(f"http://127.0.0.1:{base.caster_port}/api/v1/brukarar")
-        rq.add_header("Authorization", "Basic " + base64.b64encode(b"admin:kontor-pw-1").decode())
+        rq = urllib.request.Request(f"{web}/api/v1/brukarar")
+        rq.add_header("Authorization", "Basic " + base64.b64encode(b"pb600:maskin-pw-1").decode())
         try:
             urllib.request.urlopen(rq, timeout=5)
-            sjekk(False, "kontoret er stengt på port 2101")
+            sjekk(False, "maskinbrukaren når ikkje kontordelen")
         except urllib.error.HTTPError as e:
-            sjekk(e.code == 404, "kontoret er stengt på port 2101")
-
+            sjekk(e.code == 401, "maskinbrukaren når ikkje kontordelen")
+        try:
+            bk.fetch(dict(mcfg, kontor_port=1), apply)
+            sjekk(False, "feil port gir forklaring")
+        except BK.Feil as e:
+            sjekk("wifi" in str(e), "feil port gir forklaring (wifi / PC-en på)")
+        sjekk(BK.KontorKopling.target({"kontor_host": "http://192.168.1.20:8790/"})[:2] == ("192.168.1.20", 8790),
+              "adresse med http:// og port blir forstått")
         base.stop()
         time.sleep(0.3)
         sjekk(not bk.forslag(mcfg, {"type": "merknad", "tekst": "test"}) and bk.status(mcfg)["ko"] == 1,
-              "forslag blir lagt i kø når Base er borte")
+              "forslag blir lagt i kø når Kontor er borte")
         try:
             bk.fetch(mcfg, apply)
-            sjekk(False, "feilmelding når Base er borte")
+            sjekk(False, "feilmelding når Kontor er borte")
         except BK.Feil as e:
-            sjekk("kontakt" in str(e), "feilmelding når Base er borte")
-        sjekk([t["name"] for t in tra.listing()] == ["Bakke 1"] and bk.styrt(mcfg), "siste pakke gjeld når Base er borte")
-        bk2 = BK.BaseKopling(data, "1.6.136")
+            sjekk("kontakt" in str(e), "feilmelding når Kontor er borte")
+        sjekk([t["name"] for t in tra.listing()] == ["Bakke 1"] and bk.styrt(mcfg), "siste pakke gjeld når Kontor er borte")
+        bk2 = BK.KontorKopling(data, "1.6.137")
         sjekk(bk2.aktiv["versjon"] == 3 and bk2.status(mcfg)["ko"] == 1 and bk2.mid == bk.mid,
               "aktiv pakke, kø og maskin-ID blir hugsa etter omstart")
 

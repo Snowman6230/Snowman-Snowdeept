@@ -1,11 +1,16 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""SNOWMAN Base – RTK-base, NTRIP-caster og anleggsserver for SNOWMAN snødjupne.
+"""SNOWMAN Base – RTK-base og NTRIP-caster for SNOWMAN snødjupne.
 
-Køyrer på Linux, Windows, NAS (Docker) eller ein liten PC / Raspberry Pi. Berre Python 3.10+ (pyserial for USB).
+Berre satellittar og NTRIP (avgjerd 2026-11-22): korreksjonar til maskinene, basemottakaren, relé og reserve,
+kontroll av baseposisjonen, rådatalogg og satellittbaner. Kontorsida, anleggspakkar, forslag, deling og AI ligg i
+SNOWMAN Kontor (kontor/v1.0, eige program på ein PC) – så ingenting anna kan forstyrre korreksjonane.
+
+Tilrådd: eigen Raspberry Pi ved antenna (Linux-teneste). Køyrer òg på Windows, NAS (Docker) eller ein liten PC.
+Berre Python 3.10+ (pyserial for USB).
 
     python snowman_base.py                         start Base (standard)
     python snowman_base.py brukar legg-til NAMN [--rolle ntrip|kontor|begge]   ny brukar (spør etter passord)
-    python snowman_base.py brukar passord NAMN     nytt passord (t.d. gløymt passord til kontorsida)
+    python snowman_base.py brukar passord NAMN     nytt passord (t.d. gløymt passord til oppsettsida)
     python snowman_base.py brukar fjern NAMN
     python snowman_base.py brukar liste
     python snowman_base.py mountpoint ny NAMN --seriell /dev/ttyACM0 | --rele caster:port/MP | --opplasting | --tcp-tenar PORT
@@ -34,11 +39,9 @@ import api                      # noqa: E402
 import forbetring               # noqa: E402
 import mountoppsett             # noqa: E402
 import straum                   # noqa: E402
-from ai import AI               # noqa: E402
 from baner import Baner         # noqa: E402
 from caster import Caster       # noqa: E402
 from konfig import API_VERSION, SNOWMAN_MIN, VERSION, Config, new_secret, hash_pw, valid_pw   # noqa: E402
-from lager import Store         # noqa: E402
 from oppdatering import Updates, apply  # noqa: E402
 from tilgang import Tilgang     # noqa: E402
 from vern import Vern           # noqa: E402
@@ -58,11 +61,9 @@ class SnowmanBase:
             self.cfg.save()
         self.mounts = straum.build(self.cfg["mountpoints"], self.events, self.rawlog)
         self.mount_lock = threading.Lock()
-        self.store = Store(self.data)
         self.vern = Vern(self.cfg, self.events)
         self.caster = Caster(self.cfg, self.mounts, self.events, self.vern)
         self.tilgang = Tilgang(self)
-        self.ai = AI(self.cfg, self.store, self.events)
         self.updates = Updates(self.cfg, self.events, self.restart)
         self.baner = Baner(self.data, self.cfg, self.events)
         self.stop_ev = threading.Event()
@@ -80,9 +81,8 @@ class SnowmanBase:
             m.start()
         self.caster_port = self.caster.start(self._caster_port)
         self.web = api.start(self, self._web_port if self._web_port is not None else self.cfg["web"]["port"])
-        self.caster.api_ekstern = api.ekstern(self)         # maskin-API òg på casterporten (Base 1.3)
         self.web_port = self.web.server_address[1]
-        for target in (lambda: straum.ticker(self.mounts, self.stop_ev), self._analyse_loop, self._config_loop,
+        for target in (lambda: straum.ticker(self.mounts, self.stop_ev), self._config_loop,
                        lambda: self.updates.loop(self.stop_ev), lambda: self.baner.loop(self.stop_ev),
                        lambda: self.tilgang.loop(self.stop_ev)):
             threading.Thread(target=target, daemon=True).start()
@@ -100,7 +100,6 @@ class SnowmanBase:
             self.web.server_close()
         self.rawlog.close()
         time.sleep(0.1)
-        self.store.close()
 
     def restart(self):
         """Etter oppdatering. Under systemd/Docker: avslutt med kode 3 (tenesta startar Base att). Elles: start på nytt."""
@@ -109,24 +108,6 @@ class SnowmanBase:
         if os.environ.get("SNOWMAN_BASE_TENESTE"):
             os._exit(RESTART_CODE)
         os.execv(sys.executable, [sys.executable] + sys.argv)
-
-    def _analyse_loop(self):
-        self.stop_ev.wait(120)
-        last_ai = 0.0
-        while not self.stop_ev.is_set():
-            try:
-                forbetring.run(self)
-                self.store.clean(self.cfg["deling"].get("behald_dagar", 30))
-                hours = float(self.cfg["ai"].get("intervall_t", 24) or 24)
-                if self.ai.enabled() and time.time() - last_ai > hours * 3600:
-                    last_ai = time.time()
-                    try:
-                        self.ai.analyse(self)
-                    except Exception:
-                        pass                       # feilen står i hendingane og på kontorsida
-            except Exception as e:
-                self.events.add(f"Forbetringsanalysen feila: {e}", "feil")
-            self.stop_ev.wait(900)
 
     # ---------- innstillingar endra utanfrå (kommandoar medan Base køyrer) ----------
     def _config_loop(self):
@@ -172,7 +153,7 @@ class SnowmanBase:
         self.events.add("Innstillingane er endra utanfrå (kommando eller fil) og tekne i bruk"
                         + (f": mountpoint {', '.join(endra)}" if endra else " (brukarar/innstillingar)"), "ok")
 
-    # ---------- mountpoints frå kontorsida ----------
+    # ---------- mountpoints frå oppsettsida ----------
     def lagre_mountpoint(self, inn, gamalt_namn=None):
         """Lagrar eit nytt eller endra mountpoint og tek det i bruk med éin gong (utan omstart av Base)."""
         reserverte = {p for p in (self.caster_port, self.web_port, self.cfg["caster"]["port"],
@@ -197,13 +178,13 @@ class SnowmanBase:
             ny.start()
         kva = "endra" if gamalt_namn else "oppretta"
         namn = m["namn"] + (f" (før {gamalt_namn})" if gamalt_namn and gamalt_namn != m["namn"] else "")
-        self.events.add(f"Mountpoint {namn} {kva} frå kontorsida: {len(m['kjelder'])} kjelde(r) – "
+        self.events.add(f"Mountpoint {namn} {kva} frå oppsettsida: {len(m['kjelder'])} kjelde(r) – "
                         + ", ".join(k.get("namn", "") for k in m["kjelder"]), "ok")
         self.apply_config_quiet()
         return m, melding
 
     def apply_config_quiet(self):
-        """Etter ei endring frå kontorsida: ta òg i bruk andre mountpoints som var endra i fila (sjeldan)."""
+        """Etter ei endring frå oppsettsida: ta òg i bruk andre mountpoints som var endra i fila (sjeldan)."""
         names = {mc.get("namn") for mc in self.cfg["mountpoints"]}
         if names != set(self.mounts):
             self.apply_config()
@@ -221,7 +202,7 @@ class SnowmanBase:
             gamal = self.mounts.pop(namn, None)
             if gamal:
                 gamal.stop()
-        self.events.add(f"Mountpoint {namn} sletta frå kontorsida", "feil")
+        self.events.add(f"Mountpoint {namn} sletta frå oppsettsida", "feil")
         return True
 
     def disk_free(self):
@@ -231,18 +212,26 @@ class SnowmanBase:
         t, u = self._usage
         if time.time() - t > 60:
             self._usage = (time.time(), self.rawlog.usage())
-        imp = self.store.improvements()
-        return {"ok": True, "namn": self.cfg["namn"], "anlegg": self.cfg["anlegg"], "versjon": VERSION,
+        try:
+            atv = forbetring.rules(self)
+        except Exception as e:
+            atv = [forbetring.S("reglar-feil", "base", "låg", "Åtvaringane kunne ikkje reknast ut", str(e)[:200],
+                                "Sjå hendingane.")]
+        mps = []
+        for m in list(self.mounts.values()):
+            d = m.status()
+            d["dag"] = dict(m.day)
+            mps.append(d)
+        return {"ok": True, "program": "SNOWMAN Base", "namn": self.cfg["namn"], "anlegg": self.cfg["anlegg"],
+                "versjon": VERSION,
                 "api": API_VERSION, "snowman_min": SNOWMAN_MIN, "oppetid": round(time.time() - self.started),
                 "caster": {"port": self.caster_port, "innlogging": self.cfg["caster"].get("krev_innlogging", True),
                            "klientar": sum(len(m.clients) for m in list(self.mounts.values())), **self.caster.stats},
-                "web_port": self.web_port, "mountpoints": [m.status() for m in list(self.mounts.values())],
+                "web_port": self.web_port, "mountpoints": mps,
                 "treng_admin": not self.cfg.has_admin(),
-                "maskiner": self.store.machines(), "oppdatering": self.updates.info, "baner": self.baner.info,
-                "disk_gb": self.disk_free(), "radata": self._usage[1],
-                "pakke": self.store.package(), "forbetringar": {k: sum(1 for r in imp if r["alvor"] == k)
-                                                                 for k in ("høg", "middels", "låg")},
-                "ai": {"leverandor": self.cfg["ai"].get("leverandor", "av"), "siste": self.ai.last},
+                "tilkoplingar_i_dag": sum(1 for h in self.caster.history if h[4] == "inn"),
+                "oppdatering": self.updates.info, "baner": self.baner.info,
+                "disk_gb": self.disk_free(), "radata": self._usage[1], "forslag": atv,
                 "hendingar": self.events.latest(60)}
 
 
@@ -261,9 +250,9 @@ def parse_caster(s):
 def cmd_mountpoint(a, cfg):
     name = a.namn
     if name.lower() == "api":
-        sys.exit("«api» er reservert (maskin-API-et på casterporten) – vel eit anna namn.")
+        sys.exit("«api» er reservert – vel eit anna namn.")
     if any(m["namn"] == name for m in cfg["mountpoints"]):
-        sys.exit(f"Mountpointet {name} finst alt (endre det på kontorsida › Mountpoints).")
+        sys.exit(f"Mountpointet {name} finst alt (endre det på oppsettsida › Mountpoints).")
     src, extra = [], []
     if a.seriell:
         src.append({"type": "seriell", "namn": "mottakar", "port": a.seriell, "baud": a.baud})
@@ -298,7 +287,7 @@ def ask_pw():
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="snowman-base", description="SNOWMAN Base – RTK-base og anleggsserver")
+    ap = argparse.ArgumentParser(prog="snowman-base", description="SNOWMAN Base – RTK-base og NTRIP-caster")
     ap.add_argument("--data", help="mappe for innstillingar og data")
     ap.add_argument("--caster-port", type=int)
     ap.add_argument("--web-port", type=int)
@@ -329,7 +318,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     if a.cmd == "versjon":
-        return print(f"SNOWMAN Base {VERSION} (API v{API_VERSION}, krev SNOWMAN {SNOWMAN_MIN} for deling)")
+        return print(f"SNOWMAN Base {VERSION} (berre satellittar og NTRIP – kontoret er SNOWMAN Kontor)")
     if a.cmd == "oppdater":
         changed, _ = apply()
         return sys.exit(RESTART_CODE if changed and os.environ.get("SNOWMAN_BASE_TENESTE") else 0)
@@ -378,9 +367,9 @@ def main(argv=None):
     print(f"SNOWMAN Base {VERSION}")
     print(f"  Data:        {base.data}")
     print(f"  NTRIP:       port {base.caster_port}  ({len(base.mounts)} mountpoint: {', '.join(base.mounts) or 'ingen enno'})")
-    print(f"  Statusside:  http://localhost:{base.web_port}/   Kontor: http://localhost:{base.web_port}/kontor/")
+    print(f"  Statusside:  http://localhost:{base.web_port}/   Oppsett: http://localhost:{base.web_port}/oppsett/")
     if not base.cfg.has_admin():
-        print(f"  FØRST:       lag administrator (brukarnamn og passord) på http://localhost:{base.web_port}/kontor/")
+        print(f"  FØRST:       lag administrator (brukarnamn og passord) på http://localhost:{base.web_port}/oppsett/")
         print("               eller med kommandoen:  brukar legg-til NAMN --rolle kontor")
     stop = threading.Event()
     for sig in (signal.SIGINT, signal.SIGTERM):

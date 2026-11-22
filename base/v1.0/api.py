@@ -1,36 +1,25 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Nettsider og API i SNOWMAN Base (standard port 8780).
+"""Nettsider og API i SNOWMAN Base (standard port 8780 – berre på det lokale nettet, aldri opna i ruteren).
 
-Sider:   /           statussida (straumar, kjelder, maskiner, hendingar)
-         /kontor/    kontorsida (maskiner, anleggspakke, forslag, forbetringar, AI, oppdatering)
+Base 1.4 (avgjerd 2026-11-22): berre satellittar og NTRIP. Kontorsida, anleggspakkar, forslag, deling og AI ligg i
+SNOWMAN Kontor (kontor/v1.0). Maskinene snakkar berre NTRIP med Base (port 2101).
 
-API v1 (JSON). Innlogging med brukarnamn og passord (ingen nøklar):
-  Maskin-API:  «Authorization: Basic» med NTRIP-brukaren (same brukarnamn og passord som SNOWMAN brukar mot casteren)
-  Kontor-API:  økt frå POST /api/v1/logg-inn («Authorization: Bearer <økt>»), eller Basic med ein kontor-brukar
-  Ope:        GET  /api/v1/info                     versjon, API-versjon, funksjonar, minste SNOWMAN-versjon
-              GET  /api/status                      status (om web.status_open, elles kontor)
-              GET  /api/v1/oppsett                  {treng_admin, lokal} – må første administrator lagast?
+Sider:   /           statussida (straumar, kjelder, maskiner som hentar korreksjonar, åtvaringar, hendingar)
+         /oppsett/   oppsettsida (mountpoints, tilgang/DDNS, brukarar, oppdatering) – /kontor/ blir sendt hit
+
+API v1 (JSON). Innlogging med brukarnamn og passord:
+  Administrator: økt frå POST /api/v1/logg-inn («Authorization: Bearer <økt>»), eller Basic med ein brukar med
+                 rolla «kontor» (namnet er historisk – det er administrator i Base)
+  Ope:        GET  /api/v1/info                     versjon, funksjonar
+              GET  /api/status                      status med åtvaringar (om web.status_open, elles administrator)
+                                                    – SNOWMAN Kontor les denne (berre lesing)
+              GET  /api/v1/oppsett                  {treng_admin, lokal}
               POST /api/v1/oppsett                  {brukar, passord, ntrip_brukar?, ntrip_passord?} – berre når ingen
                                                     administrator finst, og berre frå det lokale nettet
               POST /api/v1/logg-inn {brukar, passord} → {okt}   ·   POST /api/v1/logg-ut
-  Maskin:     POST /api/v1/maskin                   hjarteslag {id, namn, versjon, pakke, lat, lon, fix, fixdel}
-  (anleggs-   POST /api/v1/maalingar                {maskin, punkt: [{t, lat, lon, h, djupne, fix, kalibrert}]}
-   nøkkel)    GET  /api/v1/maalingar?etter=&utan=   delte målingar siste 12 t (berre nye sidan «etter»)
-              GET  /api/v1/maskiner                 alle maskiner (posisjon, sist sett)
-              GET  /api/v1/anleggspakke             aktiv versjon {versjon, sha256, storleik}
-              GET  /api/v1/anleggspakke/fil         zip-fila (?versjon= for ein bestemt)
-              POST /api/v1/forslag                  {maskin, type: hindring|merknad|program|anna, tekst, lat, lon}
-              GET  /api/v1/baner                    siste BRDC-banefil (om Base hentar baner)
-  Kontor:     POST /api/v1/anleggspakke             ny versjon (zip i body, X-Merknad), blir aktiv
-  (kontor-    POST /api/v1/anleggspakke/aktiv       {versjon} – rull tilbake/fram
-   nøkkel)    GET  /api/v1/forslag  ·  POST /api/v1/forslag/svar {id, status, svar}
-              POST /api/v1/maskin/fjern {id}
-              GET  /api/v1/forbetringar  ·  GET /api/v1/forbetringar.md  ·  POST /api/v1/forbetringar/status
-              POST /api/v1/forbetringar/analyser
-              GET  /api/v1/ai  ·  POST /api/v1/ai/innstillingar  ·  GET /api/v1/ai/forehandsvis
-              POST /api/v1/ai/analyser  ·  POST /api/v1/ai/sporsmal {tekst}
-              POST /api/v1/oppdatering/sjekk  ·  POST /api/v1/oppdater
-              GET  /api/v1/hendingar
+  NTRIP-brukar: GET /api/v1/baner                   siste BRDC-banefil (om Base hentar baner)
+  Administrator:
+              GET  /api/v1/hendingar  ·  GET /api/v1/konfig
               GET  /api/v1/mountpoints              mountpoints med kjelder (utan passord)
               POST /api/v1/mountpoint               {namn, skildring, byte_etter_s, innmalt, kjelder, gamalt_namn}
                                                     – nytt eller endra, blir teke i bruk med éin gong
@@ -42,7 +31,7 @@ API v1 (JSON). Innlogging med brukarnamn og passord (ingen nøklar):
               POST /api/v1/brukar/fjern {namn}
               GET  /api/v1/tilgang                  lokale og offentleg IP, CGNAT-sjekk, DDNS – kva maskinene skal bruke
               POST /api/v1/ddns {url}               lagre og køyr oppdatering av dynamisk DNS
-Brot i API-et gir ny API-versjon (/api/v2/…); v1 blir verande så lenge maskiner brukar han.
+              POST /api/v1/oppdatering/sjekk  ·  POST /api/v1/oppdater
 """
 import base64
 import http.server
@@ -56,16 +45,15 @@ import time
 import urllib.parse
 from pathlib import Path
 
-import anleggspakke
-import forbetring
 import mountoppsett
 import ntripklient
 import vern as vernmod
 from konfig import API_VERSION, FUNKSJONAR, SNOWMAN_MIN, VERSION, valid_name, valid_pw
 
 HERE = Path(__file__).resolve().parent
-STATIC = {"/": HERE / "web" / "status.html", "/kontor": HERE / "kontor" / "index.html",
-          "/kontor/": HERE / "kontor" / "index.html"}
+OPPSETT = HERE / "web" / "oppsett.html"
+STATIC = {"/": HERE / "web" / "status.html", "/oppsett": OPPSETT, "/oppsett/": OPPSETT,
+          "/kontor": OPPSETT, "/kontor/": OPPSETT}      # /kontor/ var adressa før Base 1.4
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -190,7 +178,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     return self.send_file(f)
                 return self.send_json({"ok": False}, 404)
             if p == "/api/v1/info":
-                return self.send_json({"ok": True, "namn": b.cfg["namn"], "anlegg": b.cfg["anlegg"], "versjon": VERSION,
+                return self.send_json({"ok": True, "program": "SNOWMAN Base", "namn": b.cfg["namn"], "anlegg": b.cfg["anlegg"], "versjon": VERSION,
                                        "api": API_VERSION, "snowman_min": SNOWMAN_MIN, "funksjonar": FUNKSJONAR,
                                        "caster_port": b.caster_port, "mountpoints": list(b.mounts)})
             if p == "/api/v1/oppsett":
@@ -210,50 +198,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_json({"ok": False, "feil": str(e)}, 500)
 
     def api_get(self, p, q):
-        b, st = self.base, self.base.store
-        machine_paths = {"maalingar", "maskiner", "anleggspakke", "anleggspakke/fil", "baner"}
-        if p in machine_paths:
+        b = self.base
+        if p == "baner":
             if not self.is_machine():
                 return self.deny()
-            if p == "maalingar":
-                rows, last = st.measurements(int(q.get("etter") or 0), b.cfg["deling"].get("timar", 12),
-                                             q.get("utan"), int(q.get("maks") or 5000))
-                return self.send_json({"ok": True, "maalingar": rows, "siste": last,
-                                       "timar": b.cfg["deling"].get("timar", 12)})
-            if p == "maskiner":
-                return self.send_json({"ok": True, "maskiner": st.machines()})
-            if p == "anleggspakke":
-                pk = st.package()
-                return self.send_json({"ok": True, "pakke": pk})
-            if p == "anleggspakke/fil":
-                pk = st.package(q.get("versjon")) if q.get("versjon") else st.package()
-                if not pk:
-                    return self.send_json({"ok": False, "feil": "ingen anleggspakke"}, 404)
-                return self.send_file(st.pkgdir / pk["fil"], "application/zip", pk["fil"])
-            if p == "baner":
-                f = b.baner.latest()
-                if not f:
-                    return self.send_json({"ok": False, "feil": "Base har ikkje henta banefil (baner.hent)"}, 404)
-                return self.send_file(f, "text/plain", f.name)
+            f = b.baner.latest()
+            if not f:
+                return self.send_json({"ok": False, "feil": "Base har ikkje henta banefil (baner.hent)"}, 404)
+            return self.send_file(f, "text/plain", f.name)
         if not self.is_office():
             return self.deny()
-        if p == "anleggspakke/versjonar":
-            return self.send_json({"ok": True, "versjonar": st.packages()})
-        if p == "forslag":
-            return self.send_json({"ok": True, "forslag": st.proposals(q.get("status"))})
-        if p == "forbetringar":
-            return self.send_json({"ok": True, "forbetringar": st.improvements(q.get("alle") == "1"),
-                                   "kategoriar": forbetring.CATEGORIES, "dagar": st.days(30)})
-        if p == "forbetringar.md":
-            return self.send_text(forbetring.export_markdown(st, q.get("alle") == "1"), "text/markdown; charset=utf-8",
-                                  f"snowman-base-forbetringar-{time.strftime('%Y%m%d')}.md")
-        if p == "ai":
-            c = b.cfg["ai"]
-            return self.send_json({"ok": True, "leverandor": c.get("leverandor", "av"), "modell": c.get("modell", ""),
-                                   "adresse": c.get("adresse", ""), "har_nokkel": bool(c.get("api_nokkel")),
-                                   "siste": b.ai.last})
-        if p == "ai/forehandsvis":
-            return self.send_json({"ok": True, **b.ai.preview(b)})
         if p == "hendingar":
             return self.send_json({"ok": True, "hendingar": b.events.latest(int(q.get("n") or 200))})
         if p == "konfig":
@@ -301,7 +255,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_json({"ok": False, "feil": str(e)}, 500)
 
     def api_post(self, p):
-        b, st = self.base, self.base.store
+        b = self.base
         ip = self.client_address[0]
         if p == "logg-inn":
             d = self.body_json(10_000)
@@ -310,13 +264,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.send_json({"ok": False, "feil": "For mange feil innloggingar – prøv att om litt"}, 429)
             u = b.cfg.check_user(d.get("brukar"), d.get("passord"), "kontor")
             if u is None:
-                b.vern.failed(ip, "kontorsida")
-                b.events.add(f"Feil innlogging på kontorsida («{str(d.get('brukar') or '–')[:32]}») frå {ip}", "feil")
+                b.vern.failed(ip, "oppsettsida")
+                b.events.add(f"Feil innlogging på oppsettsida («{str(d.get('brukar') or '–')[:32]}») frå {ip}", "feil")
                 time.sleep(1)
                 return self.send_json({"ok": False, "feil": "Feil brukarnamn eller passord (eller brukaren har ikkje "
                                                             "kontor-rolla)"}, 401)
             b.vern.ok(ip)
-            b.events.add(f"{u['namn']} logga inn på kontorsida frå {ip}", "info")
+            b.events.add(f"{u['namn']} logga inn på oppsettsida frå {ip}", "info")
             return self.send_json({"ok": True, "okt": b.vern.new_session(u["namn"]), "brukar": u["namn"]})
         if p == "logg-ut":
             b.vern.end_session(self.key())
@@ -347,74 +301,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 b.cfg.set_user(nb, npw, roles=["ntrip"])
             b.events.add(f"Første administrator «{name}» laga frå {ip}" + (f", og NTRIP-brukaren «{nb}»" if nb else ""), "ok")
             return self.send_json({"ok": True, "okt": b.vern.new_session(name), "brukar": name})
-        if p in ("maskin", "maalingar", "forslag"):
-            if not self.is_machine():
-                return self.deny()
-            d = self.body_json()
-            if p == "maskin":
-                mid = _safe(d.get("id") or d.get("namn"))
-                if not mid:
-                    raise ValueError("id manglar")
-                ok, err = st.heartbeat(mid, d, ip, int(b.cfg["deling"].get("maskinplassar") or 0))
-                pk = st.package()
-                return self.send_json({"ok": ok, "feil": err, "tid": time.time(), "base": VERSION, "api": API_VERSION,
-                                       "snowman_min": SNOWMAN_MIN, "pakke": pk["versjon"] if pk else None},
-                                      200 if ok else 403)
-            if p == "maalingar":
-                mid = _safe(d.get("maskin"))
-                if not mid:
-                    raise ValueError("maskin manglar")
-                n, bad = st.add_measurements(mid, d.get("punkt"), b.cfg["deling"].get("timar", 12))
-                return self.send_json({"ok": True, "lagra": n, "avvist": bad})
-            if p == "forslag":
-                pid = st.add_proposal(_safe(d.get("maskin")) or "kontor", d)
-                b.events.add(f"Nytt forslag ({d.get('type', 'anna')}) frå {d.get('maskin') or 'kontor'}", "info")
-                return self.send_json({"ok": True, "id": pid})
         if not self.is_office():
             return self.deny()
-        if p == "anleggspakke":
-            return self.upload_package()
         d = self.body_json()
-        if p == "anleggspakke/aktiv":
-            ok = st.activate(d["versjon"])
-            if ok:
-                b.events.add(f"Anleggspakke v{d['versjon']} er aktiv", "ok")
-            return self.send_json({"ok": ok})
-        if p == "forslag/svar":
-            if d.get("status") not in ("ny", "godkjent", "avvist", "gjort"):
-                raise ValueError("status må vere ny, godkjent, avvist eller gjort")
-            return self.send_json({"ok": st.set_proposal(d["id"], d["status"], d.get("svar", "")) > 0})
-        if p == "maskin/fjern":
-            return self.send_json({"ok": st.remove_machine(d["id"])})
-        if p == "forbetringar/status":
-            if d.get("status") not in ("ny", "godteke", "avvist", "gjort"):
-                raise ValueError("status må vere ny, godteke, avvist eller gjort")
-            return self.send_json({"ok": st.set_improvement(d["nokkel"], d["status"], d.get("merknad", "")) > 0})
-        if p == "forbetringar/analyser":
-            found = forbetring.run(b)
-            return self.send_json({"ok": True, "tal": len(found)})
-        if p == "ai/innstillingar":
-            if d.get("leverandor") not in ("av", "ollama", "anthropic"):
-                raise ValueError("leverandor må vere av, ollama eller anthropic")
-
-            def fn(data):
-                c = data["ai"]
-                c["leverandor"] = d["leverandor"]
-                c["modell"] = str(d.get("modell") or "")[:80]
-                c["adresse"] = str(d.get("adresse") or "")[:200]
-                if d.get("api_nokkel"):
-                    c["api_nokkel"] = str(d["api_nokkel"]).strip()
-                if d.get("fjern_nokkel"):
-                    c["api_nokkel"] = ""
-                return dict(c)
-            c = b.cfg.update(fn)
-            b.events.add(f"AI: {c['leverandor']}" + (f" ({c['modell']})" if c["modell"] else ""), "info")
-            return self.send_json({"ok": True})
-        if p == "ai/analyser":
-            items = b.ai.analyse(b)
-            return self.send_json({"ok": True, "tal": len(items), "forslag": items})
-        if p == "ai/sporsmal":
-            return self.send_json({"ok": True, "svar": b.ai.ask(b, d.get("tekst", ""))})
         if p == "brukar":
             name = valid_name(d.get("namn"))
             pw = d.get("passord") or None
@@ -478,108 +367,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return {"ok": True, "caster": r["caster"], "proto": r["proto"],
                 "mountpoints": [{k: m.get(k) for k in ("mountpoint", "name", "format", "systems", "lat", "lon",
                                                        "nmea", "network_rtk")} for m in r["mounts"]]}
-
-    def upload_package(self):
-        b = self.base
-        n = int(self.headers.get("Content-Length") or 0)
-        limit = int(b.cfg["anleggspakke"].get("maks_mb", 4000)) * 1_000_000
-        if n <= 0 or n > limit:
-            raise ValueError(f"anleggspakka må vere mellom 1 byte og {limit // 1_000_000} MB")
-        tmp = b.store.pkgdir / f"opplasting-{os.getpid()}-{threading.get_ident()}.tmp"
-        left = n
-        with open(tmp, "wb") as f:
-            while left:
-                chunk = self.rfile.read(min(left, 1 << 20))
-                if not chunk:
-                    break
-                f.write(chunk)
-                left -= len(chunk)
-        if left:
-            tmp.unlink(missing_ok=True)
-            raise ValueError("opplastinga vart avbroten")
-        try:
-            innhald = anleggspakke.kontroller(tmp, limit * 4)
-        except anleggspakke.Feil:
-            tmp.unlink(missing_ok=True)
-            raise
-        note = urllib.parse.unquote(self.headers.get("X-Merknad", ""))
-        pk = b.store.add_package(tmp, note, int(b.cfg["anleggspakke"].get("behald_versjonar", 20)), innhald)
-        tal = ", ".join(f"{v} {k.replace('_', ' ')}" for k, v in innhald["tal"].items())
-        b.events.add(f"Ny anleggspakke v{pk['versjon']} ({tal}) – maskinene hentar henne", "ok")
-        return self.send_json({"ok": True, "pakke": pk})
-
-
-# ---------- maskin-API på casterporten (2101) ----------
-# Base 1.3 (avgjerd 2026-11-20): maskinene når API-et gjennom same port som korreksjonane, slik at ruteren berre
-# treng port 2101 open (som Norman sin base). Berre maskindelen er open her – aldri kontoret, innlogging til
-# kontoret eller økter. Port 8780 (status og kontor) skal framleis aldri opnast mot internett.
-EKSTERN_GET = {"/api/v1/info", "/api/v1/maalingar", "/api/v1/maskiner", "/api/v1/anleggspakke",
-               "/api/v1/anleggspakke/fil", "/api/v1/baner"}
-EKSTERN_POST = {"/api/v1/maskin", "/api/v1/maalingar", "/api/v1/forslag"}
-
-
-class _Prefixed(io.RawIOBase):
-    """Lesestraum som først gir byta casteren alt har lese (førespurnadslina), så resten frå socketen."""
-
-    def __init__(self, prefix, sock):
-        self.prefix, self.sock = bytes(prefix), sock
-
-    def readable(self):
-        return True
-
-    def readinto(self, b):
-        if self.prefix:
-            n = min(len(b), len(self.prefix))
-            b[:n] = self.prefix[:n]
-            self.prefix = self.prefix[n:]
-            return n
-        return self.sock.recv_into(b)
-
-
-class Ekstern(Handler):
-    """API-et slik det er ope på casterporten: berre maskindelen, berre NTRIP-brukarar (Basic)."""
-    prefix = b""
-
-    def __init__(self, request, client_address, server, prefix=b""):
-        self.prefix = prefix
-        super().__init__(request, client_address, server)
-
-    def setup(self):
-        self.connection = self.request
-        self.connection.settimeout(30)
-        self.rfile = io.BufferedReader(_Prefixed(self.prefix, self.connection))
-        self.wfile = socketserver._SocketWriter(self.connection)
-
-    def key(self):
-        return ""                                   # økter frå kontorsida gjeld ikkje her
-
-    def is_office(self):
-        return False
-
-    def is_machine(self):
-        name = super()._user("ntrip")
-        u = self.base.cfg.find_user(name) if name else None
-        return bool(u and "ntrip" in u.get("roller", []))
-
-    def do_GET(self):
-        if urllib.parse.urlparse(self.path).path not in EKSTERN_GET:
-            return self.send_json({"ok": False, "feil": "ukjend adresse"}, 404)
-        return super().do_GET()
-
-    def do_POST(self):
-        if urllib.parse.urlparse(self.path).path not in EKSTERN_POST:
-            return self.send_json({"ok": False, "feil": "ukjend adresse"}, 404)
-        return super().do_POST()
-
-
-def ekstern(base):
-    """Funksjon casteren kallar når ein førespurnad på 2101 byrjar med /api/."""
-    h = type("HE", (Ekstern,), {"base": base})
-
-    def serve(sock, client_address, prefix):
-        h(sock, client_address, None, prefix)
-    return serve
-
 
 def _safe(x):
     return "".join(c for c in str(x or "") if c.isalnum() or c in "-_.")[:64]

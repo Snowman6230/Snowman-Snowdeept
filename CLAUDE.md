@@ -10,8 +10,13 @@
 - Proprietær kode – sjå LICENSE. Ikkje legg til tredjepartskode utan å sjekke lisensen.
 - Test med simulert GNSS før push: `simuler-leica.py` (og `--terreng` + `testterreng.py` for snødjupne mot fasit).
 - Spesifikasjon for terreng: `docs/TERRAIN-ENGINE.md`.
-- SNOWMAN Base: `base/v1.0/` (eiga versjonsmappe, same reglar). Endringar i casteren eller API-et skal testast med
-  `cd base/v1.0 && python -m unittest discover -s test` – testen brukar NTRIP-klienten i `pc/v1.6`. Brot i API-et gir
-  ny API-versjon; oppdater `SNOWMAN_MIN` i `base/v1.0/konfig.py` når SNOWMAN snødjupne må oppdaterast.
-- SNOWMAN snødjupne skal fungere fullt ut utan SNOWMAN Base. Base er ei valfri tilknyting (NTRIP-caster, anleggsdata,
-  deling). Det som kjem frå Base, blir lagra lokalt i maskina. Sjå VEGEN-VIDARE kap. 19.
+- SNOWMAN Base: `base/v1.0/` (eiga versjonsmappe, same reglar). **Berre satellittar og NTRIP** (avgjerd 2026-11-22) –
+  ikkje legg andre funksjonar inn i Base. Endringar i casteren skal testast med
+  `cd base/v1.0 && python -m unittest discover -s test` – testen brukar NTRIP-klienten i `pc/v1.6`.
+- SNOWMAN Kontor: `kontor/v1.0/` (eiga versjonsmappe, same reglar). Kontorsida, anleggspakke, forslag, maskinoversikt,
+  deling og AI. Køyrer på ein Windows-PC på anlegget (port 8790, berre lokalt nett). Test:
+  `cd kontor/v1.0 && python -m unittest discover -s test` og `cd pc/v1.6 && python3 test/testkontorkopling.py`.
+  Brot i API-et gir ny API-versjon; oppdater `SNOWMAN_MIN` i `kontor/v1.0/konfig.py` når SNOWMAN snødjupne må oppdaterast.
+- SNOWMAN snødjupne skal fungere fullt ut utan SNOWMAN Base og SNOWMAN Kontor. Begge er valfrie tilknytingar
+  (Base: korreksjonar; Kontor: anleggsdata og deling). Det som kjem frå Kontor, blir lagra lokalt i maskina.
+  Sjå VEGEN-VIDARE kap. 19.

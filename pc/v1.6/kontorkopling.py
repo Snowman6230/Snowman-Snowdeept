@@ -1,20 +1,25 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Kopling til SNOWMAN Base – anleggspakke frå kontoret (v1.6.136, VEGEN-VIDARE kap. 16 steg 2).
+"""Kopling til SNOWMAN Kontor – anleggspakke frå kontoret (v1.6.136, v1.6.137: Kontor i staden for Base).
 
-Valfri: SNOWMAN snødjupne fungerer fullt ut utan Base (kap. 19). Når koplinga er på:
-- «Hent frå Base» hentar den aktive anleggspakka (trasear, forbodne område, hindringar, kontrollpunkt) gjennom
-  maskin-API-et i Base (port 2101, same innlogging som NTRIP – Base 1.3.0 eller nyare).
-- Pakka blir kontrollert (manifest, sha256, innhald) og lagra lokalt i data/anleggspakke/. Er Base borte, gjeld siste
-  pakke. Det som var i maskina før, blir teke vare på i data/anleggspakke/forrige/.
+Avgjerd 2026-11-22: SNOWMAN Base (Pi ved antenna) har berre med korreksjonane (NTRIP) å gjere. Anleggsdata kjem frå
+SNOWMAN Kontor, eit eige program på ein PC på anlegget (port 8790). Maskina når Kontor når ho er på nettet på
+anlegget (wifi i garasjen) – Kontor er aldri ope mot internett.
+
+Valfri: SNOWMAN snødjupne fungerer fullt ut utan Kontor (kap. 19). Når koplinga er på:
+- «Hent frå Kontor» hentar den aktive anleggspakka (trasear, forbodne område, hindringar, kontrollpunkt).
+- Pakka blir kontrollert (manifest, sha256, innhald) og lagra lokalt i data/anleggspakke/. Er Kontor borte (PC-en
+  av, eller maskina ute i bakken), gjeld siste pakke. Det som var i maskina før, blir teke vare på i
+  data/anleggspakke/forrige/.
 - Trasear, forbodne område og kontrollpunkt er då styrte frå kontoret. Føraren kan berre sende forslag.
   Ei ny hindring blir lagd inn lokalt med éin gong (varsel med det same) og sendt til kontoret som forslag
   (avgjerd 1, 2026-11-20). Forslag som ikkje kom fram, ligg i kø og blir sende ved neste henting.
 - Terreng blir ikkje sendt i formatversjon 1 (avgjerd 2).
 
-SNOWMAN sender aldri noko til GNSS-mottakaren – dette er berre nettverk mellom maskina og Base.
+SNOWMAN sender aldri noko til GNSS-mottakaren – dette er berre nettverk mellom maskina og Kontor.
 """
 import base64
 import hashlib
+import http.client
 import io
 import json
 import shutil
@@ -32,6 +37,7 @@ FORMATVERSJON = 1
 KJENDE = {"trasear.json": "trasear", "objekt.json": "objekt", "kontrollpunkt.json": "points"}
 MAKS_PAKKE = 200 * 1024 * 1024        # utan terreng er pakka berre nokre MB
 TIMEOUT = 20
+PORT = 8790                           # standardporten til SNOWMAN Kontor
 
 
 class Feil(Exception):
@@ -57,7 +63,7 @@ def les_pakke(data):
     with z:
         namn = {i.filename: i for i in z.infolist() if not i.is_dir()}
         if "manifest.json" not in namn:
-            raise Feil("Anleggspakka manglar manifest.json (krev SNOWMAN Base 1.3.0 eller nyare).")
+            raise Feil("Anleggspakka manglar manifest.json.")
         try:
             m = json.loads(z.read("manifest.json").decode("utf-8"))
         except ValueError:
@@ -88,7 +94,7 @@ def les_pakke(data):
         return m, innhald
 
 
-class BaseKopling:
+class KontorKopling:
     def __init__(self, data_dir, version, log=None):
         self.dir = Path(data_dir) / "anleggspakke"
         self.version = version
@@ -117,7 +123,7 @@ class BaseKopling:
 
     @staticmethod
     def _machine_id(path):
-        """Fast ID for maskina mot Base (hjarteslag og forslag). Laga éin gong og lagra i data/maskin-id.txt."""
+        """Fast ID for maskina mot Kontor (hjarteslag og forslag). Laga éin gong og lagra i data/maskin-id.txt."""
         try:
             v = path.read_text("utf-8").strip()
             if v:
@@ -136,29 +142,32 @@ class BaseKopling:
     # ---------- oppsett ----------
     @staticmethod
     def target(cfg):
-        """(vert, port, brukar, passord) – tomme felt = same som NTRIP-oppsettet."""
-        host = (cfg.get("base_host") or cfg.get("caster") or "").strip()
-        port = int(cfg.get("base_port") or cfg.get("caster_port") or 2101)
-        user = cfg.get("base_user") or cfg.get("username") or ""
-        pw = cfg.get("base_pass") or cfg.get("password") or ""
-        return host, port, user, pw
+        """(vert, port, brukar, passord) for SNOWMAN Kontor."""
+        host = str(cfg.get("kontor_host") or "").strip()
+        for pre in ("http://", "https://"):
+            if host.lower().startswith(pre):
+                host = host[len(pre):]
+        host = host.rstrip("/")
+        port = int(cfg.get("kontor_port") or PORT)
+        if ":" in host and host.rsplit(":", 1)[1].isdigit():
+            host, port = host.rsplit(":", 1)[0], int(host.rsplit(":", 1)[1])
+        return host, port, cfg.get("kontor_user") or "", cfg.get("kontor_pass") or ""
 
     def styrt(self, cfg):
         """Er trasear, forbodne område og kontrollpunkt styrte frå kontoret no?"""
-        return bool(cfg.get("base_on") and self.aktiv)
+        return bool(cfg.get("kontor_on") and self.aktiv)
 
     def status(self, cfg):
         host, port, user, _ = self.target(cfg)
-        return {"on": bool(cfg.get("base_on")), "styrt": self.styrt(cfg), "adresse": f"{host}:{port}" if host else "",
-                "brukar": user, "eigen_adresse": bool(cfg.get("base_host")), "eiga_innlogging": bool(cfg.get("base_user")),
-                "aktiv": self.aktiv, "sist": dict(self.sist), "ko": len(self.ko), "maskin_id": self.mid,
-                "maskinnamn": cfg.get("base_maskinnamn") or ""}
+        return {"on": bool(cfg.get("kontor_on")), "styrt": self.styrt(cfg), "adresse": f"{host}:{port}" if host else "",
+                "vert": host, "port": port, "brukar": user, "aktiv": self.aktiv, "sist": dict(self.sist),
+                "ko": len(self.ko), "maskin_id": self.mid, "maskinnamn": cfg.get("kontor_maskinnamn") or ""}
 
-    # ---------- HTTP mot Base ----------
+    # ---------- HTTP mot Kontor ----------
     def _req(self, cfg, path, body=None, raw=False, maks=2_000_000):
         host, port, user, pw = self.target(cfg)
         if not host:
-            raise Feil("Adressa til SNOWMAN Base manglar (eller caster i NTRIP-oppsettet).")
+            raise Feil("Adressa til PC-en med SNOWMAN Kontor manglar (Innst. › Trasear › Kopling til SNOWMAN Kontor).")
         url = f"http://{host}:{port}{path}"
         data = json.dumps(body).encode() if body is not None else None
         rq = urllib.request.Request(url, data=data, method="POST" if data is not None else "GET")
@@ -172,26 +181,32 @@ class BaseKopling:
                 b = r.read(maks + 1)
         except urllib.error.HTTPError as e:
             if e.code == 401:
-                raise Feil("Base avviste innlogginga. Sjekk brukarnamn og passord (ein brukar med rolla ntrip).")
+                raise Feil("Kontor avviste innlogginga. Sjekk brukarnamn og passord (ein brukar med rolla maskin i "
+                           "SNOWMAN Kontor › Brukarar).")
             if e.code == 404:
-                raise Feil("Base svarar ikkje på maskin-API-et. Krev SNOWMAN Base 1.3.0 eller nyare.")
-            raise Feil(f"Base svarte med feil {e.code}.")
+                raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Kontor. Er adressa og porten (8790) rett?")
+            raise Feil(f"Kontor svarte med feil {e.code}.")
+        except http.client.HTTPException:
+            raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Kontor – det ser ut som ein NTRIP-caster "
+                       "(SNOWMAN Base). Kontor har eigen port (8790) på PC-en.")
         except (urllib.error.URLError, socket.timeout, OSError) as e:
-            raise Feil(f"Får ikkje kontakt med SNOWMAN Base på {host}:{port} ({getattr(e, 'reason', e)}).")
+            raise Feil(f"Får ikkje kontakt med SNOWMAN Kontor på {host}:{port} ({getattr(e, 'reason', e)}). "
+                       "Er maskina på wifi på anlegget, og står PC-en med Kontor på?")
         if len(b) > maks:
-            raise Feil("Svaret frå Base er for stort.")
+            raise Feil("Svaret frå Kontor er for stort.")
         if raw:
             return b
         try:
             return json.loads(b.decode("utf-8"))
         except ValueError:
-            raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Base. Er det ein vanleg NTRIP-caster?")
+            raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Kontor. Er det SNOWMAN Base eller ein NTRIP-caster? "
+                       "Kontor har eigen port (8790) på PC-en.")
 
     # ---------- henting ----------
     def fetch(self, cfg, apply, force=False):
         """Hentar aktiv anleggspakke. apply(innhald) tek ho i bruk. Returnerer eit svar til skjermen."""
         if not self.lock.acquire(blocking=False):
-            raise Feil("Hentar alt frå Base – vent litt.")
+            raise Feil("Hentar alt frå Kontor – vent litt.")
         try:
             return self._fetch(cfg, apply, force)
         except Feil as e:
@@ -203,7 +218,9 @@ class BaseKopling:
     def _fetch(self, cfg, apply, force):
         info = self._req(cfg, "/api/v1/info")
         if "anleggspakke-format-1" not in (info.get("funksjonar") or []):
-            raise Feil(f"SNOWMAN Base {info.get('versjon', '?')} er for gammal. Oppdater Base til 1.3.0 eller nyare.")
+            if info.get("program") == "SNOWMAN Base" or "ntrip-caster" in (info.get("funksjonar") or []):
+                raise Feil("Adressa går til SNOWMAN Base. Anleggsdata kjem frå SNOWMAN Kontor på PC-en (port 8790).")
+            raise Feil(f"{info.get('program') or 'Programmet'} {info.get('versjon', '?')} kan ikkje sende anleggspakke.")
         sendt = self._send_queue(cfg)
         r = self._req(cfg, "/api/v1/anleggspakke")
         pk = r.get("pakke")
@@ -246,7 +263,7 @@ class BaseKopling:
         if godkjende:
             msg += f" {godkjende} lokal(e) hindring(ar) er no godkjende av kontoret."
         self.sist = {"t": time.time(), "ok": True, "melding": msg}
-        self.log(f"Base: anleggspakke v{self.aktiv['versjon']} teken i bruk ({', '.join(f'{v} {k}' for k, v in tal.items())})")
+        self.log(f"Kontor: anleggspakke v{self.aktiv['versjon']} teken i bruk ({', '.join(f'{v} {k}' for k, v in tal.items())})")
         return {"ok": True, "ny": True, "melding": msg, "aktiv": self.aktiv, "sendt": sendt}
 
     def backup(self, files):
@@ -260,14 +277,14 @@ class BaseKopling:
 
     def _heartbeat(self, cfg):
         try:
-            self._req(cfg, "/api/v1/maskin", {"id": self.mid, "namn": cfg.get("base_maskinnamn") or self.mid,
+            self._req(cfg, "/api/v1/maskin", {"id": self.mid, "namn": cfg.get("kontor_maskinnamn") or self.mid,
                                               "versjon": self.version, "pakke": (self.aktiv or {}).get("versjon")})
         except Feil:
             pass
 
     # ---------- forslag til kontoret ----------
     def forslag(self, cfg, f):
-        """Sender eit forslag (t.d. ny hindring). Kjem det ikkje fram, blir det lagt i kø."""
+        """Sender eit forslag (t.d. ny hindring) til kontoret. Kjem det ikkje fram, blir det lagt i kø."""
         f = dict(f, maskin=self.mid, t=time.strftime("%Y-%m-%d %H:%M"))
         try:
             self._req(cfg, "/api/v1/forslag", f)

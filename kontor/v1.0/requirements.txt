@@ -1,0 +1,1 @@
+# SNOWMAN Kontor treng berre Python 3.10+ (ingen ekstra pakkar).

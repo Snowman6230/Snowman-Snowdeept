@@ -1,14 +1,14 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""AI i SNOWMAN Base – utskiftbar modul (same prinsipp som VEGEN-VIDARE kap. 14).
+"""AI i SNOWMAN Kontor – utskiftbar modul (same prinsipp som VEGEN-VIDARE kap. 14).
 
-Leverandørar (innstillinga «ai.leverandor» i data/base.json, eller kontorsida):
+Leverandørar (innstillinga «ai.leverandor» i data/kontor.json, eller kontorsida):
     av          ingen AI (standard). Reglane i forbetring.py er alltid på.
     ollama      lokal språkmodell (Ollama på same maskin eller NAS) – ingenting forlèt anlegget
-    anthropic   Claude via API – krev eigen API-nøkkel (lagra berre i data/base.json)
+    anthropic   Claude via API – krev eigen API-nøkkel (lagra berre i data/kontor.json)
 
 Personvern: AI får berre eit ANONYMISERT samandrag – ingen namn, ingen IP-adresser, ingen posisjonar, ingen nøklar.
 Kontorsida kan vise nøyaktig kva som blir sendt (forehandsvising) før AI blir slått på.
-AI les og foreslår – han styrer aldri Base, mottakaren eller maskinene.
+AI les og foreslår – han styrer aldri Kontor, Base, mottakaren eller maskinene.
 """
 import json
 import time
@@ -18,16 +18,17 @@ from forbetring import day_summary, CATEGORIES
 from konfig import VERSION, SNOWMAN_MIN
 import nett
 
-SYSTEM = """Du er forbetringsassistenten i SNOWMAN Base (Alpindata), serveren for eit skianlegg som brukar SNOWMAN
-snødjupne: tråkkemaskiner måler snødjupne med RTK-GNSS (RTK rekna i SNOWMAN med RTKLIB) mot ein terrengmodell.
-Base er RTK-base og NTRIP-caster, deler målingar mellom maskinene og sender ut anleggspakka frå kontoret.
+SYSTEM = """Du er forbetringsassistenten i SNOWMAN Kontor (Alpindata), anleggsserveren for eit skianlegg som brukar
+SNOWMAN snødjupne: tråkkemaskiner måler snødjupne med RTK-GNSS (RTK rekna i SNOWMAN med RTKLIB) mot ein
+terrengmodell. SNOWMAN Base (eigen Raspberry Pi) er RTK-base og NTRIP-caster og har berre med korreksjonane å gjere.
+SNOWMAN Kontor (PC på anlegget) sender ut anleggspakka frå kontoret, tek imot forslag og deler målingar.
 
 Svar alltid på nynorsk. Ver konkret og nøktern. Ikkje gjenta forslag som alt står i lista frå reglane.
-Foreslå forbetringar i fire kategoriar: base (programmet SNOWMAN Base), snowman (programmet SNOWMAN snødjupne),
+Foreslå forbetringar i fem kategoriar: base (SNOWMAN Base), kontor (SNOWMAN Kontor), snowman (SNOWMAN snødjupne),
 utstyr (mottakar/antenne) og drift (anlegget). Forbetringar i programma skal vere så konkrete at ein utviklar kan
 lage dei. Grunngje kvart forslag med tal frå samandraget. Finn ikkje på data som ikkje står der."""
 
-ASK_JSON = """Gi svaret som JSON: {"forslag": [{"kategori": "base|snowman|utstyr|drift", "alvor": "høg|middels|låg",
+ASK_JSON = """Gi svaret som JSON: {"forslag": [{"kategori": "base|kontor|snowman|utstyr|drift", "alvor": "høg|middels|låg",
 "tittel": "...", "grunn": "...", "tiltak": "..."}]}. Maks 8 forslag. Berre JSON, ingen anna tekst."""
 
 
@@ -46,11 +47,11 @@ class AI:
         """Anonymisert samandrag: tal og typar – ingen namn, IP, posisjonar eller nøklar."""
         days = self.store.days(14)
         names = ([m["namn"] for m in self.store.machines() if m.get("namn")] + [m["id"] for m in self.store.machines()]
-                 + [u.get("namn", "") for u in self.cfg["brukarar"]])          # også brukarnamn (NTRIP/kontor)
+                 + [u.get("namn", "") for u in self.cfg["brukarar"]])          # også brukarnamn (maskin/kontor)
         rules = [{"kategori": r["kategori"], "alvor": r["alvor"], "tittel": _anon(r["tittel"], names), "status": r["status"],
                   "tal": r["tal"]} for r in self.store.improvements(include_done=True)[:40]]
         wishes = [p["tekst"][:300] for p in self.store.proposals() if p["type"] == "program"][:20]
-        return {"base_versjon": VERSION, "snowman_min": SNOWMAN_MIN, "i_dag": _anon_day(day_summary(base)),
+        return {"kontor_versjon": VERSION, "snowman_min": SNOWMAN_MIN, "i_dag": _anon_day(day_summary(base)),
                 "siste_dagar": [_anon_day(d) for d in days[1:]], "forslag_frå_reglane": rules,
                 "ønske_frå_førarane": wishes}
 
@@ -80,7 +81,7 @@ class AI:
             raise
 
     def ask(self, base, question):
-        """«Spør SNOWMAN Base»: fritt spørsmål med samandraget som bakgrunn."""
+        """«Spør SNOWMAN Kontor»: fritt spørsmål med samandraget som bakgrunn."""
         if not self.enabled():
             raise RuntimeError("AI er av. Vel leverandør på kontorsida.")
         msg = ("Samandrag av drifta (anonymisert):\n" + json.dumps(self.context(base), ensure_ascii=False)
@@ -109,7 +110,7 @@ class AI:
 
 def _post(url, body, headers, timeout):
     req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
-                                 headers={"content-type": "application/json", "user-agent": f"SNOWMAN Base/{VERSION}",
+                                 headers={"content-type": "application/json", "user-agent": f"SNOWMAN Kontor/{VERSION}",
                                           **headers})
     with nett.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
@@ -123,7 +124,7 @@ def _parse(text):
     data = json.loads(text[a:b + 1])
     out = []
     for s in data.get("forslag", [])[:8]:
-        cat = s.get("kategori") if s.get("kategori") in CATEGORIES else "base"
+        cat = s.get("kategori") if s.get("kategori") in CATEGORIES else "kontor"
         lvl = s.get("alvor") if s.get("alvor") in ("høg", "middels", "låg") else "låg"
         title = str(s.get("tittel") or "").strip()[:150]
         if title:

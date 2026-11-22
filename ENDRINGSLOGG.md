@@ -9,6 +9,34 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-22
 
+### SNOWMAN Kontor 1.0.0, SNOWMAN Base 1.4.0 og PC v1.6.137 – Base og Kontor blir to program (VEGEN-VIDARE kap. 16, avgjerd 6)
+- **Avgjerd (eigaren):** SNOWMAN Base på Raspberry Pi-en skal berre ha med satellittar og NTRIP å gjere – «ikkje noko
+  anna som kan rote ting til». Kontordelen blir eit eige program, **SNOWMAN Kontor**, på ein **Windows-PC** på
+  anlegget. Maskinene når Kontor **berre på wifi på anlegget** – ingen open port mot internett for Kontor.
+  **Kvifor:** ei oppdatering av kontordelen starta heile Base på nytt, så maskinene mista korreksjonane. Feil eller
+  store filer i kontordelen kunne ramme casteren. Anlegg som brukar CPOS (utan eigen base) treng òg kontoret.
+- **Nytt program `kontor/v1.0` (SNOWMAN Kontor 1.0.0, port 8790):** kontorsida, anleggspakke (formatversjon 1, flytta
+  frå Base), forslag frå førarane, maskinoversikt med pakkeversjon, deling (API v1, for v1.8), forbetringar og AI.
+  Eigne brukarar: rolla **maskin** (tråkkemaskinene) og **kontor** (administrator). Les statusen til SNOWMAN Base
+  (berre lesing): korreksjonsstraumane på oversikta, og åtvaringane frå Base i forbetringslista. Funn frå reglane som
+  ikkje slår til lenger, blir merkte «gjort» av seg sjølv. Windows: `INSTALLER-WINDOWS.bat` (oppgåve ved oppstart,
+  brannmur 8790 berre privat nett), `START-SNOWMAN-KONTOR.bat`, oppdatering som dei andre programma. Ny nedlasting
+  `SNOWMAN-Kontor.zip`. 13 testar.
+- **SNOWMAN Base 1.4.0:** kontorsida, anleggspakke, forslag, deling, forbetringslager (database) og AI er tekne bort.
+  Maskin-API-et på port 2101 (Base 1.3) er fjerna – casteren svarar berre på NTRIP. Den lokale sida heiter no
+  **oppsettsida** (`/oppsett/`, `/kontor/` blir sendt dit): mountpoints, tilgang/DDNS, brukarar, oppdatering.
+  Statussida viser **åtvaringar** om korreksjonane (reglane, utan database), og `/api/status` har med åtvaringane,
+  dagstal per mountpoint og tilkoplingar i dag, som Kontor les. Gamle innstillingar for deling, anleggspakke og AI
+  blir ignorerte. 44 testar (nye: kontordelen er borte, casteren svarar berre NTRIP, åtvaringar i statusen).
+- **PC v1.6.137:** «Kopling til SNOWMAN Base» heiter no **«Kopling til SNOWMAN Kontor»**, med eiga adresse (IP-adressa
+  til kontor-PC-en), port 8790 og eigen brukar (rolla maskin) – ikkje lenger same som NTRIP. Knappen heiter
+  **HENT FRÅ KONTOR**. Innstillingane frå v1.6.136 (`base_*`) blir gjorde om automatisk. Peikar adressa til Base
+  eller casteren, forklarar SNOWMAN kva som er feil. `basekopling.py` → `kontorkopling.py`,
+  `test/testbasekopling.py` → `test/testkontorkopling.py` (23 kontrollar mot ein ekte SNOWMAN Kontor).
+- Testa saman: Base 1.4 + Kontor 1.0 + SNOWMAN 1.6.137 – Kontor les statusen og åtvaringane frå Base, maskina hentar
+  pakka frå Kontor, melder seg med namn og pakkeversjon, og sender ein lokal hindring som forslag. Skjermbilete av
+  kontorsida, statussida og oppsettsida i Base og Trasear-fana.
+
 ### PC-prototype v1.6.136 – anleggspakke frå kontoret (SNOWMAN Base), VEGEN-VIDARE kap. 16 steg 2
 - **Nytt:** Innst. › Trasear › «Anleggsdata frå kontoret (SNOWMAN Base)». Valfri kopling (av som standard). Tomme felt
   = same adresse, port og innlogging som NTRIP, sidan Base 1.3.0 svarar på maskin-API-et på port 2101.

@@ -150,7 +150,7 @@ class Mountpoint:
         self.clients = {}             # id → Client (sett av casteren)
         self.lock = threading.Lock()
         self.day = {"dato": time.strftime("%Y-%m-%d"), "ok": 0, "tot": 0, "bytte": 0}   # oppetid og byte i dag
-        self.closed = False           # sett når mountpointet blir endra eller sletta frå kontorsida
+        self.closed = False           # sett når mountpointet blir endra eller sletta frå oppsettsida
 
     def start(self):
         for s in self.sources + self.extras:

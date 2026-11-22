@@ -307,7 +307,16 @@ resultatet (GGA, kvalitet 4 = FIX).
 - **v1.7-mappe:** krev at data, `.venv` og autostart blir flytta (SNOWMAN.bat, installer, oppstart.py). Det er eit
   eige steg.
 
-## 16. Kontor og maskin (bestemt av eigaren 2026-10-22, avgjerder 2026-11-20)
+## 16. Kontor og maskin (bestemt av eigaren 2026-10-22, avgjerder 2026-11-20 og 2026-11-22)
+
+**Avgjerd 6 (2026-11-22) – tre program:** SNOWMAN Base på Raspberry Pi-en skal **berre** ha med satellittar og NTRIP
+å gjere («ikkje noko anna som kan rote ting til»). Kontordelen blir eit eige program, **SNOWMAN Kontor**
+(`kontor/v1.0`), på ein **Windows-PC** på anlegget. Maskinene når Kontor **berre på nettet på anlegget** (wifi i
+garasjen) – ingen open port mot internett for Kontor. Grunnar: ei oppdatering av kontordelen starta heile Base på nytt
+(maskinene mista korreksjonane), feil eller store filer i kontordelen kunne ramme casteren, og anlegg med CPOS (utan
+eigen base) treng òg kontoret. *Laga 2026-11-22: Base 1.4.0, Kontor 1.0.0, SNOWMAN 1.6.137.*
+Der det står «Base» om kontordelen, anleggspakka eller maskin-API-et under, gjeld det no SNOWMAN Kontor.
+Avgjerd 4 (maskin-API på port 2101) er erstatta av avgjerd 6.
 
 **Avgjerd:** SNOWMAN skal skilje mellom **kontor** (planlegging og redigering) og **maskin** (førar). Kontoret legg inn
 og plottar detaljar i kart og 3D-modell og sender oppdateringar ut til heile maskinparken. Byggjer vidare på kap. 2
@@ -357,16 +366,17 @@ utan definert innhald, `pc/v1.6` hentar ingenting frå Base, og maskin-API-et fa
 skal opnast mot internett). Trasear og hindringar for Fjellsætra er alt teikna i maskina.
 
 **Rekkjefølgje (avgjerd):**
-1. **Format for anleggspakka** – formatversjon 1, same filer som maskina alt har (`base/v1.0/anleggspakke.py`):
+1. **Format for anleggspakka** – formatversjon 1, same filer som maskina alt har (`kontor/v1.0/anleggspakke.py`):
    `manifest.json` + `trasear.json`, `objekt.json`, `kontrollpunkt.json`; `terreng/` har plass i formatet.
-   *Laga i Base v1.3.0.*
+   *Laga i Base v1.3.0, flytta til Kontor 1.0.0.*
 2. **Maskina tek imot:** valfri bolk «Kopling til SNOWMAN Base» (av som standard), knappen «Hent frå Base»
    først, automatisk henting seinare. Lagrar lokalt; siste pakke gjeld om Base er borte.
-   *Laga i PC v1.6.136 (2026-11-22, `pc/v1.6/basekopling.py`):* Innst. › Trasear › «Anleggsdata frå kontoret».
+   *Laga i PC v1.6.136 (2026-11-22), mot Kontor i v1.6.137 (`pc/v1.6/kontorkopling.py`):* Innst. › Trasear ›
+   «Kopling til SNOWMAN Kontor», knappen «Hent frå Kontor».
    Står att: automatisk henting, administrator-PIN på av-brytaren (kap. 10 finst ikkje enno), fingeravtrykk av
    terrenget i hjarteslaget (avgjerd 2), og at kontoret ser lokale hindringar på kartet før dei er godkjende.
-3. **Kartfane på kontoret i 2D (Base):** «Hent frå maskin» (første versjon frå det som alt er teikna), redigere,
-   «Publiser» (Base lagar pakka sjølv), forslag frå maskinene på kartet.
+3. **Kartfane på kontoret i 2D (SNOWMAN Kontor):** «Hent frå maskin» (første versjon frå det som alt er teikna),
+   redigere, «Publiser» (Kontor lagar pakka sjølv), forslag frå maskinene på kartet.
 4. **Innstillingar til maskinene** (sjå avgjerd 3 under).
 5. **3D-redigering og import** – v1.9 som før.
 
@@ -400,12 +410,12 @@ kontordelen av Base.
 - Maskina tek vare på førre innstillingar og kan gå tilbake med eitt trykk. Passord blir aldri viste på kontorsida.
 - Før NTRIP-passord blir sende som innstillingar (eller seinast før sal): HTTPS mellom maskin og Base.
 
-**Avgjerd 4 – maskinene når Base gjennom port 2101:** maskindelen av API-et (anleggspakke, deling, forslag) svarar
+**Avgjerd 4 – maskinene når Base gjennom port 2101 (erstatta av avgjerd 6, 2026-11-22 – fjerna i Base 1.4):** maskindelen av API-et (anleggspakke, deling, forslag) svarar
 òg på casterporten, så ruteren berre treng port 2101 open – same namn og port for korreksjonar og anleggsdata, som
 Norman sin base (`gpsbase.dyndns.org:2101`). Kontoret er aldri tilgjengeleg på 2101. *Laga i Base v1.3.0.*
 DuckDNS og port 2101 i ruteren er **ikkje** sette opp på Fjellsætra enno (2026-11-20).
 
-**Avgjerd 5 – Base på eiga eining:** Base på ein **Raspberry Pi 5 ved antenna** (med SSD og UPS), som berre køyrer
+**Avgjerd 5 – Base på eiga eining:** Base på ein **Raspberry Pi ved antenna** (Pi 4 bestilt 21.11), som berre køyrer
 Base som systemteneste. Det er straum og nettverk der antenna skal stå. Ikkje på ein PC som blir brukt til anna.
 For sal (v2.0): ferdig «Base-boks» frå Alpindata, med ein Alpindata-server på nett som val for anlegg utan
 offentleg IP (Pi ved antenna lastar opp dit).
@@ -503,11 +513,16 @@ miste»). Rolla ntrip (maskinene – same innlogging for NTRIP og API) og kontor
 tilgang som Norman sin base (DDNS + port 2101); Base held det faste namnet oppdatert (fana «Tilgang»).
 
 **Base v1.3.0 (2026-11-20, kap. 16):** maskin-API-et på casterporten (2101) og format for anleggspakka
-(formatversjon 1, kontrollert ved opplasting). Base skal stå på Raspberry Pi 5 ved antenna.
+(formatversjon 1, kontrollert ved opplasting). Base skal stå på Raspberry Pi ved antenna.
+
+**Base v1.4.0 (2026-11-22, kap. 16 avgjerd 6): berre satellittar og NTRIP.** Kontorsida, anleggspakke, forslag,
+deling, forbetringslager og AI er flytta til SNOWMAN Kontor (`kontor/v1.0`). Maskin-API-et på 2101 er fjerna. Base har
+ei lita oppsettside (`/oppsett/`: mountpoints, tilgang, brukarar, oppdatering) og viser åtvaringane om korreksjonane
+på statussida. Kontor les statusen (berre lesing).
 
 **Står att (neste steg):**
-1. SNOWMAN snødjupne: klient mot API v1 – anleggspakke laga i v1.6.136 (kap. 16), deling i v1.8.
-2. Kontordelen: kartfane i 2D med «Hent frå maskin» og «Publiser», så 3D i v1.9 (kap. 16).
+1. SNOWMAN snødjupne mot SNOWMAN Kontor: anleggspakke laga (v1.6.137), deling i v1.8.
+2. SNOWMAN Kontor: kartfane i 2D med «Hent frå maskin» og «Publiser», så 3D i v1.9 (kap. 16).
    Inkluderer utsending av innstillingar til maskinene, felles og per maskin (eigaren 2026-10-29). API v1 har i dag
    éi anleggspakke for heile flåten; innstillingar per maskin krev eit tillegg i API-et (t.d. `GET /api/v1/innstillingar`
    med maskin-ID frå hjarteslaget).
@@ -644,7 +659,9 @@ Ingen endringar før eigaren seier frå. Ikkje plassert i vegplanen.
 |---|---|
 | **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
 | **v1.7** | Anleggspakke med versjonsnummer (kap. 16), fleire terrengfiler på ein gong (LAS/LAZ/XYZ kom i v1.6.95), trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
-| **Base v1.3** | Maskin-API på port 2101 og format for anleggspakka (kap. 16, 2026-11-20). Neste i Base: kartfane i 2D på kontoret. |
+| **Kontor v1.0** | SNOWMAN Kontor – kontorsida og anleggsserveren på ein Windows-PC (kap. 16, avgjerd 6, 2026-11-22). Neste: kartfane i 2D. |
+| **Base v1.4** | Berre satellittar og NTRIP – kontordelen flytta til SNOWMAN Kontor (2026-11-22). |
+| **Base v1.3** | Maskin-API på port 2101 og format for anleggspakka (kap. 16, 2026-11-20). |
 | **Base v1.0** | SNOWMAN Base (kap. 18): eigen base, NTRIP-caster med reserve, API for deling og anleggspakke, kontorside, forbetringar med AI. Laga 2026-10-29. |
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). Kontor publiserer, maskiner sender forslag, enkel kontorside i 2D (kap. 16). Lisensplassar på serveren (kap. 17). |
 | **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin (kap. 17), full kontordel med 3D-redigering og import (kap. 16), driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
