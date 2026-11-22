@@ -585,7 +585,7 @@ class TerrainLibrary:
                 vdir = self.root / lid / "versjonar" / time.strftime("%Y%m%d-%H%M%S")
                 vdir.mkdir(parents=True, exist_ok=True)
                 self.grids.pop(lid, None)
-                for f in ("grid.npy", "meta.json"):
+                for f in ("grid.npy", "meta.json", "grid_orig.npy"):
                     if (self.root / lid / f).exists():
                         shutil.move(str(self.root / lid / f), str(vdir / f))
                 priority, versions = old["priority"], old.get("versions", []) + [vdir.name]
@@ -618,6 +618,59 @@ class TerrainLibrary:
             for k in ("name", "active", "priority", "source"):
                 if k in kw and kw[k] is not None:
                     m[k] = kw[k]
+            self._save_meta(lid)
+            return m
+
+    # --- fjern tre og bygg (v1.6.134) ---
+    def _swap_grid(self, lid, src):
+        """Byt grid.npy med fila src. Det minnekartlagde rutenettet må lukkast først (Windows låser opne filer)."""
+        import gc
+        self.grids.pop(lid, None)
+        gc.collect()
+        dst = self.root / lid / "grid.npy"
+        for i in range(20):
+            try:
+                os.replace(src, dst)
+                return
+            except PermissionError:
+                gc.collect()
+                time.sleep(0.25)
+        raise RuntimeError("Fila til terrenglaget er i bruk – prøv igjen om litt.")
+
+    def degrove(self, lid):
+        """Fjern tre og bygg frå laget (punktsky utan klassar). Originalen blir teken vare på som grid_orig.npy."""
+        import punktsky as PS
+        with self.lock:
+            m = self.layers[lid]
+            d = self.root / lid
+            orig = d / "grid_orig.npy"
+            src = orig if orig.exists() else d / "grid.npy"
+            g = np.array(np.load(src, mmap_mode="r"), dtype=np.float32)
+        out, frac = PS.ground_filter(g, abs(float(m.get("dx") or m["res"])))
+        diff = np.abs(out - g)
+        with self.lock:
+            if not orig.exists():
+                shutil.copy2(d / "grid.npy", orig)
+            tmp = d / "grid_ny.npy"
+            np.save(tmp, out)
+            self._swap_grid(lid, tmp)
+            m["degrove"] = {"t": time.strftime("%Y-%m-%d %H:%M"), "frac": round(frac * 100, 1),
+                            "maxdiff": round(float(np.nanmax(diff)) if np.isfinite(diff).any() else 0.0, 1)}
+            m["hmin"], m["hmax"] = float(np.nanmin(out)), float(np.nanmax(out))
+            self._save_meta(lid)
+            return m
+
+    def degrove_undo(self, lid):
+        with self.lock:
+            m = self.layers[lid]
+            d = self.root / lid
+            orig = d / "grid_orig.npy"
+            if not orig.exists():
+                raise ValueError("Laget har ingen original å gå tilbake til.")
+            self._swap_grid(lid, orig)
+            g = self._grid(lid)
+            m.pop("degrove", None)
+            m["hmin"], m["hmax"] = float(np.nanmin(g)), float(np.nanmax(g))
             self._save_meta(lid)
             return m
 

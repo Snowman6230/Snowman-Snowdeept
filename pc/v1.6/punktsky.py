@@ -476,6 +476,154 @@ def fill_holes(g, rounds=3):
 
 
 # ---------------------------------------------------------------------------------------------
+# Fjern tre og bygg (v1.6.134)
+# ---------------------------------------------------------------------------------------------
+# Punktsky utan klassar (t.d. .pxy for Sykkylven Skisenter) gir terrengmodell med tretoppar som «piggar» i 3D.
+# Forenkla progressiv morfologisk filtrering (Zhang mfl. 2003): for stadig større vindauge blir flata «opna»
+# (minimum, så maksimum). Ruter som stikk meir enn ei terskel over den opna flata, er tre/bygg og får høgda frå den
+# opna flata (bakken rundt). Plane og jamt krumme skråningar blir ikkje endra – opning bevarer plan.
+
+def _shift_min(a, k, axis, fn):
+    """Glidande min/maks over k ruter langs ein akse (sentrert), med dobling: log2(k) operasjonar."""
+    if k <= 1:
+        return a
+    pad = np.inf if fn is np.minimum else -np.inf
+    n = a.shape[axis]
+    r = a
+    span = 1
+
+    def sh(x, d):
+        out = np.full_like(x, pad)
+        if d >= n:
+            return out
+        if axis == 0:
+            out[:n - d] = x[d:]
+        else:
+            out[:, :n - d] = x[:, d:]
+        return out
+    while span * 2 <= k:
+        r = fn(r, sh(r, span))
+        span *= 2
+    r = fn(r, sh(r, k - span))          # r[i] = fn over a[i … i+k-1]
+    c = k // 2                          # sentrer
+    out = np.full_like(r, pad)
+    if axis == 0:
+        out[c:] = r[:n - c]
+    else:
+        out[:, c:] = r[:, :n - c]
+    return out
+
+
+def _erode(g, k):
+    return _shift_min(_shift_min(g, k, 0, np.minimum), k, 1, np.minimum)
+
+
+def _dilate(g, k):
+    return _shift_min(_shift_min(g, k, 0, np.maximum), k, 1, np.maximum)
+
+
+def push_pull_fill(g):
+    """Fyll alle NaN med glatt interpolasjon (pyramide: snitt ned, interpolert opp). Rask, O(n)."""
+    g = np.asarray(g, dtype=np.float32)
+    valid = np.isfinite(g)
+    if valid.all() or not valid.any():
+        return g.copy()
+    w = valid.astype(np.float32)
+    v = np.where(valid, g, 0).astype(np.float32)
+    levels = []
+    while True:
+        levels.append((v, w))
+        if min(v.shape) <= 2:
+            break
+        h, wd = v.shape
+        H, W = (h + 1) // 2, (wd + 1) // 2
+        pv = np.zeros((H * 2, W * 2), np.float32); pw = np.zeros_like(pv)
+        pv[:h, :wd] = v; pw[:h, :wd] = w
+        v = pv.reshape(H, 2, W, 2).sum((1, 3))
+        w = pw.reshape(H, 2, W, 2).sum((1, 3))
+    v, w = levels[-1]
+    est = np.where(w > 0, v / np.maximum(w, 1e-9), np.nan)
+    est = np.where(np.isfinite(est), est, np.nanmean(est) if np.isfinite(est).any() else 0).astype(np.float32)
+    for v, w in reversed(levels[:-1]):
+        h, wd = v.shape
+        up = np.repeat(np.repeat(est, 2, 0), 2, 1)[:h, :wd]
+        own = np.where(w > 0, v / np.maximum(w, 1e-9), 0)
+        a_ = np.minimum(w, 1.0)
+        est = (a_ * own + (1 - a_) * up).astype(np.float32)
+    # glatt litt berre i dei fylte rutene (fjernar blokk-kantar frå oppsamplinga)
+    out = est
+    for _ in range(4):
+        p = np.pad(out, 1, mode="edge")
+        sm = sum(p[1 + dr:1 + dr + g.shape[0], 1 + dc:1 + dc + g.shape[1]]
+                 for dr in (-1, 0, 1) for dc in (-1, 0, 1)) / 9.0
+        out = np.where(valid, g, sm).astype(np.float32)
+    return out
+
+
+def _pad_odd(a, n):
+    """Spegling rundt kanten med fortsett helling (2·kant − spegel): eit plan held fram som plan."""
+    n0 = min(n, a.shape[0] - 1); n1 = min(n, a.shape[1] - 1)
+    p = np.pad(a, ((n0, n0), (n1, n1)), mode="reflect", reflect_type="odd")
+    return p, n0, n1
+
+
+def _morph_pass(g, valid, surf, res, max_window, dh0, slope, dh_max):
+    nonground = np.zeros(g.shape, bool)
+    w = 2.0
+    op = surf
+    while True:
+        k = max(3, int(round(w / res)) | 1)
+        p, n0, n1 = _pad_odd(surf, k)
+        op = _dilate(_erode(p, k), k)[n0:n0 + g.shape[0], n1:n1 + g.shape[1]]
+        dh = min(dh_max, dh0 + slope * w)
+        ng = (surf - op) > dh
+        nonground |= ng & valid
+        surf = np.where(ng, op, surf).astype(np.float32)   # neste vindauge ser bakken, ikkje treet
+        if w >= max_window:
+            break
+        w = min(max_window, w * 2)
+    return nonground, surf, op
+
+
+def ground_filter(g, res, max_window=24.0, dh0=0.4, slope=0.25, dh_max=2.5, flank=0.3, flank_m=8.0):
+    """Fjern tre/bygg frå eit rutenett. Returnerer (ny_g, del_fjerna).
+
+    g = rutenett (NaN = inga data), res = rutestorleik i meter.
+    1) Progressiv opning med vindauge 2 → max_window m: ei rute er «ikkje bakke» når ho ligg meir enn
+       dh = dh0 + slope·vindauge (maks dh_max) over den opna flata (Zhang mfl. 2003). Plan og jamt krumme
+       skråningar blir ikkje endra; ryggar er verna av slope-leddet.
+    2) Kronekanten: ruter inntil eit funne tre som ligg meir enn «flank» m over den opna flata, høyrer òg til treet
+       (veks ut inntil flank_m meter). Ryggar utan tre blir aldri tekne her.
+    3) Bakken under: opna flate + avviket mellom bakke og opna flate interpolert frå bakkerutene rundt.
+    To rundar: runde 2 fyller område utan data frå bakken funnen i runde 1, så tre langs kanten òg blir tekne."""
+    g = np.asarray(g, dtype=np.float32)
+    valid = np.isfinite(g)
+    if valid.sum() < 9:
+        return g.copy(), 0.0
+    surf = push_pull_fill(g)                    # hol og kantar får ikkje lage falske «toppar»
+    ng1, _, _ = _morph_pass(g, valid, surf, res, max_window, dh0, slope, dh_max)
+    seed = np.where(valid & ~ng1, g, np.nan).astype(np.float32)
+    surf = push_pull_fill(seed)
+    surf[valid] = g[valid]
+    nonground, surf, op = _morph_pass(g, valid, surf, res, max_window, dh0, slope, dh_max)
+    nonground |= ng1
+    above = valid & ((g - op) > flank)
+    for _ in range(max(1, int(round(flank_m / res)))):
+        nxt = nonground | ((_dilate(nonground.astype(np.float32), 3) > 0) & above)
+        if (nxt == nonground).all():
+            break
+        nonground = nxt
+    nonground = ((_dilate(nonground.astype(np.float32), 3) > 0) & valid)  # éi rute ekstra rundt
+    resid = np.where(valid & ~nonground, g - op, np.nan).astype(np.float32)
+    out = g.copy()
+    if np.isfinite(resid).any():
+        rfill = push_pull_fill(resid)
+        out[nonground] = np.minimum(g[nonground], op[nonground] + rfill[nonground])
+    out[~valid] = np.nan
+    return out.astype(np.float32), float(nonground.sum() / max(valid.sum(), 1))
+
+
+# ---------------------------------------------------------------------------------------------
 # Analyse
 # ---------------------------------------------------------------------------------------------
 def analyse_pointcloud(path, filename, hint=None, utm_inverse=None, crs_name=None, progress=None):

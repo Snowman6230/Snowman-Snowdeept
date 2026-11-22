@@ -7,6 +7,27 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-11-22
+
+### PC-prototype v1.6.134 – «FJERN TRE»: jamn ut tre og bygg i terrengmodellen
+- **Bakgrunn:** 3D-biletet frå laget «Sykkylven Skisenter» (.pxy, 119 mill. punkt) hadde mange piggar. Fila har ingen
+  klassar (bakke/vegetasjon/bygg), så SNOWMAN brukar snittet av alle punkt i kvar rute på 0,5 m – då kjem trekroner
+  og tak med i terrenget.
+- **Nytt:** knappen **FJERN TRE** per lag i Terrengbiblioteket. Han verkar på laget som alt er importert – ingen ny
+  import av 9,2 GB. Laget blir merkt «🌲 Tre og bygg fjerna …», og knappen blir til **ANGRE JAMNING**. Originalen blir
+  teken vare på (`grid_orig.npy`), og fylgjer med til eldre versjonar ved ERSTATT. Køyrt på nytt går filteret alltid
+  frå originalen. 3D hentar terrenget på nytt med éin gong. Endringa blir logga (del av rutene, største endring, tid).
+- **Korleis:** forenkla progressiv morfologisk filtrering (Zhang mfl. 2003) i rein numpy: flata blir «opna» (minimum,
+  så maksimum) med vindauge 2 → 24 m. Ruter som stikk meir enn 0,4 m + 0,25 · vindauge (maks 2,5 m) over den opna
+  flata, er tre/bygg. Kronekanten blir teken med når ho ligg meir enn 0,3 m over (inntil 8 m ut). Bakken under blir
+  den opna flata pluss avviket frå bakkerutene rundt, så skråninga held fram rett under treet. To rundar, så tre langs
+  kanten av dekninga òg blir tekne. Ruter utan data blir aldri fylte.
+- **Test:** `test/testtre.py` (syntetisk 35 % skråning med bølger, knaus på 4 m, hus og 400 tre): snittfeil 0,21 m →
+  0,012 m, ruter med feil over 1 m 4,7 % → 0,03 %. Knaus, bølger og bratt plan (60 %) blir ikkje endra. 2385 × 2379
+  ruter tek om lag 2 s og 0,4 GB minne.
+- **Avgrensing:** smale, bratte ting (t.d. ein hoppkant på 1,5 m og 4 m brei) kan ikkje skiljast frå ei hekk og kan bli
+  jamna ut. Store tette skogsområde breiare enn om lag 24 m blir ikkje tekne. Importen er uendra.
+
 ## 2026-11-20
 
 ### SNOWMAN Base v1.3.0 – maskin-API på port 2101 og format for anleggspakka («SNOWMAN Kontor», VEGEN-VIDARE kap. 16)

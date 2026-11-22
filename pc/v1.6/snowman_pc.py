@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.133"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.134"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1310,7 +1310,7 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"errors":[str(e)],"warnings":[],"info":{}}).encode())
             return
-        if self.path in ("/api/terrain/import","/api/terrain/update","/api/terrain/delete","/api/calibration"):
+        if self.path in ("/api/terrain/import","/api/terrain/update","/api/terrain/delete","/api/calibration","/api/terrain/degrove"):
             try:
                 d=json.loads(body or b"{}")
                 if self.path=="/api/calibration":
@@ -1333,6 +1333,16 @@ class API(http.server.BaseHTTPRequestHandler):
                         old=TERR.layers.get(d["id"],{}).get("name")
                         if old!=nm: LOG.event(f"Terrenglag fekk nytt namn: «{old}» → «{nm}»")
                     r={"ok":True,"layer":TERR.update(d["id"],name=nm,active=d.get("active"),priority=d.get("priority"))}
+                elif self.path=="/api/terrain/degrove":   # v1.6.134: fjern tre og bygg (eller angre)
+                    nm=TERR.layers.get(d["id"],{}).get("name")
+                    if d.get("undo"):
+                        r={"ok":True,"layer":TERR.degrove_undo(d["id"])}
+                        LOG.event(f"Terrenglag «{nm}»: tre/bygg-filter angra – originalen er tilbake")
+                    else:
+                        t0=time.time(); m=TERR.degrove(d["id"]); dg=m["degrove"]
+                        LOG.event(f"Terrenglag «{nm}»: tre og bygg fjerna – {dg['frac']} % av rutene endra, "
+                                  f"største endring {dg['maxdiff']} m ({time.time()-t0:.1f} s)")
+                        r={"ok":True,"layer":m}
                 else:
                     TERR.delete(d["id"]); r={"ok":True}
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
