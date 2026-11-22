@@ -601,6 +601,43 @@ tekstar.
   språk kan lesast og analyserast likt.
 - **Ventar:** ingen endringar no. Plasserast i vegplanen seinare (truleg før v2.0, første salsversjon).
 
+## 21. Ortofoto (flybilete) som lag i kart, 3D og Frontrute (analyse 2026-11-22, ventar)
+
+Eigaren har eit ortofoto frå same droneflyging som terrengmodellen «Sykkylven Skisenter» (.pxy) og høgdekurvene
+«Fjellseter terreng 0,25 Kootelinjer.dxf» (same omriss, 1192 × 1189 m). Ønske: ortofotoet som eit lag som kan slåast
+av og på, og strekt over 3D-terrenget.
+
+**Analyse:**
+- **Kart (2D):** enkelt. Leaflet legg biletet over Kartverket-bakgrunnen med PÅ/AV og gjennomsikt. Snødjupnefargar og
+  spor ligg oppå.
+- **3D og Frontrute:** mogleg. Alt på 3D-flata er éin tekstur som ligg over terrengnettet (høgdekurver, snødjupne,
+  spor, trasear – sjå kap. 8 og v1.6.133). Ortofotoet blir teikna inn som botnlag i teksturen og følgjer då terrenget
+  av seg sjølv. Detaljnivået blir avgrensa av teksturen: 4 px/m for heile utsnittet, 12–16 px/m nær maskina (godt nok
+  for stiar, steinar og tre). Kap. 8 testa allereie kartfliser drapert på 3D-terrenget, så dette byggjer vidare på det.
+- **Krav til fila:** biletet må ha koordinatar. Skjermbiletet (JPG, ca. 960 × 820 px, ca. 1,5 m/px, utan koordinatar)
+  kan ikkje brukast. Brukbart: **GeoTIFF** (best – SNOWMAN les alt GeoTIFF for terreng) eller **JPG/PNG med world-fil**
+  (.jgw/.pgw), helst med .prj. **Ikkje** ECW, JPEG 2000 eller MrSID (krev GDAL) – be om GeoTIFF i staden.
+- **Storleik:** 3–5 cm over 1,2 × 1,2 km = 500–1000 megapikslar – for stort for førarskjermen. Ved import lagar SNOWMAN
+  kartfliser i fleire detaljnivå og lagrar dei lokalt: fungerer utan nett, raskt å vise, 3D hentar berre utsnittet
+  rundt maskina. Ingen nye bibliotek: tifffile og imagecodecs les GeoTIFF og lagar JPEG-fliser.
+- **Nytte utover utsjånaden:** sjå skogbelta når ein teiknar JAMN UT HEILT, VERN og trasear (v1.6.135); føraren
+  kjenner att stiar, bekkar, steinar og bygg under snøen; kontroll av terrengmodellen (ein «haug» i 3D der fotoet viser
+  eit tre = treet er ikkje fjerna).
+- **Observasjon:** ortofotoet viser at .pxy-fila truleg er rekna ut frå flybileta (fotogrammetri), ikkje LiDAR. Då
+  finst det ingen bakkepunkt under tett skog, og «FJERN TRE» må gjette der.
+
+**Forslag til løysing:**
+1. Terrengbiblioteket: ny lagtype «Ortofoto (flybilete)». Les GeoTIFF eller world-fil, lagar fliser med framdrift
+   (som .pxy-importen).
+2. Kart: eige val under **Bakgrunn**, med PÅ/AV og gjennomsikt.
+3. 3D og Frontrute: ortofotoet som botnlag i terrengteksturen, med PÅ/AV. Høgdekurvene blir tynnare når det er på
+   (jf. det opne spørsmålet i kap. 8).
+4. Valfritt: biletet blir automatisk dempa eller vist i gråtonar når snødjupna er vist, så sumarfargane ikkje gjer
+   snøfargane vanskelege å lese.
+
+**Ventar:** eigaren sjekkar kva filer dronefirmaet leverte (.tif eller .jgw ved sida av biletet), storleik og filnamn.
+Ingen endringar før eigaren seier frå. Ikkje plassert i vegplanen.
+
 ## Vegplan (bestemt av eigaren 2026-10-06)
 
 | Versjon | Innhald |
@@ -612,7 +649,7 @@ tekstar.
 | **v1.8** | Deling mellom maskiner (snødjupne siste 12 t, felles preparert areal) og utsending av anleggsdata frå server (kap. 6). Kontor publiserer, maskiner sender forslag, enkel kontorside i 2D (kap. 16). Lisensplassar på serveren (kap. 17). |
 | **v1.9** | Presisjon og klar for sal: maskingeometri (snødjupne ved fres og skjer, IMU), lisens og aktivering per maskin (kap. 17), full kontordel med 3D-redigering og import (kap. 16), driftsportal for driftsleiar (kart over flåten, rapportar, historikk, drivstoff, trasear, beskjedar), snøvolum mot målflate, skjermkorttest per maskin (kap. 9), førarinnlogging med roller, førar på økter/loggar/rapportar, personvern-innstillingar, oppsummering med kart og PDF, kompakt loggliste (kap. 10 – som v1.9.1 eller v2.0.1). |
 | **v2.0** | Første salsversjon til andre anlegg: installasjonsrettleiing, brukarmanual, support. |
-| Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. |
+| Moglege (ikkje plasserte) | 3D: trakka område, bakgrunnskart og større område (kap. 8) – testa 2026-10-07, ventar på avgjerd. Ortofoto (flybilete) som lag i kart, 3D og Frontrute (kap. 21) – analysert 2026-11-22, ventar på fila. |
 | Seinare | CAN-bus (drivstoff, motordata, feilkodar med varsling, vinsj – ulikt for PistenBully og Prinoth) – forundersøking for PB600 i kap. 12 og `PB600-CAN.md`. LiDAR for snødjupne framfor maskina. |
 
 Maskingeometrien blir flytt fram til v1.7 om feltprøva viser at målinga ved antenna er for upresis.

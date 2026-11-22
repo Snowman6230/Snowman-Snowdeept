@@ -32,6 +32,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
   hindring som blir godkjend, kø når Base er borte, omstart, skadd pakke). Testa med simulert GNSS (RTK FIX) og
   skjermbilete av Trasear-fana.
 
+### Dokumentasjon – ortofoto som lag (VEGEN-VIDARE kap. 21)
+- **Nytt:** analyse av ortofoto (flybilete) som lag i kart, 3D og Frontrute. Det er mogleg: som bakgrunn med PÅ/AV i
+  kartet, og som botnlag i 3D-teksturen, så biletet følgjer terrenget. Krev GeoTIFF eller JPG/PNG med world-fil.
+  Biletet blir gjort om til lokale kartfliser ved import.
+- **Avgjerd (eigaren):** lagt til i vegen vidare. Ingen kodeendringar. Ventar på fila frå dronefirmaet.
+- **Kvifor:** eigaren har eit ortofoto frå same droneflyging som terrengmodellen for Sykkylven Skisenter.
+
 ### PC-prototype v1.6.135 – eigne område for jamning av terrenget
 - **Avgjerd (eigaren):** føraren skal kunne markere område sjølv, med alle tre typane.
 - **Nytt:** under kvart lag i Terrengbiblioteket: «Teikn område» med **🌲 FJERN TRE HER** (filteret berre inni),
