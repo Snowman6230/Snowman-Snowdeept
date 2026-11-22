@@ -9,6 +9,24 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-22
 
+### PC-prototype v1.6.138 – 3D-oversikt over heile terrenglaget
+- **Bakgrunn:** 3D-visinga viser berre 300 × 300 m rundt maskina (eller midt i modellen utan GNSS), så heile
+  «Fjellseter 2025.pxy» (1,2 × 1,2 km) var aldri synleg. **Avgjerd (eigaren):** forslag 2 – eiga oversiktsvising.
+- **Nytt:** knappen **🗺 OVERSIKT** i 3D/Frontrute og **3D-OVERSIKT** per lag i Terrengbiblioteket opnar eit eige
+  vindauge med heile laget i 3D. Ruta blir vald etter storleiken (2 m for 1,2 km, maks om lag 620 × 620 punkt).
+  Høgdekurver kvar 5. m (tjukkare kvar 25. m), trasear, forbodne område, hindringar og ei raud nål der maskina står.
+  Dra for å snu og vippe, to fingrar eller høgre museknapp for å flytte, klyp eller hjul for zoom, og knappane
+  ⟲ ⟳ ＋ － TOPP HEILE LUKK. Lag under det valde laget blir tekne med rundt kanten (same mjuke overgang som i
+  «mjuk overgang mellom terrenglag» under).
+- **Avgrensing (med vilje):** oversikta er ikkje for køyring og opnar ikkje under preparering. Køyrevisinga er uendra
+  (300 × 300 m, 1 m rute, detaljflate nær maskina). Snødjupna blir ikkje vist i oversikta.
+- **Ny API:** `GET /api/terrain/overview?id=…` (eller `lat`/`lon` for laget under maskina).
+- **Test:** lag på 2400 × 2400 ruter (0,5 m) med 300 «tre»: henta og teikna på om lag 2 s i nettlesar utan skjermkort,
+  snu, zoom, dra og lukk utan JS-feil.
+- **Merknad om versjonsnummer:** to arbeidsøkter jobba parallelt i dag. «Mjuk overgang mellom terrenglag» og
+  «anleggspakke frå kontoret» kom begge ut som v1.6.136, og Kontor-delinga tok v1.6.137. Denne endringa er difor
+  v1.6.138.
+
 ### SNOWMAN Kontor 1.0.0, SNOWMAN Base 1.4.0 og PC v1.6.137 – Base og Kontor blir to program (VEGEN-VIDARE kap. 16, avgjerd 6)
 - **Avgjerd (eigaren):** SNOWMAN Base på Raspberry Pi-en skal berre ha med satellittar og NTRIP å gjere – «ikkje noko
   anna som kan rote ting til». Kontordelen blir eit eige program, **SNOWMAN Kontor**, på ein **Windows-PC** på

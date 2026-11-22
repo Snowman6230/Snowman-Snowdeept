@@ -1804,6 +1804,73 @@
         background: linear-gradient(#0a1a26 0%, #16324a 45%, #22465fcc 70%, transparent 100%);
         pointer-events: none;
       }
+      /* v1.6.137: 3D-oversikt */
+      .freeBox #ovrBtn {
+        display: none;
+        font-size: 13px;
+        padding: 0 10px;
+      }
+      #app.terrain3d .freeBox #ovrBtn {
+        display: block;
+      }
+      .ovr {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        background: #1d3a52;
+      }
+      .ovr canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+      .ovrTop {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: #02121bdd;
+        color: #fff;
+        font-size: 13px;
+        flex-wrap: wrap;
+      }
+      .ovrBtns {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .ovrBtns button {
+        min-width: 48px;
+        height: 44px;
+        border-radius: 10px;
+        border: 1px solid #3d5c6e;
+        background: #173545;
+        color: #fff;
+        font-size: 17px;
+        font-weight: 800;
+        padding: 0 10px;
+      }
+      .ovrBtns button.x {
+        background: #0878df;
+        font-size: 14px;
+      }
+      #ovrHint {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        font-size: 12px;
+        color: #cfe0ea;
+        background: #02121bcc;
+        padding: 5px 9px;
+        border-radius: 8px;
+      }
       /* 3D-terreng: eigen WebGL-flate over kartet, under knappar og tal */
       /* Fri vising (når prep er stoppa) */
       .freeBox {
@@ -2513,10 +2580,25 @@
       <div id="freeBox" class="freeBox">
         <button onclick="rotateBy(-15)" title="Snu mot venstre">⟲</button
         ><button onclick="rotateBy(15)" title="Snu mot høgre">⟳</button
-        ><button id="followBtn" class="hide" onclick="followView()">⌖ Følg maskina</button>
+        ><button id="followBtn" class="hide" onclick="followView()">⌖ Følg maskina</button
+        ><button id="ovrBtn" onclick="OVR.open()" title="Heile terrengmodellen i 3D (grov rute)">🗺 OVERSIKT</button>
         <small id="freeHint"></small>
       </div>
       <div id="t3dInfo"></div>
+      <!-- v1.6.137: 3D-oversikt over heile terrenglaget (grov rute). Ikkje for køyring – opnar ikkje under preparering. -->
+      <div id="ovr" class="ovr hide">
+        <canvas id="ovrCv"></canvas>
+        <div class="ovrTop">
+          <div id="ovrTitle"><b>3D-OVERSIKT</b></div>
+          <div class="ovrBtns">
+            <button onclick="OVR.turn(-20)" title="Snu mot venstre">⟲</button><button onclick="OVR.turn(20)" title="Snu mot høgre">⟳</button
+            ><button onclick="OVR.zoom(0.75)" title="Zoom inn">＋</button><button onclick="OVR.zoom(1.33)" title="Zoom ut">－</button
+            ><button onclick="OVR.top()" title="Sjå rett ovanfrå">⤓ TOPP</button><button onclick="OVR.reset()" title="Heile laget">⛶ HEILE</button
+            ><button class="x" onclick="OVR.close()">✕ LUKK</button>
+          </div>
+        </div>
+        <div id="ovrHint">Dra: snu og vipp · To fingrar eller høgre museknapp: flytt · Klyp eller hjul: zoom</div>
+      </div>
       <div class="top">
         <div class="brand" title="SNOWMAN by Alpindata">
           <svg class="brandPeaks" viewBox="0 0 120 30" aria-hidden="true">
@@ -3209,7 +3291,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.137";
+      const APP_VERSION = "1.6.138";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -6911,6 +6993,7 @@
                 '<div class="acts"><button onclick="moveLayer(\'' + l.id + "',1)\">▲</button><button onclick=\"moveLayer('" + l.id + "',-1)\">▼</button>" +
                 '<button onclick="toggleLayer(\'' + l.id + "')\">" + (l.active ? "SLÅ AV" : "SLÅ PÅ") + "</button>" +
                 '<button onclick="renameLayer(\'' + l.id + "')\">NYTT NAMN</button>" +
+                (l.type === "barmark" && l.active ? '<button onclick="OVR.open(\'' + l.id + "')\">3D-OVERSIKT</button>" : "") +
                 '<button onclick="degroveLayer(\'' + l.id + "')\">" + (dgWhole(l) ? "FJERN TRE: PÅ" : "FJERN TRE") + "</button>" +
                 '<button onclick="startReplace(\'' + l.id + "')\">ERSTATT</button>" +
                 '<button onclick="deleteLayer(\'' + l.id + "')\">SLETT</button></div>" +
@@ -8377,6 +8460,311 @@
         await api("api/terrain/delete", { id }).catch((e) => toast(e.message));
         loadTerrain();
       }
+      /* ---------- 3D-oversikt over heile terrenglaget (v1.6.137) ----------
+         Eigaren ønskte å sjå heile området i 3D, ikkje berre utsnittet på 300 × 300 m rundt maskina. Oversikta er eit eige
+         vindauge med grov rute (om lag 2 m for 1,2 km), høgdekurver kvar 5. m (tjukkare kvar 25. m), trasear, forbodne
+         område, hindringar og maskina. Ho er for planlegging og kontroll – ikkje for køyring – og opnar ikkje under
+         preparering. Køyrevisinga (T3D) blir ikkje endra. */
+      const OVR = (function () {
+        let R = null, scene, cam, mesh = null, pin = null, tex, cv, cx, D = null, G = null, hRef = 0,
+          raf = 0, isOpen = false, dirty = true, yaw = 0, pitch = 0.75, dist = 1000, tgt = { x: 0, y: 0, z: 0 };
+        const ptrs = new Map();
+        let gest = null;
+        const mLon = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
+        function ensure() {
+          if (R) return true;
+          if (!window.THREE) return false;
+          try {
+            R = new THREE.WebGLRenderer({ canvas: $("ovrCv"), antialias: true });
+          } catch (e) {
+            return false;
+          }
+          R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+          scene = new THREE.Scene();
+          scene.background = new THREE.Color(0x1d3a52);
+          cam = new THREE.PerspectiveCamera(50, 1, 1, 30000);
+          scene.add(new THREE.HemisphereLight(0xe8f2ff, 0x2a3a48, 1.4));
+          let sun = new THREE.DirectionalLight(0xffffff, 2.2);
+          sun.position.set(-700, 800, -400); // nordvest, som på kart med skuggerelieff
+          scene.add(sun);
+          cv = document.createElement("canvas");
+          cx = cv.getContext("2d");
+          tex = new THREE.CanvasTexture(cv);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = R.capabilities.getMaxAnisotropy();
+          let el = $("ovrCv");
+          el.addEventListener("contextmenu", (e) => e.preventDefault());
+          el.addEventListener("pointerdown", (e) => {
+            el.setPointerCapture(e.pointerId);
+            ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, b: e.button });
+            gest = null;
+          });
+          el.addEventListener("pointermove", (e) => {
+            let p = ptrs.get(e.pointerId);
+            if (!p) return;
+            let dx = e.clientX - p.x, dy = e.clientY - p.y;
+            if (ptrs.size === 1) {
+              if (p.b === 2) pan(dx, dy);
+              else {
+                yaw -= dx * 0.006;
+                pitch = Math.min(1.55, Math.max(0.12, pitch + dy * 0.005));
+              }
+            } else if (ptrs.size === 2) {
+              let a = [...ptrs.values()];
+              let mx = (a[0].x + a[1].x) / 2, my = (a[0].y + a[1].y) / 2, d0 = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+              p.x = e.clientX; p.y = e.clientY;
+              let b = [...ptrs.values()];
+              let nx = (b[0].x + b[1].x) / 2, ny = (b[0].y + b[1].y) / 2, d1 = Math.hypot(b[0].x - b[1].x, b[0].y - b[1].y);
+              pan(nx - mx, ny - my);
+              if (d0 > 10 && d1 > 10) zoom(d0 / d1, true);
+              dirty = true;
+              return;
+            }
+            p.x = e.clientX;
+            p.y = e.clientY;
+            dirty = true;
+          });
+          const up = (e) => ptrs.delete(e.pointerId);
+          el.addEventListener("pointerup", up);
+          el.addEventListener("pointercancel", up);
+          el.addEventListener("wheel", (e) => {
+            e.preventDefault();
+            zoom(e.deltaY > 0 ? 1.12 : 0.89);
+          }, { passive: false });
+          window.addEventListener("resize", () => isOpen && (dirty = true));
+          return true;
+        }
+        function hAt(x, y) {
+          // x mot aust, y mot nord (meter frå midten)
+          if (!D) return NaN;
+          let n = D.n, c = Math.round((x + D.half) / D.step), r = Math.round((D.half - y) / D.step);
+          if (c < 0 || r < 0 || c >= n || r >= n) return NaN;
+          return G[r * n + c];
+        }
+        function pan(dx, dy) {
+          let k = dist * 0.0016,
+            rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+          tgt.x += (-dx * rx + dy * fx) * k;
+          tgt.z += (-dx * rz + dy * fz) * k;
+          let lim = D ? D.half : 1000;
+          tgt.x = Math.max(-lim, Math.min(lim, tgt.x));
+          tgt.z = Math.max(-lim, Math.min(lim, tgt.z));
+          let h = hAt(tgt.x, -tgt.z);
+          if (!isNaN(h)) tgt.y = h - hRef;
+          dirty = true;
+        }
+        function zoom(f, quiet) {
+          dist = Math.max(40, Math.min((D ? D.half : 1000) * 5, dist * f));
+          dirty = true;
+        }
+        // høgdekurver (marching squares) – same metode som køyrevisinga, men grovare intervall
+        function contours(path, iv, n, S, onlyMajor) {
+          const k = S / (n - 1);
+          for (let i = 0; i < n - 1; i++)
+            for (let j = 0; j < n - 1; j++) {
+              let a = G[i * n + j], b = G[i * n + j + 1], c = G[(i + 1) * n + j + 1], d = G[(i + 1) * n + j];
+              if (isNaN(a) || isNaN(b) || isNaN(c) || isNaN(d)) continue;
+              let lo = Math.ceil(Math.min(a, b, c, d) / iv), hi = Math.floor(Math.max(a, b, c, d) / iv);
+              for (let L = lo; L <= hi; L++) {
+                let v = L * iv;
+                if (onlyMajor && L % 5 !== 0) continue;
+                if (!onlyMajor && L % 5 === 0) continue;
+                let pts = [];
+                const e = (p, q, x0, y0, x1, y1) => {
+                  if ((p < v) !== (q < v)) {
+                    let t = (v - p) / (q - p);
+                    pts.push([(x0 + (x1 - x0) * t) * k, (y0 + (y1 - y0) * t) * k]);
+                  }
+                };
+                e(a, b, j, i, j + 1, i);
+                e(b, c, j + 1, i, j + 1, i + 1);
+                e(d, c, j, i + 1, j + 1, i + 1);
+                e(a, d, j, i, j, i + 1);
+                for (let m = 0; m + 1 < pts.length; m += 2) {
+                  path.moveTo(pts[m][0], pts[m][1]);
+                  path.lineTo(pts[m + 1][0], pts[m + 1][1]);
+                }
+              }
+            }
+        }
+        function paint() {
+          let n = D.n,
+            S = Math.min(4096, R.capabilities.maxTextureSize || 2048, Math.max(1024, Math.ceil((n - 1) * 4)));
+          cv.width = cv.height = S;
+          cx.fillStyle = "#f2f6f9";
+          cx.fillRect(0, 0, S, S);
+          let minor = new Path2D(), major = new Path2D();
+          contours(minor, 5, n, S, false);
+          contours(major, 5, n, S, true);
+          cx.strokeStyle = "rgba(60,90,115,0.45)";
+          cx.lineWidth = Math.max(1, S / 2048);
+          cx.stroke(minor);
+          cx.strokeStyle = "rgba(40,70,95,0.85)";
+          cx.lineWidth = Math.max(2, S / 1024);
+          cx.stroke(major);
+          // trasear, forbodne område og hindringar (same som på kartet)
+          const px = (lat, lon) => [(((lon - D.lon0) * mLon(D.lat0) + D.half) / (2 * D.half)) * S, ((D.half - (lat - D.lat0) * 111320) / (2 * D.half)) * S];
+          let g = typeof TRA !== "undefined" && TRA.geo3d ? TRA.geo3d() : { list: [], objs: [] };
+          (g.list || []).forEach((t) => {
+            if (!t.poly || t.poly.length < 3) return;
+            cx.beginPath();
+            t.poly.forEach((p, i) => {
+              let q = px(p[0], p[1]);
+              i ? cx.lineTo(q[0], q[1]) : cx.moveTo(q[0], q[1]);
+            });
+            cx.closePath();
+            let f = t.kind === "forbode";
+            cx.fillStyle = f ? "rgba(237,32,36,0.18)" : (t.color || "#4db8ff") + "22";
+            cx.fill();
+            cx.strokeStyle = f ? "#ed2024" : t.color || "#4db8ff";
+            cx.lineWidth = Math.max(2, S / 700);
+            cx.setLineDash(f ? [S / 200, S / 300] : []);
+            cx.stroke();
+            cx.setLineDash([]);
+          });
+          (g.objs || []).forEach((o) => {
+            let q = px(o.lat, o.lng), r = Math.max((o.radius / (2 * D.half)) * S, S / 400);
+            cx.beginPath();
+            cx.arc(q[0], q[1], r, 0, 2 * Math.PI);
+            cx.strokeStyle = "#ed2024";
+            cx.lineWidth = Math.max(2, S / 900);
+            cx.stroke();
+          });
+          tex.needsUpdate = true;
+        }
+        function build() {
+          let n = D.n, pos3 = new Float32Array(n * n * 3), uv = new Float32Array(n * n * 2), idx = [];
+          let vals = G.filter((v) => !isNaN(v));
+          hRef = vals.length ? vals.reduce((a, b) => Math.min(a, b), Infinity) : 0;
+          for (let i = 0; i < n; i++)
+            for (let j = 0; j < n; j++) {
+              let k = i * n + j, h = G[k];
+              pos3[3 * k] = -D.half + j * D.step;
+              pos3[3 * k + 1] = isNaN(h) ? 0 : h - hRef;
+              pos3[3 * k + 2] = -(D.half - i * D.step);
+              uv[2 * k] = j / (n - 1);
+              uv[2 * k + 1] = 1 - i / (n - 1);
+            }
+          for (let i = 0; i < n - 1; i++)
+            for (let j = 0; j < n - 1; j++) {
+              let a = i * n + j, b = a + 1, c = a + n, d = c + 1;
+              if (isNaN(G[a]) || isNaN(G[b]) || isNaN(G[c]) || isNaN(G[d])) continue;
+              idx.push(a, c, b, b, c, d);
+            }
+          let geo = new THREE.BufferGeometry();
+          geo.setAttribute("position", new THREE.BufferAttribute(pos3, 3));
+          geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+          geo.setIndex(idx);
+          geo.computeVertexNormals();
+          if (mesh) {
+            mesh.geometry.dispose();
+            mesh.geometry = geo;
+          } else {
+            mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex }));
+            scene.add(mesh);
+          }
+          paint();
+          // maskina: raud nål der ho står (berre med ekte eller demo-posisjon, aldri gjetta)
+          if (pin) {
+            scene.remove(pin);
+            pin = null;
+          }
+          if (pos) {
+            let x = (pos[1] - D.lon0) * mLon(D.lat0), y = (pos[0] - D.lat0) * 111320, h = hAt(x, y);
+            if (!isNaN(h)) {
+              let L = Math.max(15, D.half * 0.06);
+              pin = new THREE.Group();
+              let st = new THREE.Mesh(new THREE.CylinderGeometry(L * 0.04, L * 0.04, L, 10), new THREE.MeshBasicMaterial({ color: 0xed2024 }));
+              st.position.y = L / 2;
+              let hd = new THREE.Mesh(new THREE.CylinderGeometry(L * 0.14, L * 0.14, L * 0.14, 16), new THREE.MeshBasicMaterial({ color: 0xed2024 }));
+              hd.position.y = L;
+              pin.add(st);
+              pin.add(hd);
+              pin.position.set(x, h - hRef, -y);
+              scene.add(pin);
+            }
+          }
+          reset();
+        }
+        function reset() {
+          yaw = 0;
+          pitch = 0.75;
+          dist = D ? D.half * 2.3 : 1000;
+          tgt = { x: 0, y: 0, z: 0 };
+          let h = hAt(0, 0);
+          if (!isNaN(h)) tgt.y = h - hRef;
+          else if (D) {
+            let v = G.filter((x) => !isNaN(x));
+            tgt.y = v.length ? v.reduce((a, b) => a + b, 0) / v.length - hRef : 0;
+          }
+          dirty = true;
+        }
+        function frame() {
+          if (!isOpen) return (raf = 0);
+          raf = requestAnimationFrame(frame);
+          let el = $("ovrCv"), w = el.clientWidth, h = el.clientHeight;
+          if (el.width !== Math.round(w * R.getPixelRatio()) || el.height !== Math.round(h * R.getPixelRatio())) {
+            R.setSize(w, h, false);
+            cam.aspect = w / Math.max(1, h);
+            cam.updateProjectionMatrix();
+            dirty = true;
+          }
+          if (!dirty) return;
+          dirty = false;
+          cam.position.set(tgt.x + dist * Math.cos(pitch) * Math.sin(yaw), tgt.y + dist * Math.sin(pitch), tgt.z + dist * Math.cos(pitch) * Math.cos(yaw));
+          cam.lookAt(tgt.x, tgt.y, tgt.z);
+          R.render(scene, cam);
+        }
+        async function open(id) {
+          if (preparing) return toast("Stopp preparering før du opnar 3D-oversikta – ho er ikkje for køyring");
+          if (!ensure()) return toast("3D er ikkje støtta på denne maskina (WebGL manglar)");
+          $("settings").classList.add("hide");
+          $("ovr").classList.remove("hide");
+          isOpen = true;
+          $("ovrTitle").innerHTML = "<b>3D-OVERSIKT</b> · hentar terrenget …";
+          let q = id ? "id=" + encodeURIComponent(id) : pos ? "lat=" + pos[0] + "&lon=" + pos[1] : "";
+          try {
+            let r = await (await fetch("api/terrain/overview?" + q)).json();
+            if (!r.ok) throw new Error(r.error || "Ingen terrengmodell");
+            if (!isOpen) return;
+            let bin = atob(r.h), u8 = new Uint8Array(bin.length);
+            for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+            D = r;
+            G = new Float32Array(u8.buffer);
+            build();
+            $("ovrTitle").innerHTML =
+              "<b>3D-OVERSIKT</b> · " + esc(r.name) + " · " + Math.round(2 * r.half) + " × " + Math.round(2 * r.half) + " m · " +
+              String(r.step).replace(".", ",") + " m rute · høgdekurver kvar 5. m" +
+              (r.layers.length > 1 ? " · lag: " + r.layers.map(esc).join(", ") : "") + "<br><small>Berre til oversikt og planlegging – køyrevisinga har full detalj.</small>";
+            logClient("action", "Opna 3D-oversikt: " + r.name);
+          } catch (e) {
+            $("ovrTitle").innerHTML = "<b>3D-OVERSIKT</b> · " + esc(e.message);
+          }
+          if (!raf) raf = requestAnimationFrame(frame);
+        }
+        function close() {
+          isOpen = false;
+          $("ovr").classList.add("hide");
+          ptrs.clear();
+        }
+        return {
+          open,
+          close,
+          reset: () => D && reset(),
+          top() {
+            pitch = 1.55;
+            dirty = true;
+          },
+          turn(d) {
+            yaw += (d * Math.PI) / 180;
+            dirty = true;
+          },
+          zoom,
+          get isOpen() {
+            return isOpen;
+          },
+        };
+      })();
       /* ---------- Kontroll: kontrollmålingar (kjend snødjupne) og kontrollpunkt (kjend terrenghøgd) ---------- */
       let CTL = null,
         ctlTimer = null;

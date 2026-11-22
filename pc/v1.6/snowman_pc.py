@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.137"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.138"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1080,6 +1080,29 @@ class API(http.server.BaseHTTPRequestHandler):
                     since=TR.prep_day_start(date=q["date"][0]) if q.get("date") else (float(q["since"][0])/1000 if q.get("since") else None)
                     until=since+86400 if q.get("date") else None
                     r=TRA.status(since,until,with_map=q.get("map",["0"])[0]=="1"); r["ok"]=True
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/terrain/overview":   # v1.6.137: heile terrenglaget grovt i 3D (oversikt, ikkje under køyring)
+            q=urllib.parse.parse_qs(u.query)
+            try:
+                if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
+                ms=sorted((m for m in TERR.listing() if m.get("active") and m.get("type")=="barmark"),key=lambda m:-m["priority"])
+                lid=q.get("id",[""])[0]; m=None
+                if lid: m=next((x for x in TERR.listing() if x["id"]==lid),None)
+                elif "lat" in q:   # laget under maskina
+                    hh=TERR.height(float(q["lat"][0]),float(q["lon"][0]))
+                    if hh: m=next((x for x in ms if x["id"]==hh["layer"]),None)
+                m=m or (ms[0] if ms else None)
+                if not m: raise ValueError("Ingen aktive terrenglag")
+                w,hgt=m["nx"]*m["dx"],m["ny"]*m["dy"]
+                lat,lon=T.utm_inverse(m["x0"]+w/2,m["y0"]-hgt/2,m["zone"])
+                half=min(3000.0,max(w,hgt)/2+10)
+                step=next((s_ for s_ in (1,2,3,4,5,6,8,10,15,20) if 2*half/s_<=620),20)   # maks ca. 620 × 620 punkt
+                step=max(step,float(m["res"]))
+                P=TERR.patch(lat,lon,half,step)
+                if P is None: raise ValueError("Ingen data")
+                r={"ok":True,"id":m["id"],"name":m["name"],"lat0":P["lat0"],"lon0":P["lon0"],"half":P["half"],"step":P["step"],
+                   "n":P["n"],"layers":P["layers"],"res":m["res"],"h":base64.b64encode(P["h"].astype("<f4").tobytes()).decode()}
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/terrain/patch":   # terrengutsnitt rundt maskina til 3D-visinga
