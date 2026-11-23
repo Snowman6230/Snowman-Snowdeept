@@ -25,14 +25,14 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.2.1"
+VERSION = "1.3.0"
 API_VERSION = 1
 
 # Samspel med SNOWMAN Snowdeep (pc/): anleggspakke og forslag frå v1.6.137, terreng, kontormodus og sanntid frå v1.6.139.
 # Eit brot i API-et gir ny API_VERSION; gamle maskiner får då beskjed om å oppdatere, ikkje feil data.
 SNOWMAN_MIN = "1.6.139"
 FUNKSJONAR = ["kontor", "innlogging-brukar", "deling-v1", "anleggspakke-v1", "anleggspakke-format-1", "forslag-v1",
-              "forbetringar", "ai", "base-status", "terreng-i-pakke", "kontormodus"]
+              "forbetringar", "ai", "base-status", "terreng-i-pakke", "kontormodus", "ai-maskin", "lokal-ai"]
 
 DEFAULT = {
     "namn": "SNOWMAN Office",

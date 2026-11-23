@@ -186,6 +186,13 @@ def main():
         except BK.Feil as e:
             sjekk("verken på anlegget eller ute" in str(e), "ingen kontakt verken på anlegget eller ute gir klar feil")
 
+        # v1.6.144: SNOWMAN AI – Office forklarer kvifor (AI av), og maskina viser forklaringa
+        try:
+            bk3.ai_spor(ucfg, "Kvar startar eg?")
+            sjekk(False, "SNOWMAN AI av i Office gir klar melding i maskina")
+        except BK.Feil as e:
+            sjekk("ikkje slått på" in str(e), "SNOWMAN AI av i Office gir klar melding i maskina")
+        sjekk(bk3.status(ucfg)["ai"] is False, "status: AI av i Office")
         base.stop()
         time.sleep(0.3)
         sjekk(not bk.forslag(mcfg, {"type": "merknad", "tekst": "test"}) and bk.status(mcfg)["ko"] == 1,

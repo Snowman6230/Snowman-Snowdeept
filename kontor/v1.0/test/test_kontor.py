@@ -145,6 +145,88 @@ class TestApi(KontorCase):
         self.assertEqual(self.call("/api/v1/maskin", {"id": "PB2"}, self.mkey)[0], 403)
         self.assertEqual(self.call("/api/v1/maskin", {"id": "PB1"}, self.mkey)[0], 200)
 
+    def test_lokal_ai_og_snowman_ai_for_maskinene(self):
+        """1.3.0: Office ser lokal AI (Ollama), hentar modellen, tek han i bruk, og maskinene kan spørje – også ute."""
+        import http.server, threading as th
+        sett = {"chat": []}
+
+        class FakeOllama(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def _j(self, d):
+                b = json.dumps(d).encode()
+                self.send_response(200); self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+
+            def do_GET(self):
+                if self.path == "/api/version":
+                    return self._j({"version": "0.9.0"})
+                if self.path == "/api/tags":
+                    return self._j({"models": [{"name": m} for m in sett.get("modellar", [])]})
+                self.send_response(404); self.end_headers()
+
+            def do_POST(self):
+                d = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                if self.path == "/api/pull":
+                    self.send_response(200); self.send_header("Content-Type", "application/x-ndjson"); self.end_headers()
+                    for i in range(1, 4):
+                        self.wfile.write((json.dumps({"status": "pulling", "total": 3, "completed": i}) + "\n").encode())
+                    self.wfile.write(b'{"status":"success"}\n')
+                    sett["modellar"] = [d["model"]]
+                    return
+                if self.path == "/api/chat":
+                    sett["chat"].append(d)
+                    return self._j({"message": {"content": "Start i Bakke 2 – der manglar det mest snø."}})
+                self.send_response(404); self.end_headers()
+
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), FakeOllama)
+        th.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            self.k.cfg.update(lambda d: d["ai"].update(adresse=f"http://127.0.0.1:{srv.server_address[1]}"))
+            c, d = self.call("/api/v1/ai/lokal", key=self.kkey)
+            self.assertEqual((c, d["koyrer"], d["versjon"], d["modellar"], d["tilradd"]), (200, True, "0.9.0", [], "gemma3:4b"))
+            # maskina kan ikkje spørje før AI er på
+            c, d = self.call("/api/v1/ai/maskin", {"maskin": "PB1", "tekst": "Kvar startar eg?"}, self.mkey)
+            self.assertEqual(c, 500)
+            self.assertIn("ikkje slått på", d["feil"])
+            self.assertEqual(self.call("/api/v1/ai/lokal/hent", {"modell": "gemma3:4b"}, self.mkey)[0], 401)   # berre kontoret
+            self.assertEqual(self.call("/api/v1/ai/lokal/hent", {"modell": "gemma3:4b"}, self.kkey)[0], 200)
+            for _ in range(50):
+                h = self.call("/api/v1/ai/lokal", key=self.kkey)[1]["henting"]
+                if h.get("ferdig"):
+                    break
+                time.sleep(0.1)
+            self.assertEqual((h["ferdig"], h["del"], h["feil"]), (True, 1.0, ""))
+            self.assertEqual(self.call("/api/v1/ai/lokal", key=self.kkey)[1]["modellar"], ["gemma3:4b"])
+            self.assertEqual(self.call("/api/v1/ai/lokal/ta-i-bruk", {"modell": "gemma3:4b"}, self.kkey)[0], 200)
+            self.assertEqual((self.k.cfg["ai"]["leverandor"], self.k.cfg["ai"]["modell"]), ("ollama", "gemma3:4b"))
+            # hjarteslaget seier at AI er på, og maskina får svar – også gjennom maskinporten (ute i bakken)
+            c, d = self.call("/api/v1/maskin", {"id": "PB1", "versjon": "1.6.144"}, self.mkey)
+            self.assertTrue(d["ai"])
+            web, self.web = self.web, f"http://127.0.0.1:{self.k.maskin_srv.server_address[1]}"
+            try:
+                c, d = self.call("/api/v1/ai/maskin", {"maskin": "PB1", "tekst": "Kvar startar eg?",
+                                                       "kontekst": {"snodjupne_m": 0.41}}, self.mkey)
+            finally:
+                self.web = web
+            self.assertEqual((c, d["svar"]), (200, "Start i Bakke 2 – der manglar det mest snø."))
+            m = sett["chat"][-1]
+            self.assertEqual(m["model"], "gemma3:4b")
+            self.assertIn("førarhuset", m["messages"][0]["content"])
+            self.assertIn("Kvar startar eg?", m["messages"][1]["content"])
+            self.assertIn("0.41", m["messages"][1]["content"])
+            # Ollama borte: klar melding på nynorsk
+            srv.shutdown(); srv.server_close()
+            c, d = self.call("/api/v1/ai/maskin", {"maskin": "PB1", "tekst": "Hei"}, self.mkey)
+            self.assertIn("Får ikkje kontakt med Ollama", d["feil"])
+            self.assertFalse(self.call("/api/v1/ai/lokal", key=self.kkey)[1]["koyrer"])
+        finally:
+            try:
+                srv.shutdown(); srv.server_close()
+            except Exception:
+                pass
+
     def test_maskinporten(self):
         """Port 8791 (ute i bakken): berre maskin-API-et, berre rolla maskin. Kontorsida blir aldri opna her."""
         port = self.k.maskin_srv.server_address[1]

@@ -50,6 +50,33 @@ from vern import Vern           # noqa: E402
 RESTART_CODE = 3
 
 
+def lag_snarveg(data, events=None, tving=False):
+    """Windows: snarvegen «SNOWMAN Office» på skrivebordet (for alle brukarar) med eige ikon. Blir laga éin gong –
+    slettar nokon han, kjem han ikkje att (merket data/snarveg.txt). INSTALLER-WINDOWS.bat lagar han òg."""
+    merke = Path(data) / "snarveg.txt"
+    if os.name != "nt" or (merke.exists() and not tving):
+        return False
+    vbs, ico = HERE / "OPNE-SNOWMAN-OFFICE.vbs", HERE / "ikon" / "snowman-office.ico"
+    ps = ("$ErrorActionPreference='Stop'; $w=New-Object -ComObject WScript.Shell; "
+          "foreach($d in @([Environment]::GetFolderPath('CommonDesktopDirectory'),"
+          "[Environment]::GetFolderPath('CommonPrograms'))){ if($d){ "
+          "$s=$w.CreateShortcut((Join-Path $d 'SNOWMAN Office.lnk')); "
+          f"$s.TargetPath=(Join-Path $env:SystemRoot 'System32\\wscript.exe'); $s.Arguments=[char]34+'{vbs}'+[char]34; "
+          f"$s.WorkingDirectory='{HERE}'; $s.IconLocation='{ico},0'; "
+          "$s.Description='SNOWMAN Office - kart og anlegg (Alpindata)'; $s.Save() } }")
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+                           capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:
+            raise RuntimeError((r.stderr or r.stdout or "").strip()[:200])
+        merke.write_text(time.strftime("%Y-%m-%d %H:%M") + " – snarvegen SNOWMAN Office laga\n", "utf-8")
+        events and events.add("Snarvegen «SNOWMAN Office» er lagd på skrivebordet", "ok")
+        return True
+    except Exception as e:
+        events and events.add(f"Snarvegen på skrivebordet kunne ikkje lagast: {e}", "feil")
+        return False
+
+
 class SnowmanKontor:
     def __init__(self, data_dir, web_port=None, kartvising=None, maskinport=None):
         self.data = Path(data_dir)
@@ -148,10 +175,14 @@ class SnowmanKontor:
                  lambda: self.basestatus.loop(self.stop_ev)]
         if self.kartvising:
             loops.append(self._kart_loop)
+            loops.append(self.snarveg)
         for target in loops:
             threading.Thread(target=target, daemon=True).start()
         self.events.add(f"SNOWMAN Office {VERSION} starta på port {self.web_port}", "ok")
         return self
+
+    def snarveg(self):
+        return lag_snarveg(self.data, self.events)
 
     def stop(self):
         self.stop_ev.set()
@@ -248,6 +279,7 @@ def main(argv=None):
     sub.add_parser("start")
     sub.add_parser("versjon")
     sub.add_parser("oppdater")
+    sub.add_parser("snarveg", help="lag snarvegen «SNOWMAN Office» på skrivebordet på nytt (Windows)")
     b = sub.add_parser("brukar")
     b.add_argument("handling", choices=["legg-til", "passord", "fjern", "liste"])
     b.add_argument("namn", nargs="?")
@@ -257,6 +289,10 @@ def main(argv=None):
 
     if a.cmd == "versjon":
         return print(f"SNOWMAN Office {VERSION} (API v{API_VERSION}, krev SNOWMAN {SNOWMAN_MIN})")
+    if a.cmd == "snarveg":
+        ok = lag_snarveg(data_dir(a), tving=True)
+        return print("Snarvegen «SNOWMAN Office» er lagd på skrivebordet." if ok else
+                     "Snarvegen kunne ikkje lagast (berre Windows).")
     if a.cmd == "oppdater":
         changed, _, kart = apply()
         return sys.exit(RESTART_CODE if (changed or kart) and os.environ.get("SNOWMAN_KONTOR_TENESTE") else 0)

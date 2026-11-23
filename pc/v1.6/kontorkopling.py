@@ -186,6 +186,7 @@ class KontorKopling:
         self.ko = self._read("forslag-ko.json") or []
         self.terreng = self._read("terreng.json") or {}
         self.via = None                                     # «lokal» (wifi) eller «ute» – kvar Office sist svarte
+        self.ai_on = False                                  # Office har AI slått på (frå hjarteslaget)
         self._pref = (None, 0.0)                            # (vegen som sist verka, tid)
         self.live_st = {"t": None, "ok": None, "feil": ""}     # {"i_bruk": versjon, "ventar": {versjon, lag, mappe}}
         self.mid = self._machine_id(Path(data_dir) / "maskin-id.txt")
@@ -267,7 +268,7 @@ class KontorKopling:
                 "vert": host, "port": port, "brukar": user, "aktiv": self.aktiv, "sist": dict(self.sist),
                 "ko": len(self.ko), "maskin_id": self.mid, "maskinnamn": cfg.get("kontor_maskinnamn") or "",
                 "ute": next((f"{h}:{p}" for h, p, k in self.targets(cfg) if k == "ute"), ""),
-                "via": self.via, "sanntid": dict(self.live_st), "sanntid_on": bool(cfg.get("kontor_sanntid", True)),
+                "via": self.via, "sanntid": dict(self.live_st), "ai": self.ai_on, "sanntid_on": bool(cfg.get("kontor_sanntid", True)),
                 "vert_ute": (cfg.get("kontor_host_ute") or "").strip(), "port_ute": int(cfg.get("kontor_port_ute") or PORT_UTE),
                 "terreng": {"i_bruk": self.terreng.get("i_bruk"), "teke_i_bruk": self.terreng.get("teke_i_bruk"),
                             "ventar": {k: v for k, v in (self.terreng.get("ventar") or {}).items() if k != "mappe"}
@@ -323,7 +324,11 @@ class KontorKopling:
                            "SNOWMAN Office › Brukarar).")
             if e.code == 404:
                 raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Office. Er adressa og porten (8790) rett?")
-            raise Feil(f"Office svarte med feil {e.code}.")
+            try:                                        # Office forklarer feilen i svaret ({"feil": …})
+                msg = json.loads(e.read(20_000).decode("utf-8")).get("feil")
+            except Exception:
+                msg = None
+            raise Feil(f"Office: {msg}" if msg else f"Office svarte med feil {e.code}.")
         except http.client.HTTPException:
             raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Office – det ser ut som ein NTRIP-caster "
                        "(SNOWMAN Base). Office har eigen port (8790) på PC-en.")
@@ -456,9 +461,10 @@ class KontorKopling:
     def live(self, cfg, status, punkt=None):
         """Posisjon, snødjupne og status til Office (kvart 10. s), og målingar for deling. Feil blir berre noterte."""
         try:
-            self._req(cfg, "/api/v1/maskin", dict(status, id=self.mid, namn=cfg.get("kontor_maskinnamn") or self.mid,
-                                                   versjon=self.version, pakke=(self.aktiv or {}).get("versjon"),
-                                                   terreng=self.terreng.get("i_bruk")), timeout=6)
+            r = self._req(cfg, "/api/v1/maskin", dict(status, id=self.mid, namn=cfg.get("kontor_maskinnamn") or self.mid,
+                                                       versjon=self.version, pakke=(self.aktiv or {}).get("versjon"),
+                                                       terreng=self.terreng.get("i_bruk")), timeout=6)
+            self.ai_on = bool(isinstance(r, dict) and r.get("ai"))
             if punkt:
                 self._req(cfg, "/api/v1/maalingar", {"maskin": self.mid, "punkt": punkt}, timeout=10)
             self.live_st = {"t": time.time(), "ok": True, "feil": "", "via": self.via}
@@ -480,11 +486,20 @@ class KontorKopling:
 
     def _heartbeat(self, cfg):
         try:
-            self._req(cfg, "/api/v1/maskin", {"id": self.mid, "namn": cfg.get("kontor_maskinnamn") or self.mid,
-                                              "versjon": self.version, "pakke": (self.aktiv or {}).get("versjon"),
-                                              "terreng": self.terreng.get("i_bruk")})
+            r = self._req(cfg, "/api/v1/maskin", {"id": self.mid, "namn": cfg.get("kontor_maskinnamn") or self.mid,
+                                                  "versjon": self.version, "pakke": (self.aktiv or {}).get("versjon"),
+                                                  "terreng": self.terreng.get("i_bruk")})
+            self.ai_on = bool(isinstance(r, dict) and r.get("ai"))
         except Feil:
             pass
+
+    # ---------- SNOWMAN AI (v1.6.144) ----------
+    def ai_spor(self, cfg, tekst, kontekst=None):
+        """Spørsmål frå føraren til AI-en i SNOWMAN Office (lokal modell eller den Office har sett opp)."""
+        r = self._req(cfg, "/api/v1/ai/maskin", {"maskin": cfg.get("kontor_maskinnamn") or self.mid, "tekst": tekst,
+                                                  "kontekst": kontekst or {}}, timeout=150)
+        self.ai_on = True
+        return r.get("svar", "")
 
     # ---------- forslag til kontoret ----------
     def forslag(self, cfg, f):

@@ -27,6 +27,8 @@ API v1 (JSON). Innlogging med brukarnamn og passord:
               POST /api/v1/forbetringar/analyser
               GET  /api/v1/ai  ·  POST /api/v1/ai/innstillingar  ·  GET /api/v1/ai/forehandsvis
               POST /api/v1/ai/analyser  ·  POST /api/v1/ai/sporsmal {tekst}
+              GET  /api/v1/ai/lokal  ·  POST /api/v1/ai/lokal/hent {modell}  ·  POST /api/v1/ai/lokal/ta-i-bruk {modell}
+  Maskin:     POST /api/v1/ai/maskin {maskin, tekst, kontekst}  (SNOWMAN AI for førarane, også på maskinporten)
               GET  /api/v1/base  ·  POST /api/v1/base {adresse, brukar, passord}   SNOWMAN Base (berre lesing)
               GET  /api/v1/brukarar  ·  POST /api/v1/brukar {namn, passord?, roller?}  ·  POST /api/v1/brukar/fjern
               POST /api/v1/oppdatering/sjekk  ·  POST /api/v1/oppdater
@@ -47,6 +49,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
+import ai as aimod
 import anleggspakke
 import forbetring
 import vern as vernmod
@@ -237,6 +240,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json({"ok": True, "leverandor": c.get("leverandor", "av"), "modell": c.get("modell", ""),
                                    "adresse": c.get("adresse", ""), "har_nokkel": bool(c.get("api_nokkel")),
                                    "siste": k.ai.last})
+        if p == "ai/lokal":
+            return self.send_json({"ok": True, **k.ai.lokal()})
         if p == "ai/forehandsvis":
             return self.send_json({"ok": True, **k.ai.preview(k)})
         if p == "base":
@@ -315,10 +320,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 k.cfg.set_user(nb, npw, roles=["maskin"])
             k.events.add(f"Første administrator «{name}» laga frå {ip}" + (f", og maskinbrukaren «{nb}»" if nb else ""), "ok")
             return self.send_json({"ok": True, "okt": k.vern.new_session(name), "brukar": name})
-        if p in ("maskin", "maalingar", "forslag"):
+        if p in ("maskin", "maalingar", "forslag", "ai/maskin"):
             if not self.is_machine():
                 return self.deny()
             d = self.body_json()
+            if p == "ai/maskin":   # SNOWMAN AI for førarane (1.3.0)
+                namn = _safe(d.get("maskin")) or "ei maskin"
+                return self.send_json({"ok": True, "svar": k.ai.driver(namn, d.get("tekst"), d.get("kontekst"))})
             if p == "maskin":
                 mid = _safe(d.get("id") or d.get("namn"))
                 if not mid:
@@ -326,6 +334,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 ok, err = st.heartbeat(mid, d, ip, int(k.cfg["deling"].get("maskinplassar") or 0))
                 pk = st.package()
                 return self.send_json({"ok": ok, "feil": err, "tid": time.time(), "kontor": VERSION, "api": API_VERSION,
+                                       "ai": k.ai.enabled(),
                                        "snowman_min": SNOWMAN_MIN, "pakke": pk["versjon"] if pk else None},
                                       200 if ok else 403)
             if p == "maalingar":
@@ -376,6 +385,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return dict(c)
             c = k.cfg.update(fn)
             k.events.add(f"AI: {c['leverandor']}" + (f" ({c['modell']})" if c["modell"] else ""), "info")
+            return self.send_json({"ok": True})
+        if p == "ai/lokal/hent":
+            return self.send_json({"ok": True, "henting": k.ai.hent_modell(d.get("modell"))})
+        if p == "ai/lokal/ta-i-bruk":
+            m = str(d.get("modell") or "").strip()[:80] or aimod.LOKAL_MODELL
+
+            def fn(data):
+                data["ai"].update(leverandor="ollama", modell=m)
+            k.cfg.update(fn)
+            k.events.add(f"AI: lokal modell {m} (Ollama) teken i bruk – også for maskinene", "ok")
             return self.send_json({"ok": True})
         if p == "ai/analyser":
             items = k.ai.analyse(k)
@@ -457,7 +476,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 # Maskinene på mobilnettet når Office gjennom denne porten (standard 8791), som ruteren sender vidare til kontor-PC-en.
 # Berre maskin-API-et er ope her, og berre for brukarar med rolla «maskin». Kontorsida (8790) blir aldri opna utanfrå.
 MASKIN_GET = {"/api/v1/info", "/api/v1/maalingar", "/api/v1/maskiner", "/api/v1/anleggspakke", "/api/v1/anleggspakke/fil"}
-MASKIN_POST = {"/api/v1/maskin", "/api/v1/maalingar", "/api/v1/forslag"}
+MASKIN_POST = {"/api/v1/maskin", "/api/v1/maalingar", "/api/v1/forslag", "/api/v1/ai/maskin"}
 
 
 class MaskinHandler(Handler):

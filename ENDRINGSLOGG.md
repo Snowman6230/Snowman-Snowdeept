@@ -9,6 +9,26 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.3.0 og SNOWMAN Snowdeep v1.6.144 – snarveg på skrivebordet og lokal AI (SNOWMAN AI)
+- **Bakgrunn (eigaren):** «Lag eit eige oppstartsikon som kan ligge på skrivebordet. Lag også ein lokal AI som Snowman
+  systemet kan bruke (Office og Snowdeep).»
+- **Nytt (Office):** eige ikon (`kontor/v1.0/ikon/`, laga med lag-ikon.py i same stil som Snowdeep-ikonet: skjerm med
+  kart og maskiner) og snarvegen **SNOWMAN Office** på skrivebordet og i startmenyen. `OPNE-SNOWMAN-OFFICE.vbs` startar
+  Office om han står (tenesta, elles START-SNOWMAN-OFFICE.bat) og opnar kart og anlegg i eige vindauge (Edge/Chrome).
+  INSTALLER-WINDOWS.bat lagar snarvegen, og Office lagar han éin gong sjølv etter oppdatering (merket data/snarveg.txt).
+  Ny kommando: `snarveg`.
+- **Nytt (Office):** **lokal AI** med Ollama: Office › AI › Lokal AI viser om Ollama køyrer og kva modellar som finst,
+  **HENT MODELL** (standard gemma3:4b, med framdrift) og **BRUK LOKAL AI**. INSTALLER-WINDOWS.bat kan installere
+  Ollama (valfritt, winget).
+- **Nytt:** **SNOWMAN AI for maskinene:** `POST /api/v1/ai/maskin` (rolla maskin, også på maskinporten 8791) svarar
+  førarane med AI-en i Office – éitt spørsmål om gongen. Hjarteslaget seier om AI er på.
+- **Nytt (Snowdeep):** **✦ SPØR SNOWMAN AI** nedst i AI-panelet. Spørsmålet går med eit samandrag av skjermen (råda,
+  snødjupne, GNSS, preparering) til Office. Talespørsmål som dei faste svara ikkje dekkjer, går òg dit. Utan kopling til
+  Office eller med AI av står det kvifor. Feilmeldingar frå Office blir viste som dei er.
+- **Testar:** Office 19 OK (ny: lokal AI med falsk Ollama – status, henting, ta i bruk, svar til maskina via
+  maskinporten, Ollama borte), testkontorkopling ALT OK (ny: AI av gir klar melding). Ende-til-ende med simulert GNSS:
+  modellen henta og teken i bruk frå Office › AI, føraren spurde i AI-panelet og fekk svar.
+
 ### SNOWMAN Office 1.2.1 og SNOWMAN Snowdeep v1.6.143 – klar feilmelding når Ollama ikkje svarar
 - **Bakgrunn:** eigaren fekk «Feil: <urlopen error [WinError 10061] …avslo tilkobling>» under Office › AI med «Lokal
   modell (Ollama)» – Ollama var ikkje installert eller starta på PC-en, og feltet Modell stod som «Ollama».

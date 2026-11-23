@@ -1371,6 +1371,45 @@
         max-height: 100%;
         box-shadow: 0 8px 30px #0008;
       }
+      #ai .aiAsk h3 {
+        margin: 0 0 8px;
+        font-size: 15px;
+        color: #c9b8ff;
+      }
+      #ai .aiAskRow {
+        display: flex;
+        gap: 6px;
+      }
+      #ai .aiAskRow input {
+        flex: 1;
+        min-width: 0;
+        background: #071a24;
+        color: #fff;
+        border: 1px solid #365466;
+        border-radius: 8px;
+        padding: 9px 10px;
+        font-size: 15px;
+      }
+      #ai .aiAskRow button {
+        background: #2b1f5c;
+        color: #fff;
+        border: 1px solid #c9b8ff;
+        border-radius: 8px;
+        padding: 0 14px;
+        font-weight: 800;
+      }
+      #ai .aiQA {
+        margin: 8px 0 4px;
+        font-size: 14px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+      #ai .aiQA b {
+        color: #9fd3ff;
+      }
+      #ai .aiAsk small {
+        color: #8fa3ad;
+      }
       #ai .aiHead {
         display: flex;
         align-items: center;
@@ -3175,7 +3214,13 @@
             <div id="ksForbetringar" class="ksList">–</div>
           </div>
           <div class="ks hide" data-k="ai">
-            <h3>AI</h3>
+            <h3>LOKAL AI – SNOWMAN AI</h3>
+            <div class="history">Ein språkmodell som køyrer på denne PC-en (Ollama). SNOWMAN Office brukar han til analysar og
+              spørsmål, og førarane kan spørje han frå AI-panelet i maskina (SNOWMAN Snowdeep). Ingenting forlèt anlegget.</div>
+            <div id="ksLokal" class="history">Ser etter lokal AI …</div>
+            <div class="row"><span>Modell</span><input id="ksLokalModell" type="text" placeholder="gemma3:4b" style="width: 190px" /></div>
+            <button id="ksLokalHent" class="btn" onclick="KSIDE.lokalHent()">⇩ HENT MODELL</button><button id="ksLokalBruk" class="btn" onclick="KSIDE.lokalBruk()">✓ BRUK LOKAL AI (OFFICE OG MASKINENE)</button>
+            <h3>AI – INNSTILLINGAR</h3>
             <div class="row"><span>Leverandør</span><select id="ksAiProv" style="width: 190px"><option value="av">Av</option><option value="ollama">Lokal modell (Ollama)</option><option value="anthropic">Claude (Anthropic API)</option></select></div>
             <div class="history">AI er valfri – resten av SNOWMAN Office verkar utan. <b>Lokal modell</b> krev at
               <a href="https://ollama.com" target="_blank" style="color:#9fd3ff">Ollama</a> er installert og starta på denne PC-en, og at modellen er
@@ -3445,7 +3490,12 @@
       <div id="demoTag" class="demoTag hide">DEMO – SIMULERTE DATA</div>
       <div id="wx" class="hide" aria-live="polite"><div class="wxCard" id="wxCard"></div></div>
       <div id="snk" class="hide"><div class="wxCard" id="snkCard"></div></div>
-      <div id="ai" class="hide"><div class="aiCard" id="aiCard"></div></div>
+      <div id="ai" class="hide"><div class="aiCard" id="aiCard"></div><div class="aiCard aiAsk" id="aiAsk">
+          <h3>✦ SPØR SNOWMAN AI</h3>
+          <div class="aiAskRow"><input id="aiQ" type="text" maxlength="1000" placeholder="t.d. kvar bør eg starte i kveld?" onkeydown="if(event.key==='Enter')AIASK.spor()" /><button id="aiQBtn" onclick="AIASK.spor()">SPØR</button></div>
+          <div id="aiQA" class="aiQA"></div>
+          <small id="aiQInfo">Språkmodellen køyrer på PC-en med SNOWMAN Office (lokal AI) – svaret byggjer på det skjermen viser. Føraren avgjer.</small>
+        </div></div>
       <div id="aiChips" class="hide"></div>
       <button id="micBtn" class="hide" onclick="TALE.listen()" title="Snakk til AI-en"><span>🎤</span>Spør AI</button>
       <div id="voiceBubble" class="hide"></div>
@@ -3506,7 +3556,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.143";
+      const APP_VERSION = "1.6.144";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
@@ -7543,7 +7593,27 @@
                 "<button onclick='KSIDE.imp(" + i + ",\"godteke\")'>GODTA</button><button onclick='KSIDE.imp(" + i + ",\"gjort\")'>GJORT</button><button onclick='KSIDE.imp(" + i + ",\"avvist\")'>AVVIS</button></div>").join("")
             : "Ingen opne forslag.";
         }
+        let lokalTimer = null;
+        async function lokal() {
+          let d = await k("v1/ai/lokal"), h = d.henting || {}, el = $("ksLokal");
+          if (document.activeElement !== $("ksLokalModell") && !$("ksLokalModell").value) $("ksLokalModell").value = d.modell || d.tilradd;
+          let m = $("ksLokalModell").value.trim() || d.tilradd, har = d.modellar.some((x) => x === m || x === m + ":latest" || x.split(":")[0] === m);
+          let t = !d.koyrer
+            ? "<b style='color:#ffb020'>Ollama køyrer ikkje på denne PC-en.</b> " + esc(d.feil || "") +
+              "<br>Installer Ollama frå <a href='https://ollama.com/download' target='_blank' style='color:#9fd3ff'>ollama.com/download</a> (eller køyr INSTALLER-WINDOWS.bat på nytt og svar J), og start han. Ollama startar sjølv når du loggar på Windows."
+            : "<b style='color:#5ee07a'>Ollama køyrer</b> (versjon " + esc(d.versjon || "?") + ") · modellar: " + (d.modellar.length ? d.modellar.map(esc).join(", ") : "ingen enno") +
+              "<br>" + (d.i_bruk ? "<b style='color:#5ee07a'>I bruk:</b> " + esc(d.modell) + " – Office og maskinene brukar lokal AI." : "Lokal AI er ikkje teken i bruk enno.") +
+              (har ? "" : "<br>Modellen <b>" + esc(m) + "</b> er ikkje henta – trykk HENT MODELL (ca. 3 GB, kan ta ei stund).");
+          if (h.modell && (!h.ferdig || Date.now() / 1000 - h.t < 600))
+            t += "<br>Henting av <b>" + esc(h.modell) + "</b>: " + (h.feil ? "<b style='color:#ff6b5e'>feila</b> – " + esc(h.feil) : h.ferdig ? "<b style='color:#5ee07a'>ferdig</b>" : esc(h.status || "") + (h.del ? " · " + Math.round(h.del * 100) + " %" : ""));
+          el.innerHTML = t;
+          $("ksLokalHent").disabled = !d.koyrer || (h.modell && !h.ferdig);
+          $("ksLokalBruk").disabled = !d.koyrer || !har;
+          clearTimeout(lokalTimer);
+          if (cur === "ai" && h.modell && !h.ferdig) lokalTimer = setTimeout(() => lokal().catch(() => 0), 2000);
+        }
         async function ai() {
+          lokal().catch((e) => ($("ksLokal").textContent = "Fekk ikkje status for lokal AI: " + e.message));
           let d = await k("v1/ai");
           $("ksAiProv").value = d.leverandor;
           $("ksAiModel").value = d.modell;
@@ -7606,6 +7676,15 @@
             alleImp = !alleImp;
             $("ksImpAll").textContent = "VIS OGSÅ FERDIGE: " + (alleImp ? "PÅ" : "AV");
             forbetringar();
+          },
+          async lokalHent() {
+            try { await k("v1/ai/lokal/hent", { modell: $("ksLokalModell").value.trim() }); } catch (e) { toast(e.message); }
+            lokal().catch(() => 0);
+          },
+          async lokalBruk() {
+            let m = $("ksLokalModell").value.trim();
+            if (!confirm("Bruke lokal AI (" + (m || "gemma3:4b") + ") i SNOWMAN Office og for førarane i maskinene?")) return;
+            try { await k("v1/ai/lokal/ta-i-bruk", { modell: m }); await ai(); toast("Lokal AI er teken i bruk"); } catch (e) { toast(e.message); }
           },
           async aiLagre() {
             try {
@@ -10420,6 +10499,51 @@
          spora, kvalitet og snøproduksjon. Råda kan visast som eigne lag på hovudkartet («Vis på kartet») – laga blir
          verande når overlayet er lukka, så føraren ser dei medan han køyrer. Alt anna går vidare i bakgrunnen.
          Alt er FORSLAG og ESTIMAT; føraren avgjer. Overlayet og Vêr deler plass – det eine lukkar det andre. */
+      // v1.6.144: føraren spør SNOWMAN AI – språkmodellen i SNOWMAN Office (lokal AI), med eit samandrag av skjermen
+      const AIASK = (() => {
+        let busy = false, logg = [];
+        async function status() {
+          let info = $("aiQInfo"), on = !!window.KMFIX;
+          if (!on) {
+            try {
+              let r = await api("api/kontor");
+              on = r.on && r.ai;
+              if (!on)
+                info.textContent = r.on
+                  ? "SNOWMAN AI er ikkje slått på i SNOWMAN Office (Office › AI › Lokal AI). Råda over er frå den lokale modellen i maskina."
+                  : "SNOWMAN AI krev kopling til SNOWMAN Office (Innst. › Trasear). Råda over er frå den lokale modellen i maskina.";
+            } catch (e) {}
+          }
+          $("aiQ").disabled = $("aiQBtn").disabled = !on;
+          if (on) info.textContent = "Språkmodellen køyrer på PC-en med SNOWMAN Office (lokal AI) – svaret byggjer på det skjermen viser. Føraren avgjer.";
+        }
+        async function spor() {
+          let q = $("aiQ").value.trim();
+          if (!q || busy) return;
+          busy = true;
+          $("aiQBtn").textContent = "…";
+          logg.unshift({ q, a: "Tenkjer … (lokal AI kan bruke litt tid)" });
+          vis();
+          try {
+            let kontekst = ($("aiCard").innerText || "").replace(/\s+\n/g, "\n").slice(0, 5000);
+            let r = await api("api/ai/spor", { tekst: q, kontekst });
+            if (!r.ok) throw Error(r.error);
+            logg[0].a = r.svar || "(tomt svar)";
+            $("aiQ").value = "";
+            if (typeof cfg !== "undefined" && cfg.voiceOn && typeof TALE !== "undefined" && TALE.say) TALE.say(logg[0].a);
+          } catch (e) {
+            logg[0].a = "⚠ " + e.message;
+          }
+          busy = false;
+          $("aiQBtn").textContent = "SPØR";
+          vis();
+        }
+        function vis() {
+          logg = logg.slice(0, 3);
+          $("aiQA").innerHTML = logg.map((x) => "<b>" + esc(x.q) + "</b>\n" + esc(x.a)).join("\n\n");
+        }
+        return { spor, status };
+      })();
       const AIP = (() => {
         let open = false,
           R = null,
@@ -10691,6 +10815,7 @@
           if (open) {
             render();
             load();
+            AIASK.status();
           }
         }
         // nye råd kvar 10. min så lenge overlayet er ope eller eit AI-lag er på kartet
@@ -10886,6 +11011,13 @@
             a = "Snødjupna her er " + ($("depth").textContent || "ukjend").replace(".", ",") + ". " + ($("depthNote").textContent || "");
           }
           let ok = !!a;
+          if (!a) {
+            // v1.6.144: det dei faste svara ikkje dekkjer, går til SNOWMAN AI (lokal AI i SNOWMAN Office), om han er på
+            try {
+              let r = await api("api/ai/spor", { tekst: q, kontekst: ($("aiCard").innerText || "").slice(0, 5000) });
+              if (r.ok && r.svar) (a = r.svar), (ok = true), (intent = "snowman-ai");
+            } catch (e) {}
+          }
           if (!a) a = "Det forstod eg ikkje. Seg til dømes: kor mykje snø manglar, eller: når bør eg preparere.";
           say(a);
           try {

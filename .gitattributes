@@ -1,5 +1,7 @@
 # Windows-filer må ha CRLF, elles les cmd.exe dei feil («'d' is not recognized …»)
 *.bat text eol=crlf
 *.cmd text eol=crlf
+*.vbs text eol=crlf
+*.ico binary
 # Skript for Linux må ha LF
 *.sh text eol=lf

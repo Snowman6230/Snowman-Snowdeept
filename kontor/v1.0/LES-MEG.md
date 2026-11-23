@@ -132,6 +132,28 @@ Office avviser pakka med forklaring om manifestet manglar, sha256 ikkje stemmer,
 hindringar eller kontrollpunkt har ugyldige verdiar. `anleggspakke.py` – `lag()` lagar ei gyldig pakke.
 Pakka blir laga av Office-modus (`/api/kontormodus/publiser`) og send til Office. Maks 4 GB.
 
+## Snarvegen på skrivebordet
+
+Installasjonen (og SNOWMAN Office sjølv, første gong han startar etter oppdatering til 1.3.0) lagar snarvegen
+**SNOWMAN Office** med eige ikon på skrivebordet og i startmenyen. Han opnar kart og anlegg i eit eige vindauge (Edge
+eller Chrome), og startar Office først om han står. Sletta snarveg kjem ikkje att av seg sjølv – lag han på nytt med
+`START-SNOWMAN-OFFICE.bat snarveg`.
+
+## Lokal AI – SNOWMAN AI
+
+Ein språkmodell som køyrer på kontor-PC-en (Ollama). Ingenting forlèt anlegget.
+
+1. Installer Ollama: svar **J** på lokal AI i INSTALLER-WINDOWS.bat, eller last ned frå https://ollama.com/download.
+   Ollama startar sjølv når du loggar på Windows.
+2. Office › **AI** › Lokal AI: **⇩ HENT MODELL** (standard `gemma3:4b`, ca. 3 GB – treng 8 GB minne), så
+   **✓ BRUK LOKAL AI**.
+3. Office brukar modellen til analysar og spørsmål. Førarane spør i **AI-panelet i maskina** (✦ SPØR SNOWMAN AI, eller med
+   tale når dei faste svara ikkje dekkjer spørsmålet). Maskina sender spørsmålet og eit samandrag av skjermen til Office –
+   på wifi eller via port 8791 ute i bakken. Éitt spørsmål om gongen.
+
+Ein større modell gir betre svar, men treng meir minne og er tregare utan skjermkort. AI er valfri: SNOWMAN Snowdeep og
+Office verkar fullt ut utan.
+
 ## Oppdatering
 
 Du treng **aldri** laste ned zip-fila på nytt. Office ser sjølv etter ny versjon på GitHub ved oppstart og kvar 3. time –

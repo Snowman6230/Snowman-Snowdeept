@@ -3,7 +3,12 @@
 
 Leverandørar (innstillinga «ai.leverandor» i data/kontor.json, eller kontorsida):
     av          ingen AI (standard). Reglane i forbetring.py er alltid på.
-    ollama      lokal språkmodell (Ollama på same maskin eller NAS) – ingenting forlèt anlegget
+    ollama      lokal språkmodell (Ollama på same maskin eller NAS) – ingenting forlèt anlegget. Tilrådd: LOKAL_MODELL.
+                Office kan sjå om Ollama køyrer, hente modellen og ta han i bruk (Office › AI › Lokal AI).
+
+SNOWMAN AI for maskinene (frå 1.3.0): førarane spør i SNOWMAN Snowdeep (AI-panelet), maskina sender spørsmålet og
+eit kort samandrag av det skjermen viser til Office (POST /api/v1/ai/maskin, rolla maskin – også på maskinporten),
+og Office svarar med AI-en som er sett opp her. Éin om gongen, så ein svak PC ikkje blir overlasta.
     anthropic   Claude via API – krev eigen API-nøkkel (lagra berre i data/kontor.json)
 
 Personvern: AI får berre eit ANONYMISERT samandrag – ingen namn, ingen IP-adresser, ingen posisjonar, ingen nøklar.
@@ -11,6 +16,7 @@ Kontorsida kan vise nøyaktig kva som blir sendt (forehandsvising) før AI blir 
 AI les og foreslår – han styrer aldri Office, Base, mottakaren eller maskinene.
 """
 import json
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -33,12 +39,24 @@ ASK_JSON = """Gi svaret som JSON: {"forslag": [{"kategori": "base|kontor|snowman
 "tittel": "...", "grunn": "...", "tiltak": "..."}]}. Maks 8 forslag. Berre JSON, ingen anna tekst."""
 
 
+LOKAL_MODELL = "gemma3:4b"      # lokal standardmodell: god på norsk, går på ein vanleg PC (ca. 3 GB, 8 GB minne)
+OLLAMA = "http://localhost:11434"
+
+DRIVER = """Du er SNOWMAN AI i førarhuset på ei tråkkemaskin (SNOWMAN Snowdeep, Alpindata). Føraren spør medan han
+arbeider. Svar på nynorsk, kort og konkret: 1–4 setningar, utan overskrifter og lister med mindre føraren ber om det.
+Bygg på samandraget av skjermen (snødjupne, mål, GNSS, trasear, AI-råda frå den lokale modellen i maskina og vêret).
+Finn ikkje på tal som ikkje står der – sei heller at du ikkje veit. Alt er råd: føraren avgjer. Gi aldri råd som går
+ut over tryggleiken (bratt terreng, vinsj, folk i bakken, skred) – vis då til rutinane på anlegget."""
+
+
 class AI:
     def __init__(self, cfg, store, events):
         self.cfg = cfg
         self.store = store
         self.events = events
         self.last = None               # {"t", "ok", "tal", "feil"}
+        self.lock = threading.Lock()   # éitt spørsmål om gongen frå maskinene
+        self.pull_st = {}              # henting av lokal modell: {"modell", "status", "del", "ferdig", "feil", "t"}
 
     def enabled(self):
         return self.cfg["ai"].get("leverandor", "av") in ("ollama", "anthropic")
@@ -89,26 +107,98 @@ class AI:
                + "\n\nSpørsmål frå driftsleiaren: " + str(question)[:2000])
         return self._ask(SYSTEM, msg)
 
+    # ---------- SNOWMAN AI for maskinene ----------
+    def driver(self, maskin, tekst, kontekst=None):
+        """Spørsmål frå føraren (SNOWMAN Snowdeep). Returnerer svaret."""
+        if not self.enabled():
+            raise RuntimeError("AI er ikkje slått på i SNOWMAN Office (Office › AI).")
+        tekst = str(tekst or "").strip()[:1000]
+        if not tekst:
+            raise ValueError("Spørsmålet er tomt")
+        ktx = json.dumps(kontekst or {}, ensure_ascii=False)[:8000]
+        if not self.lock.acquire(timeout=90):
+            raise RuntimeError("SNOWMAN AI svarar ei anna maskin – prøv igjen om litt.")
+        try:
+            t0 = time.time()
+            svar = self._ask(DRIVER, "Samandrag av skjermen i maskina:\n" + ktx + "\n\nFøraren spør: " + tekst)
+            self.events.add(f"SNOWMAN AI svara {maskin} ({time.time() - t0:.0f} s)", "info")
+            return svar.strip()
+        finally:
+            self.lock.release()
+
+    # ---------- lokal AI (Ollama) ----------
+    def lokal(self):
+        """Køyrer Ollama, og kva modellar har han? Ingenting blir endra."""
+        adr = (self.cfg["ai"].get("adresse") or OLLAMA).rstrip("/")
+        r = {"adresse": adr, "koyrer": False, "versjon": None, "modellar": [], "tilradd": LOKAL_MODELL,
+             "i_bruk": self.cfg["ai"].get("leverandor") == "ollama", "modell": self.cfg["ai"].get("modell") or LOKAL_MODELL,
+             "henting": dict(self.pull_st), "feil": ""}
+        try:
+            with nett.urlopen(urllib.request.Request(adr + "/api/version"), timeout=3) as h:
+                r["versjon"] = json.loads(h.read().decode("utf-8")).get("version")
+            with nett.urlopen(urllib.request.Request(adr + "/api/tags"), timeout=5) as h:
+                r["modellar"] = [m.get("name") for m in json.loads(h.read().decode("utf-8")).get("models", [])]
+            r["koyrer"] = True
+        except Exception as e:
+            r["feil"] = ("Ollama er ikkje installert eller ikkje starta på denne PC-en." if "10061" in str(e) or
+                         "refused" in str(e).lower() else nett.forklar(e))
+        return r
+
+    def hent_modell(self, modell=None):
+        """Hentar ein modell i Ollama (bakgrunn). Framgangen står i lokal()["henting"]."""
+        modell = (str(modell or "").strip() or LOKAL_MODELL)[:80]
+        if self.pull_st.get("modell") and not self.pull_st.get("ferdig") and time.time() - self.pull_st.get("t", 0) < 120:
+            raise RuntimeError(f"Hentar alt {self.pull_st['modell']} – vent til det er ferdig.")
+        adr = (self.cfg["ai"].get("adresse") or OLLAMA).rstrip("/")
+        self.pull_st = {"modell": modell, "status": "startar", "del": 0.0, "ferdig": False, "feil": "", "t": time.time()}
+
+        def run():
+            try:
+                req = urllib.request.Request(adr + "/api/pull", data=json.dumps({"model": modell, "stream": True}).encode(),
+                                             method="POST", headers={"content-type": "application/json"})
+                with nett.urlopen(req, timeout=3600) as h:
+                    for line in h:
+                        try:
+                            d = json.loads(line)
+                        except ValueError:
+                            continue
+                        if d.get("error"):
+                            raise RuntimeError(d["error"])
+                        self.pull_st.update({"status": d.get("status", ""), "t": time.time()})
+                        if d.get("total") and d.get("completed"):
+                            self.pull_st["del"] = d["completed"] / d["total"]
+                self.pull_st.update({"ferdig": True, "status": "ferdig", "del": 1.0, "t": time.time()})
+                self.events.add(f"Lokal AI: modellen {modell} er henta", "ok")
+            except Exception as e:
+                msg = str(e)
+                if "10061" in msg or "refused" in msg.lower():
+                    msg = "Ollama er ikkje installert eller ikkje starta på denne PC-en."
+                self.pull_st.update(ferdig=True, feil=msg[:300], status="feila", t=time.time())
+                self.events.add(f"Lokal AI: henting av {modell} feila: {msg[:200]}", "feil")
+        threading.Thread(target=run, daemon=True, name="ollama-pull").start()
+        return dict(self.pull_st)
+
     def _ask(self, system, msg):
         c = self.cfg["ai"]
         kind = c.get("leverandor")
         if kind == "ollama":
             url = (c.get("adresse") or "http://localhost:11434").rstrip("/") + "/api/chat"
-            body = {"model": c.get("modell") or "llama3.1", "stream": False,
+            body = {"model": c.get("modell") or LOKAL_MODELL, "stream": False,
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": msg}]}
             try:
                 r = _post(url, body, {}, 300)
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     raise RuntimeError(f"Ollama kjenner ikkje modellen «{body['model']}». Hent han først: "
-                                       f"«ollama pull {body['model']}» i eit kommandovindauge, eller skriv namnet på ein "
-                                       "modell du har (t.d. llama3.1) i feltet Modell.") from None
+                                       "trykk HENT MODELL under Office › AI › Lokal AI, eller skriv namnet på ein modell du "
+                                       f"har i feltet Modell (tilrådd: {LOKAL_MODELL}).") from None
                 raise
             except OSError as e:
                 if "10061" in str(e) or "refused" in str(e).lower():
                     raise RuntimeError(f"Får ikkje kontakt med Ollama på {url.rsplit('/api/', 1)[0]}. Ollama er ikkje "
-                                       "installert eller ikkje starta på denne PC-en. Installer frå ollama.com og køyr "
-                                       "«ollama pull llama3.1» – eller vel «Claude (Anthropic API)» eller «Av».") from None
+                                       "installert eller ikkje starta på denne PC-en. Installer frå ollama.com (eller køyr "
+                                       "INSTALLER-WINDOWS.bat på nytt og svar J på lokal AI), og trykk HENT MODELL – eller vel "
+                                       "«Claude (Anthropic API)» eller «Av».") from None
                 raise RuntimeError(nett.forklar(e)) from None
             return r["message"]["content"]
         if kind == "anthropic":
