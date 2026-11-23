@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.150"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.151"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -109,7 +109,7 @@ KONTOR_LOKAL={"url":(os.environ.get("SNOWMAN_KONTOR_URL") or "http://127.0.0.1:8
 # Berre JSON, berre lista adresser, og berre med eigen header (ein annan nettstad i nettlesaren kan ikkje sende han).
 KONTOR_PROXY=re.compile(r"^(status|v1/(maskiner|anleggspakke/versjonar|anleggspakke/aktiv|forslag|forslag/svar|maskin/fjern|"
                         r"forbetringar|forbetringar/status|forbetringar/analyser|ai|ai/innstillingar|ai/forehandsvis|ai/analyser|"
-                        r"ai/sporsmal|ai/test|base|brukarar|brukar|brukar/fjern|hendingar|oppdatering/sjekk|oppdater))$")
+                        r"base|brukarar|brukar|brukar/fjern|hendingar|oppdatering/sjekk|oppdater))$")
 def kontor_proxy(h,u,body=None):
     sub=u.path[len("/api/kontormodus/k/"):]
     try:
@@ -1671,23 +1671,6 @@ class API(http.server.BaseHTTPRequestHandler):
                 before=json.dumps(OPEN.cfg,ensure_ascii=False); c=OPEN.save(json.loads(body or b"{}"))
                 if json.dumps(c,ensure_ascii=False)!=before: LOG.event("Opningstider endra (AI)")
                 self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"cfg":c,"upcoming":OPEN.upcoming(days=21)}).encode())
-            except Exception as e:
-                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
-            return
-        if self.path=="/api/ai/spor":   # v1.6.144: føraren spør SNOWMAN AI (AI-en i SNOWMAN Office)
-            try:
-                d=json.loads(body or b"{}"); tekst=str(d.get("tekst") or "").strip()[:1000]
-                if not tekst: raise ValueError("Skriv eit spørsmål.")
-                ktx={"gnss":{"fix":STATE.get("fix"),"satellittar":STATE.get("sats")},"snodjupne_m":STATE.get("depth"),
-                     "fart_kmt":round(STATE["speed"]*3.6,1) if isinstance(STATE.get("speed"),(int,float)) else None,
-                     "preparerer":bool(HUD.get("preparing")),"skjermen":str(d.get("kontekst") or "")[:5000]}
-                if MODUS[0]=="kontor":
-                    svar=kontor_lokal("/api/v1/ai/maskin",{"maskin":"Office","tekst":tekst,"kontekst":ktx},timeout=150).get("svar","")
-                else:
-                    if not CFG.get("kontor_on"): raise RuntimeError("SNOWMAN AI krev kopling til SNOWMAN Office (Innst. › Trasear › Kopling til SNOWMAN Office).")
-                    svar=KONTOR.ai_spor(CFG,tekst,ktx)
-                LOG.event(f"Førar: spørsmål til SNOWMAN AI ({len(tekst)} teikn)")
-                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"svar":svar}).encode())
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return

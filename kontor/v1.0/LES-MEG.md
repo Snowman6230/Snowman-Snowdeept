@@ -3,7 +3,7 @@
 Kontorsida og anleggsserveren for SNOWMAN Snowdeep. Køyrer på **ein PC på anlegget** (Windows).
 
 **Frå 1.1.2** gjer du alt i **Kart og anlegg** – same skjermbilete som i maskinene. Knappen **▤ Office** i verktøylinja
-(eller Innst. › Office) har publisering, maskinene, forslag, pakkar, brukarar, forbetringar, AI og system. Kontorsida på
+(eller Innst. › Office) har publisering, maskinene, forslag, pakkar, brukarar, forbetringar og system. Kontorsida på
 8790 er ein reserve.
 
 **Frå 1.1.0** har kontoret **same kart, 3D, terreng, trasear, hindringar og kontrollpunkt som i maskinene**: Office
@@ -22,7 +22,7 @@ SNOWMAN Office (kontor-PC) ◄────────────────�
 ```
 
 **Avgjerd 2026-11-22:** SNOWMAN Base har berre med satellittar og NTRIP å gjere. Alt anna – kontorsida, anleggspakkar,
-forslag, maskinoversikt, deling og AI – ligg i SNOWMAN Office. Ei oppdatering eller ein feil i Office kan difor aldri
+forslag, maskinoversikt og deling – ligg i SNOWMAN Office. Ei oppdatering eller ein feil i Office kan difor aldri
 stoppe korreksjonane til maskinene.
 
 ## Kva Office gjer
@@ -35,7 +35,7 @@ stoppe korreksjonane til maskinene.
 | **Forslag** | Førarane sender forslag (ny hindring, trasé, merknad) frå maskina. Kontoret godkjenner, avviser eller merkjer som gjort. |
 | **Maskinoversikt** | Kva SNOWMAN-versjon og anleggspakke kvar maskin har, og når ho sist melde seg. |
 | **SNOWMAN Base (berre lesing)** | Korreksjonsstraumane og åtvaringane frå Base blir viste på oversikta og i forbetringslista. Office endrar aldri noko i Base. |
-| **Forbetringar og AI** | Reglar (alltid på) og valfri AI (Claude med eigen nøkkel, berre anonymisert samandrag). Eksport som Markdown til utviklaren. |
+| **Forbetringar** | Reglar (alltid på, lokalt). Eksport som Markdown til utviklaren. |
 | **Deling (v1.8)** | API-et for delt snødjupne mellom maskinene er klart. SNOWMAN Snowdeep brukar det frå v1.8. |
 
 ## Kom i gang (Windows)
@@ -139,24 +139,12 @@ Installasjonen (og SNOWMAN Office sjølv, første gong han startar etter oppdate
 eller Chrome), og startar Office først om han står. Sletta snarveg kjem ikkje att av seg sjølv – lag han på nytt med
 `START-SNOWMAN-OFFICE.bat snarveg`.
 
-## AI (valfri) – Claude
+## AI
 
-SNOWMAN Office kan bruke **Claude** (Anthropic) til forbetringsanalysen, spørsmål frå kontoret og «Spør SNOWMAN AI» frå
-maskinene. Det er valfritt og av som standard. Alt anna – også **AI-råda i maskina** (snøkart, når ein bør preparere,
-hol, kvalitet, vêr) – er reknereglar som køyrer lokalt i SNOWMAN Snowdeep, utan nett, og blir ikkje rørt av dette.
-
-1. Lag ein konto på https://console.anthropic.com, legg inn betalingskort under Billing, og lag ein API-nøkkel.
-   (Eit vanleg Claude-abonnement gir ikkje API-nøkkel.)
-2. Office › **AI**: vel **Claude**, lim inn nøkkelen, trykk **LAGRE** og **TEST TILKOPLINGA**.
-3. Kontor-PC-en treng internett. Maskinene har ingen nøkkel – dei spør Office.
-
-Kostnad: ein betaler per spørsmål – lite ved vanleg bruk. **Månadstak:** 500 kall i månaden (`maks_per_manad` under
-`ai` i `data/kontor.json`), så ein feil ikkje kan gi ei stor rekning. Set gjerne eit tak på kontoen hos Anthropic òg.
-Personvern: spørsmåla blir sende til Anthropic. Analysen er anonymisert (ingen namn, IP-adresser eller posisjonar), og
-spørsmåla frå maskinene tek med det AI-panelet viser, ikkje posisjonen.
-
-*Lokal AI (Ollama) var med i 1.3.x og er fjerna i 1.4.0: ho kravde for mykje av PC-en. Var ho i bruk, blir AI slått av
-ved oppdateringa.*
+SNOWMAN Office har ingen språkmodell og treng verken konto, API-nøkkel eller skyteneste. **AI-råda i maskina**
+(knappen AI: snøkart, når ein bør preparere, hol, kvalitet, vêr) er reknereglar som køyrer lokalt i SNOWMAN Snowdeep,
+utan nett. *Lokal AI (Ollama, 1.3.x) og Claude (1.4.x) er fjerna i 1.5.0 for å halde SNOWMAN enkel; ein lagra
+API-nøkkel blir sletta ved oppdateringa.*
 
 ## Oppdatering
 

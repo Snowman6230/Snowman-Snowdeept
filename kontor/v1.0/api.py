@@ -1,7 +1,7 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 """Nettsider og API i SNOWMAN Office (standard port 8790, berre på nettet på anlegget).
 
-Sider:   /  og  /kontor/    kontorsida (oversikt, anleggspakke, forslag, forbetringar, AI, brukarar, system)
+Sider:   /  og  /kontor/    kontorsida (oversikt, anleggspakke, forslag, forbetringar, brukarar, system)
 
 API v1 (JSON). Innlogging med brukarnamn og passord:
   Maskin-API:  «Authorization: Basic» med ein brukar med rolla «maskin»
@@ -25,10 +25,6 @@ API v1 (JSON). Innlogging med brukarnamn og passord:
               POST /api/v1/maskin/fjern {id}
               GET  /api/v1/forbetringar  ·  GET /api/v1/forbetringar.md  ·  POST /api/v1/forbetringar/status
               POST /api/v1/forbetringar/analyser
-              GET  /api/v1/ai  ·  POST /api/v1/ai/innstillingar  ·  GET /api/v1/ai/forehandsvis
-              POST /api/v1/ai/analyser  ·  POST /api/v1/ai/sporsmal {tekst}
-              POST /api/v1/ai/test   (berre Claude – lokal AI er fjerna i 1.4.0)
-  Maskin:     POST /api/v1/ai/maskin {maskin, tekst, kontekst}  (SNOWMAN AI for førarane, også på maskinporten)
               GET  /api/v1/base  ·  POST /api/v1/base {adresse, brukar, passord}   SNOWMAN Base (berre lesing)
               GET  /api/v1/brukarar  ·  POST /api/v1/brukar {namn, passord?, roller?}  ·  POST /api/v1/brukar/fjern
               POST /api/v1/oppdatering/sjekk  ·  POST /api/v1/oppdater
@@ -49,7 +45,6 @@ import time
 import urllib.parse
 from pathlib import Path
 
-import ai as aimod
 import anleggspakke
 import forbetring
 import vern as vernmod
@@ -235,12 +230,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "forbetringar.md":
             return self.send_text(forbetring.export_markdown(st, q.get("alle") == "1"), "text/markdown; charset=utf-8",
                                   f"snowman-kontor-forbetringar-{time.strftime('%Y%m%d')}.md")
-        if p == "ai":
-            c = k.cfg["ai"]
-            return self.send_json({"ok": True, "leverandor": c.get("leverandor", "av"), "modell": c.get("modell") or aimod.MODELL,
-                                   "har_nokkel": bool(c.get("api_nokkel")), "siste": k.ai.last, "bruk": k.ai.bruk()})
-        if p == "ai/forehandsvis":
-            return self.send_json({"ok": True, **k.ai.preview(k)})
         if p == "base":
             c = k.cfg["base"]
             return self.send_json({"ok": True, "adresse": c.get("adresse", ""), "brukar": c.get("brukar", ""),
@@ -317,13 +306,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 k.cfg.set_user(nb, npw, roles=["maskin"])
             k.events.add(f"Første administrator «{name}» laga frå {ip}" + (f", og maskinbrukaren «{nb}»" if nb else ""), "ok")
             return self.send_json({"ok": True, "okt": k.vern.new_session(name), "brukar": name})
-        if p in ("maskin", "maalingar", "forslag", "ai/maskin"):
+        if p in ("maskin", "maalingar", "forslag"):
             if not self.is_machine():
                 return self.deny()
             d = self.body_json()
-            if p == "ai/maskin":   # SNOWMAN AI for førarane (1.3.0)
-                namn = _safe(d.get("maskin")) or "ei maskin"
-                return self.send_json({"ok": True, "svar": k.ai.driver(namn, d.get("tekst"), d.get("kontekst"))})
             if p == "maskin":
                 mid = _safe(d.get("id") or d.get("namn"))
                 if not mid:
@@ -331,7 +317,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 ok, err = st.heartbeat(mid, d, ip, int(k.cfg["deling"].get("maskinplassar") or 0))
                 pk = st.package()
                 return self.send_json({"ok": ok, "feil": err, "tid": time.time(), "kontor": VERSION, "api": API_VERSION,
-                                       "ai": k.ai.enabled(),
                                        "snowman_min": SNOWMAN_MIN, "pakke": pk["versjon"] if pk else None},
                                       200 if ok else 403)
             if p == "maalingar":
@@ -366,28 +351,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "forbetringar/analyser":
             found = forbetring.run(k)
             return self.send_json({"ok": True, "tal": len(found)})
-        if p == "ai/innstillingar":
-            if d.get("leverandor") not in ("av", "anthropic"):
-                raise ValueError("leverandor må vere av eller anthropic (Claude)")
-
-            def fn(data):
-                c = data["ai"]
-                c["leverandor"] = d["leverandor"]
-                if d.get("api_nokkel"):
-                    c["api_nokkel"] = str(d["api_nokkel"]).strip()
-                if d.get("fjern_nokkel"):
-                    c["api_nokkel"] = ""
-                return dict(c)
-            c = k.cfg.update(fn)
-            k.events.add("AI: " + ("Claude" if c["leverandor"] == "anthropic" else "av"), "info")
-            return self.send_json({"ok": True})
-        if p == "ai/test":
-            return self.send_json({"ok": True, "svar": k.ai.test()})
-        if p == "ai/analyser":
-            items = k.ai.analyse(k)
-            return self.send_json({"ok": True, "tal": len(items), "forslag": items})
-        if p == "ai/sporsmal":
-            return self.send_json({"ok": True, "svar": k.ai.ask(k, d.get("tekst", ""))})
         if p == "base":
             adr = str(d.get("adresse") or "").strip()[:200]
             if adr and (" " in adr or not all(c.isprintable() for c in adr)):
@@ -463,7 +426,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 # Maskinene på mobilnettet når Office gjennom denne porten (standard 8791), som ruteren sender vidare til kontor-PC-en.
 # Berre maskin-API-et er ope her, og berre for brukarar med rolla «maskin». Kontorsida (8790) blir aldri opna utanfrå.
 MASKIN_GET = {"/api/v1/info", "/api/v1/maalingar", "/api/v1/maskiner", "/api/v1/anleggspakke", "/api/v1/anleggspakke/fil"}
-MASKIN_POST = {"/api/v1/maskin", "/api/v1/maalingar", "/api/v1/forslag", "/api/v1/ai/maskin"}
+MASKIN_POST = {"/api/v1/maskin", "/api/v1/maalingar", "/api/v1/forslag"}
 
 
 class MaskinHandler(Handler):

@@ -318,6 +318,13 @@ eigen base) treng òg kontoret. *Laga 2026-11-22: Base 1.4.0, Kontor 1.0.0, SNOW
 Der det står «Base» om kontordelen, anleggspakka eller maskin-API-et under, gjeld det no SNOWMAN Kontor.
 Avgjerd 4 (maskin-API på port 2101) er erstatta av avgjerd 6.
 
+**Avgjerd 10 (2026-11-23) – ingen språkmodell i SNOWMAN:** Eigaren spurde om Claude er nødvendig for at SNOWMAN skal
+vere eit godt program, og avgjorde: «Fjern Claude og knappen heiter fortsatt AI». Kjernen (snødjupne med RTK mot
+terrengmodellen, kart, trasear, Office, sanntid) og AI-råda i maskina (reknereglar, lokalt) treng ikkje språkmodell, og
+konto, API-nøkkel, kostnad og personvern gjorde oppsettet vanskelegare. Office 1.5.0 og Snowdeep 1.6.151 har difor
+ingen språkmodell: Office › AI, «Spør SNOWMAN Office» og «Spør SNOWMAN AI» er fjerna, og ein lagra API-nøkkel blir
+sletta. Knappen **AI** i maskina (reknereglane) er uendra. Avgjerd 9 under er erstatta av denne.
+
 **Avgjerd 9 (2026-11-23) – AI: berre Claude, ingen lokal språkmodell:** Eigaren: «llama-server brukar for mykje av
 prosessor og minne» og «Ta bort lokal AI … Ta også bort andre leverandørar. Viktig å halde Snowman så enkel som mogleg.»
 Mange PC-ar på anlegga er eldre. Difor: lokal AI (Ollama) er fjerna frå Office (1.4.0) og installasjonen, og det er
@@ -516,7 +523,7 @@ at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetrin
 - Statusside og kontorside (kart med basar og maskiner, anleggspakke, forslag, forbetringar, AI, oppdatering).
 - v1.1.0: mountpoints blir lagde og endra manuelt på kontorsida (relé, USB/COM, opplasting, TCP), med
   prioritet/reserve, henting av mountpoints frå ein annan caster, og bruk med éin gong utan omstart.
-- Forbetringsmotor: reglar (alltid på) + AI (av som standard: berre Claude med eigen nøkkel frå 1.4.0 – sjå avgjerd 9 i kap. 16 –, berre
+- Forbetringsmotor: reglar (alltid på) + AI (fjerna i 1.5.0 – sjå avgjerd 10 i kap. 16; før: Claude med eigen nøkkel, berre
   anonymisert samandrag). Kategoriar: SNOWMAN Base, SNOWMAN snødjupne, mottakar/antenne, drift. Eksport som
   Markdown-oppgåveliste til utviklaren. Dagstal for trendar.
 - Oppdatering som i SNOWMAN snødjupne (git pull eller zip, `data/` blir aldri rørt), dagleg sjekk og valfri

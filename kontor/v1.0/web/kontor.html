@@ -53,7 +53,7 @@ input,select,textarea{width:100%}
   <h1>SNOWMAN Office</h1><span class="dim" id="sub"></span>
   <nav id="tabs" class="hidden">
     <a class="btn" id="kartLink" href="http://localhost:8770/" target="snowmanKart" style="border-color:var(--acc)">Kart og anlegg</a><button data-t="oversikt">Oversikt</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
-    <button data-t="forbetringar">Forbetringar</button><button data-t="ai">AI</button><button data-t="brukarar">Brukarar</button><button data-t="system">System</button>
+    <button data-t="forbetringar">Forbetringar</button><button data-t="brukarar">Brukarar</button><button data-t="system">System</button>
     <button id="logout">Logg ut</button>
   </nav>
 </header>
@@ -114,21 +114,10 @@ input,select,textarea{width:100%}
   </div>
   <div id="t-forbetringar" class="hidden">
     <section class="card"><h2>Forbetringsforslag</h2>
-      <p class="dim">Frå reglane (alltid på), åtvaringane frå SNOWMAN Base om korreksjonane, og AI (om slått på). Kategoriar: SNOWMAN Base, SNOWMAN Office, SNOWMAN Snowdeep, mottakar/antenne og drift. Eksporter lista og gi henne til utviklaren (eller ein AI-assistent) som oppgåveliste.</p>
+      <p class="dim">Frå reglane (alltid på) og åtvaringane frå SNOWMAN Base om korreksjonane. Kategoriar: SNOWMAN Base, SNOWMAN Office, SNOWMAN Snowdeep, mottakar/antenne og drift. Eksporter lista og gi henne til utviklaren (eller ein AI-assistent) som oppgåveliste.</p>
       <div class="row"><button id="impRun">Analyser no</button><button id="impAll">Vis også gjorde/avviste</button><a class="btn" id="impMd" href="#">Last ned som Markdown</a></div>
       <div class="scroll" id="impList"></div></section>
     <section class="card"><h2>Trend siste dagar</h2><div class="scroll" id="days"></div></section>
-  </div>
-  <div id="t-ai" class="hidden">
-    <section class="card"><h2>AI i SNOWMAN Office</h2>
-      <p class="dim">AI les eit <b>anonymisert samandrag</b> (ingen namn, IP-adresser, posisjonar eller nøklar) og foreslår forbetringar – også i SNOWMAN-programma. AI styrer aldri noko. Sjå nøyaktig kva som blir sendt under «Førehandsvis».</p>
-      <label>AI</label><select id="aiProv"><option value="av">Av</option><option value="anthropic">Claude (Anthropic) – krev eigen API-nøkkel</option></select>
-      <label>API-nøkkel (Claude)</label><input id="aiKey" type="password" placeholder="(uendra)">
-      <div class="row"><button class="pri" id="aiSave">Lagre</button><button id="aiPrev">Førehandsvis</button><button id="aiRun">Analyser med AI no</button></div>
-      <div id="aiMsg" class="msg"></div><pre id="aiOut" class="hidden"></pre></section>
-    <section class="card"><h2>Spør SNOWMAN Office</h2>
-      <textarea id="aiQ" rows="3" placeholder="t.d. Kvifor har FIX-delen gått ned denne veka?"></textarea>
-      <div class="row"><button class="pri" id="aiAsk">Spør</button></div><pre id="aiA" class="hidden"></pre></section>
   </div>
   <div id="t-system" class="hidden">
     <section class="card"><h2>SNOWMAN Base (berre lesing)</h2>
@@ -219,7 +208,7 @@ async function oppdaterNo(out){
 }
 $("#updBRun").onclick=()=>oppdaterNo(t=>{$("#updBMsg").textContent=t.split("\n").filter(Boolean).slice(-1)[0]||t});
 $("#updBLater").onclick=async()=>{const u=(await api("/api/status")).oppdatering||{};updLater=(u.ny||"")+"/"+(u.ny_kart||"");$("#updBanner").classList.add("hidden")};
-async function refresh(){try{await ({oversikt,brukarar,pakke,forslag,forbetringar,ai,system})[tab]()}catch(e){console.log(e)}}
+async function refresh(){try{await ({oversikt,brukarar,pakke,forslag,forbetringar,system})[tab]()}catch(e){console.log(e)}}
 async function oversikt(){
   const s=await api("/api/status");
   $("#sub").textContent=`${s.namn}${s.anlegg?" · "+s.anlegg:""} · v${s.versjon}`;
@@ -281,15 +270,6 @@ async function forbetringar(){
 async function imp(nokkel,status){await api("/api/v1/forbetringar/status",{method:"POST",json:{nokkel,status}});forbetringar()}
 $("#impRun").onclick=async()=>{await api("/api/v1/forbetringar/analyser",{method:"POST",json:{}});forbetringar()};
 $("#impAll").onclick=()=>{showAll=!showAll;$("#impAll").classList.toggle("on",showAll);forbetringar()};
-async function ai(){
-  const d=await api("/api/v1/ai");$("#aiProv").value=d.leverandor==="anthropic"?"anthropic":"av";
-  $("#aiKey").placeholder=d.har_nokkel?"(lagra – skriv ny for å byte)":"(ingen)";
-  $("#aiMsg").textContent=d.siste?(d.siste.ok?`Siste analyse ${tid(d.siste.t)}: ${d.siste.tal} forslag.`:`Siste analyse feila: ${d.siste.feil}`):"";
-}
-$("#aiSave").onclick=async()=>{try{await api("/api/v1/ai/innstillingar",{method:"POST",json:{leverandor:$("#aiProv").value,api_nokkel:$("#aiKey").value}});$("#aiKey").value="";$("#aiMsg").textContent="Lagra.";ai()}catch(e){$("#aiMsg").textContent="Feil: "+e.message}};
-$("#aiPrev").onclick=async()=>{const d=await api("/api/v1/ai/forehandsvis");$("#aiOut").classList.remove("hidden");$("#aiOut").textContent="SYSTEM:\n"+d.system+"\n\nMELDING:\n"+d.melding};
-$("#aiRun").onclick=async()=>{$("#aiMsg").textContent="Analyserer … (kan ta eitt minutt)";try{const d=await api("/api/v1/ai/analyser",{method:"POST",json:{}});$("#aiMsg").textContent=`${d.tal} forslag – sjå Forbetringar.`}catch(e){$("#aiMsg").textContent="Feil: "+e.message}};
-$("#aiAsk").onclick=async()=>{$("#aiA").classList.remove("hidden");$("#aiA").textContent="Tenkjer …";try{const d=await api("/api/v1/ai/sporsmal",{method:"POST",json:{tekst:$("#aiQ").value}});$("#aiA").textContent=d.svar}catch(e){$("#aiA").textContent="Feil: "+e.message}};
 async function system(){
   const s=await api("/api/status"), u=s.oppdatering;
   const bd=await api("/api/v1/base");$("#bAddr").value=bd.adresse||"";$("#bUser").value=bd.brukar||"";$("#bPw").placeholder=bd.har_passord?"(lagra)":"";

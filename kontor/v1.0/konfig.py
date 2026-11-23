@@ -12,7 +12,7 @@ Første administrator blir laga på kontorsida frå det lokale nettet, eller med
 Gløymt passord: «brukar passord NAMN» på PC-en Office køyrer på.
 
 Passord blir lagra som hash (PBKDF2-SHA256 med salt), aldri i klartekst – med unntak av innlogginga mot SNOWMAN Base
-(statusvising) og API-nøkkelen til AI, som må kunne brukast. data/ ligg aldri i repoet (.gitignore).
+(statusvising) som må kunne brukast. data/ ligg aldri i repoet (.gitignore).
 
 Fila kan endrast medan Office køyrer (kommandoar i eit anna vindauge): Office les henne på nytt når ho er endra.
 """
@@ -25,14 +25,14 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 API_VERSION = 1
 
 # Samspel med SNOWMAN Snowdeep (pc/): anleggspakke og forslag frå v1.6.137, terreng, kontormodus og sanntid frå v1.6.139.
 # Eit brot i API-et gir ny API_VERSION; gamle maskiner får då beskjed om å oppdatere, ikkje feil data.
 SNOWMAN_MIN = "1.6.139"
 FUNKSJONAR = ["kontor", "innlogging-brukar", "deling-v1", "anleggspakke-v1", "anleggspakke-format-1", "forslag-v1",
-              "forbetringar", "ai", "base-status", "terreng-i-pakke", "kontormodus", "ai-maskin"]
+              "forbetringar", "base-status", "terreng-i-pakke", "kontormodus"]
 
 DEFAULT = {
     "namn": "SNOWMAN Office",
@@ -47,7 +47,6 @@ DEFAULT = {
     "anleggspakke": {"maks_mb": 4000, "behald_versjonar": 20},
     "base": {"adresse": "", "brukar": "", "passord": ""},   # SNOWMAN Base (berre lesing av statusen), t.d. http://snowman-base.local:8780
     "oppdatering": {"sjekk": True, "auto": False},   # auto: installer ny versjon sjølv om natta (03–05)
-    "ai": {"leverandor": "av", "modell": "", "api_nokkel": "", "intervall_t": 24, "maks_per_manad": 500},
     "vern": {"maks_feil": 10, "minutt": 10, "maks_tilkoplingar": 200, "maks_per_ip": 20},
 }
 ROLLER = ("maskin", "kontor")
@@ -78,7 +77,10 @@ class Config:
         self.lock = threading.RLock()
         self.first_start = not self.path.exists()
         self._mtime = None
+        self._ai_fjerna = False
         self.data = self._load()
+        if self._ai_fjerna:
+            self.save()                            # skriv fila utan AI-delen (og API-nøkkelen)
 
     def _load(self):
         data = copy.deepcopy(DEFAULT)
@@ -87,6 +89,9 @@ class Config:
                 self._merge(data, json.load(f))
             if data["kartvising"].get("port") in (8765, 8766):   # før 1.3.3: portane til SNOWMAN Snowdeep
                 data["kartvising"]["port"] = 8770
+            if "ai" in data:                       # før 1.5.0: AI (Claude/Ollama) med API-nøkkel – fjerna, nøkkelen blir sletta
+                data.pop("ai")
+                self._ai_fjerna = True
             self._mtime = self.path.stat().st_mtime_ns
         for u in data["brukarar"]:
             u.setdefault("roller", ["maskin"])
@@ -202,7 +207,6 @@ class Config:
         """Innstillingane utan hash, passord og nøklar."""
         d = copy.deepcopy(self.data)
         d["brukarar"] = self.users_public()
-        d["ai"]["api_nokkel"] = bool(d["ai"].get("api_nokkel"))
         d["base"]["passord"] = bool(d["base"].get("passord"))
         return d
 

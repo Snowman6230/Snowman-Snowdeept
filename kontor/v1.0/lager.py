@@ -5,7 +5,7 @@
     maalingar     snødjupne frå maskinene (berre RTK FIX frå kalibrerte maskiner) – deling siste 12 t (v1.8)
     pakkar        versjonar av anleggspakka; éin er aktiv og blir henta av maskinene (kap. 6/16)
     forslag       frå maskinene: ny hindring, merknad eller forbetring av programmet – kontoret godkjenner
-    forbetringar  forslag frå forbetringsmotoren (reglar og AI), med status og historikk
+    forbetringar  forslag frå forbetringsmotoren (reglar), med status og historikk
     dagstal       eitt samandrag per døgn – grunnlag for trendar og læring
 """
 import hashlib

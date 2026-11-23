@@ -1,10 +1,10 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 """Forbetringsmotoren i SNOWMAN Office: finn forbetringar i oppsett, utstyr og program ut frå drifta.
 
-To lag:
+Lag:
   1. Reglar (alltid på, lokalt): maskinene, anleggspakka og Office sjølv – og åtvaringane frå SNOWMAN Base om
      korreksjonane (henta frå statussida til Base, berre lesing).
-  2. AI (valfritt, ai.py): les eit anonymisert samandrag og foreslår meir – også forbetringar i SNOWMAN-programma.
+  2. (AI med språkmodell var med til 1.4.x og er fjerna i 1.5.0 – reglane er det einaste laget.)
 
 Kvart forslag har ein fast nøkkel, så same funn blir oppdatert (ikkje dobla). Status: ny → godteke/avvist → gjort.
 Forslag som kjem att etter «gjort», blir opna på nytt. Kontoret kan eksportere lista som Markdown til utviklaren.
@@ -81,16 +81,11 @@ def rules(k):
         import oppdatering
         out.append(S("oppdatering", "kontor", "låg", f"Ny versjon tilgjengeleg: {oppdatering.tekst(up)}",
                      f"Du har Office {VERSION} og kart {up.get('kart') or '–'}.", "Trykk «Oppdater no» øvst på kontorsida."))
-    if not k.ai.enabled():
-        out.append(S("ai-av", "kontor", "låg", "AI-analysen er av",
-                     "Reglane finn kjende problem. AI kan i tillegg sjå mønster og foreslå forbetringar i programma.",
-                     "Valfritt: slå på Claude under Office › AI (krev eigen API-nøkkel). Berre eit anonymisert "
-                     "samandrag blir sendt."))
     return out
 
 
 def day_summary(k):
-    """Samandrag av døgnet så langt – lagra i dagstal (trendar) og brukt av AI."""
+    """Samandrag av døgnet så langt – lagra i dagstal (trendar) og brukt i trendane."""
     mounts = {}
     s = k.basestatus.last.get("status") if k.basestatus.last.get("ok") else None
     for m in (s or {}).get("mountpoints") or []:
@@ -124,7 +119,7 @@ def export_markdown(store, include_done=False):
     """Forslaga som Markdown – kan givast til utviklaren (eller ein AI-assistent) som oppgåveliste."""
     rows = store.improvements(include_done)
     lines = [f"# Forbetringsforslag frå SNOWMAN Office {VERSION}",
-             f"Laga {time.strftime('%Y-%m-%d %H:%M')}. Kjelde: reglar og ev. AI. Alvor: høg / middels / låg.", ""]
+             f"Laga {time.strftime('%Y-%m-%d %H:%M')}. Kjelde: reglane i SNOWMAN Office. Alvor: høg / middels / låg.", ""]
     for cat, title in CATEGORIES.items():
         part = [r for r in rows if r["kategori"] == cat]
         if not part:

@@ -1371,45 +1371,6 @@
         max-height: 100%;
         box-shadow: 0 8px 30px #0008;
       }
-      #ai .aiAsk h3 {
-        margin: 0 0 8px;
-        font-size: 15px;
-        color: #c9b8ff;
-      }
-      #ai .aiAskRow {
-        display: flex;
-        gap: 6px;
-      }
-      #ai .aiAskRow input {
-        flex: 1;
-        min-width: 0;
-        background: #071a24;
-        color: #fff;
-        border: 1px solid #365466;
-        border-radius: 8px;
-        padding: 9px 10px;
-        font-size: 15px;
-      }
-      #ai .aiAskRow button {
-        background: #2b1f5c;
-        color: #fff;
-        border: 1px solid #c9b8ff;
-        border-radius: 8px;
-        padding: 0 14px;
-        font-weight: 800;
-      }
-      #ai .aiQA {
-        margin: 8px 0 4px;
-        font-size: 14px;
-        line-height: 1.45;
-        white-space: pre-wrap;
-      }
-      #ai .aiQA b {
-        color: #9fd3ff;
-      }
-      #ai .aiAsk small {
-        color: #8fa3ad;
-      }
       #ai .aiHead {
         display: flex;
         align-items: center;
@@ -3160,7 +3121,7 @@
           <div class="ksNav">
             <button data-k="pub" class="on">Publiser</button><button data-k="oversikt">Oversikt</button><button data-k="forslag">Forslag <i id="ksForslagN"></i></button
             ><button data-k="pakkar">Pakkar</button><button data-k="brukarar">Brukarar</button><button data-k="forbetringar">Forbetringar</button
-            ><button data-k="ai">AI</button><button data-k="system">System</button>
+            ><button data-k="system">System</button>
           </div>
           <div class="ks" data-k="pub">
             <h3>PUBLISER TIL MASKINENE</h3>
@@ -3212,23 +3173,6 @@
             <div class="history">Office går gjennom loggane og statusen kvart kvarter og foreslår forbetringar (og AI, om ho er slått på).</div>
             <button class="btn" onclick="KSIDE.analyser()">ANALYSER NO</button><button id="ksImpAll" class="btn" onclick="KSIDE.alle()">VIS OGSÅ FERDIGE: AV</button>
             <div id="ksForbetringar" class="ksList">–</div>
-          </div>
-          <div class="ks hide" data-k="ai">
-            <h3>AI (VALFRI) – CLAUDE</h3>
-            <div class="history">SNOWMAN Office kan bruke <b>Claude</b> (Anthropic) til forbetringsanalysen, spørsmål frå kontoret og
-              «Spør SNOWMAN AI» frå maskinene. Av som standard. AI-råda i maskinene (snøkart, preparering, hol, kvalitet, vêr) er
-              reknereglar som køyrer lokalt og blir ikkje rørte av dette.<br />Krev API-nøkkel frå
-              <a href="https://console.anthropic.com" target="_blank" style="color:#9fd3ff">console.anthropic.com</a> (ikkje eit vanleg
-              Claude-abonnement) og internett på denne PC-en. Ein betaler per spørsmål – lite ved vanleg bruk. Spørsmåla blir sende
-              til Anthropic, utan namn og posisjonar.</div>
-            <div class="row"><span>AI</span><select id="ksAiProv" style="width: 190px"><option value="av">Av</option><option value="anthropic">Claude</option></select></div>
-            <div class="row"><span>API-nøkkel</span><input id="ksAiKey" type="password" autocomplete="off" style="width: 190px" /></div>
-            <button class="btn" onclick="KSIDE.aiLagre()">LAGRE</button><button class="btn" onclick="KSIDE.aiTest()">TEST TILKOPLINGA</button><button class="btn" onclick="KSIDE.aiAnalyser()">ANALYSER NO</button>
-            <div id="ksAiMsg" class="history">–</div>
-            <h3>SPØR AI OM ANLEGGET</h3>
-            <div class="row"><span>Spørsmål</span><input id="ksAiQ" type="text" placeholder="t.d. kvifor mista PB 2 FIX i går?" style="width: 190px" /></div>
-            <button class="btn" onclick="KSIDE.aiSpor()">SPØR</button>
-            <div id="ksAiA" class="history hide"></div>
           </div>
           <div class="ks hide" data-k="system">
             <h3>OPPDATERING</h3>
@@ -3484,12 +3428,7 @@
       <div id="demoTag" class="demoTag hide">DEMO – SIMULERTE DATA</div>
       <div id="wx" class="hide" aria-live="polite"><div class="wxCard" id="wxCard"></div></div>
       <div id="snk" class="hide"><div class="wxCard" id="snkCard"></div></div>
-      <div id="ai" class="hide"><div class="aiCard" id="aiCard"></div><div class="aiCard aiAsk" id="aiAsk">
-          <h3>✦ SPØR SNOWMAN AI</h3>
-          <div class="aiAskRow"><input id="aiQ" type="text" maxlength="1000" placeholder="t.d. kvar bør eg starte i kveld?" onkeydown="if(event.key==='Enter')AIASK.spor()" /><button id="aiQBtn" onclick="AIASK.spor()">SPØR</button></div>
-          <div id="aiQA" class="aiQA"></div>
-          <small id="aiQInfo">Svaret kjem frå Claude via SNOWMAN Office og byggjer på det skjermen viser. Føraren avgjer.</small>
-        </div></div>
+      <div id="ai" class="hide"><div class="aiCard" id="aiCard"></div></div>
       <div id="aiChips" class="hide"></div>
       <button id="micBtn" class="hide" onclick="TALE.listen()" title="Snakk til AI-en"><span>🎤</span>Spør AI</button>
       <div id="voiceBubble" class="hide"></div>
@@ -3550,7 +3489,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.150";
+      const APP_VERSION = "1.6.151";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
@@ -7508,7 +7447,7 @@
         }
         async function last() {
           try {
-            await ({ pub: KONTORM.load, oversikt: oversikt, forslag, pakkar, brukarar, forbetringar, ai, system }[cur] || (() => 0))();
+            await ({ pub: KONTORM.load, oversikt: oversikt, forslag, pakkar, brukarar, forbetringar, system }[cur] || (() => 0))();
           } catch (e) {
             let el = document.querySelector("#panelKontor .ks[data-k='" + cur + "'] .ksList") || $("kmInfo");
             if (el) el.innerHTML = "<b style='color:#ff6b5e'>Ingen kontakt med SNOWMAN Office:</b> " + esc(e.message);
@@ -7587,13 +7526,6 @@
                 "<button onclick='KSIDE.imp(" + i + ",\"godteke\")'>GODTA</button><button onclick='KSIDE.imp(" + i + ",\"gjort\")'>GJORT</button><button onclick='KSIDE.imp(" + i + ",\"avvist\")'>AVVIS</button></div>").join("")
             : "Ingen opne forslag.";
         }
-        async function ai() {
-          let d = await k("v1/ai");
-          $("ksAiProv").value = d.leverandor === "anthropic" ? "anthropic" : "av";
-          $("ksAiKey").value = "";
-          $("ksAiKey").placeholder = d.har_nokkel ? "(lagra – skriv ny for å byte)" : "(ingen)";
-          $("ksAiMsg").textContent = (d.siste ? (d.siste.ok ? "Siste analyse " + tid(d.siste.t) + ": " + d.siste.tal + " forslag." : "Siste analyse feila: " + d.siste.feil) : "Inga analyse enno.") + (d.bruk ? " Brukt i " + d.bruk.manad + ": " + d.bruk.kall + " av " + d.bruk.maks + " kall (månadstak)." : "");
-        }
         async function system() {
           let s = await k("status"), u = s.oppdatering || {}, bd = await k("v1/base");
           let ny = [u.ny ? "SNOWMAN Office " + u.ny : "", u.ny_kart ? "kart " + u.ny_kart : ""].filter(Boolean).join(" og ");
@@ -7648,25 +7580,6 @@
             alleImp = !alleImp;
             $("ksImpAll").textContent = "VIS OGSÅ FERDIGE: " + (alleImp ? "PÅ" : "AV");
             forbetringar();
-          },
-          async aiTest() {
-            $("ksAiMsg").textContent = "Prøver Claude …";
-            try { let d = await k("v1/ai/test", {}); $("ksAiMsg").textContent = "Tilkoplinga verkar – Claude svarte: «" + d.svar + "»"; } catch (e) { $("ksAiMsg").textContent = "Feil: " + e.message; }
-          },
-          async aiLagre() {
-            try {
-              await k("v1/ai/innstillingar", { leverandor: $("ksAiProv").value, api_nokkel: $("ksAiKey").value });
-              await ai();
-              $("ksAiMsg").textContent = "Lagra.";
-            } catch (e) { $("ksAiMsg").textContent = "Feil: " + e.message; }
-          },
-          async aiAnalyser() {
-            $("ksAiMsg").textContent = "Analyserer … (kan ta eitt minutt)";
-            try { let d = await k("v1/ai/analyser", {}); $("ksAiMsg").textContent = d.tal + " forslag – sjå Forbetringar."; } catch (e) { $("ksAiMsg").textContent = "Feil: " + e.message; }
-          },
-          async aiSpor() {
-            msg("ksAiA", "Tenkjer …");
-            try { let d = await k("v1/ai/sporsmal", { tekst: $("ksAiQ").value }); $("ksAiA").textContent = d.svar; } catch (e) { $("ksAiA").textContent = "Feil: " + e.message; }
           },
           async sjekk() {
             $("ksUpd").textContent = "Ser etter ny versjon …";
@@ -10469,51 +10382,6 @@
          spora, kvalitet og snøproduksjon. Råda kan visast som eigne lag på hovudkartet («Vis på kartet») – laga blir
          verande når overlayet er lukka, så føraren ser dei medan han køyrer. Alt anna går vidare i bakgrunnen.
          Alt er FORSLAG og ESTIMAT; føraren avgjer. Overlayet og Vêr deler plass – det eine lukkar det andre. */
-      // v1.6.144: føraren spør SNOWMAN AI – Claude via SNOWMAN Office (frå v1.6.150), med eit samandrag av skjermen
-      const AIASK = (() => {
-        let busy = false, logg = [];
-        async function status() {
-          let info = $("aiQInfo"), on = !!window.KMFIX;
-          if (!on) {
-            try {
-              let r = await api("api/kontor");
-              on = r.on && r.ai;
-              if (!on)
-                info.textContent = r.on
-                  ? "SNOWMAN AI er ikkje slått på i SNOWMAN Office (Office › AI). Råda over er reknereglar i maskina og verkar utan."
-                  : "SNOWMAN AI krev kopling til SNOWMAN Office (Innst. › Trasear). Råda over er reknereglar i maskina og verkar utan.";
-            } catch (e) {}
-          }
-          $("aiQ").disabled = $("aiQBtn").disabled = !on;
-          if (on) info.textContent = "Svaret kjem frå Claude via SNOWMAN Office og byggjer på det skjermen viser. Føraren avgjer.";
-        }
-        async function spor() {
-          let q = $("aiQ").value.trim();
-          if (!q || busy) return;
-          busy = true;
-          $("aiQBtn").textContent = "…";
-          logg.unshift({ q, a: "Tenkjer …" });
-          vis();
-          try {
-            let kontekst = ($("aiCard").innerText || "").replace(/\s+\n/g, "\n").slice(0, 5000);
-            let r = await api("api/ai/spor", { tekst: q, kontekst });
-            if (!r.ok) throw Error(r.error);
-            logg[0].a = r.svar || "(tomt svar)";
-            $("aiQ").value = "";
-            if (typeof cfg !== "undefined" && cfg.voiceOn && typeof TALE !== "undefined" && TALE.say) TALE.say(logg[0].a);
-          } catch (e) {
-            logg[0].a = "⚠ " + e.message;
-          }
-          busy = false;
-          $("aiQBtn").textContent = "SPØR";
-          vis();
-        }
-        function vis() {
-          logg = logg.slice(0, 3);
-          $("aiQA").innerHTML = logg.map((x) => "<b>" + esc(x.q) + "</b>\n" + esc(x.a)).join("\n\n");
-        }
-        return { spor, status };
-      })();
       const AIP = (() => {
         let open = false,
           R = null,
@@ -10785,7 +10653,6 @@
           if (open) {
             render();
             load();
-            AIASK.status();
           }
         }
         // nye råd kvar 10. min så lenge overlayet er ope eller eit AI-lag er på kartet
@@ -10981,13 +10848,6 @@
             a = "Snødjupna her er " + ($("depth").textContent || "ukjend").replace(".", ",") + ". " + ($("depthNote").textContent || "");
           }
           let ok = !!a;
-          if (!a) {
-            // v1.6.144: det dei faste svara ikkje dekkjer, går til SNOWMAN AI (Claude via SNOWMAN Office), om han er på
-            try {
-              let r = await api("api/ai/spor", { tekst: q, kontekst: ($("aiCard").innerText || "").slice(0, 5000) });
-              if (r.ok && r.svar) (a = r.svar), (ok = true), (intent = "snowman-ai");
-            } catch (e) {}
-          }
           if (!a) a = "Det forstod eg ikkje. Seg til dømes: kor mykje snø manglar, eller: når bør eg preparere.";
           say(a);
           try {

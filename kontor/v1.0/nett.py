@@ -1,5 +1,5 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""HTTPS frå SNOWMAN Office (oppdatering, AI) med sertifikatkontroll som fungerer på Windows.
+"""HTTPS frå SNOWMAN Office (oppdatering) med sertifikatkontroll som fungerer på Windows.
 
 Python 3.13 krev strengare sertifikat (VERIFY_X509_STRICT). Antivirus, brannmurar og proxyar som les HTTPS
 (t.d. på skule- og bedriftsnett) set inn eigne rotsertifikat som ofte manglar felt (Authority Key Identifier), og

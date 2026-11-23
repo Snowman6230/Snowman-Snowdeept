@@ -34,24 +34,6 @@ HINDRING = {"id": "o1", "type": "hydrant", "name": "Hydrant 4", "lat": 62.3805, 
 KPUNKT = {"id": "k1", "name": "Bolt ved heishus", "E": 389000.0, "N": 6918000.0, "zone": 32, "h": 702.3}
 
 
-class FakeClaude:
-    """Stand-in for _post mot api.anthropic.com (ingen nettrafikk i testane)."""
-
-    def __init__(self, tekst=None):
-        self.seen = []
-        self.tekst = tekst
-
-    def __call__(self, url, body, headers, timeout):
-        self.seen.append({"url": url, "body": body, "headers": headers})
-        if self.tekst is not None:
-            t = self.tekst
-        else:
-            out = {"forslag": [{"kategori": "snowman", "alvor": "middels", "tittel": "Vis alder på korreksjonane i HUD",
-                                "grunn": "Fleire avbrot i mobilnettet.", "tiltak": "Legg alder i sekund på HUD-en."}]}
-            t = "Her er forslaga:\n" + json.dumps(out, ensure_ascii=False)
-        return {"content": [{"type": "text", "text": t}]}
-
-
 class FakeBase(http.server.BaseHTTPRequestHandler):
     """Statussida til SNOWMAN Base 1.4 (berre det Office les)."""
 
@@ -144,47 +126,16 @@ class TestApi(KontorCase):
         self.assertEqual(self.call("/api/v1/maskin", {"id": "PB2"}, self.mkey)[0], 403)
         self.assertEqual(self.call("/api/v1/maskin", {"id": "PB1"}, self.mkey)[0], 200)
 
-    def test_snowman_ai_for_maskinene(self):
-        """1.4.0: berre Claude. Maskina spør Office (også ute), Office svarar; månadstak; gammal «ollama» blir av."""
-        import ai as aimod
-        fake = FakeClaude("Start i Bakke 2 – der manglar det mest snø.")
-        with mock.patch.object(aimod, "_post", fake):
-            c, d = self.call("/api/v1/ai/maskin", {"maskin": "PB1", "tekst": "Kvar startar eg?"}, self.mkey)
-            self.assertEqual(c, 500)
-            self.assertIn("ikkje slått på", d["feil"])
-            self.call("/api/v1/ai/innstillingar", {"leverandor": "anthropic", "api_nokkel": "sk-test"}, self.kkey)
-            self.assertEqual(self.call("/api/v1/ai/test", {}, self.mkey)[0], 401)          # berre kontoret
-            c, d = self.call("/api/v1/ai/test", {}, self.kkey)
-            self.assertEqual((c, d["svar"]), (200, "Start i Bakke 2 – der manglar det mest snø."))
-            c, d = self.call("/api/v1/maskin", {"id": "PB1", "versjon": "1.6.150"}, self.mkey)
-            self.assertTrue(d["ai"])
-            web, self.web = self.web, f"http://127.0.0.1:{self.k.maskin_srv.server_address[1]}"
-            try:
-                c, d = self.call("/api/v1/ai/maskin", {"maskin": "PB1", "tekst": "Kvar startar eg?",
-                                                       "kontekst": {"snodjupne_m": 0.41}}, self.mkey)
-            finally:
-                self.web = web
-            self.assertEqual((c, d["svar"]), (200, "Start i Bakke 2 – der manglar det mest snø."))
-            m = fake.seen[-1]["body"]
-            self.assertIn("førarhuset", m["system"])
-            self.assertIn("Kvar startar eg?", m["messages"][0]["content"])
-            self.assertIn("0.41", m["messages"][0]["content"])
-            self.k.cfg.update(lambda x: x["ai"].update(maks_per_manad=2))                  # månadstak
-            c, d = self.call("/api/v1/ai/maskin", {"maskin": "PB1", "tekst": "Igjen?"}, self.mkey)
-            self.assertIn("Månadstaket", d["feil"])
-            self.assertEqual(len(fake.seen), 2)                                             # ikkje sendt
-        import urllib.error as UE
-
-        def avvist(*a, **k):
-            raise UE.HTTPError("https://api.anthropic.com/v1/messages", 401, "Unauthorized", {}, None)
-        self.k.cfg.update(lambda x: x["ai"].update(maks_per_manad=500))
-        with mock.patch.object(aimod, "_post", avvist):
-            self.assertIn("godtok ikkje API-nøkkelen", self.call("/api/v1/ai/test", {}, self.kkey)[1]["feil"])
-        self.k.cfg.update(lambda x: x["ai"].update(leverandor="ollama"))                    # gammal lokal AI (1.3.x)
-        a2 = aimod.AI(self.k.cfg, self.k.store, self.k.events)
-        self.assertEqual(self.k.cfg["ai"]["leverandor"], "av")
-        self.assertFalse(a2.enabled())
-        self.assertTrue(any("lokal AI" in e["tekst"] for e in self.k.events.latest(5)))
+    def test_ai_er_fjerna(self):
+        """1.5.0: ingen AI med språkmodell i Office – adressene finst ikkje, hjarteslaget nemner ikkje AI."""
+        for path in ("/api/v1/ai", "/api/v1/ai/forehandsvis"):
+            self.assertEqual(self.call(path, key=self.kkey)[0], 404, path)
+        for path in ("/api/v1/ai/innstillingar", "/api/v1/ai/analyser", "/api/v1/ai/sporsmal", "/api/v1/ai/test"):
+            self.assertEqual(self.call(path, {}, self.kkey)[0], 404, path)
+        self.assertIn(self.call("/api/v1/ai/maskin", {"tekst": "Hei"}, self.mkey)[0], (401, 404))
+        c, d = self.call("/api/v1/maskin", {"id": "PB1", "versjon": "1.6.151"}, self.mkey)
+        self.assertNotIn("ai", d)
+        self.assertNotIn("ai", self.call("/api/status", key=self.kkey)[1])
 
     def test_maskinporten(self):
         """Port 8791 (ute i bakken): berre maskin-API-et, berre rolla maskin. Kontorsida blir aldri opna her."""
@@ -277,33 +228,6 @@ class TestApi(KontorCase):
         self.assertFalse(d["ok"])
         self.assertTrue(d["feil"])
 
-    def test_ai_anonymisert_claude(self):
-        import ai as aimod
-        self.call("/api/v1/maskin", {"id": "PB1", "namn": "Kjetil sin PB", "versjon": "1.6.137"}, self.mkey)
-        self.k.store.upsert_improvement({"nokkel": "x", "kategori": "drift", "alvor": "låg",
-                                         "tittel": "Kjetil sin PB: kopla til frå 10.0.0.12", "grunn": "", "tiltak": ""})
-        fake = FakeClaude()
-        with mock.patch.object(aimod, "_post", fake):
-            self.assertEqual(self.call("/api/v1/ai/analyser", {}, self.kkey)[0], 500)      # AI er av
-            self.assertEqual(self.call("/api/v1/ai/innstillingar", {"leverandor": "ollama"}, self.kkey)[0], 400)
-            self.call("/api/v1/ai/innstillingar", {"leverandor": "anthropic", "api_nokkel": "sk-test"}, self.kkey)
-            c, p = self.call("/api/v1/ai/forehandsvis", key=self.kkey)
-            self.assertNotIn("Kjetil", p["melding"])
-            self.assertNotIn("10.0.0.12", p["melding"])
-            self.assertNotIn("maskin-passord-1", p["melding"])
-            c, d = self.call("/api/v1/ai/analyser", {}, self.kkey)
-            self.assertEqual(d["tal"], 1)
-            c, d = self.call("/api/v1/forbetringar", key=self.kkey)
-            ai = [r for r in d["forbetringar"] if r["kjelde"] == "ai"]
-            self.assertEqual(ai[0]["kategori"], "snowman")
-            self.assertNotIn("Kjetil", json.dumps(fake.seen[-1], ensure_ascii=False))
-            self.assertEqual(fake.seen[-1]["url"], "https://api.anthropic.com/v1/messages")
-            self.assertEqual(fake.seen[-1]["body"]["model"], aimod.MODELL)
-            self.assertEqual(fake.seen[-1]["headers"]["x-api-key"], "sk-test")
-            c, d = self.call("/api/v1/ai", key=self.kkey)
-            self.assertNotIn("sk-test", json.dumps(d))                                     # nøkkelen blir aldri vist
-            self.assertEqual(d["bruk"]["kall"], 1)
-
 class TestOppsett(unittest.TestCase):
     def test_første_administrator_og_kommandoar(self):
         with tempfile.TemporaryDirectory() as t:
@@ -388,6 +312,17 @@ class TestAnleggspakkeFormat(unittest.TestCase):
         self.feil(self.zipp({"terreng/lag1/meta.json": dict(meta, type="x"), "terreng/lag1/grid.npy": npy}), "feil id eller type")
         with self.assertRaises(AP.Feil):
             AP.kontroller(self.zipp({"trasear.json": {"trasear": [TRASE]}}), 10)
+
+
+class TestAiFjernaIKonfig(unittest.TestCase):
+    def test_nokkelen_blir_sletta(self):
+        d = Path(tempfile.mkdtemp())
+        (d / "kontor.json").write_text(json.dumps({"ai": {"leverandor": "anthropic", "api_nokkel": "sk-hemmeleg"}}))
+        import konfig
+        c = konfig.Config(d)
+        self.assertNotIn("ai", c.data)
+        self.assertNotIn("sk-hemmeleg", (d / "kontor.json").read_text())
+        shutil.rmtree(d, ignore_errors=True)
 
 
 class TestOppdatering(unittest.TestCase):

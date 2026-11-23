@@ -9,6 +9,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.5.0 og SNOWMAN Snowdeep v1.6.151 – Claude fjerna, ingen språkmodell i SNOWMAN
+- **Bakgrunn (eigaren):** «Er det nødvendig å ha Claude? For at Snowman skal vere eit godt program?» → «Fjern Claude og
+  knappen heiter fortsatt AI». Sjå VEGEN-VIDARE kap. 16, avgjerd 10.
+- **Fjerna (Office):** ai.py, fana AI (Office › AI og på reservesida), forbetringsanalysen med AI, «Spør SNOWMAN Office»,
+  SNOWMAN AI for maskinene (`/api/v1/ai/…`) og «ai» i hjarteslaget og statusen. Ein lagra API-nøkkel blir sletta frå
+  data/kontor.json ved oppdateringa, og opne forslag frå AI blir lukka.
+- **Fjerna (Snowdeep):** «Spør SNOWMAN AI» i AI-panelet, at talespørsmål blir sende vidare, og `/api/ai/spor`.
+- **Uendra:** knappen **AI** i maskina – reknereglane for snøkart, preparering, hol, kvalitet og vêr, lokalt og utan
+  nett – og talesvara. Forbetringsreglane i Office.
+- **Testar:** Office 19 OK (nye: AI-adressene finst ikkje, nøkkelen blir sletta), testkontorkopling ALT OK,
+  testautoport ALT OK. AI-panelet i maskina og Office-modus prøvde utan feil.
+
 ### SNOWMAN Office 1.4.0 og SNOWMAN Snowdeep v1.6.150 – lokal AI fjerna, AI er berre Claude (valfri)
 - **Bakgrunn (eigaren):** «Ta bort lokal AI … Ta også bort andre leverandørar. Viktig å halde Snowman så enkel som
   mogleg. Det kan bli for komplisert å forstå for brukarar.» Mange PC-ar på anlegga er eldre. VEGEN-VIDARE kap. 16,

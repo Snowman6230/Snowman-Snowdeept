@@ -8,7 +8,7 @@ difor aldri stoppe korreksjonane til maskinene.
 Office:  kart og anlegg – SNOWMAN Snowdeep i kontormodus (same kart, 3D, terreng, trasear, hindringar og
          kontrollpunkt som i maskina, utan GNSS), med «Publiser til maskinene» (Office startar det sjølv, port 8770) ·
          anleggspakkar med terreng · forslag frå førarane · oversikt over maskinene · deling av snødjupne (v1.8) ·
-         forbetringar og AI · status frå SNOWMAN Base (berre lesing).
+         forbetringar · status frå SNOWMAN Base (berre lesing).
 Maskinene hentar anleggspakka når dei er på nettet på anlegget (wifi). PC-en treng ikkje stå på heile tida:
 maskinene brukar siste pakke, og forslag ligg i kø i maskina til Office svarar att.
 
@@ -39,7 +39,6 @@ sys.path.insert(0, str(HERE))
 import api                      # noqa: E402
 import oppdatering              # noqa: E402
 import forbetring               # noqa: E402
-from ai import AI               # noqa: E402
 from basestatus import BaseStatus  # noqa: E402
 from hendingar import Events, disk_free  # noqa: E402
 from konfig import API_VERSION, SNOWMAN_MIN, VERSION, Config, valid_pw   # noqa: E402
@@ -85,7 +84,11 @@ class SnowmanKontor:
         self.events = Events(self.data)
         self.store = Store(self.data)
         self.vern = Vern(self.cfg, self.events)
-        self.ai = AI(self.cfg, self.store, self.events)
+        # AI med språkmodell (Ollama/Claude) er fjerna i 1.5.0 (VEGEN-VIDARE kap. 16, avgjerd 10). Forslag som AI-en
+        # laga før, blir lukka, så dei ikkje står att som opne forbetringar.
+        for r in self.store.improvements():
+            if r.get("kjelde") == "ai" or r.get("nokkel") == "ai-av":
+                self.store.set_improvement(r["nokkel"], "avvist", "AI er fjerna frå SNOWMAN Office (1.5.0)")
         self.updates = Updates(self.cfg, self.events, self.restart, self.restart_kart)
         self.basestatus = BaseStatus(self.cfg, self.events)
         self.stop_ev = threading.Event()
@@ -209,18 +212,10 @@ class SnowmanKontor:
 
     def _analyse_loop(self):
         self.stop_ev.wait(120)
-        last_ai = 0.0
         while not self.stop_ev.is_set():
             try:
                 forbetring.run(self)
                 self.store.clean(self.cfg["deling"].get("behald_dagar", 30))
-                hours = float(self.cfg["ai"].get("intervall_t", 24) or 24)
-                if self.ai.enabled() and time.time() - last_ai > hours * 3600:
-                    last_ai = time.time()
-                    try:
-                        self.ai.analyse(self)
-                    except Exception:
-                        pass                       # feilen står i hendingane og på kontorsida
             except Exception as e:
                 self.events.add(f"Forbetringsanalysen feila: {e}", "feil")
             self.stop_ev.wait(900)
@@ -248,7 +243,6 @@ class SnowmanKontor:
                 "treng_admin": not self.cfg.has_admin(), "maskiner": self.store.machines(),
                 "oppdatering": self.updates.info, "kart_versjon": self.updates.info.get("kart"), "disk_gb": self.disk_free(), "pakke": self.store.package(),
                 "forbetringar": {k: sum(1 for r in imp if r["alvor"] == k) for k in ("høg", "middels", "låg")},
-                "ai": {"leverandor": self.cfg["ai"].get("leverandor", "av"), "siste": self.ai.last},
                 "base": {"adresse": self.cfg["base"].get("adresse", ""), "t": bs.get("t"), "ok": bs.get("ok"),
                          "feil": bs.get("feil"), "versjon": s.get("versjon"), "mountpoints": s.get("mountpoints") or [],
                          "caster": s.get("caster")},
