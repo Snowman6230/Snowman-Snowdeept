@@ -3556,7 +3556,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.147";
+      const APP_VERSION = "1.6.148";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
@@ -7879,6 +7879,9 @@
             // v1.6.141: rydd bort det som berre gjeld maskina (preparering, demo, helling, fart, eiga snødjupne, maskinmål,
             // antenne, drivstoff). Alt finst framleis i koden – det er berre skjult på kontoret.
             document.body.classList.add("kontormodus");
+            // tittel og merke: dette er SNOWMAN Office, ikkje Snowdeep i ei maskin (lett å blande når begge køyrer på same PC)
+            document.title = "SNOWMAN Office (kart v" + APP_VERSION + ")";
+            $("brandVer").textContent = "Office · kart v" + APP_VERSION;
             ["prepBtn", "demoBtn", "machineBtn", "tabMachine", "tabCal", "tabFuel"].forEach((id) => $(id) && $(id).classList.add("kmOff"));
             document.querySelectorAll("button.tool[onclick*='resetWork']").forEach((x) => x.classList.add("kmOff"));
             let inn = document.querySelector("button.tool[onclick='toggleSettings()']");

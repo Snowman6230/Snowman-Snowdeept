@@ -9,6 +9,10 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Snowdeep v1.6.148 – Office-modus heiter SNOWMAN Office i fana
+- **Endra:** i Office-modus står det «SNOWMAN Office (kart v…)» i fana og «Office · kart v…» under logoen, så Office og
+  Snowdeep ikkje blir blanda når begge køyrer på same PC (eigaren utviklar på éin PC).
+
 ### SNOWMAN Office 1.3.3 og SNOWMAN Snowdeep v1.6.147 – port 8770, og ingen dobbel opning av porten på Windows
 - **Feil (funne på skjermbiletet til eigaren):** Snowdeep brukar også **8766** (HUD på mobil), så 8766 frå Office 1.3.2
   kolliderte med det. Og på Windows let SO_REUSEADDR to program opne same port – derfor «køyrde» Snowdeep på 8765 medan
