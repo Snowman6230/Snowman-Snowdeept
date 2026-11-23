@@ -16,6 +16,7 @@ Kontorsida kan vise nøyaktig kva som blir sendt (forehandsvising) før AI blir 
 AI les og foreslår – han styrer aldri Office, Base, mottakaren eller maskinene.
 """
 import json
+import os
 import threading
 import time
 import urllib.error
@@ -69,6 +70,17 @@ def lokal_modell(modell):
     """Modellnamnet til Ollama. Tomt eller «ollama» (programnamnet, ikkje ein modell) → LOKAL_MODELL."""
     m = str(modell or "").strip()
     return LOKAL_MODELL if not m or m.lower() in ("ollama", "lokal", "local") else m
+
+
+LETT_MODELL = "gemma3:1b"       # lett modell (ca. 1 GB) for svake PC-ar eller når same PC gjer anna arbeid
+
+
+def spar_opsjonar(spar):
+    """Ollama-opsjonar. Spar (standard): halve prosessoren, mindre kontekst, ut av minnet etter 1 minutt utan bruk –
+    så PC-en (og SNOWMAN Snowdeep/Office på same PC) ikkje går tregt. Utan spar: Ollama sine eigne standardar."""
+    if not spar:
+        return {}
+    return {"keep_alive": "1m", "options": {"num_thread": max(1, (os.cpu_count() or 2) // 2), "num_ctx": 2048}}
 
 
 class AI:
@@ -154,17 +166,30 @@ class AI:
         adr = ollama_url(self.cfg["ai"].get("adresse"))
         r = {"adresse": adr, "koyrer": False, "versjon": None, "modellar": [], "tilradd": LOKAL_MODELL,
              "i_bruk": self.cfg["ai"].get("leverandor") == "ollama", "modell": lokal_modell(self.cfg["ai"].get("modell")),
-             "henting": dict(self.pull_st), "feil": ""}
+             "henting": dict(self.pull_st), "feil": "", "spar": bool(self.cfg["ai"].get("spar", True)),
+             "lett": LETT_MODELL, "kjerner": os.cpu_count() or 0, "i_minnet": []}
         try:
             with nett.urlopen(urllib.request.Request(adr + "/api/version"), timeout=3) as h:
                 r["versjon"] = json.loads(h.read().decode("utf-8")).get("version")
             with nett.urlopen(urllib.request.Request(adr + "/api/tags"), timeout=5) as h:
                 r["modellar"] = [m.get("name") for m in json.loads(h.read().decode("utf-8")).get("models", [])]
+            try:                                   # modellar som ligg i minnet no (og kor mykje)
+                with nett.urlopen(urllib.request.Request(adr + "/api/ps"), timeout=3) as h:
+                    r["i_minnet"] = [{"namn": m.get("name"), "gb": round((m.get("size") or 0) / 1e9, 1)}
+                                     for m in json.loads(h.read().decode("utf-8")).get("models", [])]
+            except Exception:
+                pass
             r["koyrer"] = True
         except Exception as e:
             r["feil"] = ("Ollama er ikkje installert eller ikkje starta på denne PC-en." if "10061" in str(e) or
                          "refused" in str(e).lower() else nett.forklar(e))
         return r
+
+    def frigjer(self):
+        """Ta modellen ut av minnet no (Ollama: keep_alive 0). Neste spørsmål lastar han inn att."""
+        c = self.cfg["ai"]
+        _post(ollama_url(c.get("adresse")) + "/api/generate", {"model": lokal_modell(c.get("modell")), "keep_alive": 0}, {}, 30)
+        self.events.add("Lokal AI: modellen er teken ut av minnet", "info")
 
     def hent_modell(self, modell=None):
         """Hentar ein modell i Ollama (bakgrunn). Framgangen står i lokal()["henting"]."""
@@ -206,7 +231,8 @@ class AI:
         if kind == "ollama":
             url = ollama_url(c.get("adresse")) + "/api/chat"
             body = {"model": lokal_modell(c.get("modell")), "stream": False,
-                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": msg}]}
+                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": msg}],
+                    **spar_opsjonar(c.get("spar", True))}
             try:
                 r = _post(url, body, {}, 300)
             except urllib.error.HTTPError as e:

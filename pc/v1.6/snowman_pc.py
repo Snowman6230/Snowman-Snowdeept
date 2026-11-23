@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.148"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.149"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -109,7 +109,7 @@ KONTOR_LOKAL={"url":(os.environ.get("SNOWMAN_KONTOR_URL") or "http://127.0.0.1:8
 # Berre JSON, berre lista adresser, og berre med eigen header (ein annan nettstad i nettlesaren kan ikkje sende han).
 KONTOR_PROXY=re.compile(r"^(status|v1/(maskiner|anleggspakke/versjonar|anleggspakke/aktiv|forslag|forslag/svar|maskin/fjern|"
                         r"forbetringar|forbetringar/status|forbetringar/analyser|ai|ai/innstillingar|ai/forehandsvis|ai/analyser|"
-                        r"ai/sporsmal|ai/lokal|ai/lokal/hent|ai/lokal/ta-i-bruk|base|brukarar|brukar|brukar/fjern|hendingar|oppdatering/sjekk|oppdater))$")
+                        r"ai/sporsmal|ai/lokal|ai/lokal/hent|ai/lokal/ta-i-bruk|ai/lokal/spar|ai/lokal/frigjer|base|brukarar|brukar|brukar/fjern|hendingar|oppdatering/sjekk|oppdater))$")
 def kontor_proxy(h,u,body=None):
     sub=u.path[len("/api/kontormodus/k/"):]
     try:

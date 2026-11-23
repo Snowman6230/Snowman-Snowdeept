@@ -28,6 +28,7 @@ API v1 (JSON). Innlogging med brukarnamn og passord:
               GET  /api/v1/ai  ·  POST /api/v1/ai/innstillingar  ·  GET /api/v1/ai/forehandsvis
               POST /api/v1/ai/analyser  ·  POST /api/v1/ai/sporsmal {tekst}
               GET  /api/v1/ai/lokal  ·  POST /api/v1/ai/lokal/hent {modell}  ·  POST /api/v1/ai/lokal/ta-i-bruk {modell}
+              POST /api/v1/ai/lokal/spar {spar}  ·  POST /api/v1/ai/lokal/frigjer
   Maskin:     POST /api/v1/ai/maskin {maskin, tekst, kontekst}  (SNOWMAN AI for førarane, også på maskinporten)
               GET  /api/v1/base  ·  POST /api/v1/base {adresse, brukar, passord}   SNOWMAN Base (berre lesing)
               GET  /api/v1/brukarar  ·  POST /api/v1/brukar {namn, passord?, roller?}  ·  POST /api/v1/brukar/fjern
@@ -393,6 +394,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json({"ok": True})
         if p == "ai/lokal/hent":
             return self.send_json({"ok": True, "henting": k.ai.hent_modell(d.get("modell"))})
+        if p == "ai/lokal/spar":
+            k.cfg.update(lambda data: data["ai"].update(spar=bool(d.get("spar"))))
+            k.events.add("Lokal AI: spar ressursar " + ("på" if d.get("spar") else "av"), "info")
+            return self.send_json({"ok": True})
+        if p == "ai/lokal/frigjer":
+            k.ai.frigjer()
+            return self.send_json({"ok": True})
         if p == "ai/lokal/ta-i-bruk":
             m = aimod.lokal_modell(str(d.get("modell") or "")[:80])
 

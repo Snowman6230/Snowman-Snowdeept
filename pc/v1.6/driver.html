@@ -3219,7 +3219,9 @@
               spørsmål, og førarane kan spørje han frå AI-panelet i maskina (SNOWMAN Snowdeep). Ingenting forlèt anlegget.</div>
             <div id="ksLokal" class="history">Ser etter lokal AI …</div>
             <div class="row"><span>Modell</span><input id="ksLokalModell" type="text" placeholder="gemma3:4b" style="width: 190px" /></div>
+            <div class="row"><span>Spar ressursar (halve prosessoren, ut av minnet etter 1 min)</span><input id="ksLokalSpar" type="checkbox" checked style="width: auto" onchange="KSIDE.lokalSpar()" /></div>
             <button id="ksLokalHent" class="btn" onclick="KSIDE.lokalHent()">⇩ HENT MODELL</button><button id="ksLokalBruk" class="btn" onclick="KSIDE.lokalBruk()">✓ BRUK LOKAL AI (OFFICE OG MASKINENE)</button>
+            <button class="btn" onclick="KSIDE.lokalLett()">🪶 BYT TIL LETT MODELL (gemma3:1b)</button><button class="btn" onclick="KSIDE.lokalFrigjer()">⏏ FRIGJER MINNET NO</button>
             <h3>AI – INNSTILLINGAR</h3>
             <div class="row"><span>Leverandør</span><select id="ksAiProv" style="width: 190px"><option value="av">Av</option><option value="ollama">Lokal modell (Ollama)</option><option value="anthropic">Claude (Anthropic API)</option></select></div>
             <div class="history">AI er valfri – resten av SNOWMAN Office verkar utan. <b>Lokal modell</b> krev at
@@ -3556,7 +3558,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.148";
+      const APP_VERSION = "1.6.149";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
@@ -7606,6 +7608,10 @@
               (har ? "" : "<br>Modellen <b>" + esc(m) + "</b> er ikkje henta – trykk HENT MODELL (ca. 3 GB, kan ta ei stund).");
           if (h.modell && (!h.ferdig || Date.now() / 1000 - h.t < 600))
             t += "<br>Henting av <b>" + esc(h.modell) + "</b>: " + (h.feil ? "<b style='color:#ff6b5e'>feila</b> – " + esc(h.feil) : h.ferdig ? "<b style='color:#5ee07a'>ferdig</b>" : esc(h.status || "") + (h.del ? " · " + Math.round(h.del * 100) + " %" : ""));
+          if (d.koyrer)
+            t += "<br>I minnet no: " + (d.i_minnet.length ? d.i_minnet.map((x) => esc(x.namn) + " (" + x.gb + " GB)").join(", ") : "ingen (Ollama brukar nesten ingenting)") +
+              " · " + (d.spar ? "spar ressursar: på (" + Math.max(1, Math.floor(d.kjerner / 2)) + " av " + d.kjerner + " kjerner)" : "spar ressursar: av – AI kan bruke heile PC-en");
+          $("ksLokalSpar").checked = d.spar;
           el.innerHTML = t;
           $("ksLokalHent").disabled = !d.koyrer || (h.modell && !h.ferdig);
           $("ksLokalBruk").disabled = !d.koyrer || !har;
@@ -7676,6 +7682,19 @@
             alleImp = !alleImp;
             $("ksImpAll").textContent = "VIS OGSÅ FERDIGE: " + (alleImp ? "PÅ" : "AV");
             forbetringar();
+          },
+          async lokalSpar() {
+            try { await k("v1/ai/lokal/spar", { spar: $("ksLokalSpar").checked }); } catch (e) { toast(e.message); }
+            lokal().catch(() => 0);
+          },
+          async lokalFrigjer() {
+            try { await k("v1/ai/lokal/frigjer", {}); toast("Modellen er teken ut av minnet"); } catch (e) { toast(e.message); }
+            lokal().catch(() => 0);
+          },
+          lokalLett() {
+            $("ksLokalModell").value = "gemma3:1b";
+            toast("Trykk HENT MODELL og så BRUK LOKAL AI");
+            lokal().catch(() => 0);
           },
           async lokalHent() {
             try { await k("v1/ai/lokal/hent", { modell: $("ksLokalModell").value.trim() }); } catch (e) { toast(e.message); }

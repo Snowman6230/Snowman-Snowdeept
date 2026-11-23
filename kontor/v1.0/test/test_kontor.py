@@ -213,6 +213,12 @@ class TestApi(KontorCase):
             self.assertEqual((c, d["svar"]), (200, "Start i Bakke 2 – der manglar det mest snø."))
             m = sett["chat"][-1]
             self.assertEqual(m["model"], "gemma3:4b")
+            self.assertEqual(m["keep_alive"], "1m")                                  # spar ressursar (standard)
+            self.assertEqual(m["options"]["num_ctx"], 2048)
+            self.assertEqual(self.call("/api/v1/ai/lokal/spar", {"spar": False}, self.kkey)[0], 200)
+            self.call("/api/v1/ai/maskin", {"maskin": "PB1", "tekst": "Igjen?"}, self.mkey)
+            self.assertNotIn("keep_alive", sett["chat"][-1])
+            self.assertFalse(self.call("/api/v1/ai/lokal", key=self.kkey)[1]["spar"])
             self.assertIn("førarhuset", m["messages"][0]["content"])
             self.assertIn("Kvar startar eg?", m["messages"][1]["content"])
             self.assertIn("0.41", m["messages"][1]["content"])

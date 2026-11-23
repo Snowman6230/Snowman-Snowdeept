@@ -25,7 +25,7 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.3.3"
+VERSION = "1.3.4"
 API_VERSION = 1
 
 # Samspel med SNOWMAN Snowdeep (pc/): anleggspakke og forslag frå v1.6.137, terreng, kontormodus og sanntid frå v1.6.139.
@@ -47,7 +47,7 @@ DEFAULT = {
     "anleggspakke": {"maks_mb": 4000, "behald_versjonar": 20},
     "base": {"adresse": "", "brukar": "", "passord": ""},   # SNOWMAN Base (berre lesing av statusen), t.d. http://snowman-base.local:8780
     "oppdatering": {"sjekk": True, "auto": False},   # auto: installer ny versjon sjølv om natta (03–05)
-    "ai": {"leverandor": "av", "modell": "", "adresse": "", "api_nokkel": "", "intervall_t": 24},
+    "ai": {"leverandor": "av", "modell": "", "adresse": "", "api_nokkel": "", "intervall_t": 24, "spar": True},
     "vern": {"maks_feil": 10, "minutt": 10, "maks_tilkoplingar": 200, "maks_per_ip": 20},
 }
 ROLLER = ("maskin", "kontor")

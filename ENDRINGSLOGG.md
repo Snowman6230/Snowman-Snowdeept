@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.3.4 og SNOWMAN Snowdeep v1.6.149 – lokal AI sparer PC-en
+- **Bakgrunn (eigaren):** «llama-server brukar for mykje av prosessor og minne så alt går tregt.» (llama-server er
+  prosessen Ollama køyrer modellen i.)
+- **Nytt (Office):** **Spar ressursar** (på som standard): Ollama brukar halve prosessoren, mindre kontekst (2048), og
+  modellen blir teken ut av minnet etter 1 minutt utan bruk (før: 5 minutt). Kan slåast av under Office › AI › Lokal AI.
+- **Nytt:** **⏏ FRIGJER MINNET NO** tek modellen ut av minnet med éin gong, **🪶 BYT TIL LETT MODELL** vel gemma3:1b
+  (ca. 1 GB), og Lokal AI viser kva modell som ligg i minnet og kor mykje han tek.
+- **Testar:** Office 20 OK (opsjonane blir sende til Ollama, og blir borte når spar er av), testkontorkopling ALT OK.
+
 ### SNOWMAN Snowdeep v1.6.148 – Office-modus heiter SNOWMAN Office i fana
 - **Endra:** i Office-modus står det «SNOWMAN Office (kart v…)» i fana og «Office · kart v…» under logoen, så Office og
   Snowdeep ikkje blir blanda når begge køyrer på same PC (eigaren utviklar på éin PC).
