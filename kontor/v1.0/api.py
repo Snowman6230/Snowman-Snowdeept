@@ -20,7 +20,7 @@ API v1 (JSON). Innlogging med brukarnamn og passord:
               POST /api/v1/forslag                  {maskin, type: hindring|merknad|program|anna, tekst, lat, lon}
   Office:     GET  /api/status                      status for Office (og siste status frå SNOWMAN Base)
               POST /api/v1/anleggspakke             ny versjon (zip i body, X-Merknad), blir aktiv
-              GET  /api/v1/anleggspakke/versjonar  ·  POST /api/v1/anleggspakke/aktiv {versjon}
+              GET  /api/v1/anleggspakke/versjonar  ·  POST /api/v1/anleggspakke/aktiv {versjon}  ·  POST /api/v1/anleggspakke/slett {versjon, i_maskinene}
               GET  /api/v1/forslag  ·  POST /api/v1/forslag/svar {id, status, svar}
               POST /api/v1/maskin/fjern {id}
               GET  /api/v1/forbetringar  ·  GET /api/v1/forbetringar.md  ·  POST /api/v1/forbetringar/status
@@ -317,7 +317,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 ok, err = st.heartbeat(mid, d, ip, int(k.cfg["deling"].get("maskinplassar") or 0))
                 pk = st.package()
                 return self.send_json({"ok": ok, "feil": err, "tid": time.time(), "kontor": VERSION, "api": API_VERSION,
-                                       "snowman_min": SNOWMAN_MIN, "pakke": pk["versjon"] if pk else None},
+                                       "snowman_min": SNOWMAN_MIN, "pakke": pk["versjon"] if pk else None,
+                                       "pakke_info": {"versjon": pk["versjon"], "sha256": pk["sha256"],
+                                                      "merknad": pk.get("merknad")} if pk else None,
+                                       "slett": st.slett_i_maskinene()},
                                       200 if ok else 403)
             if p == "maalingar":
                 mid = _safe(d.get("maskin"))
@@ -333,6 +336,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "anleggspakke":
             return self.upload_package()
         d = self.body_json()
+        if p == "anleggspakke/slett":   # 1.5.2: slett ein versjon – og ev. i maskinene
+            r = st.delete_package(d.get("versjon"), bool(d.get("i_maskinene")))
+            k.events.add(f"Anleggspakke v{d.get('versjon')} er sletta" + (
+                " – maskinene slettar ho når prepareringa er stoppa" if r["var_aktiv"] and d.get("i_maskinene") else
+                " – maskinene beheld det dei har" if r["var_aktiv"] else ""), "info")
+            return self.send_json({"ok": True, **r})
         if p == "anleggspakke/aktiv":
             ok = st.activate(d["versjon"])
             if ok:

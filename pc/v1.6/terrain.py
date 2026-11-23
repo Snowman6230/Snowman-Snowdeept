@@ -971,6 +971,60 @@ class TerrainLibrary:
         self.refresh_overlaps()
         return res
 
+    def _ut(self, lid, dst):
+        """Flytt eit lag ut av biblioteket (til dst/lid)."""
+        import gc
+        self.grids.pop(lid, None); self.edges.pop(lid, None); self.overlaps.pop(lid, None)
+        gc.collect()
+        dst = Path(dst)
+        dst.mkdir(parents=True, exist_ok=True)
+        if (dst / lid).exists():
+            shutil.rmtree(dst / lid, ignore_errors=True)
+        shutil.move(str(self.root / lid), str(dst / lid))
+        self.layers.pop(lid)
+
+    def _lokale_paa(self):
+        n = 0
+        for lid, m in self.layers.items():
+            if not m.get("fraKontor") and m.get("avAvKontoret"):
+                m["active"] = True
+                m.pop("avAvKontoret", None)
+                self._save_meta(lid)
+                n += 1
+        return n
+
+    def remove_office(self, backup_dir):
+        """v1.6.154: anleggspakka er sletta i maskina – lag frå kontoret blir flytta til backup_dir, og lokale lag som
+        kontoret slo av, blir slått på att. Returnerer {"fjerna", "lokale_paa"}."""
+        with self.lock:
+            ids = [lid for lid, m in self.layers.items() if m.get("fraKontor")]
+            for lid in ids:
+                self._ut(lid, backup_dir)
+            n = self._lokale_paa()
+        self.refresh_overlaps()
+        return {"fjerna": len(ids), "lokale_paa": n}
+
+    def restore_office(self, fra_backup, til_backup):
+        """v1.6.154: angre siste pakke – laga frå kontoret no blir flytta til til_backup, og laga som pakka bytte ut eller
+        fjerna (fra_backup, frå install_from_package), blir lagde tilbake. Er det ingen lag frå kontoret att, blir lokale
+        lag som kontoret slo av, slått på att. Returnerer {"tilbake", "fjerna", "lokale_paa"}."""
+        fra_backup = Path(fra_backup) if fra_backup else None
+        with self.lock:
+            ids = [lid for lid, m in self.layers.items() if m.get("fraKontor")]
+            for lid in ids:
+                self._ut(lid, til_backup)
+            tilbake = 0
+            if fra_backup and fra_backup.is_dir():
+                for d in sorted(p for p in fra_backup.iterdir() if (p / "meta.json").exists() and (p / "grid.npy").exists()):
+                    if d.name in self.layers:
+                        continue
+                    shutil.copytree(d, self.root / d.name)
+                    self.layers[d.name] = json.loads((self.root / d.name / "meta.json").read_text("utf-8"))
+                    tilbake += 1
+            n = 0 if any(m.get("fraKontor") for m in self.layers.values()) else self._lokale_paa()
+        self.refresh_overlaps()
+        return {"tilbake": tilbake, "fjerna": len(ids), "lokale_paa": n}
+
     def delete(self, lid):
         with self.lock:
             self.layers.pop(lid)

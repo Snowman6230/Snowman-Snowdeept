@@ -72,10 +72,20 @@ Avinstallere: `INSTALLER-WINDOWS.bat fjern` (data blir ikkje sletta).
 
 1. Last inn eller byt terrengmodellen i Terrengbiblioteket på http://localhost:8770/ (Office-modus).
 2. Fana **Office** › hak av for «Ta med terrengmodellane» › **PUBLISER TIL MASKINENE**. Alle *aktive* lag blir med.
-3. Maskina lastar ned pakka på wifi. Terrenget blir **ikkje** teke i bruk av seg sjølv: føraren får knappen
-   **⛰ TA I BRUK NYTT TERRENG** (Innst. › Trasear) og trykkjer når prepareringa er stoppa. Lokale lag i maskina blir slått
-   av (ikkje sletta), og det gamle terrenget blir teke vare på (dei tre siste).
-4. Gjer ei kontrollmåling etterpå. Kontorsida viser kva terrengversjon kvar maskin har.
+3. Maskina lastar ned pakka av seg sjølv på wifi og viser eit varsel: **📦 Ny anleggspakke vN – TA I BRUK / SEINARE**.
+   Ingenting blir endra før føraren trykkjer **TA I BRUK**, og det går berre når prepareringa er stoppa. Då blir
+   heile pakka (trasear, hindringar, kontrollpunkt og terreng) teken i bruk. Lokale terrenglag blir slått av (ikkje
+   sletta), og det gamle blir teke vare på.
+4. Gjer ei kontrollmåling etterpå. Kontorsida viser kva pakke kvar maskin har, og om ei ny ventar på føraren.
+
+## Angre og slette (1.5.2)
+
+- **I maskina** (Innst. › Trasear): **↶ ANGRE** går tilbake til det maskina hadde før siste pakke. Pakka blir ikkje
+  tilboden att før kontoret legg ut ei nyare. **🗑 SLETT PAKKA FRÅ KONTORET** gir maskina att det ho hadde før kontoret,
+  og alt kan redigerast i maskina att. Kontoret ser «angra» eller «sletta» i maskinoversikta.
+- **På kontoret** (Office › Pakkar › **SLETT**): slettar du den aktive pakka, blir du spurd om ho også skal slettast i
+  maskinene. **SLETT OGSÅ I MASKINENE:** kvar maskin gjer det sjølv når prepareringa er stoppa, og føraren får melding.
+  **SLETT BERRE PÅ KONTORET:** maskinene beheld det dei har. Eit versjonsnummer blir aldri brukt to gonger.
 
 ## I SNOWMAN Snowdeep (maskina)
 

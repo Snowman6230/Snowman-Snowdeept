@@ -206,6 +206,27 @@ class TestApi(KontorCase):
         c, b = self.call("/api/v1/anleggspakke/fil", key=self.mkey)
         self.assertEqual(b, zipdata)
 
+    def test_slett_anleggspakke(self):
+        """1.5.2: slett ein versjon – den aktive også i maskinene; versjonsnummer blir aldri brukt att."""
+        zipdata = Path(AP.lag(self.dir / "p.zip", "Fjellsætra", "admin", trasear=[TRASE])).read_bytes()
+        self.call("/api/v1/anleggspakke", raw=zipdata, key=self.kkey)
+        self.call("/api/v1/anleggspakke", raw=zipdata, key=self.kkey)
+        hb = {"id": "PB1", "namn": "PB 1", "versjon": "1.6.154", "pakke": "2"}
+        c, d = self.call("/api/v1/maskin", hb, self.mkey)
+        self.assertEqual((d["pakke_info"]["versjon"], d["slett"]), (2, False))
+        self.assertEqual(self.call("/api/v1/anleggspakke/slett", {"versjon": 1}, self.mkey)[0], 401)
+        c, d = self.call("/api/v1/anleggspakke/slett", {"versjon": 1}, self.kkey)
+        self.assertFalse(d["var_aktiv"])
+        c, d = self.call("/api/v1/anleggspakke/slett", {"versjon": 2, "i_maskinene": True}, self.kkey)
+        self.assertTrue(d["var_aktiv"])
+        c, d = self.call("/api/v1/maskin", hb, self.mkey)
+        self.assertTrue(d["slett"])
+        self.assertIsNone(d["pakke_info"])
+        c, d = self.call("/api/v1/anleggspakke", raw=zipdata, key=self.kkey)
+        self.assertEqual(d["pakke"]["versjon"], 3)           # ikkje 1 eller 2 att
+        c, d = self.call("/api/v1/maskin", hb, self.mkey)
+        self.assertFalse(d["slett"])
+
     def test_forslag_frå_maskin(self):
         c, d = self.call("/api/v1/forslag", {"maskin": "PB1", "type": "program", "tekst": "Større tal på HUD"}, self.mkey)
         self.assertTrue(d["ok"])

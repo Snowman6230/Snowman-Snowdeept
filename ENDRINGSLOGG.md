@@ -7,6 +7,36 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-11-24
+
+### SNOWMAN Office 1.5.2 og SNOWMAN Snowdeep v1.6.154 – varsel om ny pakke, angre og slette
+- **Bakgrunn (eigaren):** «I maskin bør det komme eit varsel om at ny pakke er klar. Den pakken bør ein også kunne angre
+  på at ein godtar. Og ein bør kunne slette den frå maskin. Og om ein slettar den frå kontor, bør det også spørrast om
+  den skal slettast også i maskin.» Val: 1a, 2a, 3a.
+- **Avgjerd 11** (VEGEN-VIDARE kap. 16): heile pakka blir teken i bruk berre når føraren godtek og prepareringa er
+  stoppa; SLETT går tilbake til det maskina hadde før kontoret; sletting frå kontoret blir gjort i maskina når
+  prepareringa er stoppa, med melding til føraren.
+- **Endra (Snowdeep):** ny pakke blir lasta ned og kontrollert av seg sjølv (hjarteslag kvart 30. s når sanntid er av),
+  men **ikkje** teken i bruk. Føraren får eit varsel øvst: **📦 Ny anleggspakke vN · innhald · merknad – TA I BRUK /
+  SEINARE**. TA I BRUK tek trasear, hindringar, kontrollpunkt og terreng i bruk samla. Før: trasear og hindringar vart
+  bytte med éin gong ved henting, og berre terrenget venta på føraren.
+- **Nytt (Snowdeep, Innst. › Trasear):** **↶ ANGRE – GÅ TILBAKE TIL vN** (eller «før kontoret») og **🗑 SLETT PAKKA FRÅ
+  KONTORET**. Begge tek òg terrenget med (lokale lag blir slått på att). Angra eller sletta pakke blir ikkje tilboden att
+  før kontoret legg ut ein ny versjon. Lokale hindringar og kontrollmålingar blir verande. Alt blir nekta medan
+  prepareringa går.
+- **Nytt (Office › Pakkar):** **SLETT** på kvar versjon. Den aktive gir valet **SLETT OGSÅ I MASKINENE** (maskinene gjer
+  det når prepareringa er stoppa, og føraren får melding) eller **SLETT BERRE PÅ KONTORET**. Maskinoversikta viser
+  om ei pakke ventar på føraren, eller er angra eller sletta i maskina.
+- **Nytt (API):** `POST /api/v1/anleggspakke/slett {versjon, i_maskinene}`; svaret på hjarteslaget har `pakke_info` og
+  `slett`. Snowdeep: `POST /api/kontor/ta-i-bruk` (`/api/kontor/terreng` er att som alias), `/api/kontor/angre`,
+  `/api/kontor/slett`.
+- **Retta (Office):** eit versjonsnummer blir aldri brukt to gonger (før kunne v6 kome att etter at v6 var sletta).
+- **Retta (Office-oversikt):** terrengversjonen til maskina blir vist (låg i `ekstra`).
+- **Testar:** testkontorkopling ALT OK (nye: varsel før bruk, angre, slett, slett frå kontoret, terreng tilbake),
+  Office 21 OK (ny: sletting), testautoport/-overgang/-pxy/-tre/-snøklynge ALT OK. Ende-til-ende med Office og
+  Snowdeep: varselet kom, TA I BRUK og ANGRE i nettlesaren, sletting frå kontoret gjennomført av maskina med melding.
+  Prøvd med simulert GNSS (RTK FIX); handlingane blir nekta medan prepareringa går.
+
 ## 2026-11-23
 
 ### SNOWMAN Snowdeep v1.6.153 – trykk på ei hindring: kva ho er og kven som la ho inn

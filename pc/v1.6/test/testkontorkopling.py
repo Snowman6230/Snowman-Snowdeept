@@ -88,31 +88,86 @@ def main():
                 kon.replace_points(inn["kontrollpunkt.json"])
             return g
 
+        FILER = [data / "trasear.json", data / "objekt.json", data / "kontroll.json"]
+
+        def restore(mappe):          # som kontor_restore i snowman_pc: les filene inn att, lokale hindringar blir verande
+            def les(n, key):
+                if mappe is None:
+                    return None
+                f = Path(mappe) / n
+                if f.exists():
+                    return json.loads(f.read_text("utf-8")).get(key, [])
+                return [] if (Path(mappe) / (n + ".manglar")).exists() else None
+            t, o, k = les("trasear.json", "trasear"), les("objekt.json", "objekt"), les("kontroll.json", "points")
+            tra.items = t if t is not None else [x for x in tra.items if x.get("source") != "kontoret"]
+            tra._masks.clear()
+            tra._save()
+            lok = [x for x in obj.items if x.get("lokal")]
+            b = o if o is not None else [x for x in obj.items if x.get("source") != "kontoret" and not x.get("lokal")]
+            ids = {x.get("id") for x in b}
+            obj.items = b + [x for x in lok if x.get("id") not in ids]
+            obj._save()
+            if k is not None:
+                kon.data["points"] = k
+                kon._save()
+
+        def hent(**kw):
+            r = bk.fetch(mcfg, apply, **kw)
+            if r.get("klar") and r.get("ny"):
+                r = dict(r, **bk.ta_i_bruk(apply, None, FILER))
+            return r
+
         r = bk.fetch(mcfg, apply)
         sjekk(r["ok"] and not r["ny"] and "ikkje lagt ut" in r["melding"], "ingen pakke på kontoret enno")
         sjekk(not bk.styrt(mcfg), "ikkje styrt før ei pakke er henta")
         last_opp(trasear=[T1, F1], objekt=[H1], kontrollpunkt=[K1])
         r = bk.fetch(mcfg, apply)
-        sjekk(r["ny"] and r["aktiv"]["versjon"] == 1, "pakke v1 henta frå Office")
+        sjekk(r["klar"] and r["ventar"]["versjon"] == 1 and not bk.aktiv, "v1 er lasta ned og ventar på føraren (varsel)")
+        sjekk([t["name"] for t in tra.listing()] == ["Lokal trasé"] and not bk.styrt(mcfg), "ingenting endra før TA I BRUK")
+        sjekk("alt lasta ned" in bk.fetch(mcfg, apply)["melding"], "same pakke blir ikkje lasta ned to gonger")
+        r = dict(r, **bk.ta_i_bruk(apply, None, FILER))
+        sjekk(r["aktiv"]["versjon"] == 1 and not bk.ventar, "pakke v1 teken i bruk av føraren")
+        sjekk((data / "anleggspakke" / "for-kontoret" / "trasear.json").exists(), "det maskina hadde før kontoret er teke vare på")
         sjekk([t["name"] for t in tra.listing()] == ["Bakke 1", "Vegen"], "trasear frå kontoret erstattar dei lokale")
         sjekk((data / "anleggspakke" / "forrige" / "trasear.json").exists(), "det lokale er teke vare på (forrige/)")
         sjekk([p["name"] for p in kon.data["points"]] == ["Bolt"], "kontrollpunkt frå kontoret")
         sjekk(bk.styrt(mcfg), "styrt frå kontoret etter henting")
         sjekk("Har alt nyaste" in bk.fetch(mcfg, apply)["melding"], "same pakke blir ikkje henta to gonger")
+        # v1.6.154: ANGRE og SLETT
+        last_opp(trasear=[T1], objekt=[H1])
+        r = hent()
+        sjekk(r["aktiv"]["versjon"] == 2 and bk.status(mcfg)["kan_angre"] and bk.status(mcfg)["forrige_versjon"] == 1,
+              "v2 teken i bruk – kan angre til v1")
+        a = bk.angre(restore, None, FILER)
+        sjekk(bk.aktiv["versjon"] == 1 and [t["name"] for t in tra.listing()] == ["Bakke 1", "Vegen"],
+              "ANGRE: tilbake til v1 (trasear og forbode område)")
+        sjekk(bk.avvist["versjon"] == 2 and "avvist" in bk.fetch(mcfg, apply)["melding"] and not bk.ventar,
+              "angra pakke blir ikkje tilboden att")
+        bk.office_pakke = {"versjon": 2, "sha256": bk.avvist["sha256"]}
+        sjekk(not bk.treng_henting(), "auto-henting hoppar over angra pakke")
+        s_ = bk.slett(restore, None, FILER)
+        sjekk(not bk.aktiv and not bk.styrt(mcfg) and [t["name"] for t in tra.listing()] == ["Lokal trasé"]
+              and kon.data["points"] == [], "SLETT: tilbake til det maskina hadde før kontoret, låsen oppheva")
+        sjekk(not (data / "anleggspakke" / "for-kontoret").exists(), "for-kontoret/ er rydda bort")
+        last_opp(trasear=[T1, F1], objekt=[H1], kontrollpunkt=[K1])
+        bk.office_pakke = {"versjon": 3}
+        sjekk(bk.treng_henting(), "ny pakke etter sletting blir henta (auto)")
+        r = hent()
+        sjekk(r["aktiv"]["versjon"] == 3 and bk.styrt(mcfg), "ny pakke etter sletting kan takast i bruk")
 
         o = obj.save({"lat": 62.38061, "lng": 6.78111, "type": "stein", "name": "Stor stein", "radius": 1, "lokal": True})
         sjekk(o.get("lokal") is True, "ny hindring blir merkt lokal")
         sjekk(bk.forslag(mcfg, {"type": "hindring", "tekst": "Ny hindring: Stor stein", "lat": o["lat"], "lon": o["lng"]}),
               "forslag sendt til kontoret")
         last_opp(trasear=[T1], objekt=[H1])
-        r = bk.fetch(mcfg, apply)
-        sjekk(r["aktiv"]["versjon"] == 2 and "kontrollpunkt" not in r["aktiv"]["tal"], "v2 utan kontrollpunkt-fil")
+        r = hent()
+        sjekk(r["aktiv"]["versjon"] == 4 and "kontrollpunkt" not in r["aktiv"]["tal"], "v4 utan kontrollpunkt-fil")
         sjekk([p["name"] for p in kon.data["points"]] == ["Bolt"], "fil som manglar i pakka = uendra i maskina")
         sjekk([x["name"] for x in obj.listing()] == ["Hydrant 4", "Stor stein"] and obj.listing()[1]["lokal"],
               "lokal hindring blir verande når kontoret ikkje har teke ho med")
         last_opp(trasear=[T1], objekt=[H1, {"id": "s9", "type": "stein", "name": "Stein (godkjent)", "lat": 62.380615,
                                             "lng": 6.781105, "radius": 1}])
-        r = bk.fetch(mcfg, apply)
+        r = hent()
         sjekk("godkjende" in r["melding"] and [x["name"] for x in obj.listing()] == ["Hydrant 4", "Stein (godkjent)"],
               "lokal hindring blir fjerna når kontoret har teke ho med (same type innan 2 m)")
 
@@ -152,11 +207,12 @@ def main():
         rq.add_header("Authorization", "Basic " + base64.b64encode(b"admin:kontor-pw-1").decode())
         urllib.request.urlopen(rq, timeout=30).read()
         r = bk.fetch(mcfg, apply)
-        sjekk(r["aktiv"]["tal"].get("terrenglag") == 1 and bk.status(mcfg)["terreng"]["ventar"]["lag"][0]["name"]
+        sjekk(r["ventar"]["tal"].get("terrenglag") == 1 and bk.status(mcfg)["terreng"]["ventar"]["lag"][0]["name"]
               == "Fjellsætra DTM", "terreng frå kontoret er lasta ned og ventar på føraren")
         sjekk(set(mlib.layers) == {lokal["id"]}, "terrenget er ikkje teke i bruk før føraren godtek")
-        t = bk.terreng_ta_i_bruk(lambda m, b: mlib.install_from_package(m, b))
-        sjekk(t["resultat"] == {"nye": 1, "bytte": 0, "fjerna": 0, "lokale_av": 1}, "terrenget er installert, lokalt lag slått av")
+        r = dict(r, **bk.ta_i_bruk(apply, lambda m, b: mlib.install_from_package(m, b), FILER))
+        t = r["terreng"]
+        sjekk(t == {"nye": 1, "bytte": 0, "fjerna": 0, "lokale_av": 1}, "terrenget er installert, lokalt lag slått av")
         lat, lon = TT.utm_inverse(klag["x0"] + klag["dx"] * klag["nx"] / 2, klag["y0"] - klag["dy"] * klag["ny"] / 2,
                                   klag["zone"])
         hk, hm = klib.height(lat, lon), mlib.height(lat, lon)
@@ -165,6 +221,28 @@ def main():
               "lokalt lag er AV (ikkje sletta), laget frå kontoret er merkt")
         sjekk(bk.status(mcfg)["terreng"]["i_bruk"] == r["aktiv"]["versjon"] and not bk.status(mcfg)["terreng"]["ventar"],
               "maskina melder kva terreng ho brukar")
+        tv = r["aktiv"]["versjon"]
+        bk.angre(restore, lambda f, t_: mlib.restore_office(f, t_), FILER)
+        sjekk(set(mlib.layers) == {lokal["id"]} and mlib.layers[lokal["id"]]["active"] is True,
+              "ANGRE: terrenget frå kontoret er teke bort, lokalt lag er PÅ att")
+        bk.avvist = None
+        r = bk.fetch(mcfg, apply)
+        bk.ta_i_bruk(apply, lambda m, b: mlib.install_from_package(m, b), FILER)
+        sjekk(bk.aktiv["versjon"] == tv and klag["id"] in mlib.layers, "pakka kan takast i bruk att (frå kontoret på nytt)")
+        # Office slettar den aktive pakka «også i maskinene» – maskina får ordren i hjarteslaget
+        rq = urllib.request.Request(web + "/api/v1/anleggspakke/slett", data=json.dumps({"versjon": tv, "i_maskinene": True}).encode(),
+                                    method="POST", headers={"Content-Type": "application/json"})
+        rq.add_header("Authorization", "Basic " + base64.b64encode(b"admin:kontor-pw-1").decode())
+        sjekk(json.loads(urllib.request.urlopen(rq, timeout=10).read())["var_aktiv"], "Office: aktiv pakke sletta")
+        sjekk(bk.hjarteslag(mcfg) and bk.slett_ordre and bk.status(mcfg)["slett_ordre"], "maskina får slette-ordren frå kontoret")
+        bk.slett(restore, lambda t_: mlib.remove_office(t_), FILER, fra_kontoret=True)
+        sjekk(not bk.aktiv and not bk.slett_ordre and set(mlib.layers) == {lokal["id"]} and mlib.layers[lokal["id"]]["active"],
+              "sletta frå kontoret: terreng og pakke borte, lokalt lag PÅ att")
+        sjekk(bk.avvist["korleis"] == "sletta av kontoret", "maskina melder at kontoret sletta pakka")
+        last_opp(trasear=[T1])
+        bk.hjarteslag(mcfg)
+        sjekk(not bk.slett_ordre and bk.treng_henting(), "ny pakke på kontoret opphevar slette-ordren og blir henta")
+        hent()
 
         # v1.6.139: sanntid ute i bakken – adressa på anlegget svarar ikkje, maskinporten (8791) gjer det
         ucfg = dict(mcfg, kontor_host="127.0.0.1", kontor_port=1, kontor_host_ute="127.0.0.1",
@@ -197,7 +275,7 @@ def main():
             sjekk("kontakt" in str(e), "feilmelding når Office er borte")
         sjekk([t["name"] for t in tra.listing()] == ["Bakke 1"] and bk.styrt(mcfg), "siste pakke gjeld når Office er borte")
         bk2 = BK.KontorKopling(data, "1.6.137")
-        sjekk(bk2.aktiv["versjon"] == 4 and bk2.status(mcfg)["ko"] == 1 and bk2.mid == bk.mid,
+        sjekk(bk2.aktiv["versjon"] == bk.aktiv["versjon"] and bk2.status(mcfg)["ko"] == 1 and bk2.mid == bk.mid,
               "aktiv pakke, kø og maskin-ID blir hugsa etter omstart")
 
         b = io.BytesIO()

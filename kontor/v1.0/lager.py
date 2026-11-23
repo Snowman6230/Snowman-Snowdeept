@@ -148,10 +148,17 @@ class Store:
             for chunk in iter(lambda: f.read(1 << 20), b""):
                 h.update(chunk)
         row = self.q("SELECT MAX(versjon) v FROM pakkar", one=True)
-        v = (row["v"] or 0) + 1
+        nr = self.pkgdir / "siste-versjon.txt"               # 1.5.2: eit versjonsnummer blir aldri brukt to gonger,
+        try:                                                 # heller ikkje etter at den siste versjonen er sletta
+            sist = int(nr.read_text("utf-8").strip())
+        except (OSError, ValueError):
+            sist = 0
+        v = max(row["v"] or 0, sist) + 1
+        nr.write_text(str(v), "utf-8")
         dst = self.pkgdir / f"anleggspakke-v{v}.zip"
         shutil.move(str(src_path), dst)
         self.x("UPDATE pakkar SET aktiv=0")
+        self.slett_i_maskinene(False)
         self.x("INSERT INTO pakkar (versjon, fil, sha256, storleik, dato, merknad, aktiv, innhald) "
                "VALUES (?,?,?,?,?,?,1,?)",
                (v, dst.name, h.hexdigest(), dst.stat().st_size, time.time(), str(note)[:500],
@@ -183,7 +190,31 @@ class Store:
         if not self.package(version):
             return False
         self.x("UPDATE pakkar SET aktiv=CASE WHEN versjon=? THEN 1 ELSE 0 END", (int(version),))
+        self.slett_i_maskinene(False)
         return True
+
+    # ---------- sletting (1.5.2) ----------
+    def delete_package(self, version, i_maskinene=False):
+        """Slettar ein versjon. Var han aktiv, er det ingen aktiv pakke etterpå; i_maskinene=True ber maskinene slette
+        pakka dei har (dei gjer det når prepareringa er stoppa). Returnerer {"var_aktiv"}."""
+        p = self.q("SELECT * FROM pakkar WHERE versjon=?", (int(version),), one=True)
+        if not p:
+            raise ValueError(f"Versjon {version} finst ikkje")
+        self.x("DELETE FROM pakkar WHERE versjon=?", (int(version),))
+        (self.pkgdir / p["fil"]).unlink(missing_ok=True)
+        if p["aktiv"]:
+            self.slett_i_maskinene(bool(i_maskinene))
+        return {"var_aktiv": bool(p["aktiv"])}
+
+    def slett_i_maskinene(self, on=None):
+        """Flagget «slett også i maskinene» (berre når det ikkje er noka aktiv pakke). on=None: les."""
+        f = self.pkgdir / "slett-i-maskinene.json"
+        if on is None:
+            return f.exists() and not self.package()
+        if on:
+            f.write_text(json.dumps({"t": time.time()}), "utf-8")
+        else:
+            f.unlink(missing_ok=True)
 
     # ---------- forslag frå maskinene ----------
     def add_proposal(self, mid, d):

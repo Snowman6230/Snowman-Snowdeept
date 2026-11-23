@@ -318,6 +318,15 @@ eigen base) treng òg kontoret. *Laga 2026-11-22: Base 1.4.0, Kontor 1.0.0, SNOW
 Der det står «Base» om kontordelen, anleggspakka eller maskin-API-et under, gjeld det no SNOWMAN Kontor.
 Avgjerd 4 (maskin-API på port 2101) er erstatta av avgjerd 6.
 
+**Avgjerd 11 (2026-11-24) – ny anleggspakke: varsel, angre og slette:** Eigaren: «I maskin bør det komme eit varsel om
+at ny pakke er klar. Den pakken bør ein også kunne angre på at ein godtar. Og ein bør kunne slette den frå maskin. Og om
+ein slettar den frå kontor, bør det også spørrast om den skal slettast også i maskin.» Valt: **1a** – maskina lastar ned
+og kontrollerer sjølv, viser varsel, og *heile* pakka blir teken i bruk først når føraren trykkjer TA I BRUK med
+prepareringa stoppa (aldri midt i ein tur). **2a** – SLETT i maskina går tilbake til det maskina hadde før kontoret, og
+låsen blir oppheva; ANGRE går tilbake til førre pakke. Ei angra eller sletta pakke blir ikkje tilboden att før kontoret
+legg ut ein ny versjon. **3a** – «slett også i maskinene» på kontoret blir gjort av maskina sjølv når prepareringa er
+stoppa, og føraren får melding. Lokale hindringar og kontrollmålingar blir alltid verande. Office 1.5.2, Snowdeep 1.6.154.
+
 **Avgjerd 10 (2026-11-23) – ingen språkmodell i SNOWMAN:** Eigaren spurde om Claude er nødvendig for at SNOWMAN skal
 vere eit godt program, og avgjorde: «Fjern Claude og knappen heiter fortsatt AI». Kjernen (snødjupne med RTK mot
 terrengmodellen, kart, trasear, Office, sanntid) og AI-råda i maskina (reknereglar, lokalt) treng ikkje språkmodell, og

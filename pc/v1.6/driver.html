@@ -3196,7 +3196,9 @@
           <div id="kontorKopling">
           <h3>ANLEGGSDATA FRÅ KONTORET (SNOWMAN OFFICE)</h3>
           <div id="baseInfo" class="history">Koplinga til SNOWMAN Office er av. Trasear og hindringar blir lagde inn i maskina.</div>
-          <button id="baseTerr" class="btn hide" style="border-color: #ffb24d" onclick="KONTK.terreng()">⛰ TA I BRUK NYTT TERRENG</button>
+          <button id="baseTerr" class="btn hide" style="border-color: #ffb24d" onclick="KONTK.taIBruk()">✔ TA I BRUK NY ANLEGGSPAKKE</button>
+          <button id="baseAngre" class="btn hide" onclick="KONTK.angre()">↶ ANGRE – GÅ TILBAKE TIL FØRRE</button>
+          <button id="baseSlett" class="btn hide" style="border-color: #ff6b5e" onclick="KONTK.slett()">🗑 SLETT PAKKA FRÅ KONTORET</button>
           <button id="baseHent" class="btn hide" onclick="KONTK.hent()">⇩ HENT FRÅ OFFICE</button
           ><button id="baseForslag" class="btn hide" onclick="KONTK.forslag()">✉ SEND FORSLAG TIL KONTORET</button>
           <details class="fold" ontoggle="FOLD.base = this.open">
@@ -3223,8 +3225,11 @@
                 <b>Ei ny hindring</b> kan du framleis leggje inn her: ho gir varsel med éin gong, er merkt «lokal – ventar på kontoret»
                 og blir send til kontoret neste gong maskina når Office. Slår du av koplinga, kan alt redigerast i maskina att.<br />
                 Brukarnamn og passord: ein brukar med rolla <b>maskin</b> i SNOWMAN Office › Brukarar (ikkje NTRIP-brukaren).
-                <b>Terreng:</b> nye terrengmodellar frå kontoret blir lasta ned med pakka. Du tek dei i bruk med TA I BRUK NYTT
-                TERRENG når prepareringa er stoppa. Gjer ei kontrollmåling etterpå.
+                <b>Ny pakke:</b> maskina lastar ned ny anleggspakke sjølv og viser eit varsel. Heile pakka (trasear, hindringar,
+                kontrollpunkt og terreng) blir teken i bruk når du trykkjer TA I BRUK – berre når prepareringa er stoppa.
+                <b>ANGRE</b> går tilbake til det du hadde før. <b>SLETT</b> tek bort alt frå kontoret: maskina får att det ho hadde
+                før kontoret, og alt kan redigerast her att. Slettar kontoret pakka i maskinene, skjer det av seg sjølv når
+                prepareringa er stoppa, og du får melding. Gjer ei kontrollmåling etter nytt terreng.
               </div>
             </div>
           </details>
@@ -3492,7 +3497,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.153";
+      const APP_VERSION = "1.6.154";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
@@ -7485,7 +7490,8 @@
             ? d.versjonar.map((p) => "<div class='ksItem'><b>v" + p.versjon + "</b> " + (p.aktiv ? "<span class='ksPill ok'>aktiv</span>" : "") + " · " + tid(p.dato) + " · " + (p.storleik / 1e6).toFixed(2) + " MB" +
                 (p.merknad ? "<div>«" + esc(p.merknad) + "»</div>" : "") +
                 "<div class='ksDim'>" + (p.innhald ? Object.entries(p.innhald.tal).map(([a, v]) => v + " " + (nm[a] || a)).join(", ") + (p.innhald.laga_av ? " · laga av " + esc(p.innhald.laga_av) : "") : "gammalt format") + "</div>" +
-                (p.aktiv ? "" : "<button onclick='KSIDE.aktiv(" + p.versjon + ")'>GJER AKTIV</button>") + "</div>").join("")
+                (p.aktiv ? "" : "<button onclick='KSIDE.aktiv(" + p.versjon + ")'>GJER AKTIV</button>") +
+                "<button onclick='KSIDE.slettPakke(" + p.versjon + "," + (p.aktiv ? 1 : 0) + ")'>SLETT</button></div>").join("")
             : "Ingen anleggspakke publisert enno.";
         }
         async function brukarar() {
@@ -7583,6 +7589,19 @@
             map.setView([+p.lat, +p.lon], Math.max(map.getZoom(), 17));
             L.popup().setLatLng([+p.lat, +p.lon]).setContent("<b>" + esc(p.type) + "</b> frå " + esc(p.maskin) + "<br>" + esc(p.tekst)).openOn(map);
           },
+          async slettPakke(v, aktiv) {
+            let mask = false;
+            if (aktiv) {
+              if (!confirm("Slette v" + v + "? Ho er den aktive pakka – etterpå er det inga aktiv pakke på kontoret.")) return;
+              mask = confirm("Skal pakka også slettast i MASKINENE?\n\nOK = SLETT OGSÅ I MASKINENE: kvar maskin går tilbake til det ho hadde før kontoret, " +
+                "av seg sjølv når prepareringa er stoppa, og føraren får melding.\n\nAvbryt = SLETT BERRE PÅ KONTORET: maskinene beheld det dei har.");
+            } else if (!confirm("Slette v" + v + " på kontoret? Maskinene blir ikkje rørte.")) return;
+            try {
+              await k("v1/anleggspakke/slett", { versjon: v, i_maskinene: mask });
+              toast("v" + v + " er sletta" + (aktiv ? (mask ? " – maskinene slettar ho når prepareringa er stoppa" : " – maskinene beheld det dei har") : ""));
+              pakkar();
+            } catch (e) { toast(e.message); }
+          },
           async aktiv(v) {
             if (!confirm("Gjere v" + v + " aktiv? Maskinene hentar henne når dei er på wifi.")) return;
             try { await k("v1/anleggspakke/aktiv", { versjon: v }); pakkar(); } catch (e) { toast(e.message); }
@@ -7645,9 +7664,14 @@
             act.length + " aktive terrenglag" + (act.length ? " (" + esc(act.map((l) => l.name).join(", ")) + ")" : "");
           let ms = st.maskiner || [];
           $("kmMachines").innerHTML = ms.length
-            ? ms.map((m) => "<b>" + esc(m.namn) + "</b> · Snowdeep " + esc(m.versjon || "–") + " · pakke " + (m.pakke ? "v" + esc(m.pakke) : "–") +
-                (p && m.pakke && String(m.pakke) !== String(p.versjon) ? " <b style='color:#ffb24d'>(gammal)</b>" : "") +
-                " · terreng " + (m.terreng ? "v" + esc(m.terreng) : "–") + " · sist sett " + ago(m.age) + " sidan").join("<br>")
+            ? ms.map((m) => {
+                let e = m.ekstra || {}, pk = m.pakke && m.pakke !== "ingen" ? m.pakke : null, tr = e.terreng || m.terreng;
+                return "<b>" + esc(m.namn) + "</b> · Snowdeep " + esc(m.versjon || "–") + " · pakke " + (pk ? "v" + esc(pk) : "ingen") +
+                  (p && pk && String(pk) !== String(p.versjon) ? " <b style='color:#ffb24d'>(gammal)</b>" : "") +
+                  (e.ventar_pakke ? " · <span style='color:#ffb24d'>v" + esc(e.ventar_pakke) + " ventar på føraren</span>" : "") +
+                  (e.avvist_pakke ? " · <span style='color:#ff6b5e'>v" + esc(e.avvist_pakke) + " " + esc(e.avvist_korleis || "avvist") + "</span>" : "") +
+                  " · terreng " + (tr ? "v" + esc(tr) : "–") + " · sist sett " + ago(m.age) + " sidan";
+              }).join("<br>")
             : "Ingen maskiner har meldt seg enno.";
         }
         // v1.6.139: sanntid på kartet i kontormodus – maskinene ute i bakken og dei delte målingane (RTK FIX)
@@ -7833,7 +7857,41 @@
       })();
       // v1.6.136/137: kopling til SNOWMAN Office – anleggspakke frå kontoret (VEGEN-VIDARE kap. 16, steg 2)
       const KONTK = (function () {
-        let s = {};
+        let s = {},
+          skjult = null, // versjonen føraren har sagt SEINARE til
+          sett = 0; // tid for siste varsel som er vist
+        const talTxt = (tal) => Object.entries(tal || {}).filter(([k, v]) => v).map(([k, v]) => v + " " + ({ trasear: "trasé(ar)", forbodne_omrade: "forbode område", hindringar: "hindring(ar)", kontrollpunkt: "kontrollpunkt", terrenglag: "terrenglag" }[k] || k)).join(", ");
+        function banner() {
+          let b = $("kkPakke"), w = s.on && s.ventar;
+          if (s.varsel && s.varsel.t > sett) {
+            sett = s.varsel.t;
+            toast(s.varsel.tekst);
+            if (typeof TRA !== "undefined") TRA.load();
+          }
+          if (!w || skjult === w.versjon || (KSIDE && KSIDE.on)) return b && b.remove();
+          if (!b) {
+            b = document.createElement("div");
+            b.id = "kkPakke";
+            b.style.cssText = "position:fixed;top:34px;left:50%;transform:translateX(-50%);z-index:9999;background:#3a2a05;color:#ffe1a6;border:1px solid #ffb020;border-radius:10px;padding:8px 12px;font:14px system-ui;display:flex;gap:10px;align-items:center;max-width:92vw";
+            document.body.appendChild(b);
+          }
+          let prep = typeof preparing !== "undefined" && preparing;
+          b.innerHTML = "<span>📦 <b>Ny anleggspakke v" + w.versjon + " frå kontoret</b> · " + esc(talTxt(w.tal)) + (w.merknad ? " · «" + esc(w.merknad) + "»" : "") +
+            (prep ? "<br><small>Kan takast i bruk når prepareringa er stoppa.</small>" : "") + "</span>" +
+            "<button class='btn' id='kkTa' style='width:auto;flex:none;padding:6px 14px;background:#0d3550;border-color:#4db8ff'" + (prep ? " disabled" : "") + ">TA I BRUK</button>" +
+            "<button class='btn' id='kkSein' style='width:auto;flex:none;padding:6px 12px'>SEINARE</button>";
+          $("kkTa").onclick = () => KONTK.taIBruk();
+          $("kkSein").onclick = () => ((skjult = w.versjon), b.remove());
+        }
+        async function poll() {
+          try {
+            show(await api("api/kontor"));
+          } catch (e) {}
+        }
+        setTimeout(() => {
+          poll();
+          setInterval(poll, 15000);
+        }, 4000);
         function show(r) {
           s = r || s;
           let on = !!s.on,
@@ -7842,7 +7900,11 @@
           $("baseOn").textContent = "KOPLING TIL SNOWMAN OFFICE: " + (on ? "PÅ" : "AV");
           $("baseHent").classList.toggle("hide", !on);
           $("baseForslag").classList.toggle("hide", !on);
-          $("baseTerr").classList.toggle("hide", !(on && s.terreng && s.terreng.ventar));
+          $("baseTerr").classList.toggle("hide", !(on && s.ventar));
+          $("baseAngre").classList.toggle("hide", !(on && s.kan_angre));
+          $("baseSlett").classList.toggle("hide", !(on && (a || s.ventar)));
+          $("baseAngre").textContent = "↶ ANGRE – GÅ TILBAKE TIL " + (s.forrige_versjon ? "V" + s.forrige_versjon : "FØR KONTORET");
+          banner();
           $("baseSum").textContent = on ? "· " + (s.adresse || "adresse manglar") : "· av";
           let t = [];
           if (!on) t.push("Koplinga til SNOWMAN Office er av. Trasear og hindringar blir lagde inn i maskina.");
@@ -7851,11 +7913,13 @@
               "<br>" + Object.entries(a.tal || {}).map(([k, v]) => v + " " + ({ trasear: "trasé(ar)", forbodne_omrade: "forbode område", hindringar: "hindring(ar)", terrenglag: "terrenglag" }[k] || k)).join(", ") +
               (a.merknad ? "<br><small>«" + esc(a.merknad) + "»</small>" : "") : "Ingen anleggspakke henta enno. Trykk HENT FRÅ OFFICE (på wifi på anlegget).");
             if (s.styrt) t.push("<b>🔒 Trasear, forbodne område og kontrollpunkt er styrte frå kontoret.</b>");
-            let tr = s.terreng || {};
-            if (tr.ventar)
-              t.push("<b style='color:#ffb24d'>⛰ Nytt terreng frå kontoret (v" + tr.ventar.versjon + "): " + tr.ventar.lag.length + " lag – " +
-                esc(tr.ventar.lag.map((l) => l.name).join(", ")) + ".</b> Trykk TA I BRUK NYTT TERRENG når prepareringa er stoppa. Snødjupna blir rekna mot det nye terrenget.");
-            else if (tr.i_bruk) t.push("Terreng frå kontoret: v" + tr.i_bruk + " (teke i bruk " + esc(tr.teke_i_bruk || "") + ")");
+            let tr = s.terreng || {}, w = s.ventar;
+            if (w)
+              t.push("<b style='color:#ffb24d'>Ny anleggspakke v" + w.versjon + " er klar:</b> " + talTxt(w.tal) + (w.merknad ? " · «" + esc(w.merknad) + "»" : "") +
+                ((w.lag || []).length ? "<br>⛰ Nytt terreng: " + esc(w.lag.map((l) => l.name).join(", ")) : "") + "<br>Trykk TA I BRUK når prepareringa er stoppa.");
+            if (s.avvist && !w) t.push("<span class='dim'>v" + s.avvist.versjon + " er " + esc(s.avvist.korleis || "avvist") + " i denne maskina (" + esc(s.avvist.t || "") + ").</span>");
+            if (s.slett_ordre) t.push("<b style='color:#ff6b5e'>Kontoret har sletta anleggspakka.</b> Ho blir teken bort når prepareringa er stoppa.");
+            if (tr.i_bruk) t.push("Terreng frå kontoret: v" + tr.i_bruk + " (teke i bruk " + esc(tr.teke_i_bruk || "") + ")");
             if (s.sist && s.sist.t) t.push((s.sist.ok ? "" : "<b style='color:#ff6b5e'>Feil:</b> ") + esc(s.sist.melding) + " (" + new Date(s.sist.t * 1000).toTimeString().slice(0, 5) + ")");
             let lv = s.sanntid || {};
             if (s.sanntid_on === false) t.push("Sanntid til kontoret: av");
@@ -7918,15 +7982,36 @@
             $("baseHent").disabled = false;
             if (r && r.ny) TRA.load();
           },
-          async terreng() {
-            let tr = (s.terreng || {}).ventar;
-            if (!tr) return;
-            if (!confirm("Ta i bruk nytt terreng frå kontoret (" + tr.lag.length + " lag)?\n\nSnødjupna blir rekna mot det nye terrenget. Lokale terrenglag i maskina blir slått AV (ikkje sletta). Det gamle blir teke vare på.\n\nGjer ei kontrollmåling etterpå.")) return;
-            let r = await post("api/kontor/terreng", {}, (r) => {
-              let x = r.terreng.resultat;
-              return "Nytt terreng i bruk: " + x.nye + " nye, " + x.bytte + " bytte" + (x.lokale_av ? ", " + x.lokale_av + " lokale lag slått av" : "") + ". Gjer ei kontrollmåling.";
-            });
-            if (r && typeof loadTerrain === "function") loadTerrain();
+          async taIBruk() {
+            let w = s.ventar;
+            if (!w) return;
+            let lag = (w.lag || []).length;
+            if (!confirm("Ta i bruk anleggspakke v" + w.versjon + " frå kontoret?\n\n" + talTxt(w.tal) + "\n\n" +
+              (lag ? "Nytt terreng (" + lag + " lag): snødjupna blir rekna mot det nye terrenget. Lokale terrenglag blir slått AV (ikkje sletta). Gjer ei kontrollmåling etterpå.\n\n" : "") +
+              "Du kan angre etterpå.")) return;
+            let r = await post("api/kontor/ta-i-bruk", {}, (r) => r.melding);
+            if (r) {
+              $("kkPakke") && $("kkPakke").remove();
+              TRA.load();
+              if (r.terreng && typeof loadTerrain === "function") loadTerrain();
+            }
+          },
+          async angre() {
+            if (!confirm("Angre anleggspakke v" + (s.aktiv || {}).versjon + "?\n\nMaskina går tilbake til " + (s.forrige_versjon ? "v" + s.forrige_versjon : "det ho hadde før kontoret") +
+              " – trasear, hindringar, kontrollpunkt og terreng. Lokale hindringar og kontrollmålingar blir verande.\n\nPakka blir ikkje tilboden att før kontoret legg ut ei nyare.")) return;
+            let r = await post("api/kontor/angre", {}, (r) => r.melding);
+            if (r) {
+              TRA.load();
+              if (typeof loadTerrain === "function") loadTerrain();
+            }
+          },
+          async slett() {
+            if (!confirm("Slette anleggspakka frå kontoret i denne maskina?\n\nMaskina får att det ho hadde før kontoret (trasear, hindringar, kontrollpunkt og terreng), og alt kan redigerast her att. Koplinga til Office står framleis på – ny pakke frå kontoret blir varsla som vanleg.")) return;
+            let r = await post("api/kontor/slett", {}, (r) => r.melding);
+            if (r) {
+              TRA.load();
+              if (typeof loadTerrain === "function") loadTerrain();
+            }
           },
           async forslag() {
             let t = prompt("Forslag til kontoret (t.d. «Trasé Bakke 2 skal gå lenger ned mot heishuset»). Posisjonen til maskina blir send med.");

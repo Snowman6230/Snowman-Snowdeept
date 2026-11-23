@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.153"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.154"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -107,7 +107,7 @@ KONTOR_LOKAL={"url":(os.environ.get("SNOWMAN_KONTOR_URL") or "http://127.0.0.1:8
               "nokkel":os.environ.get("SNOWMAN_KONTOR_NOKKEL") or ""}
 # v1.6.141: kontorsida inne i SNOWMAN (kontormodus) – kall vidare til SNOWMAN Office med den lokale nøkkelen.
 # Berre JSON, berre lista adresser, og berre med eigen header (ein annan nettstad i nettlesaren kan ikkje sende han).
-KONTOR_PROXY=re.compile(r"^(status|v1/(maskiner|anleggspakke/versjonar|anleggspakke/aktiv|forslag|forslag/svar|maskin/fjern|"
+KONTOR_PROXY=re.compile(r"^(status|v1/(maskiner|anleggspakke/versjonar|anleggspakke/aktiv|anleggspakke/slett|forslag|forslag/svar|maskin/fjern|"
                         r"forbetringar|forbetringar/status|forbetringar/analyser|ai|ai/innstillingar|ai/forehandsvis|ai/analyser|"
                         r"base|brukarar|brukar|brukar/fjern|hendingar|oppdatering/sjekk|oppdater))$")
 def kontor_proxy(h,u,body=None):
@@ -149,7 +149,12 @@ def kontor_live_loop():
     punkt=[]; fixhist=[]; last_send=0.0; last_pt=0.0
     while not STOP.wait(1.0):
         try:
-            if MODUS[0]=="kontor" or not (CFG.get("kontor_on") and CFG.get("kontor_sanntid",True)): punkt.clear(); continue
+            if MODUS[0]=="kontor" or not CFG.get("kontor_on"): punkt.clear(); continue
+            kontor_pakke_vakt()
+            if not CFG.get("kontor_sanntid",True):
+                punkt.clear()
+                if time.time()-last_send>=30: last_send=time.time(); KONTOR.hjarteslag(CFG)
+                continue
             st=dict(STATE); now=time.time()
             fresh=st.get("gga_time") and now-st["gga_time"]<5
             fx=st.get("fix") or ""
@@ -169,6 +174,27 @@ def kontor_live_loop():
             if KONTOR.live(CFG,status,list(punkt)): punkt.clear()
         except Exception as e:
             LOG.event(f"Sanntid til Office feila: {e}",err=True); STOP.wait(30)
+VAKT={"hent":0.0}
+def kontor_meld():
+    """Hjarteslag med éin gong (i bakgrunnen), så kontoret ser kva pakke maskina har no."""
+    threading.Thread(target=lambda: KONTOR.hjarteslag(CFG),daemon=True).start()
+def kontor_pakke_vakt():
+    """v1.6.154: ny pakke på kontoret → last ned og kontroller (ikkje ta i bruk); kontoret har bede om sletting →
+    slett når prepareringa er stoppa, og gi føraren melding."""
+    now=time.time()
+    prep=bool(HUD.get("preparing")) and now-HUD.get("t",0)<30
+    if KONTOR.slett_ordre and not prep:
+        try:
+            r=KONTOR.slett(kontor_restore,(lambda t: TERR.remove_office(t)) if T.AVAILABLE else None,KK_FILER,fra_kontoret=True)
+            KONTOR.varsel={"t":now,"tekst":r["melding"]}; LOG.event("Office: "+r["melding"])
+            kontor_meld()
+        except Exception as e: LOG.event(f"Office: sletting frå kontoret feila: {e}",err=True)
+    if KONTOR.treng_henting() and now-VAKT["hent"]>60 and not KONTOR.lock.locked():
+        VAKT["hent"]=now
+        try:
+            r=KONTOR.fetch(CFG,kontor_apply)
+            if r.get("klar"): LOG.event("Office: "+r["melding"])
+        except Exception as e: LOG.event(f"Office: kunne ikkje hente ny anleggspakke: {e}")
 def kontor_publiser(merknad="",terreng=True):
     if TRA is None or OBJ is None: raise RuntimeError("Trasear og hindringar krev numpy: "+TRA_ERR)
     try: ui=json.loads(UI_CFG.read_text("utf-8")); ui=ui.get("cfg",ui)
@@ -202,6 +228,34 @@ def kontor_apply(innhald):
     if obj is not None: godkjende=OBJ.replace_from_package(obj)
     if kp is not None: KON.replace_points(kp)
     return godkjende
+KK_FILER=[DATA/"trasear.json",DATA/"objekt.json",DATA/"kontroll.json"]
+def kontor_restore(mappe):
+    """v1.6.154 (ANGRE/SLETT): trasear, hindringar og kontrollpunkt frå mappa (forrige/ eller for-kontoret/) inn att.
+    Lokale hindringar (ventar på kontoret) og kontrollmålingar blir verande. mappe=None: berre det frå kontoret blir teke bort."""
+    def les(n,key):
+        if mappe is None: return None
+        f=Path(mappe)/n
+        if f.exists(): return json.loads(f.read_text("utf-8")).get(key,[])
+        return [] if (Path(mappe)/(n+".manglar")).exists() else None
+    tra,obj,kp=les("trasear.json","trasear"),les("objekt.json","objekt"),les("kontroll.json","points")
+    if TRA is not None:
+        with TRA.lock:
+            TRA.items=tra if tra is not None else [t for t in TRA.items if t.get("source")!="kontoret"]
+            TRA._masks.clear(); TRA._stamps.clear(); TRA._status=(0,None,None)
+            TRA._save()
+    if OBJ is not None:
+        with OBJ.lock:
+            lokale=[o for o in OBJ.items if o.get("lokal")]
+            base=obj if obj is not None else [o for o in OBJ.items if o.get("source")!="kontoret" and not o.get("lokal")]
+            ids={o.get("id") for o in base}
+            OBJ.items=base+[o for o in lokale if o.get("id") not in ids]
+            OBJ._save()
+    if kp is not None:
+        with KON.lock:
+            KON.data["points"]=kp; KON._save()
+def kontor_prep_stopp(kva):
+    if HUD.get("preparing") and time.time()-HUD.get("t",0)<30:
+        raise ValueError(f"Stopp prepareringa først. {kva} medan du preparerer.")
 SIM_FASIT=DATA/"sim-fasit.json"   # skriven av simuler-leica.py: simulert snødjupne der maskina står (berre test)
 def sim_truth():
     """Fasit frå simulatoren, berre når mottakaren er simulert og fila er fersk."""
@@ -1437,18 +1491,19 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
-        if self.path=="/api/kontor/terreng":   # v1.6.138: ta i bruk nytt terreng frå kontoret (føraren godtek)
+        if self.path in ("/api/kontor/ta-i-bruk","/api/kontor/terreng","/api/kontor/angre","/api/kontor/slett"):
+            # v1.6.154: ny anleggspakke blir teken i bruk, angra eller sletta av føraren – berre når prepareringa er stoppa
             try:
-                if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
-                if HUD.get("preparing") and time.time()-HUD.get("t",0)<30:
-                    raise ValueError("Stopp prepareringa først. Nytt terreng endrar snødjupna og blir ikkje bytt medan du preparerer.")
-                t=KONTOR.terreng_ta_i_bruk(lambda mappe,backup: TERR.install_from_package(mappe,backup))
-                r=t["resultat"]
-                LOG.event(f"Førar: nytt terreng frå kontoret teke i bruk – {r['nye']} nye, {r['bytte']} bytte, "
-                          f"{r['fjerna']} fjerna, {r['lokale_av']} lokale lag slått av")
-                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"terreng":t,**KONTOR.status(CFG)}).encode())
+                kva=self.path.rsplit("/",1)[1]
+                kontor_prep_stopp({"angre":"Anleggspakka blir ikkje angra","slett":"Anleggspakka blir ikkje sletta"}.get(kva,"Ny anleggspakke blir ikkje teken i bruk"))
+                inst=(lambda m,b: TERR.install_from_package(m,b)) if T.AVAILABLE else None
+                if kva in ("ta-i-bruk","terreng"): r=KONTOR.ta_i_bruk(kontor_apply,inst,KK_FILER)
+                elif kva=="angre": r=KONTOR.angre(kontor_restore,(lambda f,t: TERR.restore_office(f,t)) if T.AVAILABLE else None,KK_FILER)
+                else: r=KONTOR.slett(kontor_restore,(lambda t: TERR.remove_office(t)) if T.AVAILABLE else None,KK_FILER)
+                LOG.event("Førar: "+r["melding"]); kontor_meld()
+                self.headers_ok(); self.wfile.write(json.dumps({**r,**KONTOR.status(CFG),"ok":True}).encode())
             except Exception as e:
-                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e),**KONTOR.status(CFG)}).encode())
             return
         if self.path in ("/api/kontor/config","/api/kontor/hent"):   # v1.6.137: kopling til SNOWMAN Office
             try:
@@ -1473,7 +1528,7 @@ class API(http.server.BaseHTTPRequestHandler):
                     save_cfg(); r={"ok":True}
                 else:
                     if not CFG.get("kontor_on"): raise KK.Feil("Slå på koplinga til SNOWMAN Office først.")
-                    r=KONTOR.fetch(CFG,kontor_apply,force=bool(d.get("force")))
+                    r=KONTOR.fetch(CFG,kontor_apply,force=bool(d.get("force")))   # v1.6.154: lastar ned – føraren tek i bruk
                 r.update({**KONTOR.status(CFG),"ok":True,"pass":"***" if CFG.get("kontor_pass") else ""})
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
             except Exception as e:

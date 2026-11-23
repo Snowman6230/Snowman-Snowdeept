@@ -14,8 +14,17 @@ Valfri: SNOWMAN Snowdeep fungerer fullt ut utan Office (kap. 19). Når koplinga 
   Ei ny hindring blir lagd inn lokalt med éin gong (varsel med det same) og sendt til kontoret som forslag
   (avgjerd 1, 2026-11-20). Forslag som ikkje kom fram, ligg i kø og blir sende ved neste henting.
 - Terreng (v1.6.138, eigaren 2026-11-22): terrenglaga frå kontoret blir lasta ned med pakka (på wifi) og lagde
-  til side. Føraren trykkjer TA I BRUK NYTT TERRENG når prepareringa er stoppa – då blir laga installerte i
-  terrengbiblioteket, og lokale lag blir slått AV (ikkje sletta). Det gamle blir teke vare på (forrige-terreng/).
+  til side. Lokale lag blir slått AV (ikkje sletta) når pakka blir teken i bruk. Det gamle blir teke vare på
+  (forrige-terreng/).
+- Ny pakke, angre og slett (v1.6.154, eigaren 2026-11-23 – VEGEN-VIDARE kap. 16, avgjerd 11):
+  · Hjarteslaget seier kva pakke kontoret har. Ny pakke blir lasta ned og kontrollert av seg sjølv, men IKKJE teken
+    i bruk: føraren får varsel og trykkjer TA I BRUK – heile pakka (trasear, hindringar, kontrollpunkt, terreng),
+    berre når prepareringa er stoppa (kallaren sjekkar det).
+  · ANGRE går tilbake til det som var før siste pakke (forrige/ og forrige-terreng/). Pakka blir avvist og ikkje
+    tilboden att før kontoret legg ut ein nyare.
+  · SLETT tek bort alt frå kontoret og går tilbake til det maskina hadde før den første pakka (for-kontoret/), og låsen
+    blir oppheva. Seier kontoret «slett også i maskinene» (hjarteslaget: slett=True), gjer maskina det sjølv når
+    prepareringa er stoppa, og føraren får melding.
 
 SNOWMAN sender aldri noko til GNSS-mottakaren – dette er berre nettverk mellom maskina og Office.
 """
@@ -185,6 +194,12 @@ class KontorKopling:
         self.aktiv = self._read("aktiv.json") or None
         self.ko = self._read("forslag-ko.json") or []
         self.terreng = self._read("terreng.json") or {}
+        self.ventar = self._read("ventar.json") or None     # lasta ned og kontrollert, ventar på føraren
+        self.forrige = self._read("forrige.json") or None   # for ANGRE: {"aktiv", "terreng_backup", "terreng_i_bruk"}
+        self.avvist = self._read("avvist.json") or None     # {"versjon", "sha256"} – angra eller sletta i maskina
+        self.slett_ordre = bool((self._read("slett.json") or {}).get("slett"))   # kontoret har bede om sletting
+        self.office_pakke = None                            # aktiv pakke på kontoret (frå hjarteslaget)
+        self.varsel = None                                  # {"t", "tekst"} – melding til føraren (t.d. sletta frå kontoret)
         self.via = None                                     # «lokal» (wifi) eller «ute» – kvar Office sist svarte
         self._pref = (None, 0.0)                            # (vegen som sist verka, tid)
         self.live_st = {"t": None, "ok": None, "feil": ""}     # {"i_bruk": versjon, "ventar": {versjon, lag, mappe}}
@@ -270,8 +285,13 @@ class KontorKopling:
                 "via": self.via, "sanntid": dict(self.live_st), "sanntid_on": bool(cfg.get("kontor_sanntid", True)),
                 "vert_ute": (cfg.get("kontor_host_ute") or "").strip(), "port_ute": int(cfg.get("kontor_port_ute") or PORT_UTE),
                 "terreng": {"i_bruk": self.terreng.get("i_bruk"), "teke_i_bruk": self.terreng.get("teke_i_bruk"),
-                            "ventar": {k: v for k, v in (self.terreng.get("ventar") or {}).items() if k != "mappe"}
-                            or None, "resultat": self.terreng.get("resultat")}}
+                            "ventar": ({"versjon": self.ventar["versjon"], "lag": self.ventar.get("lag")}
+                                       if self.ventar and self.ventar.get("lag") else None),
+                            "resultat": self.terreng.get("resultat")},
+                "ventar": self._ventar_ut(), "kan_angre": bool(self.forrige and self.aktiv),
+                "forrige_versjon": ((self.forrige or {}).get("aktiv") or {}).get("versjon"),
+                "avvist": self.avvist, "slett_ordre": self.slett_ordre, "office_pakke": self.office_pakke,
+                "varsel": self.varsel}
 
     # ---------- HTTP mot Office ----------
     def _req(self, cfg, path, body=None, raw=False, maks=2_000_000, til=None, timeout=None):
@@ -371,6 +391,17 @@ class KontorKopling:
             msg = "Kontoret har ikkje lagt ut noka anleggspakke enno."
             self.sist = {"t": time.time(), "ok": True, "melding": msg}
             return {"ok": True, "ny": False, "melding": msg, "sendt": sendt}
+        if not force and self.ventar and self.ventar.get("sha256") == pk.get("sha256") and Path(self.ventar["zip"]).exists():
+            self._heartbeat(cfg)
+            msg = f"Anleggspakke v{pk['versjon']} er alt lasta ned – trykk TA I BRUK når prepareringa er stoppa."
+            self.sist = {"t": time.time(), "ok": True, "melding": msg}
+            return {"ok": True, "ny": False, "klar": True, "melding": msg, "sendt": sendt}
+        if not force and self.avvist and self.avvist.get("sha256") == pk.get("sha256") and \
+                str(self.avvist.get("versjon")) == str(pk.get("versjon")):   # same innhald som ny versjon = tilboden att
+            self._heartbeat(cfg)
+            msg = f"Anleggspakke v{pk['versjon']} er avvist i denne maskina. Ho blir tilboden att når kontoret legg ut ein nyare."
+            self.sist = {"t": time.time(), "ok": True, "melding": msg}
+            return {"ok": True, "ny": False, "melding": msg, "sendt": sendt}
         if not force and self.aktiv and self.aktiv.get("sha256") == pk.get("sha256"):
             self._heartbeat(cfg)
             msg = f"Har alt nyaste anleggspakke (v{pk['versjon']})."
@@ -404,7 +435,6 @@ class KontorKopling:
         os.replace(tmp, zp)
         for gammal in sorted(self.dir.glob("anleggspakke-v*.zip"), key=lambda p: p.stat().st_mtime)[:-3]:
             gammal.unlink(missing_ok=True)                 # tek vare på dei tre siste
-        godkjende = apply(innhald) if innhald else 0
         tal = {}                                           # berre det som var med i pakka (det som manglar, er uendra)
         if "trasear.json" in innhald:
             tal["trasear"] = sum(1 for t in innhald["trasear.json"] if t.get("kind", "trase") == "trase")
@@ -415,54 +445,188 @@ class KontorKopling:
             tal["kontrollpunkt"] = len(innhald["kontrollpunkt.json"])
         if terreng:
             tal["terrenglag"] = len(terreng)
-            old = (self.terreng or {}).get("ventar")
-            if old and old.get("mappe") and Path(old["mappe"]) != stage:
-                shutil.rmtree(old["mappe"], ignore_errors=True)
-            self.terreng = dict(self.terreng or {}, ventar={"versjon": v, "lag": terreng, "mappe": str(stage),
-                                                            "henta": time.strftime("%Y-%m-%d %H:%M")})
-            self._write("terreng.json", self.terreng)
         else:
             shutil.rmtree(stage, ignore_errors=True)
-        self.aktiv = {"versjon": int(pk["versjon"]), "sha256": pk["sha256"], "henta": time.strftime("%Y-%m-%d %H:%M"),
-                      "anlegg": str(m.get("anlegg") or "")[:80], "laga": str(m.get("laga") or "")[:40],
-                      "laga_av": str(m.get("laga_av") or "")[:40], "merknad": str(pk.get("merknad") or "")[:200],
-                      "filer": sorted(innhald), "tal": tal}
-        self._write("aktiv.json", self.aktiv)
+        old = self.ventar or {}
+        if old.get("stage") and Path(old["stage"]) != stage:
+            shutil.rmtree(old["stage"], ignore_errors=True)
+        self.ventar = {"versjon": v, "sha256": pk["sha256"], "zip": str(zp), "stage": str(stage) if terreng else None,
+                       "lag": terreng or [], "tal": tal, "henta": time.strftime("%Y-%m-%d %H:%M"),
+                       "anlegg": str(m.get("anlegg") or "")[:80], "laga": str(m.get("laga") or "")[:40],
+                       "laga_av": str(m.get("laga_av") or "")[:40], "merknad": str(pk.get("merknad") or "")[:200]}
+        self._write("ventar.json", self.ventar)
         self._heartbeat(cfg)
-        msg = f"Anleggspakke v{self.aktiv['versjon']} er teken i bruk."
-        if terreng:
-            msg += (f" Nytt terreng frå kontoret ({len(terreng)} lag) er lasta ned – trykk TA I BRUK NYTT TERRENG "
-                    "når prepareringa er stoppa.")
-        if godkjende:
-            msg += f" {godkjende} lokal(e) hindring(ar) er no godkjende av kontoret."
+        msg = f"Ny anleggspakke v{v} frå kontoret er klar – trykk TA I BRUK når prepareringa er stoppa."
         self.sist = {"t": time.time(), "ok": True, "melding": msg}
-        self.log(f"Office: anleggspakke v{self.aktiv['versjon']} teken i bruk ({', '.join(f'{v} {k}' for k, v in tal.items())})")
-        return {"ok": True, "ny": True, "melding": msg, "aktiv": self.aktiv, "sendt": sendt}
+        self.log(f"Office: anleggspakke v{v} lasta ned og kontrollert – ventar på føraren")
+        return {"ok": True, "ny": True, "klar": True, "melding": msg, "ventar": self._ventar_ut(), "sendt": sendt}
 
-    def terreng_ta_i_bruk(self, install):
-        """Føraren har trykt TA I BRUK NYTT TERRENG (berre når prepareringa er stoppa – sjekka av kallaren).
-        install(mappe, backup_mappe) installerer laga i terrengbiblioteket og returnerer eit samandrag."""
-        ventar = (self.terreng or {}).get("ventar")
-        if not ventar or not Path(ventar["mappe"]).is_dir():
-            raise Feil("Det ventar ikkje noko nytt terreng frå kontoret.")
-        backup = self.dir / "forrige-terreng" / time.strftime("%Y%m%d-%H%M%S")
-        res = install(ventar["mappe"], backup)
-        shutil.rmtree(ventar["mappe"], ignore_errors=True)
-        for gammal in sorted((self.dir / "forrige-terreng").glob("*"))[:-3]:
-            shutil.rmtree(gammal, ignore_errors=True)      # tek vare på dei tre siste
-        self.terreng = {"i_bruk": ventar["versjon"], "teke_i_bruk": time.strftime("%Y-%m-%d %H:%M"), "resultat": res,
-                        "lag": ventar["lag"]}
-        self._write("terreng.json", self.terreng)
-        self.log(f"Office: terreng frå anleggspakke v{ventar['versjon']} teke i bruk ({res})")
-        return self.terreng
+    def _ventar_ut(self):
+        return {k: v for k, v in (self.ventar or {}).items() if k not in ("zip", "stage")} or None
+
+    def _kopier(self, til, files, fra=None):
+        """Kopier dei tre datafilene til mappa til (eller frå mappa fra tilbake til plassane i files)."""
+        til = Path(til)
+        if fra is None:
+            til.mkdir(parents=True, exist_ok=True)
+            for f in map(Path, files):
+                if f.exists():
+                    shutil.copy2(f, til / f.name)
+                else:
+                    (til / (f.name + ".manglar")).write_text("", "utf-8")
+            return
+        fra = Path(fra)
+        for f in map(Path, files):
+            if (fra / f.name).exists():
+                shutil.copy2(fra / f.name, f)
+            elif (fra / (f.name + ".manglar")).exists():
+                f.unlink(missing_ok=True)
+
+    def ta_i_bruk(self, apply, install=None, files=()):
+        """Føraren har trykt TA I BRUK (kallaren har sjekka at prepareringa er stoppa). apply(innhald) tek trasear,
+        hindringar og kontrollpunkt i bruk (og tek vare på det gamle i forrige/); install(mappe, backup) installerer
+        terrenget. files: datafilene til maskina – kopierte til for-kontoret/ første gong ei pakke blir teken i bruk."""
+        if not self.lock.acquire(blocking=False):
+            raise Feil("Er i gang med anleggspakka – vent litt.")
+        try:
+            v = self.ventar
+            if not v or not Path(v.get("zip", "")).exists():
+                raise Feil("Det ventar ikkje noka ny anleggspakke frå kontoret.")
+            m, innhald, _ = les_pakke(v["zip"])
+            if self.aktiv is None and files and not (self.dir / "for-kontoret").exists():
+                self._kopier(self.dir / "for-kontoret", files)          # det maskina hadde før kontoret (for SLETT)
+            if files:
+                shutil.rmtree(self.dir / "forrige", ignore_errors=True)
+                self._kopier(self.dir / "forrige", files)               # det maskina hadde før denne pakka (for ANGRE)
+            godkjende = apply(innhald) if innhald else 0
+            tb = None
+            res = None
+            if v.get("stage") and install and Path(v["stage"]).is_dir():
+                tb = self.dir / "forrige-terreng" / time.strftime("%Y%m%d-%H%M%S")
+                res = install(v["stage"], tb)
+                shutil.rmtree(v["stage"], ignore_errors=True)
+                for gammal in sorted((self.dir / "forrige-terreng").glob("*"))[:-3]:
+                    shutil.rmtree(gammal, ignore_errors=True)
+            self.forrige = {"aktiv": self.aktiv, "terreng_backup": str(tb) if tb else None,
+                            "terreng_i_bruk": self.terreng.get("i_bruk"), "terreng_resultat": self.terreng.get("resultat")}
+            self._write("forrige.json", self.forrige)
+            if res is not None:
+                self.terreng = {"i_bruk": v["versjon"], "teke_i_bruk": time.strftime("%Y-%m-%d %H:%M"), "resultat": res,
+                                "lag": v.get("lag")}
+                self._write("terreng.json", self.terreng)
+            self.aktiv = {k: v[k] for k in ("versjon", "sha256", "anlegg", "laga", "laga_av", "merknad", "tal")}
+            self.aktiv.update(henta=v["henta"], teke_i_bruk=time.strftime("%Y-%m-%d %H:%M"), filer=sorted(innhald))
+            self._write("aktiv.json", self.aktiv)
+            self.ventar = None
+            (self.dir / "ventar.json").unlink(missing_ok=True)
+            self.avvist = None
+            (self.dir / "avvist.json").unlink(missing_ok=True)
+            msg = f"Anleggspakke v{self.aktiv['versjon']} er teken i bruk."
+            if res:
+                msg += f" Terreng: {res['nye']} nye, {res['bytte']} bytte lag, {res['lokale_av']} lokale slått av."
+            if godkjende:
+                msg += f" {godkjende} lokal(e) hindring(ar) er no godkjende av kontoret."
+            msg += " Du kan angre."
+            self.sist = {"t": time.time(), "ok": True, "melding": msg}
+            self.log(f"Office: anleggspakke v{self.aktiv['versjon']} teken i bruk av føraren")
+            return {"ok": True, "melding": msg, "aktiv": self.aktiv, "terreng": res}
+        finally:
+            self.lock.release()
+
+    def angre(self, restore, restore_terrain=None, files=()):
+        """Tilbake til det som var før siste pakke. restore(mappe) les trasear, hindringar og kontrollpunkt frå mappa
+        (forrige/) inn att – lokale hindringar og kontrollmålingar blir verande."""
+        if not self.forrige or not self.aktiv:
+            raise Feil("Det er ingenting å angre.")
+        with self.lock:
+            fra = self.dir / "forrige"
+            restore(fra if fra.is_dir() else None)
+            tres = None
+            if restore_terrain and (self.forrige.get("terreng_backup") or self.terreng.get("i_bruk") == self.aktiv["versjon"]):
+                tres = restore_terrain(self.forrige.get("terreng_backup"), self.dir / "angra-terreng" / time.strftime("%Y%m%d-%H%M%S"))
+                self.terreng = {"i_bruk": self.forrige.get("terreng_i_bruk"), "resultat": self.forrige.get("terreng_resultat"),
+                                "teke_i_bruk": time.strftime("%Y-%m-%d %H:%M")}
+                self._write("terreng.json", self.terreng)
+            self.avvist = {"versjon": self.aktiv["versjon"], "sha256": self.aktiv["sha256"], "korleis": "angra",
+                           "t": time.strftime("%Y-%m-%d %H:%M")}
+            self._write("avvist.json", self.avvist)
+            v = self.aktiv["versjon"]
+            self.aktiv = self.forrige.get("aktiv")
+            if self.aktiv:
+                self._write("aktiv.json", self.aktiv)
+            else:
+                (self.dir / "aktiv.json").unlink(missing_ok=True)
+            self.forrige = None
+            (self.dir / "forrige.json").unlink(missing_ok=True)
+            shutil.rmtree(fra, ignore_errors=True)
+            if not self.aktiv:                                  # tilbake til før kontoret: låsen er oppheva
+                shutil.rmtree(self.dir / "for-kontoret", ignore_errors=True)
+            msg = f"Anleggspakke v{v} er angra." + (f" Tilbake til v{self.aktiv['versjon']}." if self.aktiv else
+                                                    " Tilbake til det maskina hadde før kontoret.")
+            self.sist = {"t": time.time(), "ok": True, "melding": msg}
+            self.log("Office: " + msg)
+            return {"ok": True, "melding": msg, "terreng": tres}
+
+    def slett(self, restore, remove_terrain=None, files=(), fra_kontoret=False):
+        """Tek bort alt frå kontoret: tilbake til det maskina hadde før den første pakka (restore(for-kontoret/) –
+        eller restore(None) når det ikkje finst: då blir berre det som kom frå kontoret teke bort), og låsen blir oppheva."""
+        if not self.aktiv and not self.ventar:
+            raise Feil("Det er inga anleggspakke frå kontoret i maskina.")
+        with self.lock:
+            fk = self.dir / "for-kontoret"
+            restore(fk if fk.is_dir() else None)
+            tres = remove_terrain(self.dir / "sletta-terreng" / time.strftime("%Y%m%d-%H%M%S")) if remove_terrain else None
+            sha = (self.aktiv or self.ventar or {}).get("sha256")
+            v = (self.aktiv or self.ventar or {}).get("versjon")
+            if self.ventar and self.ventar.get("stage"):
+                shutil.rmtree(self.ventar["stage"], ignore_errors=True)
+            self.avvist = {"versjon": v, "sha256": sha, "korleis": "sletta av kontoret" if fra_kontoret else "sletta",
+                           "t": time.strftime("%Y-%m-%d %H:%M")}
+            self._write("avvist.json", self.avvist)
+            self.aktiv = self.ventar = self.forrige = None
+            for n in ("aktiv.json", "ventar.json", "forrige.json", "slett.json"):
+                (self.dir / n).unlink(missing_ok=True)
+            shutil.rmtree(fk, ignore_errors=True)
+            shutil.rmtree(self.dir / "forrige", ignore_errors=True)
+            self.terreng = {}
+            self._write("terreng.json", self.terreng)
+            self.slett_ordre = False
+            msg = ("Kontoret har sletta anleggspakka. " if fra_kontoret else "Anleggspakka er sletta. ") + \
+                "Maskina har det ho hadde før kontoret, og trasear og kontrollpunkt kan endrast her att."
+            self.sist = {"t": time.time(), "ok": True, "melding": msg}
+            self.log("Office: " + msg)
+            return {"ok": True, "melding": msg, "terreng": tres}
+
+    def treng_henting(self):
+        """Har kontoret ei anna pakke enn den maskina har (og ikkje har avvist eller alt lasta ned)?"""
+        p = self.office_pakke
+        if not p or not p.get("versjon"):
+            return False
+        sha = p.get("sha256")
+        for x in (self.aktiv, self.ventar, self.avvist):
+            if x and (x.get("sha256") == sha if sha and x is not self.avvist else str(x.get("versjon")) == str(p["versjon"])):
+                return False
+        return True
+
+    def _hjarteslag_svar(self, r):
+        if not isinstance(r, dict):
+            return
+        pk = r.get("pakke_info") or ({"versjon": r.get("pakke")} if r.get("pakke") else None)
+        self.office_pakke = pk
+        if r.get("slett") and (self.aktiv or self.ventar) and not self.slett_ordre:
+            self.slett_ordre = True
+            self._write("slett.json", {"slett": True, "t": time.strftime("%Y-%m-%d %H:%M")})
+            self.log("Office: kontoret har bede om at anleggspakka blir sletta i maskina")
+        elif not r.get("slett") and pk and self.slett_ordre:
+            self.slett_ordre = False
+            (self.dir / "slett.json").unlink(missing_ok=True)
 
     # ---------- sanntid (2026-11-22) ----------
     def live(self, cfg, status, punkt=None):
         """Posisjon, snødjupne og status til Office (kvart 10. s), og målingar for deling. Feil blir berre noterte."""
         try:
-            self._req(cfg, "/api/v1/maskin", dict(status, id=self.mid, namn=cfg.get("kontor_maskinnamn") or self.mid,
-                                                   versjon=self.version, pakke=(self.aktiv or {}).get("versjon"),
-                                                   terreng=self.terreng.get("i_bruk")), timeout=6)
+            r = self._req(cfg, "/api/v1/maskin", dict(status, **self._hb_felt(cfg)), timeout=6)
+            self._hjarteslag_svar(r)
             if punkt:
                 self._req(cfg, "/api/v1/maalingar", {"maskin": self.mid, "punkt": punkt}, timeout=10)
             self.live_st = {"t": time.time(), "ok": True, "feil": "", "via": self.via}
@@ -482,11 +646,24 @@ class KontorKopling:
             if f.exists():
                 shutil.copy2(f, d / f.name)
 
+    def _hb_felt(self, cfg):
+        return {"id": self.mid, "namn": cfg.get("kontor_maskinnamn") or self.mid, "versjon": self.version,
+                "pakke": str((self.aktiv or {}).get("versjon") or "ingen"), "terreng": self.terreng.get("i_bruk"),
+                "ventar_pakke": (self.ventar or {}).get("versjon"), "avvist_pakke": (self.avvist or {}).get("versjon"),
+                "avvist_korleis": (self.avvist or {}).get("korleis")}
+
+    def hjarteslag(self, cfg):
+        """Berre hjarteslag (når sanntid er av) – så maskina får vite om ny pakke eller sletting."""
+        try:
+            self._heartbeat(cfg)
+            return True
+        except Exception:
+            return False
+
     def _heartbeat(self, cfg):
         try:
-            self._req(cfg, "/api/v1/maskin", {"id": self.mid, "namn": cfg.get("kontor_maskinnamn") or self.mid,
-                                              "versjon": self.version, "pakke": (self.aktiv or {}).get("versjon"),
-                                              "terreng": self.terreng.get("i_bruk")})
+            r = self._req(cfg, "/api/v1/maskin", self._hb_felt(cfg))
+            self._hjarteslag_svar(r)
         except Feil:
             pass
 
