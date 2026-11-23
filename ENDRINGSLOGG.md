@@ -9,6 +9,13 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.2.1 og SNOWMAN Snowdeep v1.6.143 – klar feilmelding når Ollama ikkje svarar
+- **Bakgrunn:** eigaren fekk «Feil: <urlopen error [WinError 10061] …avslo tilkobling>» under Office › AI med «Lokal
+  modell (Ollama)» – Ollama var ikkje installert eller starta på PC-en, og feltet Modell stod som «Ollama».
+- **Retta:** Office forklarer no på nynorsk når Ollama ikkje svarar (installer frå ollama.com, «ollama pull llama3.1»,
+  eller vel Claude eller Av), og når Ollama ikkje kjenner modellen. Andre nettfeil blir forklarte som elles i Office.
+- **Nytt:** Office › AI har ein kort forklaring og eit døme i feltet Modell (t.d. llama3.1 – ikkje «Ollama»).
+
 ### Nye namn: SNOWMAN Office 1.2.0 og SNOWMAN Snowdeep v1.6.142
 - **Bakgrunn (eigaren):** «Kan du døype om namnet frå kontor til Snowman Office?» og «Du kan også bytte frå SNOWMAN
   snødjupne til Snowman Snowdeep. Då forstår folk det også.» Sjå VEGEN-VIDARE kap. 16, avgjerd 8.

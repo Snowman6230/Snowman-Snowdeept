@@ -3177,7 +3177,11 @@
           <div class="ks hide" data-k="ai">
             <h3>AI</h3>
             <div class="row"><span>Leverandør</span><select id="ksAiProv" style="width: 190px"><option value="av">Av</option><option value="ollama">Lokal modell (Ollama)</option><option value="anthropic">Claude (Anthropic API)</option></select></div>
-            <div class="row"><span>Modell</span><input id="ksAiModel" type="text" style="width: 190px" /></div>
+            <div class="history">AI er valfri – resten av SNOWMAN Office verkar utan. <b>Lokal modell</b> krev at
+              <a href="https://ollama.com" target="_blank" style="color:#9fd3ff">Ollama</a> er installert og starta på denne PC-en, og at modellen er
+              henta (<code>ollama pull llama3.1</code>). <b>Modell</b> er namnet på modellen (t.d. llama3.1), ikkje «Ollama».
+              <b>Claude</b> krev API-nøkkel frå console.anthropic.com.</div>
+            <div class="row"><span>Modell</span><input id="ksAiModel" type="text" placeholder="t.d. llama3.1 (tomt = standard)" style="width: 190px" /></div>
             <div class="row"><span>Adresse (berre Ollama)</span><input id="ksAiAddr" type="text" style="width: 190px" /></div>
             <div class="row"><span>API-nøkkel</span><input id="ksAiKey" type="password" autocomplete="off" style="width: 190px" /></div>
             <button class="btn" onclick="KSIDE.aiLagre()">LAGRE</button><button class="btn" onclick="KSIDE.aiAnalyser()">ANALYSER NO</button>
@@ -3502,7 +3506,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.142";
+      const APP_VERSION = "1.6.143";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));

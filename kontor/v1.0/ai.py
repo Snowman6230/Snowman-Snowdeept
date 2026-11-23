@@ -12,6 +12,7 @@ AI les og foreslår – han styrer aldri Office, Base, mottakaren eller maskinen
 """
 import json
 import time
+import urllib.error
 import urllib.request
 
 from forbetring import day_summary, CATEGORIES
@@ -95,7 +96,20 @@ class AI:
             url = (c.get("adresse") or "http://localhost:11434").rstrip("/") + "/api/chat"
             body = {"model": c.get("modell") or "llama3.1", "stream": False,
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": msg}]}
-            r = _post(url, body, {}, 300)
+            try:
+                r = _post(url, body, {}, 300)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    raise RuntimeError(f"Ollama kjenner ikkje modellen «{body['model']}». Hent han først: "
+                                       f"«ollama pull {body['model']}» i eit kommandovindauge, eller skriv namnet på ein "
+                                       "modell du har (t.d. llama3.1) i feltet Modell.") from None
+                raise
+            except OSError as e:
+                if "10061" in str(e) or "refused" in str(e).lower():
+                    raise RuntimeError(f"Får ikkje kontakt med Ollama på {url.rsplit('/api/', 1)[0]}. Ollama er ikkje "
+                                       "installert eller ikkje starta på denne PC-en. Installer frå ollama.com og køyr "
+                                       "«ollama pull llama3.1» – eller vel «Claude (Anthropic API)» eller «Av».") from None
+                raise RuntimeError(nett.forklar(e)) from None
             return r["message"]["content"]
         if kind == "anthropic":
             if not c.get("api_nokkel"):
