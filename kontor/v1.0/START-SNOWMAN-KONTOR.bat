@@ -25,6 +25,8 @@ if not exist ".venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
+echo Installerer pakkane til kart og terreng ^(numpy m.m.^) ...
+".venv\Scripts\python.exe" -m pip install -q --disable-pip-version-check -r requirements.txt
 :start
 (
   set SNOWMAN_KONTOR_TENESTE=1

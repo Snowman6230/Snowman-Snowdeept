@@ -912,6 +912,65 @@ class TerrainLibrary:
         self.refresh_overlaps()
         return m
 
+    # --- terreng frå kontoret (anleggspakke, v1.6.138) ---
+    def export_layers(self, only_active=True):
+        """Laga som skal med i ei anleggspakke: [(meta, sti til grid.npy)]."""
+        with self.lock:
+            return [(dict(m), self.root / m["id"] / "grid.npy") for m in self.layers.values()
+                    if (m.get("active") or not only_active) and (self.root / m["id"] / "grid.npy").exists()]
+
+    def install_from_package(self, src, backup_dir):
+        """Tek i bruk terrenglaga frå kontoret (mappa src: <id>/meta.json + grid.npy).
+        - Lag med same id blir bytte ut. Det gamle blir flytta til backup_dir.
+        - Lag som kom frå kontoret før, men ikkje er med no, blir flytta til backup_dir.
+        - Lokale lag (lagde i maskina) blir slått AV (ikkje sletta) – éi sanning for snødjupna, men dei kan slåast på att.
+        Returnerer {"nye", "bytte", "fjerna", "lokale_av"}."""
+        import gc
+        src, backup_dir = Path(src), Path(backup_dir)
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        inn = {}
+        for d in sorted(p for p in src.iterdir() if p.is_dir()):
+            m = json.loads((d / "meta.json").read_text("utf-8"))
+            if m.get("type") not in TYPES or not (d / "grid.npy").exists():
+                raise ValueError(f"Terrenglaget {d.name} frå kontoret er ufullstendig.")
+            g = np.load(d / "grid.npy", mmap_mode="r")
+            if g.shape != (int(m["ny"]), int(m["nx"])):
+                raise ValueError(f"Terrenglaget «{m.get('name', d.name)}» har feil storleik.")
+            del g
+            inn[d.name] = m
+        res = {"nye": 0, "bytte": 0, "fjerna": 0, "lokale_av": 0}
+        with self.lock:
+            for lid, m in list(self.layers.items()):
+                if m.get("fraKontor") and lid not in inn:
+                    self.grids.pop(lid, None); self.edges.pop(lid, None); self.overlaps.pop(lid, None)
+                    gc.collect()
+                    shutil.move(str(self.root / lid), str(backup_dir / lid))
+                    self.layers.pop(lid)
+                    res["fjerna"] += 1
+                elif not m.get("fraKontor") and lid not in inn and m.get("active"):
+                    m["active"] = False
+                    m["avAvKontoret"] = time.strftime("%Y-%m-%d %H:%M")
+                    self._save_meta(lid)
+                    res["lokale_av"] += 1
+            for lid, m in inn.items():
+                if lid in self.layers:
+                    self.grids.pop(lid, None); self.edges.pop(lid, None)
+                    gc.collect()
+                    dst = backup_dir / lid
+                    if dst.exists():
+                        shutil.rmtree(dst, ignore_errors=True)
+                    shutil.move(str(self.root / lid), str(dst))
+                    res["bytte"] += 1
+                else:
+                    res["nye"] += 1
+                shutil.copytree(src / lid, self.root / lid)
+                m = dict(m, fraKontor=True, source="kontoret", active=True)
+                m.pop("avAvKontoret", None)
+                self.layers[lid] = m
+                self._save_meta(lid)
+        self.refresh_overlaps()
+        return res
+
     def delete(self, lid):
         with self.lock:
             self.layers.pop(lid)

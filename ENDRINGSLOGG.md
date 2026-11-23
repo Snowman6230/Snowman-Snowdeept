@@ -7,6 +7,34 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ---
 
+## 2026-11-23
+
+### SNOWMAN Kontor 1.1.0 og PC-prototype v1.6.139 – kontoret får same kart som maskinene, terreng ut til maskinene og sanntid
+- **Bakgrunn (eigaren):** «Snowman Kontor bør ha meir eller mindre same funksjonar som Snowman Snødjupne. Det gjer det
+  lettare å sjå kva som skjer i maskinene. Det bør også kunne lastast inn karta som eg brukar i dag. Eg må kunne legge
+  inn nye kart og desse pushest ut til maskinene. Den kontorversjonen som du laga, vil ikkje fungere.»
+  **Avgjerd (eigaren):** karta = terrengmodellane; kontoret = SNOWMAN snødjupne i kontormodus; sanntid ute i bakken;
+  føraren tek nytt terreng i bruk. Sjå VEGEN-VIDARE kap. 16, avgjerd 7.
+- **Nytt (Kontor):** Kontor startar SNOWMAN snødjupne frå `pc/` i **kontormodus** (utan GNSS, NTRIP og motor) på
+  http://localhost:8765/ – same kart, 3D, terrengbibliotek, trasear, hindringar og kontrollpunkt som i maskina.
+  Lenkje «Kart og anlegg» på kontorsida. Kontor-zip-en har no `kontor/v1.0` og `pc/v1.6`; oppdateringa tek begge.
+- **Nytt (PC):** fana **Kontor** i kontormodus: publiser til maskinene med merknad og terrengmodellane (aktive lag),
+  status for pakka og maskinene. Kartet viser **maskinene i sanntid** (namn, snødjupne, fix, PREPARERER, fart) og dei
+  delte RTK FIX-målingane siste 12 t, farga etter snødjupne. Eiga maskin blir ikkje vist i kontormodus.
+- **Nytt:** **terreng i anleggspakka** (`terreng/<id>/meta.json` + `grid.npy`, maks 4 GB, sha256 per fil). Maskina lastar
+  ned på wifi og viser **⛰ TA I BRUK NYTT TERRENG**. Blir avvist medan prepareringa går. Lokale lag blir slått av (ikkje
+  sletta), det gamle terrenget blir teke vare på (tre siste). Kontoret ser terrengversjonen til kvar maskin.
+- **Nytt:** **sanntid** frå maskina: posisjon, snødjupne, fix og «preparerer» kvart 10. s og RTK FIX-målingar (berre
+  kalibrert, ikkje demo). Wifi på anlegget først, så **port 8791 ute** (Innst. › Trasear › Kopling til SNOWMAN Kontor:
+  «Adresse ute», «Port ute», «Sanntid til kontoret»). Linja «Sanntid: sender via …» viser vegen.
+- **Nytt (Kontor):** **maskinporten 8791**: berre maskin-API-et og berre rolla «maskin» – kontorsida, innlogging og
+  kontor-API finst ikkje der. INSTALLER-WINDOWS.bat opnar 8791 i brannmuren. Pakker over 50 MB blir berre henta på wifi.
+  **Opne aldri 8790 i ruteren** – send berre 8791 vidare.
+- **Endra:** hjarteslaget held på siste posisjon og verdiar når eit felt manglar (t.d. ved pakkehenting).
+- **Testar:** Kontor 14 OK (ny: maskinporten), testkontorkopling ALT OK (ny: terreng, sanntid via 8791, feil når
+  begge vegar er nede), Base 44 OK. Ende-til-ende med simulert GNSS: maskina sender via 8791, kartet i kontormodus
+  viser maskinene og målingane.
+
 ## 2026-11-22
 
 ### PC-prototype v1.6.138 – 3D-oversikt over heile terrenglaget

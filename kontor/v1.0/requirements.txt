@@ -1,1 +1,2 @@
-# SNOWMAN Kontor treng berre Python 3.10+ (ingen ekstra pakkar).
+# SNOWMAN Kontor treng berre Python 3.10+. Kart og anlegg (SNOWMAN snødjupne i kontormodus) treng pakkane under.
+-r ../../pc/v1.6/requirements.txt

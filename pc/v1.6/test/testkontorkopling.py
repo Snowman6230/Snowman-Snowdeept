@@ -55,7 +55,7 @@ def main():
     cfg.set_user("admin", "kontor-pw-1", roles=["kontor"])
     cfg.data["oppdatering"]["sjekk"] = False
     cfg.save()
-    base = SK.SnowmanKontor(d / "kontor", 0).start()
+    base = SK.SnowmanKontor(d / "kontor", 0, False, 0).start()
     web = f"http://127.0.0.1:{base.web_port}"
 
     def last_opp(**kw):
@@ -135,6 +135,57 @@ def main():
             sjekk("wifi" in str(e), "feil port gir forklaring (wifi / PC-en på)")
         sjekk(BK.KontorKopling.target({"kontor_host": "http://192.168.1.20:8790/"})[:2] == ("192.168.1.20", 8790),
               "adresse med http:// og port blir forstått")
+        # v1.6.139: terreng frå kontoret – lastar ned med pakka, ventar på føraren, blir installert i biblioteket
+        import subprocess
+        import terrain as TT
+        tif = d / "tt.tif"
+        subprocess.run([sys.executable, str(HERE / "testterreng.py"), str(tif)], cwd=str(HERE), capture_output=True)
+        klib = TT.TerrainLibrary(d / "kontorterreng")
+        a = klib.analyse(str(tif), "tt.tif")
+        klag = klib.import_pending(a["token"], "Fjellsætra DTM", "barmark", None, None, "test", True)
+        mlib = TT.TerrainLibrary(data / "terrain")
+        a2 = mlib.analyse(str(tif), "tt.tif")
+        lokal = mlib.import_pending(a2["token"], "Lokalt lag", "barmark", None, None, "maskin", True)
+        pz = d / "pt.zip"
+        BK.lag_pakke(pz, "Fjellsætra", "kontoret", trasear=[T1], terreng=klib.export_layers())
+        rq = urllib.request.Request(web + "/api/v1/anleggspakke", data=pz.read_bytes(), method="POST")
+        rq.add_header("Authorization", "Basic " + base64.b64encode(b"admin:kontor-pw-1").decode())
+        urllib.request.urlopen(rq, timeout=30).read()
+        r = bk.fetch(mcfg, apply)
+        sjekk(r["aktiv"]["tal"].get("terrenglag") == 1 and bk.status(mcfg)["terreng"]["ventar"]["lag"][0]["name"]
+              == "Fjellsætra DTM", "terreng frå kontoret er lasta ned og ventar på føraren")
+        sjekk(set(mlib.layers) == {lokal["id"]}, "terrenget er ikkje teke i bruk før føraren godtek")
+        t = bk.terreng_ta_i_bruk(lambda m, b: mlib.install_from_package(m, b))
+        sjekk(t["resultat"] == {"nye": 1, "bytte": 0, "fjerna": 0, "lokale_av": 1}, "terrenget er installert, lokalt lag slått av")
+        lat, lon = TT.utm_inverse(klag["x0"] + klag["dx"] * klag["nx"] / 2, klag["y0"] - klag["dy"] * klag["ny"] / 2,
+                                  klag["zone"])
+        hk, hm = klib.height(lat, lon), mlib.height(lat, lon)
+        sjekk(hk and hm and abs(hk["h"] - hm["h"]) < 1e-6 and hm["layer"] == klag["id"], "same terrenghøgd i maskina som på kontoret")
+        sjekk(mlib.layers[lokal["id"]]["active"] is False and mlib.layers[klag["id"]]["source"] == "kontoret",
+              "lokalt lag er AV (ikkje sletta), laget frå kontoret er merkt")
+        sjekk(bk.status(mcfg)["terreng"]["i_bruk"] == r["aktiv"]["versjon"] and not bk.status(mcfg)["terreng"]["ventar"],
+              "maskina melder kva terreng ho brukar")
+
+        # v1.6.139: sanntid ute i bakken – adressa på anlegget svarar ikkje, maskinporten (8791) gjer det
+        ucfg = dict(mcfg, kontor_host="127.0.0.1", kontor_port=1, kontor_host_ute="127.0.0.1",
+                    kontor_port_ute=base.maskin_srv.server_address[1])
+        bk3 = BK.KontorKopling(data, "1.6.139")
+        ok = bk3.live(ucfg, {"lat": 62.3802, "lon": 6.7811, "fix": 4, "djupne": 0.81, "prep": True},
+                      [{"t": time.time(), "lat": 62.3802, "lon": 6.7811, "h": 900.0, "djupne": 0.81, "fix": 4,
+                        "kalibrert": True}])
+        st = bk3.status(ucfg)
+        m = [x for x in json.loads(urllib.request.urlopen(urllib.request.Request(
+            web + "/api/v1/maskiner", headers={"Authorization": "Basic " + base64.b64encode(b"admin:kontor-pw-1").decode()}),
+            timeout=10).read())["maskiner"] if x["id"] == bk3.mid][0]
+        sjekk(ok and st["via"] == "ute" and st["sanntid"]["ok"] and m["ekstra"]["djupne"] == 0.81 and m["ekstra"]["prep"],
+              "sanntid går via maskinporten ute når anlegget ikkje svarar")
+        sjekk(st["vert_ute"] == "127.0.0.1" and st["sanntid_on"] is True, "status viser adresse ute og sanntid")
+        try:
+            bk3.fetch(dict(ucfg, kontor_port_ute=1), apply)
+            sjekk(False, "ingen kontakt verken på anlegget eller ute gir klar feil")
+        except BK.Feil as e:
+            sjekk("verken på anlegget eller ute" in str(e), "ingen kontakt verken på anlegget eller ute gir klar feil")
+
         base.stop()
         time.sleep(0.3)
         sjekk(not bk.forslag(mcfg, {"type": "merknad", "tekst": "test"}) and bk.status(mcfg)["ko"] == 1,
@@ -146,7 +197,7 @@ def main():
             sjekk("kontakt" in str(e), "feilmelding når Kontor er borte")
         sjekk([t["name"] for t in tra.listing()] == ["Bakke 1"] and bk.styrt(mcfg), "siste pakke gjeld når Kontor er borte")
         bk2 = BK.KontorKopling(data, "1.6.137")
-        sjekk(bk2.aktiv["versjon"] == 3 and bk2.status(mcfg)["ko"] == 1 and bk2.mid == bk.mid,
+        sjekk(bk2.aktiv["versjon"] == 4 and bk2.status(mcfg)["ko"] == 1 and bk2.mid == bk.mid,
               "aktiv pakke, kø og maskin-ID blir hugsa etter omstart")
 
         b = io.BytesIO()

@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.138"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.139"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -97,7 +97,75 @@ import kontorkopling as KK   # v1.6.136/137: anleggspakke frå kontoret (SNOWMAN
 KONTOR=KK.KontorKopling(DATA,VERSION,LOG.event)
 STYRT_TXT=("Styrt frå kontoret (SNOWMAN Kontor): trasear, forbodne område og kontrollpunkt blir endra på kontorsida. "
            "Send eit forslag, eller slå av koplinga til Kontor i Innst. › Trasear.")
-def kontor_styrt(): return KONTOR.styrt(CFG)
+def kontor_styrt(): return KONTOR.styrt(CFG) and MODUS[0]!="kontor"
+# v1.6.138: KONTORMODUS – same program og same skjerm som i maskina, på kontor-PC-en, utan GNSS, NTRIP og RTK.
+# Blir starta av SNOWMAN Kontor (kontor/v1.0) med SNOWMAN_MODUS=kontor, SNOWMAN_KONTOR_URL og SNOWMAN_KONTOR_NOKKEL.
+# Kontoret teiknar trasear, hindringar og kontrollpunkt og hentar inn terrengmodellar her, og «Publiser til
+# maskinene» sender alt som ei anleggspakke til SNOWMAN Kontor.
+MODUS=[os.environ.get("SNOWMAN_MODUS") or "maskin"]
+KONTOR_LOKAL={"url":(os.environ.get("SNOWMAN_KONTOR_URL") or "http://127.0.0.1:8790").rstrip("/"),
+              "nokkel":os.environ.get("SNOWMAN_KONTOR_NOKKEL") or ""}
+def kontor_lokal(path,body=None,fil=None,headers=None,timeout=30):
+    """Kall til SNOWMAN Kontor på same PC (kontormodus) med den lokale nøkkelen."""
+    if not KONTOR_LOKAL["nokkel"]: raise RuntimeError("Kontormodus er ikkje starta frå SNOWMAN Kontor (manglar lokal nøkkel).")
+    h={"X-Lokal-Nokkel":KONTOR_LOKAL["nokkel"],"User-Agent":f"SNOWMAN/{VERSION} kontormodus",**(headers or {})}
+    data=None
+    if body is not None: data=json.dumps(body).encode(); h["Content-Type"]="application/json"
+    if fil is not None: data=open(fil,"rb"); h["Content-Length"]=str(Path(fil).stat().st_size); h["Content-Type"]="application/zip"
+    rq=urllib.request.Request(KONTOR_LOKAL["url"]+path,data=data,headers=h,method="POST" if data is not None else "GET")
+    try:
+        with urllib.request.urlopen(rq,timeout=timeout) as r: return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try: msg=json.loads(e.read().decode("utf-8")).get("feil")
+        except Exception: msg=None
+        raise RuntimeError(msg or f"SNOWMAN Kontor svarte {e.code}")
+    except (urllib.error.URLError,OSError) as e:
+        raise RuntimeError(f"Får ikkje kontakt med SNOWMAN Kontor ({getattr(e,'reason',e)})")
+    finally:
+        if hasattr(data,"close"): data.close()
+def kontor_live_loop():
+    """v1.6.138: sanntid til SNOWMAN Kontor – posisjon, snødjupne og status kvart 10. s, og RTK FIX-målingar for
+    deling. Berre når koplinga og sanntid er på. Prøver wifi på anlegget først, så maskinporten ute (sjå kontorkopling)."""
+    punkt=[]; fixhist=[]; last_send=0.0; last_pt=0.0
+    while not STOP.wait(1.0):
+        try:
+            if MODUS[0]=="kontor" or not (CFG.get("kontor_on") and CFG.get("kontor_sanntid",True)): punkt.clear(); continue
+            st=dict(STATE); now=time.time()
+            fresh=st.get("gga_time") and now-st["gga_time"]<5
+            fx=st.get("fix") or ""
+            fixhist.append(1 if fx=="RTK FIX" else 0); del fixhist[:-3600]
+            if fresh and fx=="RTK FIX" and st.get("depth") is not None and now-last_pt>=2 and st.get("lat") is not None:
+                punkt.append({"t":now,"lat":st["lat"],"lon":st["lon"],"h":st.get("h_nn2000"),"djupne":st["depth"],"fix":4,
+                              "kalibrert":bool(CFG.get("calibrated")),"simulert":bool(st.get("simulated"))})
+                last_pt=now; del punkt[:-900]
+            if now-last_send<10: continue
+            last_send=now
+            prep=bool(HUD.get("preparing")) and now-HUD.get("t",0)<30
+            status={"lat":st.get("lat") if fresh else None,"lon":st.get("lon") if fresh else None,
+                    "fix":{"RTK FIX":4,"RTK FLOAT":5}.get(fx,1 if fresh else 0),"fixtekst":fx,
+                    "fixdel":round(sum(fixhist)/len(fixhist),3) if len(fixhist)>=60 else None,
+                    "djupne":st.get("depth") if fresh else None,"fart":st.get("speed"),"kurs":st.get("course"),
+                    "prep":prep,"demo":bool(HUD.get("demo")),"simulert":bool(st.get("simulated"))}
+            if KONTOR.live(CFG,status,list(punkt)): punkt.clear()
+        except Exception as e:
+            LOG.event(f"Sanntid til Kontor feila: {e}",err=True); STOP.wait(30)
+def kontor_publiser(merknad="",terreng=True):
+    if TRA is None or OBJ is None: raise RuntimeError("Trasear og hindringar krev numpy: "+TRA_ERR)
+    try: ui=json.loads(UI_CFG.read_text("utf-8")); ui=ui.get("cfg",ui)
+    except Exception: ui={}
+    lag=TERR.export_layers() if (terreng and T.AVAILABLE) else []
+    tmp=DATA/"anleggspakke"/"publiser.zip"; tmp.parent.mkdir(parents=True,exist_ok=True)
+    # Tomme lister blir ikkje sende: då held maskinene på sine eigne (t.d. kontrollpunkt kontoret ikkje har lagt inn)
+    tra=TRA.listing(); obj=[o for o in OBJ.listing() if not o.get("lokal")]; kp=list(KON.data.get("points",[]))
+    if not (tra or obj or kp or lag): raise ValueError("Ingenting å publisere: legg inn trasear, hindringar, kontrollpunkt eller terreng først.")
+    KK.lag_pakke(tmp,anlegg=str(ui.get("site") or ""),laga_av="kontoret",trasear=tra or None,objekt=obj or None,
+                 kontrollpunkt=kp or None,terreng=lag)
+    try:
+        r=kontor_lokal("/api/v1/anleggspakke",fil=tmp,headers={"X-Merknad":urllib.parse.quote(str(merknad)[:300])},timeout=600)
+    finally:
+        tmp.unlink(missing_ok=True)
+    LOG.event(f"Kontor: anleggspakke v{r['pakke']['versjon']} publisert til maskinene ({len(lag)} terrenglag)")
+    return r
 def kontor_apply(innhald):
     """Tek ei kontrollert anleggspakke i bruk. Alt blir sjekka før noko blir endra, så pakka gjeld heilt eller ikkje."""
     if TRA is None or OBJ is None: raise KK.Feil("Trasear og hindringar krev numpy: "+TRA_ERR)
@@ -142,7 +210,9 @@ CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint
        "frost_stations":"",    # tomt = næraste stasjonar etter GPS; elles t.d. "SN60190,SN60225"
        # v1.6.137: kopling til SNOWMAN Kontor (PC på anlegget, port 8790) – valfri, av som standard (kap. 16/19).
        # (v1.6.136 heitte det kopling til SNOWMAN Base; base_* blir gjort om til kontor_* ved oppstart.)
-       "kontor_on":False,"kontor_host":"","kontor_port":8790,"kontor_user":"","kontor_pass":"","kontor_maskinnamn":""}
+       "kontor_on":False,"kontor_host":"","kontor_port":8790,"kontor_user":"","kontor_pass":"","kontor_maskinnamn":"",
+       # v1.6.138: ute i bakken (sanntid): det faste namnet til anlegget og maskinporten til Kontor (valfri)
+       "kontor_host_ute":"","kontor_port_ute":8791,"kontor_sanntid":True}
 def load_cfg():
     try:
         raw=json.loads(CFG_FILE.read_text("utf-8"))
@@ -415,7 +485,7 @@ def motor_solution(gga,info):
     parse_gga(gga)
 def motor_start():
     """Start RTK-motoren i bakgrunnen (installerer pyrtklib første gong). Kallast ved oppstart og når valet blir slått på."""
-    if MOTOR[0] is not None or not rtk_snowman(): return
+    if MOTOR[0] is not None or not rtk_snowman() or MODUS[0]=="kontor": return
     def run():
         m=RM.RtkMotor(on_solution=motor_solution,log=LOG.event)
         update(rtk_motor="startar")
@@ -947,6 +1017,27 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if u.path=="/api/kontormodus/kart":   # v1.6.138: maskinene og delte målingar til kartet i kontormodus
+            q=urllib.parse.parse_qs(u.query)
+            try:
+                r={"ok":True,"maskiner":kontor_lokal("/api/v1/maskiner",timeout=5).get("maskiner",[])}
+                if q.get("maalingar"):
+                    m=kontor_lokal("/api/v1/maalingar?etter="+str(int(q.get("etter",["0"])[0]))+"&maks=20000",timeout=15)
+                    r.update(maalingar=[[x["lat"],x["lon"],x["djupne"],x["t"]] for x in m.get("maalingar",[])],siste=m.get("siste"))
+            except Exception as e: r={"ok":False,"error":str(e)}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
+        if u.path=="/api/kontormodus":   # v1.6.138: status i kontormodus (pakke og maskiner frå SNOWMAN Kontor)
+            r={"ok":True,"modus":MODUS[0]}
+            if MODUS[0]=="kontor":
+                try:
+                    r["pakke"]=kontor_lokal("/api/v1/anleggspakke").get("pakke")
+                    r["maskiner"]=kontor_lokal("/api/v1/maskiner").get("maskiner",[])
+                    r["kontakt"]=True
+                except Exception as e: r.update(kontakt=False,feil=str(e))
+                r["lag"]=[{"id":m["id"],"name":m["name"],"active":m.get("active")} for m in (TERR.listing() if T.AVAILABLE else [])]
+                r["tal"]={"trasear":len(TRA.listing()) if TRA else 0,"hindringar":len(OBJ.listing()) if OBJ else 0,
+                          "kontrollpunkt":len(KON.data.get("points",[]))}
+            self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
         if u.path=="/api/kontor":   # v1.6.137: kopling til SNOWMAN Kontor (passordet blir aldri sendt)
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True,**KONTOR.status(CFG),"pass":"***" if CFG.get("kontor_pass") else ""}).encode()); return
         if u.path=="/api/objekt":
@@ -1313,22 +1404,46 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path=="/api/kontormodus/publiser":   # v1.6.138: «Publiser til maskinene» (berre kontormodus)
+            try:
+                if MODUS[0]!="kontor": raise ValueError("Publisering er berre for kontormodus (SNOWMAN Kontor).")
+                d=json.loads(body or b"{}")
+                r=kontor_publiser(d.get("merknad",""),bool(d.get("terreng",True)))
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"pakke":r.get("pakke")}).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path=="/api/kontor/terreng":   # v1.6.138: ta i bruk nytt terreng frå kontoret (føraren godtek)
+            try:
+                if not T.AVAILABLE: raise RuntimeError(T.IMPORT_ERROR)
+                if HUD.get("preparing") and time.time()-HUD.get("t",0)<30:
+                    raise ValueError("Stopp prepareringa først. Nytt terreng endrar snødjupna og blir ikkje bytt medan du preparerer.")
+                t=KONTOR.terreng_ta_i_bruk(lambda mappe,backup: TERR.install_from_package(mappe,backup))
+                r=t["resultat"]
+                LOG.event(f"Førar: nytt terreng frå kontoret teke i bruk – {r['nye']} nye, {r['bytte']} bytte, "
+                          f"{r['fjerna']} fjerna, {r['lokale_av']} lokale lag slått av")
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"terreng":t,**KONTOR.status(CFG)}).encode())
+            except Exception as e:
+                self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
         if self.path in ("/api/kontor/config","/api/kontor/hent"):   # v1.6.137: kopling til SNOWMAN Kontor
             try:
                 d=json.loads(body or b"{}")
                 if self.path.endswith("config"):
                     before=dict(CFG)
-                    for k in ("kontor_on","kontor_host","kontor_port","kontor_user","kontor_pass","kontor_maskinnamn"):
+                    for k in ("kontor_on","kontor_host","kontor_port","kontor_user","kontor_pass","kontor_maskinnamn",
+                              "kontor_host_ute","kontor_port_ute","kontor_sanntid"):
                         if k not in d: continue
                         v=d[k]
                         if k=="kontor_pass" and re.fullmatch(r"\*{3,}|•{3,}",str(v)): continue
-                        if k=="kontor_on": v=bool(v)
-                        elif k=="kontor_port":
-                            v=int(v or 8790)
+                        if k in ("kontor_on","kontor_sanntid"): v=bool(v)
+                        elif k in ("kontor_port","kontor_port_ute"):
+                            v=int(v or (8790 if k=="kontor_port" else 8791))
                             if not 1<=v<=65535: raise ValueError("Ugyldig port.")
                         else: v=str(v).strip()[:120]
                         CFG[k]=v
-                    log_changes("SNOWMAN Kontor",before,CFG,("kontor_on","kontor_host","kontor_port","kontor_maskinnamn"))
+                    log_changes("SNOWMAN Kontor",before,CFG,("kontor_on","kontor_host","kontor_port","kontor_maskinnamn",
+                                "kontor_host_ute","kontor_port_ute","kontor_sanntid"))
                     if before.get("kontor_user")!=CFG["kontor_user"] or before.get("kontor_pass")!=CFG["kontor_pass"]:
                         LOG.event("Innstilling endra (SNOWMAN Kontor): innlogging endra")
                     save_cfg(); r={"ok":True}
@@ -2092,17 +2207,24 @@ def main():
     ap.add_argument("--lan",action="store_true",help="Slå på HUD for mobil/eiga eining i same nett (port 8766, berre HUD)")
     ap.add_argument("--serial",help="Seriellport for GNSS, t.d. COM3 eller /dev/ttyUSB0")
     ap.add_argument("--simulert",action="store_true",help="Mottakaren er simulatoren: alt blir merka som TEST/simulert")
+    ap.add_argument("--kontor",action="store_true",help="Kontormodus (SNOWMAN Kontor): utan GNSS, NTRIP og RTK")
     a=ap.parse_args()
+    if a.kontor: MODUS[0]="kontor"
+    STATE["modus"]=MODUS[0]
     load_cfg()
     STATE["simulated"]=a.simulert
     if a.serial:
         if a.simulert: REAL_PORT[0]=CFG["serial_port"]; CFG["serial_port"]=a.serial   # berre for denne økta
         else: CFG["serial_port"]=a.serial; save_cfg()
-    threading.Thread(target=serial_loop,daemon=True).start()
+    if MODUS[0]=="kontor":   # kontoret: ingen mottakar, ingen korreksjonar, ingen RTK – berre kart, terreng og anlegg
+        STATE.update(fix="KONTOR",last_error="")
+    else:
+        threading.Thread(target=serial_loop,daemon=True).start()
+        threading.Thread(target=ntrip_loop,daemon=True).start()
+        motor_start()
     threading.Thread(target=export_loop,daemon=True).start()
-    threading.Thread(target=ntrip_loop,daemon=True).start()
-    motor_start()
-    print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}")
+    threading.Thread(target=kontor_live_loop,daemon=True).start()
+    print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}"+(" (KONTORMODUS)" if MODUS[0]=="kontor" else ""))
     if a.lan or CFG.get("hudLan"): set_hud_lan(True)
     # Hovudtenesta (styring, innstillingar) er berre tilgjengeleg på denne PC-en.
     if O.system_cfg().get("logAlways"): start_log(f"Starta automatisk. SNOWMAN v{VERSION}")

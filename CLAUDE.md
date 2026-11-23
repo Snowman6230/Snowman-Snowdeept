@@ -14,7 +14,9 @@
   ikkje legg andre funksjonar inn i Base. Endringar i casteren skal testast med
   `cd base/v1.0 && python -m unittest discover -s test` – testen brukar NTRIP-klienten i `pc/v1.6`.
 - SNOWMAN Kontor: `kontor/v1.0/` (eiga versjonsmappe, same reglar). Kontorsida, anleggspakke, forslag, maskinoversikt,
-  deling og AI. Køyrer på ein Windows-PC på anlegget (port 8790, berre lokalt nett). Test:
+  deling og AI. Køyrer på ein Windows-PC på anlegget (port 8790, berre lokalt nett; port 8791 berre maskin-API for
+  sanntid ute). Kart og anlegg er SNOWMAN snødjupne i kontormodus (`snowman_pc.py --kontor`, port 8765), starta av
+  Kontor frå `pc/` i same zip – nye funksjonar i kartet blir laga i `pc/`, ikkje i Kontor. Test:
   `cd kontor/v1.0 && python -m unittest discover -s test` og `cd pc/v1.6 && python3 test/testkontorkopling.py`.
   Brot i API-et gir ny API-versjon; oppdater `SNOWMAN_MIN` i `kontor/v1.0/konfig.py` når SNOWMAN snødjupne må oppdaterast.
 - SNOWMAN snødjupne skal fungere fullt ut utan SNOWMAN Base og SNOWMAN Kontor. Begge er valfrie tilknytingar

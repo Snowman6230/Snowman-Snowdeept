@@ -10,7 +10,7 @@ SNOWMAN består av tre program. Last ned det som passar der du skal installere:
 |---|---|---|
 | **Tråkkemaskina** (PC/nettbrett i førarhuset) | **SNOWMAN snødjupne** – kart, RTK og snødjupne for føraren | [SNOWMAN-snodjupne.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-snodjupne.zip) |
 | **Raspberry Pi ved antenna** | **SNOWMAN Base** – eigen RTK-base og NTRIP-caster. Berre korreksjonane til maskinene | [SNOWMAN-Base.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Base.zip) |
-| **Kontor-PC på anlegget** (Windows) | **SNOWMAN Kontor** – kontorsida: anleggspakke (trasear, hindringar, kontrollpunkt) ut til maskinene, forslag frå førarane, maskinoversikt, forbetringar og AI | [SNOWMAN-Kontor.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Kontor.zip) |
+| **Kontor-PC på anlegget** (Windows) | **SNOWMAN Kontor** – same kart, 3D og terreng som i maskinene (kontormodus), anleggspakke med terreng, trasear, hindringar og kontrollpunkt ut til maskinene, maskinene i sanntid, forslag frå førarane, forbetringar og AI | [SNOWMAN-Kontor.zip](https://github.com/Snowman6230/snowman-snowdeept/releases/download/siste/SNOWMAN-Kontor.zip) |
 
 Pakk ut zip-fila og følg `LES-MEG-WINDOWS.txt` (snødjupne) eller `LES-MEG.txt` (Base og Kontor). Kvart program
 oppdaterer seg sjølv og hentar berre si eiga mappe, så installasjonane er heilt åtskilde. Pakkane blir laga på nytt ved

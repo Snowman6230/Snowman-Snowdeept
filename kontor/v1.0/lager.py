@@ -73,13 +73,22 @@ class Store:
             n = self.q("SELECT COUNT(*) n FROM maskiner", one=True)["n"]
             if n >= max_seats:
                 return False, f"Alle {max_seats} maskinplassane er i bruk. Fjern ei maskin på kontorsida først."
-        extra = {k: v for k, v in d.items() if k not in ("id", "namn", "versjon", "pakke", "lat", "lon", "fix", "fixdel")}
         if old is None:
-            self.x("INSERT INTO maskiner (id, forst) VALUES (?, ?)", (mid, now))
-        self.x("UPDATE maskiner SET namn=?, versjon=?, pakke=?, lat=?, lon=?, fix=?, fixdel=?, sist=?, ip=?, ekstra=? "
-               "WHERE id=?", (str(d.get("namn") or mid)[:60], str(d.get("versjon") or "")[:20],
-                              str(d.get("pakke") or "")[:20], d.get("lat"), d.get("lon"), d.get("fix"),
-                              d.get("fixdel"), now, ip, json.dumps(extra, ensure_ascii=False)[:4000], mid))
+            self.x("INSERT INTO maskiner (id, forst, ekstra) VALUES (?, ?, '{}')", (mid, now))
+        prev = self.q("SELECT ekstra FROM maskiner WHERE id=?", (mid,), one=True)
+        try:
+            extra = json.loads(prev["ekstra"] or "{}")
+        except ValueError:
+            extra = {}
+        extra.update({k: v for k, v in d.items() if k not in ("id", "namn", "versjon", "pakke", "lat", "lon", "fix", "fixdel")})
+        if d.get("lat") is not None:
+            extra["pos_t"] = now                     # når posisjonen sist kom (sanntid på kartet)
+        # felt som manglar i hjarteslaget (t.d. når maskina berre hentar pakka) held på siste verdi
+        self.x("UPDATE maskiner SET namn=?, versjon=COALESCE(?, versjon), pakke=COALESCE(?, pakke), lat=COALESCE(?, lat), "
+               "lon=COALESCE(?, lon), fix=COALESCE(?, fix), fixdel=COALESCE(?, fixdel), sist=?, ip=?, ekstra=? WHERE id=?",
+               (str(d.get("namn") or mid)[:60], str(d["versjon"])[:20] if d.get("versjon") else None,
+                str(d["pakke"])[:20] if d.get("pakke") else None, d.get("lat"), d.get("lon"), d.get("fix"),
+                d.get("fixdel"), now, ip, json.dumps(extra, ensure_ascii=False)[:4000], mid))
         return True, ""
 
     def machines(self):

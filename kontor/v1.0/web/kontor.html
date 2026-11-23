@@ -51,7 +51,7 @@ input,select,textarea{width:100%}
 <header>
   <h1>SNOWMAN Kontor</h1><span class="dim" id="sub"></span>
   <nav id="tabs" class="hidden">
-    <button data-t="oversikt">Oversikt</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
+    <a class="btn" id="kartLink" href="http://localhost:8765/" target="snowmanKart" style="border-color:var(--acc)">Kart og anlegg</a><button data-t="oversikt">Oversikt</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
     <button data-t="forbetringar">Forbetringar</button><button data-t="ai">AI</button><button data-t="brukarar">Brukarar</button><button data-t="system">System</button>
     <button id="logout">Logg ut</button>
   </nav>
@@ -79,7 +79,7 @@ input,select,textarea{width:100%}
 <main id="app" class="hidden">
   <div id="t-oversikt">
     <section class="card"><h2>SNOWMAN Base – korreksjonane</h2><div class="scroll" id="baseInfo"></div></section>
-    <section class="card"><h2>Kart</h2><div id="map"></div><p class="dim">Basar (raud), maskiner etter siste melding til Kontor (blå) og maskiner som hentar korreksjonar frå Base no (grøn). Teikning og redigering av trasear, hindringar og kontrollpunkt kjem som eiga kartfane (VEGEN-VIDARE kap. 16, steg 3).</p></section>
+    <section class="card"><h2>Kart</h2><div id="map"></div><p class="dim">Fullt kart med terreng, trasear og 3D: <b>Kart og anlegg</b> øvst. Her: basar (raud), maskiner etter siste melding til Kontor (blå) og maskiner som hentar korreksjonar frå Base no (grøn). Teikning og redigering av trasear, hindringar og kontrollpunkt kjem som eiga kartfane (VEGEN-VIDARE kap. 16, steg 3).</p></section>
     <section class="card"><h2>Maskiner</h2><div class="scroll" id="machines"></div></section>
   </div>
   <div id="t-brukarar" class="hidden">
@@ -98,7 +98,7 @@ input,select,textarea{width:100%}
   </div>
   <div id="t-pakke" class="hidden">
     <section class="card"><h2>Anleggspakke</h2>
-      <p class="dim">Anleggspakka (zip med manifest.json og trasear.json, objekt.json og/eller kontrollpunkt.json – same format som i SNOWMAN snødjupne) blir henta av alle maskinene når dei har dekning. Kontor kontrollerer pakka før ho blir teken imot. Ny versjon blir aktiv med éin gong, og maskinene hentar henne når dei er på wifi på anlegget (HENT FRÅ KONTOR). Du kan rulle tilbake.</p>
+      <p class="dim"><b>Det vanlege er å publisere frå «Kart og anlegg»</b> (SNOWMAN snødjupne i kontormodus på denne PC-en, fana Kontor): der teiknar du trasear, hindringar og kontrollpunkt og hentar inn terrengmodellar, akkurat som i maskina. Her kan du òg laste opp ei ferdig pakke. Anleggspakka (zip med manifest.json og trasear.json, objekt.json og/eller kontrollpunkt.json – same format som i SNOWMAN snødjupne) blir henta av alle maskinene når dei har dekning. Kontor kontrollerer pakka før ho blir teken imot. Ny versjon blir aktiv med éin gong, og maskinene hentar henne når dei er på wifi på anlegget (HENT FRÅ KONTOR). Du kan rulle tilbake.</p>
       <div class="row"><input type="file" id="pkgFile" accept=".zip"><input id="pkgNote" placeholder="Merknad (kva er endra)"><button class="pri" id="pkgUp">Last opp</button></div>
       <div id="pkgMsg" class="msg"></div>
       <div class="scroll" id="pkgList"></div></section>
@@ -203,7 +203,7 @@ async function oversikt(){
     :`<table><tr><th>Mountpoint</th><th>Kjelde i bruk</th><th>Satellittsystem</th><th>Vurdering</th><th>Maskiner no</th></tr>${mps.map(m=>`<tr><td><b>${esc(m.namn)}</b><div class="dim">${esc(m.skildring||"")}</div></td><td>${m.aktiv?esc(m.aktiv):'<span style="color:var(--err)">ingen data</span>'}</td><td>${esc((m.systems||[]).join(", ")||"–")}</td><td><span style="color:${String(m.vurdering||"").startsWith("FEIL")?"var(--err)":String(m.vurdering||"").startsWith("OK")?"var(--ok)":"inherit"}">${esc(m.vurdering||"–")}</span></td><td>${(m.klientar||[]).length}</td></tr>`).join("")}</table><p class="dim small">SNOWMAN Base ${esc(b.versjon||"")} · ${esc(b.adresse)} · henta ${tid(b.t)}. Oppsett av korreksjonane gjer du på Base: <a href="${esc(b.adresse.includes("://")?b.adresse:"http://"+b.adresse)}/" target="_blank" style="color:var(--acc)">statussida til Base</a>.</p>`;
   const m={maskiner:s.maskiner};
   $("#machines").innerHTML=m.maskiner.length?`<table><tr><th>Maskin</th><th>SNOWMAN</th><th>FIX</th><th>Anleggspakke</th><th>Sist sett</th><th></th></tr>${m.maskiner.map(r=>`<tr><td>${esc(r.namn)}<div class="dim">${esc(r.id)}</div></td><td>${esc(r.versjon||'–')}</td><td>${r.fixdel==null?'–':Math.round(r.fixdel*100)+' %'}</td><td>${r.pakke?'v'+esc(r.pakke):'–'}${s.pakke&&r.pakke&&String(r.pakke)!==String(s.pakke.versjon)?' <span class="pill middels">gammal</span>':''}</td><td>${r.age==null?'–':dur(r.age)+' sidan'}</td><td><button onclick="rmMachine('${esc(r.id)}')">Fjern</button></td></tr>`).join("")}</table>`
-    :`<p class="dim">Ingen maskiner har meldt seg enno. Ei maskin melder seg når ho hentar anleggspakka (SNOWMAN 1.6.137 eller nyare, Innst. › Trasear › «Kopling til SNOWMAN Kontor»).</p>`;
+    :`<p class="dim">Ingen maskiner har meldt seg enno. Ei maskin melder seg når ho hentar anleggspakka (SNOWMAN 1.6.139 eller nyare, Innst. › Trasear › «Kopling til SNOWMAN Kontor»).</p>`;
   if(!map&&window.L){map=L.map("map");L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png",{maxZoom:18,attribution:"© Kartverket"}).addTo(map);layer=L.layerGroup().addTo(map);map.setView([62.3,6.8],10)}
   if(!map)return; layer.clearLayers(); const pts=[];
   mps.forEach(mp=>{if(mp.base){pts.push([mp.base.lat,mp.base.lon]);L.circleMarker([mp.base.lat,mp.base.lon],{radius:9,color:"#ff5a4f"}).bindTooltip("Base "+mp.namn).addTo(layer)}});
@@ -234,7 +234,7 @@ $("#uSave").onclick=async()=>{const m=$("#uMsg");
 async function rmMachine(id){if(!confirm("Fjerne maskina frå lista? Ho blir lagt til att neste gong ho melder seg."))return;await api("/api/v1/maskin/fjern",{method:"POST",json:{id}});refresh()}
 async function pakke(){
   const d=await api("/api/v1/anleggspakke/versjonar");
-  $("#pkgList").innerHTML=d.versjonar.length?`<table><tr><th>Versjon</th><th>Dato</th><th>Innhald</th><th>Storleik</th><th>Merknad</th><th></th></tr>${d.versjonar.map(p=>`<tr><td>v${p.versjon}${p.aktiv?' <span class="pill" style="color:var(--ok)">aktiv</span>':''}</td><td>${tid(p.dato)}</td><td>${p.innhald?Object.entries(p.innhald.tal).map(([k,v])=>esc(v+' '+({trasear:"trasé(ar)",forbodne_omrade:"forbode område",hindringar:"hindring(ar)"}[k]||k))).join(', ')+(p.innhald.laga_av?`<div class="dim">laga av ${esc(p.innhald.laga_av)}</div>`:''):'<span class="dim">gammalt format</span>'}</td><td>${(p.storleik/1e6).toFixed(2)} MB</td><td>${esc(p.merknad)}</td><td>${p.aktiv?'':`<button onclick="activate(${p.versjon})">Gjer aktiv</button>`}</td></tr>`).join("")}</table>`:'<p class="dim">Ingen anleggspakke lasta opp enno.</p>';
+  $("#pkgList").innerHTML=d.versjonar.length?`<table><tr><th>Versjon</th><th>Dato</th><th>Innhald</th><th>Storleik</th><th>Merknad</th><th></th></tr>${d.versjonar.map(p=>`<tr><td>v${p.versjon}${p.aktiv?' <span class="pill" style="color:var(--ok)">aktiv</span>':''}</td><td>${tid(p.dato)}</td><td>${p.innhald?Object.entries(p.innhald.tal).map(([k,v])=>esc(v+' '+({trasear:"trasé(ar)",forbodne_omrade:"forbode område",hindringar:"hindring(ar)",terrenglag:"terrenglag"}[k]||k))).join(', ')+(p.innhald.laga_av?`<div class="dim">laga av ${esc(p.innhald.laga_av)}</div>`:''):'<span class="dim">gammalt format</span>'}</td><td>${(p.storleik/1e6).toFixed(2)} MB</td><td>${esc(p.merknad)}</td><td>${p.aktiv?'':`<button onclick="activate(${p.versjon})">Gjer aktiv</button>`}</td></tr>`).join("")}</table>`:'<p class="dim">Ingen anleggspakke lasta opp enno.</p>';
 }
 async function activate(v){if(!confirm(`Gjere v${v} aktiv? Maskinene hentar henne når dei har dekning.`))return;await api("/api/v1/anleggspakke/aktiv",{method:"POST",json:{versjon:v}});pakke()}
 $("#pkgUp").onclick=async()=>{const f=$("#pkgFile").files[0];if(!f)return;$("#pkgMsg").textContent="Lastar opp …";

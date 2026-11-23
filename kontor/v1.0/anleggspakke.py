@@ -9,7 +9,9 @@ snødjupne alt lagrar** i `pc/v1.6/data/`, så maskina ikkje treng å omsetje no
     objekt.json          {"objekt":  [...]}  same som data/objekt.json  (hindringar)
     kontrollpunkt.json   {"points":  [...]}  kontrollpunkta i data/kontroll.json (ikkje kontrollmålingane – dei
                                              høyrer til kvar maskin)
-    terreng/…            terrenglag – plass i formatet, men blir ikkje sendt i første versjon (kap. 16, avgjerd 2)
+    terreng/<id>/meta.json + terreng/<id>/grid.npy
+                         terrenglag frå terrengbiblioteket i SNOWMAN snødjupne (data/terrain/<id>/) – same filer.
+                         Maskina lastar dei ned og føraren tek dei i bruk når prepareringa er stoppa (2026-11-22).
 
 Alle filene er valfrie, men pakka må ha minst éi av dei. Fil som manglar = maskina held på det ho har.
 
@@ -194,9 +196,30 @@ def kontroller(path, maks_utpakka):
             except (ValueError, UnicodeDecodeError):
                 raise Feil(f"{n} er ikkje gyldig JSON")
             tal.update(SJEKK[n](d))
-        terreng = [n for n in andre if n.startswith(TERRENG)]
-        if terreng:
-            tal["terrengfiler"] = len(terreng)
+        lag = {}
+        for n in (x for x in andre if x.startswith(TERRENG)):
+            parts = n.split("/")
+            if len(parts) != 3 or parts[2] not in ("meta.json", "grid.npy") or not parts[1] or \
+                    not all(c.isalnum() or c in "-_" for c in parts[1]):
+                raise Feil(f"ukjend terrengfil i pakka: {n[:80]} (venta terreng/<id>/meta.json og grid.npy)")
+            lag.setdefault(parts[1], set()).add(parts[2])
+        for lid, f in lag.items():
+            if f != {"meta.json", "grid.npy"}:
+                raise Feil(f"terrenglaget {lid} manglar meta.json eller grid.npy")
+            try:
+                meta = json.loads(z.read(f"terreng/{lid}/meta.json").decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                raise Feil(f"terreng/{lid}/meta.json er ikkje gyldig JSON")
+            if meta.get("id") != lid or meta.get("type") not in ("barmark", "malflate", "snoflate"):
+                raise Feil(f"terreng/{lid}/meta.json: feil id eller type")
+            for k in ("nx", "ny", "x0", "y0", "zone"):
+                if not isinstance(meta.get(k), (int, float)):
+                    raise Feil(f"terreng/{lid}/meta.json manglar {k}")
+            with z.open(f"terreng/{lid}/grid.npy") as g:
+                if g.read(6) != b"\x93NUMPY":
+                    raise Feil(f"terreng/{lid}/grid.npy er ikkje eit numpy-rutenett")
+        if lag:
+            tal["terrenglag"] = len(lag)
         return {"anlegg": str(m.get("anlegg") or "")[:80], "laga": str(m.get("laga") or "")[:40],
                 "laga_av": str(m.get("laga_av") or "")[:40], "snowman_min": str(m.get("snowman_min") or "")[:20],
                 "formatversjon": FORMATVERSJON, "filer": andre, "tal": tal}

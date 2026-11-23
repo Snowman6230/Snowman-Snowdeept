@@ -5,7 +5,9 @@ Køyrer på ein PC på anlegget (Windows, eller Linux). Berre Python 3.10+. Kont
 gjere – det gjer SNOWMAN Base på Raspberry Pi-en ved antenna åleine. Ei oppdatering eller ein feil i Kontor kan
 difor aldri stoppe korreksjonane til maskinene.
 
-Kontor:  anleggspakkar til maskinene · forslag frå førarane · oversikt over maskinene · deling av snødjupne (v1.8) ·
+Kontor:  kart og anlegg – SNOWMAN snødjupne i kontormodus (same kart, 3D, terreng, trasear, hindringar og
+         kontrollpunkt som i maskina, utan GNSS), med «Publiser til maskinene» (Kontor startar det sjølv, port 8765) ·
+         anleggspakkar med terreng · forslag frå førarane · oversikt over maskinene · deling av snødjupne (v1.8) ·
          forbetringar og AI · status frå SNOWMAN Base (berre lesing).
 Maskinene hentar anleggspakka når dei er på nettet på anlegget (wifi). PC-en treng ikkje stå på heile tida:
 maskinene brukar siste pakke, og forslag ligg i kø i maskina til Kontor svarar att.
@@ -23,7 +25,9 @@ Mappa for data: --data DIR (standard: data/ ved sida av programmet, eller SNOWMA
 import argparse
 import getpass
 import os
+import secrets
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -46,7 +50,7 @@ RESTART_CODE = 3
 
 
 class SnowmanKontor:
-    def __init__(self, data_dir, web_port=None):
+    def __init__(self, data_dir, web_port=None, kartvising=None, maskinport=None):
         self.data = Path(data_dir)
         self.cfg = Config(self.data)
         self.cfg.first_setup()
@@ -61,21 +65,85 @@ class SnowmanKontor:
         self._web_port = web_port
         self.web_port = None
         self.web = None
+        self.maskin_srv = None
+        self._maskinport = maskinport
+        self.kartvising = self.cfg["kartvising"].get("start", True) if kartvising is None else kartvising
+        self.kart = None                       # SNOWMAN snødjupne i kontormodus (underprosess)
+        self.lokal_nokkel = self._lokal_nokkel()
+
+    def _lokal_nokkel(self):
+        """Nøkkel som berre SNOWMAN snødjupne i kontormodus på same PC får (ny ved kvar oppstart)."""
+        return secrets.token_urlsafe(24)
+
+    # ---------- SNOWMAN snødjupne i kontormodus ----------
+    @staticmethod
+    def snodjupne_mappe():
+        """Nyaste SNOWMAN snødjupne ved sida av Kontor (repoet eller SNOWMAN-Kontor.zip: kontor/ og pc/ side om side)."""
+        pc = HERE.parent.parent / "pc"
+        dirs = sorted((d for d in pc.glob("v*") if (d / "snowman_pc.py").exists()),
+                      key=lambda d: tuple(int(x) for x in d.name[1:].split(".") if x.isdigit()))
+        return dirs[-1] if dirs else None
+
+    def anlegg_port(self):
+        return int(self.cfg["kartvising"].get("port") or 8765) if self.kartvising else None
+
+    def _kart_loop(self):
+        d = self.snodjupne_mappe()
+        if not d:
+            self.events.add("Fann ikkje SNOWMAN snødjupne (pc/) ved sida av Kontor – kart og anlegg er ikkje tilgjengeleg",
+                            "feil")
+            return
+        env = dict(os.environ, SNOWMAN_MODUS="kontor", SNOWMAN_KONTOR_URL=f"http://127.0.0.1:{self.web_port}",
+                   SNOWMAN_KONTOR_NOKKEL=self.lokal_nokkel)
+        cmd = [sys.executable, str(d / "snowman_pc.py"), "--kontor", "--http-port", str(self.anlegg_port())]
+        logf = self.data / "kartvising.log"
+        feil = 0
+        while not self.stop_ev.is_set():
+            t0 = time.time()
+            with open(logf, "a", encoding="utf-8") as lf:
+                self.kart = subprocess.Popen(cmd, cwd=str(d), env=env, stdout=lf, stderr=subprocess.STDOUT)
+                self.events.add(f"Kart og anlegg (SNOWMAN snødjupne {d.name} i kontormodus) starta på "
+                                f"http://localhost:{self.anlegg_port()}/", "ok")
+                while self.kart.poll() is None and not self.stop_ev.wait(1):
+                    pass
+            if self.stop_ev.is_set():
+                break
+            feil = feil + 1 if time.time() - t0 < 60 else 0
+            self.events.add(f"Kart og anlegg stoppa (kode {self.kart.returncode}) – ny start om {min(60, 5 * feil)} s. "
+                            f"Sjå data/kartvising.log", "feil")
+            self.stop_ev.wait(min(60, 5 * feil))
 
     def start(self):
         self.web = api.start(self, self._web_port if self._web_port is not None else self.cfg["web"]["port"])
         self.web_port = self.web.server_address[1]
-        for target in (self._analyse_loop, self._config_loop, lambda: self.updates.loop(self.stop_ev),
-                       lambda: self.basestatus.loop(self.stop_ev)):
+        # maskinport: None = innstillinga (0 = av), False = av, tal = den porten (0 = ledig port, til testar)
+        mp = self.cfg["web"].get("maskinport", 8791) if self._maskinport is None else self._maskinport
+        if mp is not False and (mp or self._maskinport is not None):
+            try:
+                self.maskin_srv = api.start_maskinport(self, mp)
+            except OSError as e:
+                self.events.add(f"Maskinporten {mp} kunne ikkje opnast: {e}", "feil")
+        loops = [self._analyse_loop, self._config_loop, lambda: self.updates.loop(self.stop_ev),
+                 lambda: self.basestatus.loop(self.stop_ev)]
+        if self.kartvising:
+            loops.append(self._kart_loop)
+        for target in loops:
             threading.Thread(target=target, daemon=True).start()
         self.events.add(f"SNOWMAN Kontor {VERSION} starta på port {self.web_port}", "ok")
         return self
 
     def stop(self):
         self.stop_ev.set()
-        if self.web:
-            self.web.shutdown()
-            self.web.server_close()
+        if self.kart is not None and self.kart.poll() is None:
+            self.kart.terminate()
+            try:
+                self.kart.wait(10)
+            except subprocess.TimeoutExpired:
+                self.kart.kill()
+        for srv in (self.web, self.maskin_srv):
+            if srv:
+                srv.shutdown()
+                srv.server_close()
         time.sleep(0.1)
         self.store.close()
 
@@ -123,6 +191,8 @@ class SnowmanKontor:
         return {"ok": True, "program": "SNOWMAN Kontor", "namn": self.cfg["namn"], "anlegg": self.cfg["anlegg"],
                 "versjon": VERSION, "api": API_VERSION, "snowman_min": SNOWMAN_MIN,
                 "oppetid": round(time.time() - self.started), "web_port": self.web_port,
+                "maskinport": self.maskin_srv.server_address[1] if self.maskin_srv else None,
+                "kartvising": {"port": self.anlegg_port(), "koyrer": bool(self.kart and self.kart.poll() is None)},
                 "treng_admin": not self.cfg.has_admin(), "maskiner": self.store.machines(),
                 "oppdatering": self.updates.info, "disk_gb": self.disk_free(), "pakke": self.store.package(),
                 "forbetringar": {k: sum(1 for r in imp if r["alvor"] == k) for k in ("høg", "middels", "låg")},
@@ -152,6 +222,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="snowman-kontor", description="SNOWMAN Kontor – anleggsserver og kontorside")
     ap.add_argument("--data", help="mappe for innstillingar og data")
     ap.add_argument("--port", type=int, help="port for kontorsida og maskinene (standard 8790)")
+    ap.add_argument("--utan-kart", action="store_true", help="ikkje start kart og anlegg (SNOWMAN snødjupne i kontormodus)")
     sub = ap.add_subparsers(dest="cmd")
     sub.add_parser("start")
     sub.add_parser("versjon")
@@ -198,14 +269,19 @@ def main(argv=None):
         return print(f"Brukar {u['namn']}: {kva}. Gjeld med éin gong – også om Kontor køyrer.")
 
     try:
-        k = SnowmanKontor(data_dir(a), a.port).start()
+        k = SnowmanKontor(data_dir(a), a.port, False if a.utan_kart else None).start()
     except OSError as e:
         sys.exit(f"Kunne ikkje starte SNOWMAN Kontor: {e}\n"
                  f"Er porten i bruk? Køyrer SNOWMAN Kontor alt (sjå etter eit anna vindauge, eller tenesta)?")
     print(f"SNOWMAN Kontor {VERSION}")
     print(f"  Data:        {k.data}")
     print(f"  Kontorsida:  http://localhost:{k.web_port}/")
+    if k.kartvising:
+        print(f"  Kart og anlegg (kontormodus): http://localhost:{k.anlegg_port()}/")
     print(f"  Maskinene:   http://<IP-adressa til denne PC-en>:{k.web_port} (same nett/wifi på anlegget)")
+    if k.maskin_srv:
+        print(f"  Ute i bakken: port {k.maskin_srv.server_address[1]} (berre maskin-API-et – den einaste porten som kan "
+              "opnast i ruteren)")
     if not k.cfg.has_admin():
         print(f"  FØRST:       lag administrator (brukarnamn og passord) på http://localhost:{k.web_port}/")
         print("               eller med kommandoen:  brukar legg-til NAMN --rolle kontor")

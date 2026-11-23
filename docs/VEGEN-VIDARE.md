@@ -318,6 +318,20 @@ eigen base) treng òg kontoret. *Laga 2026-11-22: Base 1.4.0, Kontor 1.0.0, SNOW
 Der det står «Base» om kontordelen, anleggspakka eller maskin-API-et under, gjeld det no SNOWMAN Kontor.
 Avgjerd 4 (maskin-API på port 2101) er erstatta av avgjerd 6.
 
+**Avgjerd 7 (2026-11-23) – kontoret er SNOWMAN snødjupne i kontormodus:** Eigaren: «Snowman Kontor bør ha meir eller
+mindre same funksjonar som Snowman Snødjupne … Det bør også kunne lastast inn karta som eg brukar i dag. Eg må kunne
+legge inn nye kart og desse pushest ut til maskinene.» Val (eigaren):
+- **Kontormodus:** Kontor startar SNOWMAN snødjupne frå `pc/` med `--kontor` (utan GNSS, NTRIP og motor) på
+  http://localhost:8765/. Same kart, 3D, terrengbibliotek, trasear, hindringar og kontrollpunkt som i maskina.
+  Fana **Kontor** publiserer til maskinene. Kontor-zip-en inneheld difor både `kontor/v1.0` og `pc/v1.6`.
+- **Terreng i anleggspakka:** `terreng/<id>/meta.json` + `grid.npy` for aktive lag (maks 4 GB). Maskina lastar ned på
+  wifi, men **føraren tek det i bruk** (knapp) når prepareringa er stoppa. Lokale lag blir slått av, ikkje sletta; dei
+  tre siste terrenga blir tekne vare på.
+- **Sanntid ute i bakken:** maskina sender posisjon, snødjupne, fix og «preparerer» kvart 10. s og RTK FIX-målingar.
+  Wifi på anlegget først, så mobilnettet til **port 8791** (berre maskin-API, berre rolla maskin), som er den einaste
+  porten som kan sendast vidare i ruteren (DuckDNS). Pakker over 50 MB blir berre henta på wifi.
+*Laga 2026-11-23: Kontor 1.1.0, SNOWMAN 1.6.139.*
+
 **Avgjerd:** SNOWMAN skal skilje mellom **kontor** (planlegging og redigering) og **maskin** (førar). Kontoret legg inn
 og plottar detaljar i kart og 3D-modell og sender oppdateringar ut til heile maskinparken. Byggjer vidare på kap. 2
 (anleggspakke) og kap. 6 (server og utsending).
@@ -522,7 +536,8 @@ på statussida. Kontor les statusen (berre lesing).
 
 **Står att (neste steg):**
 1. SNOWMAN snødjupne mot SNOWMAN Kontor: anleggspakke laga (v1.6.137), deling i v1.8.
-2. SNOWMAN Kontor: kartfane i 2D med «Hent frå maskin» og «Publiser», så 3D i v1.9 (kap. 16).
+2. ~~SNOWMAN Kontor: kartfane i 2D med «Hent frå maskin» og «Publiser», så 3D i v1.9~~ – løyst med kontormodus
+   (avgjerd 7, Kontor 1.1.0): kart og 3D frå SNOWMAN snødjupne, publisering med terreng, maskinene i sanntid.
    Inkluderer utsending av innstillingar til maskinene, felles og per maskin (eigaren 2026-10-29). API v1 har i dag
    éi anleggspakke for heile flåten; innstillingar per maskin krev eit tillegg i API-et (t.d. `GET /api/v1/innstillingar`
    med maskin-ID frå hjarteslaget).
@@ -659,7 +674,8 @@ Ingen endringar før eigaren seier frå. Ikkje plassert i vegplanen.
 |---|---|
 | **v1.6.x** | Feltprøve med Leica i maskina og rettingar etter ho. |
 | **v1.7** | Anleggspakke med versjonsnummer (kap. 16), fleire terrengfiler på ein gong (LAS/LAZ/XYZ kom i v1.6.95), trasear og hindringar i 3D/frontrute, rettleiingslinjer. |
-| **Kontor v1.0** | SNOWMAN Kontor – kontorsida og anleggsserveren på ein Windows-PC (kap. 16, avgjerd 6, 2026-11-22). Neste: kartfane i 2D. |
+| **Kontor v1.0** | SNOWMAN Kontor – kontorsida og anleggsserveren på ein Windows-PC (kap. 16, avgjerd 6, 2026-11-22). |
+| **Kontor 1.1** | Kontormodus (SNOWMAN snødjupne utan GNSS), terreng i anleggspakka, sanntid frå maskinene (wifi eller port 8791) (kap. 16, avgjerd 7, 2026-11-23). |
 | **Base v1.4** | Berre satellittar og NTRIP – kontordelen flytta til SNOWMAN Kontor (2026-11-22). |
 | **Base v1.3** | Maskin-API på port 2101 og format for anleggspakka (kap. 16, 2026-11-20). |
 | **Base v1.0** | SNOWMAN Base (kap. 18): eigen base, NTRIP-caster med reserve, API for deling og anleggspakke, kontorside, forbetringar med AI. Laga 2026-10-29. |

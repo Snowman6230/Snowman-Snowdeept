@@ -93,17 +93,25 @@ def lag_kontor(ut: Path) -> Path:
     versjon = _versjon(kontor / "v1.0" / "konfig.py", r'VERSION\s*=\s*"([^"]+)"')
     namn = "SNOWMAN-Kontor"
     zp = ut / f"{namn}.zip"
+    pc = ROT / "pc"
+    appar = sorted((d.name for d in pc.iterdir() if (d / "start_snowman.py").exists()),
+                   key=lambda x: tuple(int(v) for v in x[1:].split(".") if v.isdigit()))
     with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
-        n = _skriv(z, kontor, namn)
+        # kontor/ og pc/ side om side – Kontor startar SNOWMAN snødjupne i kontormodus (kart og anlegg) frå pc/
+        n = _skriv(z, kontor, f"{namn}/kontor")
+        n += _skriv(z, pc / appar[-1], f"{namn}/pc/{appar[-1]}")
         z.write(ROT / "LICENSE", f"{namn}/LICENSE")
         z.writestr(f"{namn}/LES-MEG.txt", (
-            "SNOWMAN Kontor – kontorsida og anleggsserveren (anleggspakkar, forslag, maskinoversikt, AI)\n\n"
-            "Windows (fast drift):  pakk ut utanfor OneDrive (t.d. C:\\SNOWMAN-Kontor), opne v1.0 og dobbeltklikk\n"
-            "                       INSTALLER-WINDOWS.bat\n"
-            "Windows (prøve):  dobbeltklikk START-SNOWMAN-KONTOR.bat i v1.0\n\n"
-            "Kontorsida: http://localhost:8790 (lag administrator og ein brukar for maskinene første gong)\n"
-            "Maskinene: IP-adressa til PC-en, port 8790 – berre på nettet/wifi på anlegget\n"
-            "Full rettleiing: v1.0/LES-MEG.md\n\n"
+            "SNOWMAN Kontor – kontorsida og anleggsserveren, med kart og anlegg (SNOWMAN snødjupne i kontormodus)\n\n"
+            "Windows (fast drift):  pakk ut utanfor OneDrive (t.d. C:\\SNOWMAN-Kontor), opne kontor\\v1.0 og\n"
+            "                       dobbeltklikk INSTALLER-WINDOWS.bat\n"
+            "Windows (prøve):  dobbeltklikk START-SNOWMAN-KONTOR.bat i kontor\\v1.0\n\n"
+            "Kontorsida:      http://localhost:8790 (lag administrator og ein brukar for maskinene første gong)\n"
+            "Kart og anlegg:  http://localhost:8765 (terreng, trasear, hindringar, 3D – fana Kontor: Publiser)\n"
+            "Maskinene: IP-adressa til PC-en, port 8790 (wifi på anlegget)\n"
+            "Sanntid ute i bakken: send BERRE port 8791 vidare i ruteren (aldri 8790)\n"
+            "Full rettleiing: kontor/v1.0/LES-MEG.md\n\n"
+            "Mappa pc/ er SNOWMAN snødjupne – Kontor brukar ho til kart og anlegg. Ikkje flytt ho.\n"
             "Korreksjonane (NTRIP) er SNOWMAN Base på Raspberry Pi-en – ei eiga nedlasting.\n"
         ))
     print(f"{zp.name}: v{versjon}, {n + 2} filer")

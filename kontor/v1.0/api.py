@@ -31,6 +31,7 @@ API v1 (JSON). Innlogging med brukarnamn og passord:
               GET  /api/v1/brukarar  ·  POST /api/v1/brukar {namn, passord?, roller?}  ·  POST /api/v1/brukar/fjern
               POST /api/v1/oppdatering/sjekk  ·  POST /api/v1/oppdater
               GET  /api/v1/hendingar  ·  GET /api/v1/konfig
+  Maskinport (standard 8791 – den einaste porten som kan opnast i ruteren): berre maskin-API-et over, berre rolla maskin.
 Brot i API-et gir ny API-versjon (/api/v2/…); v1 blir verande så lenge maskiner brukar han.
 """
 import base64
@@ -38,6 +39,7 @@ import http.server
 import json
 import mimetypes
 import os
+import secrets
 import socket
 import socketserver
 import threading
@@ -123,6 +125,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _user(self, role):
         """Brukarnamnet når innlogginga gjeld rolla, elles None. Feil passord blir talt (sperre)."""
         k = self.k
+        lok = self.headers.get("X-Lokal-Nokkel", "")
+        if lok and k.lokal_nokkel and self.ip() in ("127.0.0.1", "::1") and \
+                secrets.compare_digest(lok, k.lokal_nokkel):
+            return "kontormodus"                    # SNOWMAN snødjupne i kontormodus på same PC
         tok = self.key()
         if tok:
             name = k.vern.session_user(tok)
@@ -278,7 +284,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                                             "kontor-rolla)"}, 401)
             k.vern.ok(ip)
             k.events.add(f"{u['namn']} logga inn på kontorsida frå {ip}", "info")
-            return self.send_json({"ok": True, "okt": k.vern.new_session(u["namn"]), "brukar": u["namn"]})
+            return self.send_json({"ok": True, "okt": k.vern.new_session(u["namn"]), "brukar": u["namn"],
+                                   "anlegg_port": k.anlegg_port()})
         if p == "logg-ut":
             k.vern.end_session(self.key())
             return self.send_json({"ok": True})
@@ -444,6 +451,50 @@ class Handler(http.server.BaseHTTPRequestHandler):
         tal = ", ".join(f"{v} {kk.replace('_', ' ')}" for kk, v in innhald["tal"].items())
         k.events.add(f"Ny anleggspakke v{pk['versjon']} ({tal}) – maskinene hentar henne", "ok")
         return self.send_json({"ok": True, "pakke": pk})
+
+
+# ---------- port for maskinene ute i bakken (sanntid, 2026-11-22) ----------
+# Maskinene på mobilnettet når Kontor gjennom denne porten (standard 8791), som ruteren sender vidare til kontor-PC-en.
+# Berre maskin-API-et er ope her, og berre for brukarar med rolla «maskin». Kontorsida (8790) blir aldri opna utanfrå.
+MASKIN_GET = {"/api/v1/info", "/api/v1/maalingar", "/api/v1/maskiner", "/api/v1/anleggspakke", "/api/v1/anleggspakke/fil"}
+MASKIN_POST = {"/api/v1/maskin", "/api/v1/maalingar", "/api/v1/forslag"}
+
+
+class MaskinHandler(Handler):
+    def key(self):
+        return ""                                   # økter frå kontorsida gjeld ikkje her
+
+    def _user(self, role):
+        name, pw = self.basic()
+        if name is None or self.k.vern.is_blocked(self.ip()):
+            return None
+        u = self.k.cfg.check_user(name, pw, "maskin")
+        if u is None:
+            self.k.vern.failed(self.ip(), "maskinport")
+            return None
+        self.k.vern.ok(self.ip())
+        return u["namn"] if role == "maskin" else None
+
+    def do_GET(self):
+        if urllib.parse.urlparse(self.path).path not in MASKIN_GET:
+            return self.send_json({"ok": False, "feil": "ukjend adresse"}, 404)
+        return super().do_GET()
+
+    def do_POST(self):
+        if urllib.parse.urlparse(self.path).path not in MASKIN_POST:
+            return self.send_json({"ok": False, "feil": "ukjend adresse"}, 404)
+        return super().do_POST()
+
+
+def start_maskinport(k, port):
+    h = type("HM", (MaskinHandler,), {"k": k})
+
+    class Srv(ExclusiveMixin, socketserver.ThreadingMixIn, http.server.HTTPServer):
+        daemon_threads = True
+
+    srv = Srv(("0.0.0.0", int(port)), h)
+    threading.Thread(target=srv.serve_forever, daemon=True, name="maskinport").start()
+    return srv
 
 
 def _safe(x):

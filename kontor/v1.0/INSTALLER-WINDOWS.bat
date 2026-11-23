@@ -47,6 +47,7 @@ if not exist ".venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
+".venv\Scripts\python.exe" -m pip install -q --disable-pip-version-check -r requirements.txt
 echo   [1/3] Python-miljøet er klart.
 rem --- 2. Oppgaave ved oppstart ---
 schtasks /end /tn "SNOWMAN Kontor" >nul 2>&1
@@ -60,17 +61,22 @@ echo   [2/3] Oppgåva «SNOWMAN Kontor» startar Kontor ved kvar oppstart av Win
 rem --- 3. Brannmur ---
 netsh advfirewall firewall delete rule name="SNOWMAN Kontor" >nul 2>&1
 netsh advfirewall firewall add rule name="SNOWMAN Kontor" dir=in action=allow protocol=TCP localport=8790 profile=private,domain >nul
+netsh advfirewall firewall delete rule name="SNOWMAN Kontor maskinport" >nul 2>&1
+netsh advfirewall firewall add rule name="SNOWMAN Kontor maskinport" dir=in action=allow protocol=TCP localport=8791 profile=any >nul
 echo   [3/3] Brannmur: port 8790 open berre frå privat nett (wifi og nettverk på anlegget).
+echo         Port 8791 (berre maskin-API, berre rolla maskin) er open for sanntid ute i bakken.
 schtasks /run /tn "SNOWMAN Kontor" >nul
 echo.
 echo   SNOWMAN Kontor køyrer no i bakgrunnen og startar sjølv etter omstart.
 echo   Kontorsida: http://localhost:8790/   (første gong: lag administrator og ein brukar for maskinene)
+echo   Kart og anlegg: http://localhost:8765/   (same som i maskinene - publiser til maskinene under Kontor)
 echo   Maskinene:  IP-adressa til denne PC-en, port 8790 (gi PC-en fast IP-adresse i ruteren)
 echo   Logg:       %~dp0data\teneste.log
 echo   Bruk IKKJE START-SNOWMAN-KONTOR.bat i tillegg - då køyrer to Kontor. Kommandoar går fint:
 echo               START-SNOWMAN-KONTOR.bat brukar passord NAMN
 echo   Nettverket på PC-en må vere sett til «Privat» i Windows, elles når ikkje maskinene Kontor.
 echo   Opne ALDRI port 8790 i ruteren mot internett.
+echo   Sanntid ute i bakken (mobilnett): send BERRE port 8791 vidare i ruteren til denne PC-en.
 echo.
 pause
 exit /b 0
@@ -78,6 +84,7 @@ exit /b 0
 schtasks /end /tn "SNOWMAN Kontor" >nul 2>&1
 schtasks /delete /tn "SNOWMAN Kontor" /f >nul 2>&1
 netsh advfirewall firewall delete rule name="SNOWMAN Kontor" >nul 2>&1
+netsh advfirewall firewall delete rule name="SNOWMAN Kontor maskinport" >nul 2>&1
 echo   Oppgåva og brannmurregelen er fjerna. Mappa og data er ikkje sletta.
 pause
 exit /b 0

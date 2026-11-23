@@ -25,19 +25,21 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 API_VERSION = 1
 
-# Samspel med SNOWMAN snødjupne (pc/): anleggspakke og forslag frå v1.6.137, deling planlagt i v1.8.
+# Samspel med SNOWMAN snødjupne (pc/): anleggspakke og forslag frå v1.6.137, terreng, kontormodus og sanntid frå v1.6.139.
 # Eit brot i API-et gir ny API_VERSION; gamle maskiner får då beskjed om å oppdatere, ikkje feil data.
-SNOWMAN_MIN = "1.6.137"
+SNOWMAN_MIN = "1.6.139"
 FUNKSJONAR = ["kontor", "innlogging-brukar", "deling-v1", "anleggspakke-v1", "anleggspakke-format-1", "forslag-v1",
-              "forbetringar", "ai", "base-status"]
+              "forbetringar", "ai", "base-status", "terreng-i-pakke", "kontormodus"]
 
 DEFAULT = {
     "namn": "SNOWMAN Kontor",
     "anlegg": "",
-    "web": {"port": 8790},
+    "web": {"port": 8790, "maskinport": 8791},   # maskinport: berre maskin-API-et – den som kan opnast i ruteren (0 = av)
+    # SNOWMAN snødjupne i kontormodus (same kart, 3D, terreng og trasear som i maskina) – Kontor startar det sjølv
+    "kartvising": {"start": True, "port": 8765},
     "brukarar": [],                     # {"namn", "hash", "roller": ["maskin"|"kontor"]}
     "deling": {"timar": 12, "behald_dagar": 30, "maskinplassar": 0},
     "anleggspakke": {"maks_mb": 4000, "behald_versjonar": 20},

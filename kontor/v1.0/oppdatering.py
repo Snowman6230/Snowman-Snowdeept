@@ -2,7 +2,7 @@
 """Oppdatering av SNOWMAN Kontor – same måte som SNOWMAN snødjupne (pc/v1.6/start_snowman.py).
 
     Med git (repoet er klona):  git pull --ff-only
-    Utan git (zip):             last ned zip frå GitHub og skriv berre endra filer i kontor/-mappa
+    Utan git (zip):             last ned zip frå GitHub og skriv berre endra filer i kontor/ og pc/ (kart og anlegg)
 
 Mappa data/ (innstillingar, logg, anleggspakkar) blir aldri rørt. Etter oppdateringa startar Kontor på nytt:
 som teneste avsluttar han med kode 3 og blir starta att; elles startar han seg sjølv på nytt. Korreksjonane
@@ -65,16 +65,17 @@ def apply(log=print):
             say(f"Fekk ikkje lasta ned: {nett.forklar(e)}")
             return False, "\n".join(out)
         n = 0
-        basedir = HERE.parent                       # kontor/
+        rot = HERE.parent.parent                    # kontor/ og pc/ ligg side om side (repoet eller SNOWMAN-Kontor.zip)
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             for m in z.infolist():
                 parts = m.filename.split("/")
-                if m.is_dir() or len(parts) < 3 or parts[1] != "kontor":
+                # kontor/ (Kontor) og pc/ (SNOWMAN snødjupne – kart og anlegg i kontormodus)
+                if m.is_dir() or len(parts) < 3 or parts[1] not in ("kontor", "pc"):
                     continue
                 rel = parts[2:]
                 if SKIP & set(rel):
                     continue
-                dst = basedir.joinpath(*rel)
+                dst = rot.joinpath(parts[1], *rel)
                 new = z.read(m)
                 if dst.exists() and dst.read_bytes() == new:
                     continue

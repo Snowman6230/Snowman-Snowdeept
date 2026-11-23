@@ -83,7 +83,7 @@ class KontorCase(unittest.TestCase):
         cfg.save()
         self.mkey = ("pb600", "maskin-passord-1")
         self.kkey = ("admin", "kontor-passord-1")
-        self.k = SK.SnowmanKontor(self.dir / "data", 0).start()
+        self.k = SK.SnowmanKontor(self.dir / "data", 0, False, 0).start()
         self.web = f"http://127.0.0.1:{self.k.web_port}"
 
     def tearDown(self):
@@ -141,6 +141,31 @@ class TestApi(KontorCase):
         self.k.cfg["deling"]["maskinplassar"] = 1
         self.assertEqual(self.call("/api/v1/maskin", {"id": "PB2"}, self.mkey)[0], 403)
         self.assertEqual(self.call("/api/v1/maskin", {"id": "PB1"}, self.mkey)[0], 200)
+
+    def test_maskinporten(self):
+        """Port 8791 (ute i bakken): berre maskin-API-et, berre rolla maskin. Kontorsida blir aldri opna her."""
+        port = self.k.maskin_srv.server_address[1]
+        self.assertNotEqual(port, self.k.web_port)
+        web, self.web = self.web, f"http://127.0.0.1:{port}"
+        try:
+            c, d = self.call("/api/v1/maskin", {"id": "PB1", "namn": "PB 600 nr 1", "versjon": "1.6.139", "lat": LAT,
+                                                "lon": LON, "fix": 4, "djupne": 0.74, "prep": True}, self.mkey)
+            self.assertEqual(c, 200)
+            c, d = self.call("/api/v1/maskiner", key=self.mkey)
+            m = d["maskiner"][0]
+            self.assertEqual((c, m["fix"], m["ekstra"]["djupne"], m["ekstra"]["prep"]), (200, 4, 0.74, True))
+            self.assertIn("pos_t", m["ekstra"])
+            self.assertEqual(self.call("/api/v1/maskiner")[0], 401)                    # utan innlogging
+            self.assertEqual(self.call("/api/v1/maskiner", key=self.kkey)[0], 401)     # kontorbrukar → nei
+            for p in ("/", "/kontor/", "/api/status", "/api/v1/brukarar", "/api/v1/konfig"):
+                self.assertEqual(self.call(p, key=self.mkey)[0], 404, p)
+            self.assertEqual(self.call("/api/v1/logg-inn", {"brukar": "admin", "passord": "kontor-passord-1"})[0], 404)
+            # hjarteslag utan posisjon (berre pakkehenting) held på siste posisjon
+            self.call("/api/v1/maskin", {"id": "PB1", "versjon": "1.6.139"}, self.mkey)
+            m = self.call("/api/v1/maskiner", key=self.mkey)[1]["maskiner"][0]
+            self.assertEqual((m["lat"], m["ekstra"]["djupne"]), (LAT, 0.74))
+        finally:
+            self.web = web
 
     def test_maalingar_berre_gyldige_og_inkrementelt(self):
         now = time.time()
@@ -236,7 +261,7 @@ class TestOppsett(unittest.TestCase):
     def test_første_administrator_og_kommandoar(self):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t) / "data"
-            k = SK.SnowmanKontor(d, 0).start()
+            k = SK.SnowmanKontor(d, 0, False, False).start()
             try:
                 web = f"http://127.0.0.1:{k.web_port}"
                 st = json.loads(urllib.request.urlopen(web + "/api/v1/oppsett", timeout=5).read())
@@ -306,8 +331,14 @@ class TestAnleggspakkeFormat(unittest.TestCase):
         self.feil(self.zipp({"../ut.json": b"{}"}), "ugyldig filnamn")
 
     def test_terreng_og_zipbombe(self):
-        r = AP.kontroller(self.zipp({"objekt.json": {"objekt": [HINDRING]}, "terreng/dtm1.tif": b"II*\0"}), 10**9)
-        self.assertEqual(r["tal"]["terrengfiler"], 1)
+        meta = {"id": "lag1", "name": "Fjellsætra DTM", "type": "barmark", "nx": 2, "ny": 2, "x0": 1.0, "y0": 2.0, "zone": 32}
+        npy = b"\x93NUMPY" + b"\0" * 40
+        r = AP.kontroller(self.zipp({"objekt.json": {"objekt": [HINDRING]}, "terreng/lag1/meta.json": meta,
+                                     "terreng/lag1/grid.npy": npy}), 10**9)
+        self.assertEqual(r["tal"]["terrenglag"], 1)
+        self.feil(self.zipp({"terreng/lag1/meta.json": meta}), "manglar meta.json eller grid.npy")
+        self.feil(self.zipp({"terreng/dtm1.tif": b"II*\0"}), "ukjend terrengfil")
+        self.feil(self.zipp({"terreng/lag1/meta.json": dict(meta, type="x"), "terreng/lag1/grid.npy": npy}), "feil id eller type")
         with self.assertRaises(AP.Feil):
             AP.kontroller(self.zipp({"trasear.json": {"trasear": [TRASE]}}), 10)
 
