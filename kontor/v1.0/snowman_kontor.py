@@ -37,6 +37,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import api                      # noqa: E402
+import oppdatering              # noqa: E402
 import forbetring               # noqa: E402
 from ai import AI               # noqa: E402
 from basestatus import BaseStatus  # noqa: E402
@@ -58,7 +59,7 @@ class SnowmanKontor:
         self.store = Store(self.data)
         self.vern = Vern(self.cfg, self.events)
         self.ai = AI(self.cfg, self.store, self.events)
-        self.updates = Updates(self.cfg, self.events, self.restart)
+        self.updates = Updates(self.cfg, self.events, self.restart, self.restart_kart)
         self.basestatus = BaseStatus(self.cfg, self.events)
         self.stop_ev = threading.Event()
         self.started = time.time()
@@ -69,6 +70,7 @@ class SnowmanKontor:
         self._maskinport = maskinport
         self.kartvising = self.cfg["kartvising"].get("start", True) if kartvising is None else kartvising
         self.kart = None                       # SNOWMAN snødjupne i kontormodus (underprosess)
+        self._kart_omstart = False
         self.lokal_nokkel = self._lokal_nokkel()
 
     def _lokal_nokkel(self):
@@ -79,26 +81,41 @@ class SnowmanKontor:
     @staticmethod
     def snodjupne_mappe():
         """Nyaste SNOWMAN snødjupne ved sida av Kontor (repoet eller SNOWMAN-Kontor.zip: kontor/ og pc/ side om side)."""
-        pc = HERE.parent.parent / "pc"
-        dirs = sorted((d for d in pc.glob("v*") if (d / "snowman_pc.py").exists()),
-                      key=lambda d: tuple(int(x) for x in d.name[1:].split(".") if x.isdigit()))
-        return dirs[-1] if dirs else None
+        return oppdatering.pc_mappe()
+
+    def restart_kart(self):
+        """Etter ny versjon av kartet (SNOWMAN snødjupne): start berre kartet på nytt – kontorsida og maskinporten
+        held fram, og maskinene merkar ingenting."""
+        self._kart_omstart = True
+        if self.kart is not None and self.kart.poll() is None:
+            self.kart.terminate()
+            try:
+                self.kart.wait(10)
+            except subprocess.TimeoutExpired:
+                self.kart.kill()
 
     def anlegg_port(self):
         return int(self.cfg["kartvising"].get("port") or 8765) if self.kartvising else None
 
     def _kart_loop(self):
-        d = self.snodjupne_mappe()
-        if not d:
-            self.events.add("Fann ikkje SNOWMAN snødjupne (pc/) ved sida av Kontor – kart og anlegg er ikkje tilgjengeleg",
-                            "feil")
-            return
         env = dict(os.environ, SNOWMAN_MODUS="kontor", SNOWMAN_KONTOR_URL=f"http://127.0.0.1:{self.web_port}",
                    SNOWMAN_KONTOR_NOKKEL=self.lokal_nokkel)
-        cmd = [sys.executable, str(d / "snowman_pc.py"), "--kontor", "--http-port", str(self.anlegg_port())]
         logf = self.data / "kartvising.log"
         feil = 0
         while not self.stop_ev.is_set():
+            # mappa blir funnen på nytt kvar gong: etter ei oppdatering kan det ha kome ei nyare (t.d. pc/v1.7)
+            d = self.snodjupne_mappe()
+            if not d:
+                self.events.add("Fann ikkje SNOWMAN snødjupne (pc/) ved sida av Kontor – kart og anlegg er ikkje "
+                                "tilgjengeleg", "feil")
+                return
+            try:
+                with open(logf, "a", encoding="utf-8") as lf:
+                    oppdatering.installer_kart_pakkar(lambda t: lf.write(t + "\n"), d)
+            except Exception as e:
+                self.events.add(f"Pakkane til kartet kunne ikkje installerast: {e}", "feil")
+            cmd = [sys.executable, str(d / "snowman_pc.py"), "--kontor", "--http-port", str(self.anlegg_port())]
+            self._kart_omstart = False
             t0 = time.time()
             with open(logf, "a", encoding="utf-8") as lf:
                 self.kart = subprocess.Popen(cmd, cwd=str(d), env=env, stdout=lf, stderr=subprocess.STDOUT)
@@ -108,6 +125,10 @@ class SnowmanKontor:
                     pass
             if self.stop_ev.is_set():
                 break
+            if self._kart_omstart:
+                self.events.add("Kart og anlegg startar på nytt med den nye versjonen", "info")
+                feil = 0
+                continue
             feil = feil + 1 if time.time() - t0 < 60 else 0
             self.events.add(f"Kart og anlegg stoppa (kode {self.kart.returncode}) – ny start om {min(60, 5 * feil)} s. "
                             f"Sjå data/kartvising.log", "feil")
@@ -194,7 +215,7 @@ class SnowmanKontor:
                 "maskinport": self.maskin_srv.server_address[1] if self.maskin_srv else None,
                 "kartvising": {"port": self.anlegg_port(), "koyrer": bool(self.kart and self.kart.poll() is None)},
                 "treng_admin": not self.cfg.has_admin(), "maskiner": self.store.machines(),
-                "oppdatering": self.updates.info, "disk_gb": self.disk_free(), "pakke": self.store.package(),
+                "oppdatering": self.updates.info, "kart_versjon": self.updates.info.get("kart"), "disk_gb": self.disk_free(), "pakke": self.store.package(),
                 "forbetringar": {k: sum(1 for r in imp if r["alvor"] == k) for k in ("høg", "middels", "låg")},
                 "ai": {"leverandor": self.cfg["ai"].get("leverandor", "av"), "siste": self.ai.last},
                 "base": {"adresse": self.cfg["base"].get("adresse", ""), "t": bs.get("t"), "ok": bs.get("ok"),
@@ -237,8 +258,8 @@ def main(argv=None):
     if a.cmd == "versjon":
         return print(f"SNOWMAN Kontor {VERSION} (API v{API_VERSION}, krev SNOWMAN {SNOWMAN_MIN})")
     if a.cmd == "oppdater":
-        changed, _ = apply()
-        return sys.exit(RESTART_CODE if changed and os.environ.get("SNOWMAN_KONTOR_TENESTE") else 0)
+        changed, _, kart = apply()
+        return sys.exit(RESTART_CODE if (changed or kart) and os.environ.get("SNOWMAN_KONTOR_TENESTE") else 0)
     if a.cmd == "brukar":
         cfg = Config(data_dir(a))
         cfg.first_setup()

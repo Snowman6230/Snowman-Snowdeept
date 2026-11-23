@@ -10,6 +10,7 @@
 :root{--bg:#06121a;--panel:#081822;--line:#16303e;--txt:#e6f1f5;--dim:#8fa3ad;--ok:#27d84d;--warn:#ffb020;--err:#ff5a4f;--acc:#4db8ff}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#updBanner:not(.hidden){display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 16px;background:#3a2a05;border-bottom:1px solid var(--warn)}
 header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
 header h1{font-size:18px;margin:0}
 header nav{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
@@ -56,6 +57,10 @@ input,select,textarea{width:100%}
     <button id="logout">Logg ut</button>
   </nav>
 </header>
+<div id="updBanner" class="hidden">
+  <span>⬆ <b id="updBTxt">Ny versjon tilgjengeleg</b> <span class="dim" id="updBDim"></span></span>
+  <button class="pri" id="updBRun">Oppdater no</button><button id="updBLater">Seinare</button><span id="updBMsg" class="dim"></span>
+</div>
 <section id="login" class="card">
   <h2>Logg inn</h2>
   <label>Brukarnamn</label><input id="lUser" autocomplete="username" autocapitalize="off">
@@ -190,7 +195,30 @@ async function start(){
   let first=(location.hash||"").slice(1);
   if(!first)first="oversikt";
   show(first);setInterval(()=>{if(tab==="oversikt")refresh()},10000);
+  banner();setInterval(banner,60000);
 }
+// v1.1.1: varsel om ny versjon (Kontor og/eller kartet = SNOWMAN snødjupne) – som i maskina, med éin knapp
+let updLater="";
+function nyTekst(u){return [u.ny?`SNOWMAN Kontor ${u.ny}`:"",u.ny_kart?`kart (SNOWMAN snødjupne) ${u.ny_kart}`:""].filter(Boolean).join(" og ")}
+async function banner(){
+  try{const s=await api("/api/status"),u=s.oppdatering||{};
+    const k=(u.ny||"")+"/"+(u.ny_kart||"");
+    $("#updBanner").classList.toggle("hidden",!u.tilgjengeleg||updLater===k);
+    $("#updBTxt").textContent="Ny versjon tilgjengeleg: "+nyTekst(u);
+    $("#updBDim").textContent=`Du har Kontor ${s.versjon} og kart ${u.kart||"–"}. `+(u.ny?"Kontorsida er borte nokre sekund.":"Berre kartet startar på nytt – kontorsida og maskinene merkar ingenting.");
+  }catch(e){}
+}
+async function oppdaterNo(out){
+  const u=(await api("/api/status")).oppdatering||{};
+  if(!confirm(`Oppdatere no (${nyTekst(u)||"siste versjon"})?\n\n`+(u.ny?"Kontorsida er borte nokre sekund medan Kontor startar på nytt.":"Kart og anlegg startar på nytt. Lagra arbeid i kartet blir teke vare på.")+" Korreksjonane til maskinene blir ikkje påverka."))return;
+  out("Lastar ned og installerer … (kan ta eitt minutt)");
+  try{const d=await api("/api/v1/oppdater",{method:"POST",json:{}});
+    out(d.tekst+(d.endra?"\n\n"+(u.ny?"Startar på nytt – sida blir lasta om eit augeblink.":"Kartet startar på nytt – opne «Kart og anlegg» om eit augeblink."):""));
+    if(d.endra&&u.ny)setTimeout(()=>location.reload(),10000);else setTimeout(banner,3000);
+  }catch(e){out("Feil: "+e.message)}
+}
+$("#updBRun").onclick=()=>oppdaterNo(t=>{$("#updBMsg").textContent=t.split("\n").filter(Boolean).slice(-1)[0]||t});
+$("#updBLater").onclick=async()=>{const u=(await api("/api/status")).oppdatering||{};updLater=(u.ny||"")+"/"+(u.ny_kart||"");$("#updBanner").classList.add("hidden")};
 async function refresh(){try{await ({oversikt,brukarar,pakke,forslag,forbetringar,ai,system})[tab]()}catch(e){console.log(e)}}
 async function oversikt(){
   const s=await api("/api/status");
@@ -266,16 +294,15 @@ async function system(){
   const s=await api("/api/status"), u=s.oppdatering;
   const bd=await api("/api/v1/base");$("#bAddr").value=bd.adresse||"";$("#bUser").value=bd.brukar||"";$("#bPw").placeholder=bd.har_passord?"(lagra)":"";
   $("#bMsg").textContent=bd.adresse?(bd.ok?`Kontakt med Base (${tid(bd.t)}).`:bd.ok===false?`Ingen kontakt: ${bd.feil}`:""):"";
-  $("#updInfo").innerHTML=`Installert: v${esc(s.versjon)} (API v${s.api}, krev SNOWMAN ${esc(s.snowman_min)} i maskinene). `+(u.ny?`<b style="color:var(--warn)">Ny versjon: ${esc(u.ny)}</b>`:(u.sjekka?`Siste versjon (sjekka ${tid(u.sjekka)}).`:"Ikkje sjekka enno."))+(u.feil?` Sjekken feila: ${esc(u.feil)}`:"");
+  $("#updInfo").innerHTML=`Installert: Kontor v${esc(s.versjon)} (API v${s.api}, krev SNOWMAN ${esc(s.snowman_min)} i maskinene) · kart (SNOWMAN snødjupne) v${esc(u.kart||"–")}. `+(u.tilgjengeleg?`<b style="color:var(--warn)">Ny versjon: ${esc(nyTekst(u))}</b>`:(u.sjekka?`Siste versjon (sjekka ${tid(u.sjekka)}).`:"Ikkje sjekka enno."))+(u.feil?` Sjekken feila: ${esc(u.feil)}`:"")
+    +`<br>Kontor ser etter ny versjon ved oppstart og kvar 3. time. Ny versjon av SNOWMAN snødjupne kjem med her òg, så kartet på kontoret er alltid likt det i maskinene.`;
   const e=await api("/api/v1/hendingar?n=300");
   $("#events").innerHTML=`<table>${e.hendingar.map(x=>`<tr><td class="dim" style="white-space:nowrap">${tid(x.t)}</td><td style="color:${x.niva==='feil'?'var(--err)':x.niva==='ok'?'var(--ok)':'inherit'}">${esc(x.tekst)}</td></tr>`).join("")}</table>`;
   const c=await api("/api/v1/konfig");$("#cfg").textContent=JSON.stringify(c.konfig,null,1);
 }
-$("#updCheck").onclick=async()=>{await api("/api/v1/oppdatering/sjekk",{method:"POST",json:{}});system()};
+$("#updCheck").onclick=async()=>{await api("/api/v1/oppdatering/sjekk",{method:"POST",json:{}});system();banner()};
 $("#bSave").onclick=async()=>{$("#bMsg").textContent="Hentar …";try{const d=await api("/api/v1/base",{method:"POST",json:{adresse:$("#bAddr").value.trim(),brukar:$("#bUser").value.trim(),passord:$("#bPw").value}});$("#bPw").value="";$("#bMsg").textContent=!$("#bAddr").value.trim()?"Lagra (ingen adresse).":d.ok?"Kontakt med SNOWMAN Base.":`Lagra, men ingen kontakt: ${d.feil}`}catch(e){$("#bMsg").textContent="Feil: "+e.message}};
-$("#updRun").onclick=async()=>{if(!confirm("Oppdatere SNOWMAN Kontor no? Kontorsida er borte nokre sekund medan Kontor startar på nytt. Korreksjonane til maskinene blir ikkje påverka."))return;
-  $("#updOut").classList.remove("hidden");$("#updOut").textContent="Oppdaterer …";
-  try{const d=await api("/api/v1/oppdater",{method:"POST",json:{}});$("#updOut").textContent=d.tekst+(d.endra?"\n\nStartar på nytt – sida blir lasta om eit augeblink.":"");if(d.endra)setTimeout(()=>location.reload(),8000)}catch(e){$("#updOut").textContent="Feil: "+e.message}};
+$("#updRun").onclick=()=>{$("#updOut").classList.remove("hidden");oppdaterNo(t=>$("#updOut").textContent=t)};
 document.querySelectorAll("#tabs button[data-t]").forEach(b=>b.onclick=()=>show(b.dataset.t));
 $("#logout").onclick=logout;$("#loginBtn").onclick=login;$("#lPw").onkeydown=e=>{if(e.key==="Enter")login()};
 $("#setupBtn").onclick=setup;

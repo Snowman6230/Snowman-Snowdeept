@@ -3324,7 +3324,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.139";
+      const APP_VERSION = "1.6.140";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -7344,6 +7344,37 @@
           }
           busy = false;
         }
+        // v1.6.140: varsel om ny versjon i kontormodus – SNOWMAN Kontor hentar både Kontor og kartet (denne)
+        let updSkjult = "";
+        async function nyVersjon() {
+          try {
+            let r = await api("api/kontormodus?oppdatering=1"), u = r.oppdatering || {};
+            let key = (u.ny || "") + "/" + (u.ny_kart || ""), b = $("kmUpd");
+            if (!u.tilgjengeleg || updSkjult === key) return b && b.remove();
+            if (!b) {
+              b = document.createElement("div");
+              b.id = "kmUpd";
+              b.style.cssText = "position:fixed;top:34px;left:50%;transform:translateX(-50%);z-index:9999;background:#3a2a05;color:#ffe1a6;border:1px solid #ffb020;border-radius:10px;padding:8px 12px;font:14px system-ui;display:flex;gap:10px;align-items:center;max-width:92vw";
+              document.body.appendChild(b);
+            }
+            let t = [u.ny ? "SNOWMAN Kontor " + u.ny : "", u.ny_kart ? "kart " + u.ny_kart : ""].filter(Boolean).join(" og ");
+            b.innerHTML = "<span style='white-space:nowrap'>⬆ <b>Ny versjon tilgjengeleg:</b> " + esc(t) + " <span style='opacity:.7'>(du har kart " + esc(u.kart || APP_VERSION) + ")</span></span>" +
+              "<button class='btn' id='kmUpdRun' style='width:auto;flex:none;padding:6px 14px;background:#0d3550;border-color:#4db8ff'>OPPDATER NO</button>" +
+              "<button class='btn' id='kmUpdLater' style='width:auto;flex:none;padding:6px 12px'>Seinare</button>";
+            $("kmUpdLater").onclick = () => ((updSkjult = key), b.remove());
+            $("kmUpdRun").onclick = async () => {
+              if (!confirm("Oppdatere no? Kartet startar på nytt om eit augeblink. Lagra trasear, hindringar og terreng blir tekne vare på.")) return;
+              b.innerHTML = "Lastar ned og installerer … (kan ta eitt minutt)";
+              try {
+                let d = await api("api/update", {});
+                b.innerHTML = d.changed ? "Ferdig – kartet startar på nytt. Sida blir lasta om …" : esc((d.output || "").split("\n").pop());
+                setTimeout(() => location.reload(), d.changed ? 12000 : 5000);
+              } catch (e) {
+                b.innerHTML = "Oppdateringa feila: " + esc(e.message);
+              }
+            };
+          } catch (e) {}
+        }
         return {
           on: false,
           load,
@@ -7359,6 +7390,8 @@
             document.body.appendChild(b);
             // det er inga eiga maskin på kontoret – maskinene ute blir viste som prikkar med namn
             if (machineOn) toggleMachine();
+            nyVersjon();
+            setInterval(nyVersjon, 60000);
             kart();
             setInterval(kart, 5000);
           },

@@ -7,6 +7,7 @@ import base64
 import hashlib
 import http.server
 import json
+import shutil
 import sys
 import tempfile
 import threading
@@ -16,6 +17,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
@@ -23,6 +25,7 @@ sys.path.insert(0, str(HERE))
 import anleggspakke as AP                     # noqa: E402
 import konfig                                 # noqa: E402
 import snowman_kontor as SK                   # noqa: E402
+from hendingar import Events                  # noqa: E402
 
 LAT, LON = 62.3802, 6.7811
 TRASE = {"id": "t1", "name": "Bakke 1", "kind": "trase", "level": "bla", "target": 0.6,
@@ -341,6 +344,95 @@ class TestAnleggspakkeFormat(unittest.TestCase):
         self.feil(self.zipp({"terreng/lag1/meta.json": dict(meta, type="x"), "terreng/lag1/grid.npy": npy}), "feil id eller type")
         with self.assertRaises(AP.Feil):
             AP.kontroller(self.zipp({"trasear.json": {"trasear": [TRASE]}}), 10)
+
+
+class TestOppdatering(unittest.TestCase):
+    """v1.1.1: Kontor følgjer både sin eigen versjon og kartet (SNOWMAN snødjupne i pc/)."""
+
+    def setUp(self):
+        import oppdatering as O
+        self.O = O
+        self.d = Path(tempfile.mkdtemp())
+        self.gamle = {k: getattr(O, k) for k in ("REPO", "PC", "HERE", "VERSION", "_get")}
+        (self.d / "kontor" / "v1.0").mkdir(parents=True)
+        (self.d / "kontor" / "v1.0" / "konfig.py").write_text('VERSION = "1.1.1"\n')
+        for v, ver in (("v1.5", "1.5.9"), ("v1.6", "1.6.140")):
+            (self.d / "pc" / v).mkdir(parents=True)
+            (self.d / "pc" / v / "snowman_pc.py").write_text(f'VERSION="{ver}"\n')
+        (self.d / "pc" / "v1.2").mkdir()                       # gamal prototype utan snowman_pc.py
+        O.REPO, O.PC, O.HERE, O.VERSION = self.d, self.d / "pc", self.d / "kontor" / "v1.0", "1.1.1"
+
+    def tearDown(self):
+        for k, v in self.gamle.items():
+            setattr(self.O, k, v)
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def nett(self, kontor, kart, mapper=("v1.2", "v1.6")):
+        import json as J
+        def get(url, timeout):
+            if "api.github.com" in url:
+                return J.dumps([{"name": m, "type": "dir"} for m in mapper] + [{"name": "SNOWMAN.bat", "type": "file"}])
+            if "/kontor/" in url:
+                return f'VERSION = "{kontor}"\n'
+            return f'VERSION="{kart}"\n'
+        self.O._get = get
+
+    def test_mappe_og_versjon(self):
+        self.assertEqual(self.O.pc_mappe().name, "v1.6")
+        self.assertEqual(self.O.kart_versjon(), "1.6.140")
+
+    def test_ny_versjon_av_berre_kartet_gir_varsel(self):
+        ev = Events()
+        u = self.O.Updates({"oppdatering": {}}, ev, lambda: None)
+        self.nett("1.1.1", "1.6.141")
+        i = u.check()
+        self.assertEqual((i["ny"], i["ny_kart"], i["tilgjengeleg"]), (None, "1.6.141", True))
+        self.assertIn("kart (SNOWMAN snødjupne) 1.6.141", self.O.tekst(i))
+        self.assertTrue(any("Ny versjon tilgjengeleg" in e["tekst"] for e in ev.latest(10)))
+        u.check()                                               # same versjon → ikkje nytt varsel i hendingane
+        self.assertEqual(sum("Ny versjon tilgjengeleg" in e["tekst"] for e in ev.latest(10)), 1)
+        self.nett("1.1.1", "1.6.140")
+        self.assertFalse(u.check()["tilgjengeleg"])
+
+    def test_ny_versjonsmappe_blir_funnen(self):
+        self.nett("1.1.1", "1.7.0", ("v1.5", "v1.6"))
+        self.assertEqual(self.O.latest_kart()[0], "v1.6")
+        self.nett("1.1.1", "1.7.0", ("v1.6", "v1.7"))
+        self.assertEqual(self.O.latest_kart(), ("v1.7", "1.7.0"))
+        self.nett("1.2.0", "1.7.0", ("v1.6", "v1.7"))
+        i = self.O.Updates({"oppdatering": {}}, Events(), lambda: None).check()
+        self.assertEqual((i["ny"], i["ny_kart"]), ("1.2.0", "1.7.0"))
+
+    def test_oppdater_berre_kartet_startar_berre_kartet(self):
+        import io as IO
+        b = IO.BytesIO()
+        with zipfile.ZipFile(b, "w") as z:
+            z.writestr("repo-main/kontor/v1.0/konfig.py", 'VERSION = "1.1.1"\n')
+            z.writestr("repo-main/pc/v1.6/snowman_pc.py", 'VERSION="1.6.141"\n')
+            z.writestr("repo-main/pc/v1.6/data/hemmeleg.json", "{}")
+            z.writestr("repo-main/pc/v1.2/gamal.html", "x")
+            z.writestr("repo-main/base/v1.0/caster.py", "x")
+        class R:
+            def __init__(s, data): s.data = data
+            def read(s): return s.data
+        gamal = self.O.nett.urlopen
+        self.O.nett.urlopen = lambda *a, **k: R(b.getvalue())
+        kall = {"heile": 0, "kart": 0}
+        try:
+            u = self.O.Updates({"oppdatering": {}}, Events(), lambda: kall.__setitem__("heile", 1),
+                               lambda: kall.__setitem__("kart", 1))
+            with mock.patch.object(self.O.subprocess, "run"):
+                endra, tekst = u.run_now()
+            time.sleep(1.4)
+        finally:
+            self.O.nett.urlopen = gamal
+        self.assertTrue(endra)
+        self.assertEqual(kall, {"heile": 0, "kart": 1})
+        self.assertIn("1.6.140 → v1.6.141", tekst)
+        self.assertEqual(self.O.kart_versjon(), "1.6.141")
+        self.assertFalse((self.d / "pc" / "v1.6" / "data").exists())
+        self.assertFalse((self.d / "pc" / "v1.2" / "gamal.html").exists())
+        self.assertFalse((self.d / "base").exists())
 
 
 class TestDiverse(unittest.TestCase):

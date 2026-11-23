@@ -130,9 +130,18 @@ Pakka blir laga av kontormodus (`/api/kontormodus/publiser`) og send til Kontor.
 
 ## Oppdatering
 
-Kontorsida › **System › Oppdatering**: «Sjekk etter ny versjon» og «Oppdater og start på nytt». Kontor sjekkar sjølv
-éin gong i døgnet. Automatisk oppdatering om natta kan slåast på (`oppdatering.auto` i `data/kontor.json`).
-Både `kontor/` og `pc/` (kontormodus) blir oppdaterte. `data/` blir aldri rørt. Korreksjonane (SNOWMAN Base) blir ikkje påverka.
+Du treng **aldri** laste ned zip-fila på nytt. Kontor ser sjølv etter ny versjon på GitHub ved oppstart og kvar 3. time –
+både av **SNOWMAN Kontor** og av **kartet** (SNOWMAN snødjupne i `pc/`). Er det noko nytt, kjem det eit **gult varsel øvst
+på kontorsida og i kartet** med knappen **Oppdater no**:
+
+- **Berre kartet er nytt** (vanlegast – ny versjon av SNOWMAN snødjupne): berre kartet startar på nytt. Kontorsida,
+  maskinporten og maskinene merkar ingenting. Kartet på kontoret er dermed alltid same versjon som i maskinene.
+- **Kontor er nytt:** heile Kontor startar på nytt (nokre sekund).
+- Kjem det ei ny versjonsmappe av snødjupne (t.d. `pc/v1.7`), blir ho henta og teken i bruk av seg sjølv, med pakkane ho treng.
+
+«Seinare» gøymer varselet til neste versjon. Det same finst under **System › Oppdatering**. Automatisk oppdatering om
+natta (03–05) kan slåast på (`oppdatering.auto` i `data/kontor.json`). `data/` blir aldri rørt, og korreksjonane
+(SNOWMAN Base) blir ikkje påverka.
 
 ## Data
 

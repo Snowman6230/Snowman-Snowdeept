@@ -77,9 +77,10 @@ def rules(k):
         out.append(S("disk", "kontor", "høg", f"Lite diskplass ({free} GB ledig)",
                      "Anleggspakkane og databasen kan fylle disken.", "Rydd på PC-en, eller flytt data/ til ein større disk."))
     up = k.updates.info
-    if up.get("ny"):
-        out.append(S("oppdatering", "kontor", "låg", f"Ny versjon av SNOWMAN Kontor: {up['ny']}",
-                     f"Du har {VERSION}.", "Trykk «Oppdater» under System på kontorsida."))
+    if up.get("tilgjengeleg"):
+        import oppdatering
+        out.append(S("oppdatering", "kontor", "låg", f"Ny versjon tilgjengeleg: {oppdatering.tekst(up)}",
+                     f"Du har Kontor {VERSION} og kart {up.get('kart') or '–'}.", "Trykk «Oppdater no» øvst på kontorsida."))
     if not k.ai.enabled():
         out.append(S("ai-av", "kontor", "låg", "AI-analysen er av",
                      "Reglane finn kjende problem. AI kan i tillegg sjå mønster og foreslå forbetringar i programma.",

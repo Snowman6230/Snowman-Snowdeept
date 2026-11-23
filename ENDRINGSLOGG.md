@@ -9,6 +9,25 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Kontor 1.1.1 og PC-prototype v1.6.140 – varsel og éin knapp for ny versjon av Kontor og kartet
+- **Bakgrunn (eigaren):** «Lag også slik at eg får varsel i Snowman kontor om at det er ny versjon tilgjengeleg og at
+  eg kan laste den ned, slik som i Snowman snødjupne. Det blir tungvindt om eg manuelt må laste ned ein ny zip-fil.»
+  Før: Kontor såg berre på sin eigen versjon, så ein ny versjon av SNOWMAN snødjupne kom aldri inn i kartet på kontoret.
+- **Nytt (Kontor):** sjekken les både Kontor-versjonen og versjonen av kartet (`pc/<nyaste>/snowman_pc.py`) på GitHub,
+  ved oppstart og kvar 3. time. Ny versjonsmappe (t.d. `pc/v1.7`) blir funnen via lista over `pc/`.
+- **Nytt:** **gult varsel øvst på kontorsida og i kartet** med «Oppdater no» og «Seinare». Varselet står òg i hendingane
+  og under Forbetringar.
+- **Nytt:** er berre kartet nytt, blir **berre kartet** starta på nytt – kontorsida, maskinporten og maskinene held fram.
+  Er Kontor nytt, startar heile Kontor på nytt som før.
+- **Nytt (PC):** i kontormodus går «Hent siste versjon» og varselet via SNOWMAN Kontor, så begge blir oppdaterte saman.
+- **Retta:** pakkane til kartet blir installerte frå nyaste `pc/v*/requirements.txt` (før fast `pc/v1.6`). Oppdateringa
+  hentar berre versjonsmapper i `pc/` som kan køyrast – ikkje dei gamle prototypane.
+- **Regel (CLAUDE.md):** ny versjon av snødjupne treng ingen ny Kontor-versjon. Endrar ein anleggspakka, maskin-API-et
+  eller terrengformatet, blir `SNOWMAN_MIN` og Kontor-versjonen auka.
+- **Testar:** Kontor 18 OK (nye: varsel berre for kartet, ny versjonsmappe, oppdatering av berre kartet startar berre
+  kartet), testkontorkopling ALT OK. Ende-til-ende mot GitHub: Kontor med kart 1.6.100 varsla om 1.6.139, «Oppdater no»
+  i kartet henta han, og berre kartet starta på nytt (Kontor gjekk vidare).
+
 ### SNOWMAN Kontor 1.1.0 og PC-prototype v1.6.139 – kontoret får same kart som maskinene, terreng ut til maskinene og sanntid
 - **Bakgrunn (eigaren):** «Snowman Kontor bør ha meir eller mindre same funksjonar som Snowman Snødjupne. Det gjer det
   lettare å sjå kva som skjer i maskinene. Det bør også kunne lastast inn karta som eg brukar i dag. Eg må kunne legge

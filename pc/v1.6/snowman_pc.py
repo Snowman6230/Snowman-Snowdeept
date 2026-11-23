@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.139"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.140"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1032,6 +1032,8 @@ class API(http.server.BaseHTTPRequestHandler):
                 try:
                     r["pakke"]=kontor_lokal("/api/v1/anleggspakke").get("pakke")
                     r["maskiner"]=kontor_lokal("/api/v1/maskiner").get("maskiner",[])
+                    if "oppdatering" in u.query:   # v1.6.140: varsel om ny versjon (Kontor og kartet)
+                        st=kontor_lokal("/api/status"); r["oppdatering"]=dict(st.get("oppdatering") or {},kontor=st.get("versjon"))
                     r["kontakt"]=True
                 except Exception as e: r.update(kontakt=False,feil=str(e))
                 r["lag"]=[{"id":m["id"],"name":m["name"],"active":m.get("active")} for m in (TERR.listing() if T.AVAILABLE else [])]
@@ -1675,6 +1677,13 @@ class API(http.server.BaseHTTPRequestHandler):
                 self.headers_ok(); self.wfile.write(b'{"ok":true}')
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+            return
+        if self.path=="/api/update" and MODUS[0]=="kontor":   # v1.6.140: i kontormodus oppdaterer SNOWMAN Kontor begge
+            try:
+                d=kontor_lokal("/api/v1/oppdater",{},timeout=600)
+                self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"output":d.get("tekst",""),"changed":bool(d.get("endra")),"version":VERSION,"kontor":True}).encode())
+            except Exception as e:
+                self.headers_ok(502); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
         if self.path=="/api/update":   # Innst. › System › Hent siste versjon (same som menyval 5)
             import io, contextlib, start_snowman as SS
