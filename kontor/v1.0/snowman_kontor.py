@@ -6,7 +6,7 @@ gjere – det gjer SNOWMAN Base på Raspberry Pi-en ved antenna åleine. Ei oppd
 difor aldri stoppe korreksjonane til maskinene.
 
 Office:  kart og anlegg – SNOWMAN Snowdeep i kontormodus (same kart, 3D, terreng, trasear, hindringar og
-         kontrollpunkt som i maskina, utan GNSS), med «Publiser til maskinene» (Office startar det sjølv, port 8765) ·
+         kontrollpunkt som i maskina, utan GNSS), med «Publiser til maskinene» (Office startar det sjølv, port 8766) ·
          anleggspakkar med terreng · forslag frå førarane · oversikt over maskinene · deling av snødjupne (v1.8) ·
          forbetringar og AI · status frå SNOWMAN Base (berre lesing).
 Maskinene hentar anleggspakka når dei er på nettet på anlegget (wifi). PC-en treng ikkje stå på heile tida:
@@ -122,7 +122,7 @@ class SnowmanKontor:
                 self.kart.kill()
 
     def anlegg_port(self):
-        return int(self.cfg["kartvising"].get("port") or 8765) if self.kartvising else None
+        return int(self.cfg["kartvising"].get("port") or 8766) if self.kartvising else None
 
     def _kart_loop(self):
         env = dict(os.environ, SNOWMAN_MODUS="kontor", SNOWMAN_KONTOR_URL=f"http://127.0.0.1:{self.web_port}",

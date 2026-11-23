@@ -9,6 +9,16 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.3.2 og SNOWMAN Snowdeep v1.6.146 – Office og Snowdeep på same PC
+- **Feil (eigaren):** «Opna Snowman Snødjupne og det som opna seg var kontor delen.» Kart og anlegg i Office
+  (Office-modus) brukte port 8765 – same port som SNOWMAN Snowdeep. Med begge på same PC opna Snowdeep Office.
+- **Retta (Office):** kart og anlegg brukar no **port 8766** (http://localhost:8766). Lagra innstilling med 8765 blir
+  flytta av seg sjølv. Snarvegen, kontorsida, installasjonen og LES-MEG er oppdaterte. Snowdeep brukar 8765 som før.
+- **Retta (Snowdeep):** finn oppstarten SNOWMAN Office på 8765 (gammal Office), seier han kvifor Snowdeep ikkje kan
+  starte og kva som hjelper – i staden for å opne Office.
+- **Testar:** Office 20 OK (flyttinga av porten prøvd for seg), testkontorkopling ALT OK, oppstarten mot ein falsk
+  Office på 8765.
+
 ### SNOWMAN Office 1.3.1 og SNOWMAN Snowdeep v1.6.145 – «unknown url type: 'ollama/api/chat'»
 - **Feil (eigaren):** «Feil: unknown url type: 'ollama/api/chat'» – feltet Adresse under Office › AI inneheldt
   «ollama», og Office sette det saman til ei ugyldig adresse.

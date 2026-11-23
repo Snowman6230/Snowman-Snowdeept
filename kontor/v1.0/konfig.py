@@ -25,7 +25,7 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.3.1"
+VERSION = "1.3.2"
 API_VERSION = 1
 
 # Samspel med SNOWMAN Snowdeep (pc/): anleggspakke og forslag frå v1.6.137, terreng, kontormodus og sanntid frå v1.6.139.
@@ -39,7 +39,8 @@ DEFAULT = {
     "anlegg": "",
     "web": {"port": 8790, "maskinport": 8791},   # maskinport: berre maskin-API-et – den som kan opnast i ruteren (0 = av)
     # SNOWMAN Snowdeep i kontormodus (same kart, 3D, terreng og trasear som i maskina) – Office startar det sjølv
-    "kartvising": {"start": True, "port": 8765},
+    # 8766: 8765 høyrer til SNOWMAN Snowdeep (maskinene). Køyrer begge på same PC, opna Snowdeep elles Office (1.3.2).
+    "kartvising": {"start": True, "port": 8766},
     "brukarar": [],                     # {"namn", "hash", "roller": ["maskin"|"kontor"]}
     "deling": {"timar": 12, "behald_dagar": 30, "maskinplassar": 0},
     "anleggspakke": {"maks_mb": 4000, "behald_versjonar": 20},
@@ -83,6 +84,8 @@ class Config:
         if self.path.exists():
             with open(self.path, encoding="utf-8") as f:
                 self._merge(data, json.load(f))
+            if data["kartvising"].get("port") == 8765:      # før 1.3.2: same port som SNOWMAN Snowdeep
+                data["kartvising"]["port"] = 8766
             self._mtime = self.path.stat().st_mtime_ns
         for u in data["brukarar"]:
             u.setdefault("roller", ["maskin"])

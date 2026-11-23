@@ -6,7 +6,7 @@ Dim sh, fso, here, url, i, ok
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 here = fso.GetParentFolderName(WScript.ScriptFullName)
-url = "http://localhost:8765/"
+url = "http://localhost:8766/"
 
 Function Svarar()
   Dim x

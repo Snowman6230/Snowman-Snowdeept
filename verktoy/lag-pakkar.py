@@ -107,7 +107,7 @@ def lag_kontor(ut: Path) -> Path:
             "                       dobbeltklikk INSTALLER-WINDOWS.bat\n"
             "Windows (prøve):  dobbeltklikk START-SNOWMAN-OFFICE.bat i kontor\\v1.0\n\n"
             "Kontorsida:      http://localhost:8790 (lag administrator og ein brukar for maskinene første gong)\n"
-            "Kart og anlegg:  http://localhost:8765 (terreng, trasear, hindringar, 3D – fana Office: Publiser)\n"
+            "Kart og anlegg:  http://localhost:8766 (terreng, trasear, hindringar, 3D – fana Office: Publiser)\n"
             "Maskinene: IP-adressa til PC-en, port 8790 (wifi på anlegget)\n"
             "Sanntid ute i bakken: send BERRE port 8791 vidare i ruteren (aldri 8790)\n"
             "Full rettleiing: kontor/v1.0/LES-MEG.md\n\n"

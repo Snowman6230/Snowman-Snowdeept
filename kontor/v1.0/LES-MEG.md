@@ -7,7 +7,7 @@ Kontorsida og anleggsserveren for SNOWMAN Snowdeep. Køyrer på **ein PC på anl
 8790 er ein reserve.
 
 **Frå 1.1.0** har kontoret **same kart, 3D, terreng, trasear, hindringar og kontrollpunkt som i maskinene**: Office
-startar SNOWMAN Snowdeep i **kontormodus** (utan GNSS) på **http://localhost:8765/**. Der lastar du inn terrengmodellane
+startar SNOWMAN Snowdeep i **kontormodus** (utan GNSS) på **http://localhost:8766/**. Der lastar du inn terrengmodellane
 (dei same `.pxy`-filene som i dag), lagar trasear og hindringar og trykkjer **PUBLISER TIL MASKINENE**. Maskinene ute i
 bakken blir viste på kartet i sanntid.
 
@@ -18,7 +18,7 @@ SNOWMAN Base (Raspberry Pi ved antenna) ──NTRIP 2101──► tråkkemaskine
         │                                                      ▼  (wifi 8790, eller mobilnett 8791)
 SNOWMAN Office (kontor-PC) ◄───────────────────────────────────┘
    ├ kontorsida  http://localhost:8790/   forslag, brukarar, system, Base-status
-   └ kart og anlegg http://localhost:8765/ SNOWMAN Snowdeep i kontormodus
+   └ kart og anlegg http://localhost:8766/ SNOWMAN Snowdeep i kontormodus
 ```
 
 **Avgjerd 2026-11-22:** SNOWMAN Base har berre med satellittar og NTRIP å gjere. Alt anna – kontorsida, anleggspakkar,
@@ -29,7 +29,7 @@ stoppe korreksjonane til maskinene.
 
 | Funksjon | |
 |---|---|
-| **Kart og anlegg (Office-modus)** | SNOWMAN Snowdeep utan GNSS på http://localhost:8765/: terrengbibliotek, 3D, trasear, hindringar, kontrollpunkt – same skjermbilete som i maskina. Fana **Office** publiserer og viser maskinene. |
+| **Kart og anlegg (Office-modus)** | SNOWMAN Snowdeep utan GNSS på http://localhost:8766/: terrengbibliotek, 3D, trasear, hindringar, kontrollpunkt – same skjermbilete som i maskina. Fana **Office** publiserer og viser maskinene. |
 | **Sanntid** | Maskinene sender posisjon, snødjupne, fix og «preparerer» kvart 10. s og RTK FIX-målingar. Kartet i Office-modus viser maskinene og målingane (farga etter snødjupne) dei siste 12 timane. |
 | **Anleggspakke** | Trasear, forbodne område, hindringar, kontrollpunkt **og terrengmodellane** ut til alle maskinene. Office kontrollerer pakka (formatversjon 1, sjå under). Alle versjonar blir tekne vare på, og ein kan rulle tilbake. |
 | **Forslag** | Førarane sender forslag (ny hindring, trasé, merknad) frå maskina. Kontoret godkjenner, avviser eller merkjer som gjort. |
@@ -50,7 +50,7 @@ stoppe korreksjonane til maskinene.
    - opnar port **8791** (berre maskin-API-et) for sanntid ute i bakken.
 4. Opne **http://localhost:8790/** og lag **administrator** og ein **brukar for maskinene** (rolla «maskin»).
 5. Under **System › SNOWMAN Base**: skriv adressa til statussida på Pi-en, t.d. `http://snowman-base.local:8780`.
-6. Opne **http://localhost:8765/** (lenkja «Kart og anlegg» på kontorsida). Last inn terrengmodellane i
+6. Opne **http://localhost:8766/** (lenkja «Kart og anlegg» på kontorsida). Last inn terrengmodellane i
    Terrengbiblioteket, lag trasear og hindringar, og publiser under fana **Office**.
 
 Berre prøve, utan installasjon: dobbeltklikk `START-SNOWMAN-OFFICE.bat`.
@@ -66,11 +66,11 @@ Avinstallere: `INSTALLER-WINDOWS.bat fjern` (data blir ikkje sletta).
   rolla «maskin» – kontorsida og innlogginga finst ikkje der. Pakker over 50 MB (terreng) blir berre henta på wifi.
   Utan vidaresending fungerer alt anna som før; kartet viser då maskinene når dei er på wifi.
 - PC-en treng ikkje stå på heile tida. Maskinene brukar siste pakke, og forslag ligg i kø i maskina til Office svarar.
-- Kart og anlegg (8765) er berre for denne PC-en og blir ikkje opna i brannmuren.
+- Kart og anlegg (8766) er berre for denne PC-en og blir ikkje opna i brannmuren.
 
 ## Nytt terreng ut til maskinene
 
-1. Last inn eller byt terrengmodellen i Terrengbiblioteket på http://localhost:8765/ (Office-modus).
+1. Last inn eller byt terrengmodellen i Terrengbiblioteket på http://localhost:8766/ (Office-modus).
 2. Fana **Office** › hak av for «Ta med terrengmodellane» › **PUBLISER TIL MASKINENE**. Alle *aktive* lag blir med.
 3. Maskina lastar ned pakka på wifi. Terrenget blir **ikkje** teke i bruk av seg sjølv: føraren får knappen
    **⛰ TA I BRUK NYTT TERRENG** (Innst. › Trasear) og trykkjer når prepareringa er stoppa. Lokale lag i maskina blir slått
