@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.146"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.147"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1793,11 +1793,17 @@ class HUDOnly(API):
     def do_POST(self):
         self.send_response(403); self.end_headers()
 
+class EigenPort(http.server.ThreadingHTTPServer):
+    """På Windows let SO_REUSEADDR to program opne same port – då svarar tilfeldig det eine (v1.6.146: Snowdeep opna
+    Office). Her får ein feil i staden når porten er oppteken."""
+    allow_reuse_address = os.name != "nt"
+    daemon_threads = True
+
 def set_hud_lan(on):
     """Start/stopp HUD-porten. Returnerer feiltekst eller ''."""
     if on and HUDLAN["srv"] is None:
         try:
-            srv=http.server.ThreadingHTTPServer(("0.0.0.0",HUD_PORT),HUDOnly)
+            srv=EigenPort(("0.0.0.0",HUD_PORT),HUDOnly)
         except OSError as e:
             return f"Kunne ikkje opne port {HUD_PORT}: {e}"
         HUDLAN["srv"]=srv; threading.Thread(target=srv.serve_forever,daemon=True).start()
@@ -2276,7 +2282,12 @@ def main():
     if a.lan or CFG.get("hudLan"): set_hud_lan(True)
     # Hovudtenesta (styring, innstillingar) er berre tilgjengeleg på denne PC-en.
     if O.system_cfg().get("logAlways"): start_log(f"Starta automatisk. SNOWMAN v{VERSION}")
-    SERVER[0]=http.server.ThreadingHTTPServer(("127.0.0.1",a.http_port),API)
+    try:
+        SERVER[0]=EigenPort(("127.0.0.1",a.http_port),API)
+    except OSError as e:
+        print(f"\nPort {a.http_port} er oppteken av eit anna program ({e}). SNOWMAN Snowdeep kan ikkje starte.\n"
+              "Køyrer SNOWMAN Office på same PC: oppdater Office (frå 1.3.3 brukar kartet hans port 8770).")
+        STOP.set(); sys.exit(2)
     try: SERVER[0].serve_forever()
     except KeyboardInterrupt: pass
     finally:

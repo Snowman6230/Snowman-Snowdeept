@@ -20,7 +20,7 @@
   (oppgåva i Windows peikar på ho, og ho køyrer medan oppdateringa skriv filer).
 - SNOWMAN Office: `kontor/v1.0/` (eiga versjonsmappe, same reglar). Kontorsida, anleggspakke, forslag, maskinoversikt,
   deling og AI. Køyrer på ein Windows-PC på anlegget (port 8790, berre lokalt nett; port 8791 berre maskin-API for
-  sanntid ute). Kart og anlegg er SNOWMAN Snowdeep i Office-modus (`snowman_pc.py --kontor`, port 8766 – 8765 er Snowdeep i maskinene), starta av
+  sanntid ute). Kart og anlegg er SNOWMAN Snowdeep i Office-modus (`snowman_pc.py --kontor`, port 8770 – 8765 og 8766 (HUD) er Snowdeep), starta av
   Office frå `pc/` i same zip – nye funksjonar i kartet blir laga i `pc/`, ikkje i Office. Test:
   `cd kontor/v1.0 && python -m unittest discover -s test` og `cd pc/v1.6 && python3 test/testkontorkopling.py`.
   Brot i API-et gir ny API-versjon; oppdater `SNOWMAN_MIN` i `kontor/v1.0/konfig.py` når SNOWMAN Snowdeep må oppdaterast.

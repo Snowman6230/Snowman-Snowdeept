@@ -42,7 +42,7 @@ def port_busy(port):
 
 
 def office_paa_porten():
-    """True når det er SNOWMAN Office (Office-modus) som svarar på 8765 – gamle Office før 1.3.2 brukte same port."""
+    """True når det er SNOWMAN Office (Office-modus) som svarar på 8765 – Office før 1.3.3 brukte same port."""
     try:
         import urllib.request
         with urllib.request.urlopen("http://127.0.0.1:8765/api/kontormodus", timeout=2) as r:
@@ -261,7 +261,7 @@ def main():
         return print(oppstart.autostart_set(a.arg.lower() in ("pa", "på", "on", "1"))[1])
     if port_busy(8765) and office_paa_porten():
         print("\nPort 8765 blir brukt av SNOWMAN Office (kart og anlegg) på denne PC-en, så SNOWMAN Snowdeep kan ikkje starte.\n"
-              "Oppdater SNOWMAN Office (det gule varselet, «Oppdater no») – frå 1.3.2 brukar Office port 8766.\n"
+              "Oppdater SNOWMAN Office (det gule varselet, «Oppdater no») – frå 1.3.3 brukar Office port 8770.\n"
               "Eller stopp Office medan du brukar Snowdeep på denne PC-en.")
         if WIN:
             input("\nTrykk Enter for å lukke …")

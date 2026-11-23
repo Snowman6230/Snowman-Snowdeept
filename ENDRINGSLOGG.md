@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.3.3 og SNOWMAN Snowdeep v1.6.147 – port 8770, og ingen dobbel opning av porten på Windows
+- **Feil (funne på skjermbiletet til eigaren):** Snowdeep brukar også **8766** (HUD på mobil), så 8766 frå Office 1.3.2
+  kolliderte med det. Og på Windows let SO_REUSEADDR to program opne same port – derfor «køyrde» Snowdeep på 8765 medan
+  Office svarte der.
+- **Retta (Office):** kart og anlegg brukar **port 8770**. Lagra 8765 eller 8766 blir flytta av seg sjølv.
+- **Retta (Snowdeep):** tenesta og HUD-porten opnar ikkje lenger ein port som alt er i bruk på Windows. Er han
+  oppteken, står det kvifor og kva som hjelper, og Snowdeep stoppar i staden for å dele porten.
+
 ### SNOWMAN Office 1.3.2 og SNOWMAN Snowdeep v1.6.146 – Office og Snowdeep på same PC
 - **Feil (eigaren):** «Opna Snowman Snødjupne og det som opna seg var kontor delen.» Kart og anlegg i Office
   (Office-modus) brukte port 8765 – same port som SNOWMAN Snowdeep. Med begge på same PC opna Snowdeep Office.

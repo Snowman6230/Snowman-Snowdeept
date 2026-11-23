@@ -91,7 +91,7 @@ schtasks /run /tn "SNOWMAN Office" >nul
 echo.
 echo   SNOWMAN Office køyrer no i bakgrunnen og startar sjølv etter omstart.
 echo   Kontorsida: http://localhost:8790/   (første gong: lag administrator og ein brukar for maskinene)
-echo   Kart og anlegg: snarvegen «SNOWMAN Office» på skrivebordet, eller http://localhost:8766/
+echo   Kart og anlegg: snarvegen «SNOWMAN Office» på skrivebordet, eller http://localhost:8770/
 echo   Maskinene:  IP-adressa til denne PC-en, port 8790 (gi PC-en fast IP-adresse i ruteren)
 echo   Logg:       %~dp0data\teneste.log
 echo   Bruk IKKJE START-SNOWMAN-OFFICE.bat i tillegg - då køyrer to Office. Kommandoar går fint:
