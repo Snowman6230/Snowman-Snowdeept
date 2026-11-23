@@ -27,8 +27,7 @@ API v1 (JSON). Innlogging med brukarnamn og passord:
               POST /api/v1/forbetringar/analyser
               GET  /api/v1/ai  ·  POST /api/v1/ai/innstillingar  ·  GET /api/v1/ai/forehandsvis
               POST /api/v1/ai/analyser  ·  POST /api/v1/ai/sporsmal {tekst}
-              GET  /api/v1/ai/lokal  ·  POST /api/v1/ai/lokal/hent {modell}  ·  POST /api/v1/ai/lokal/ta-i-bruk {modell}
-              POST /api/v1/ai/lokal/spar {spar}  ·  POST /api/v1/ai/lokal/frigjer
+              POST /api/v1/ai/test   (berre Claude – lokal AI er fjerna i 1.4.0)
   Maskin:     POST /api/v1/ai/maskin {maskin, tekst, kontekst}  (SNOWMAN AI for førarane, også på maskinporten)
               GET  /api/v1/base  ·  POST /api/v1/base {adresse, brukar, passord}   SNOWMAN Base (berre lesing)
               GET  /api/v1/brukarar  ·  POST /api/v1/brukar {namn, passord?, roller?}  ·  POST /api/v1/brukar/fjern
@@ -238,11 +237,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                   f"snowman-kontor-forbetringar-{time.strftime('%Y%m%d')}.md")
         if p == "ai":
             c = k.cfg["ai"]
-            return self.send_json({"ok": True, "leverandor": c.get("leverandor", "av"), "modell": c.get("modell", ""),
-                                   "adresse": c.get("adresse", ""), "har_nokkel": bool(c.get("api_nokkel")),
-                                   "siste": k.ai.last})
-        if p == "ai/lokal":
-            return self.send_json({"ok": True, **k.ai.lokal()})
+            return self.send_json({"ok": True, "leverandor": c.get("leverandor", "av"), "modell": c.get("modell") or aimod.MODELL,
+                                   "har_nokkel": bool(c.get("api_nokkel")), "siste": k.ai.last, "bruk": k.ai.bruk()})
         if p == "ai/forehandsvis":
             return self.send_json({"ok": True, **k.ai.preview(k)})
         if p == "base":
@@ -371,44 +367,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             found = forbetring.run(k)
             return self.send_json({"ok": True, "tal": len(found)})
         if p == "ai/innstillingar":
-            if d.get("leverandor") not in ("av", "ollama", "anthropic"):
-                raise ValueError("leverandor må vere av, ollama eller anthropic")
+            if d.get("leverandor") not in ("av", "anthropic"):
+                raise ValueError("leverandor må vere av eller anthropic (Claude)")
 
             def fn(data):
                 c = data["ai"]
                 c["leverandor"] = d["leverandor"]
-                c["modell"] = str(d.get("modell") or "").strip()[:80]
-                c["adresse"] = str(d.get("adresse") or "").strip()[:200]
-                if c["leverandor"] == "ollama":   # «ollama» i felta er programnamnet – bruk standard
-                    if c["modell"].lower() in ("ollama", "lokal", "local"):
-                        c["modell"] = ""
-                    if c["adresse"]:
-                        c["adresse"] = aimod.ollama_url(c["adresse"])
                 if d.get("api_nokkel"):
                     c["api_nokkel"] = str(d["api_nokkel"]).strip()
                 if d.get("fjern_nokkel"):
                     c["api_nokkel"] = ""
                 return dict(c)
             c = k.cfg.update(fn)
-            k.events.add(f"AI: {c['leverandor']}" + (f" ({c['modell']})" if c["modell"] else ""), "info")
+            k.events.add("AI: " + ("Claude" if c["leverandor"] == "anthropic" else "av"), "info")
             return self.send_json({"ok": True})
-        if p == "ai/lokal/hent":
-            return self.send_json({"ok": True, "henting": k.ai.hent_modell(d.get("modell"))})
-        if p == "ai/lokal/spar":
-            k.cfg.update(lambda data: data["ai"].update(spar=bool(d.get("spar"))))
-            k.events.add("Lokal AI: spar ressursar " + ("på" if d.get("spar") else "av"), "info")
-            return self.send_json({"ok": True})
-        if p == "ai/lokal/frigjer":
-            k.ai.frigjer()
-            return self.send_json({"ok": True})
-        if p == "ai/lokal/ta-i-bruk":
-            m = aimod.lokal_modell(str(d.get("modell") or "")[:80])
-
-            def fn(data):
-                data["ai"].update(leverandor="ollama", modell=m)
-            k.cfg.update(fn)
-            k.events.add(f"AI: lokal modell {m} (Ollama) teken i bruk – også for maskinene", "ok")
-            return self.send_json({"ok": True})
+        if p == "ai/test":
+            return self.send_json({"ok": True, "svar": k.ai.test()})
         if p == "ai/analyser":
             items = k.ai.analyse(k)
             return self.send_json({"ok": True, "tal": len(items), "forslag": items})

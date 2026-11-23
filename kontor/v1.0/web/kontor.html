@@ -122,9 +122,7 @@ input,select,textarea{width:100%}
   <div id="t-ai" class="hidden">
     <section class="card"><h2>AI i SNOWMAN Office</h2>
       <p class="dim">AI les eit <b>anonymisert samandrag</b> (ingen namn, IP-adresser, posisjonar eller nøklar) og foreslår forbetringar – også i SNOWMAN-programma. AI styrer aldri noko. Sjå nøyaktig kva som blir sendt under «Førehandsvis».</p>
-      <label>Leverandør</label><select id="aiProv"><option value="av">Av</option><option value="ollama">Lokal modell (Ollama) – ingenting forlèt anlegget</option><option value="anthropic">Claude (Anthropic API) – krev eigen API-nøkkel</option></select>
-      <label>Modell</label><input id="aiModel" placeholder="t.d. llama3.1 (Ollama) eller claude-sonnet-5-5">
-      <label>Adresse (Ollama)</label><input id="aiAddr" placeholder="http://localhost:11434">
+      <label>AI</label><select id="aiProv"><option value="av">Av</option><option value="anthropic">Claude (Anthropic) – krev eigen API-nøkkel</option></select>
       <label>API-nøkkel (Claude)</label><input id="aiKey" type="password" placeholder="(uendra)">
       <div class="row"><button class="pri" id="aiSave">Lagre</button><button id="aiPrev">Førehandsvis</button><button id="aiRun">Analyser med AI no</button></div>
       <div id="aiMsg" class="msg"></div><pre id="aiOut" class="hidden"></pre></section>
@@ -284,11 +282,11 @@ async function imp(nokkel,status){await api("/api/v1/forbetringar/status",{metho
 $("#impRun").onclick=async()=>{await api("/api/v1/forbetringar/analyser",{method:"POST",json:{}});forbetringar()};
 $("#impAll").onclick=()=>{showAll=!showAll;$("#impAll").classList.toggle("on",showAll);forbetringar()};
 async function ai(){
-  const d=await api("/api/v1/ai");$("#aiProv").value=d.leverandor;$("#aiModel").value=d.modell;$("#aiAddr").value=d.adresse;
+  const d=await api("/api/v1/ai");$("#aiProv").value=d.leverandor==="anthropic"?"anthropic":"av";
   $("#aiKey").placeholder=d.har_nokkel?"(lagra – skriv ny for å byte)":"(ingen)";
   $("#aiMsg").textContent=d.siste?(d.siste.ok?`Siste analyse ${tid(d.siste.t)}: ${d.siste.tal} forslag.`:`Siste analyse feila: ${d.siste.feil}`):"";
 }
-$("#aiSave").onclick=async()=>{try{await api("/api/v1/ai/innstillingar",{method:"POST",json:{leverandor:$("#aiProv").value,modell:$("#aiModel").value,adresse:$("#aiAddr").value,api_nokkel:$("#aiKey").value}});$("#aiKey").value="";$("#aiMsg").textContent="Lagra.";ai()}catch(e){$("#aiMsg").textContent="Feil: "+e.message}};
+$("#aiSave").onclick=async()=>{try{await api("/api/v1/ai/innstillingar",{method:"POST",json:{leverandor:$("#aiProv").value,api_nokkel:$("#aiKey").value}});$("#aiKey").value="";$("#aiMsg").textContent="Lagra.";ai()}catch(e){$("#aiMsg").textContent="Feil: "+e.message}};
 $("#aiPrev").onclick=async()=>{const d=await api("/api/v1/ai/forehandsvis");$("#aiOut").classList.remove("hidden");$("#aiOut").textContent="SYSTEM:\n"+d.system+"\n\nMELDING:\n"+d.melding};
 $("#aiRun").onclick=async()=>{$("#aiMsg").textContent="Analyserer … (kan ta eitt minutt)";try{const d=await api("/api/v1/ai/analyser",{method:"POST",json:{}});$("#aiMsg").textContent=`${d.tal} forslag – sjå Forbetringar.`}catch(e){$("#aiMsg").textContent="Feil: "+e.message}};
 $("#aiAsk").onclick=async()=>{$("#aiA").classList.remove("hidden");$("#aiA").textContent="Tenkjer …";try{const d=await api("/api/v1/ai/sporsmal",{method:"POST",json:{tekst:$("#aiQ").value}});$("#aiA").textContent=d.svar}catch(e){$("#aiA").textContent="Feil: "+e.message}};

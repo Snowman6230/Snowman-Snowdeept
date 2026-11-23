@@ -84,8 +84,8 @@ def rules(k):
     if not k.ai.enabled():
         out.append(S("ai-av", "kontor", "låg", "AI-analysen er av",
                      "Reglane finn kjende problem. AI kan i tillegg sjå mønster og foreslå forbetringar i programma.",
-                     "Slå på AI på kontorsida (lokal modell via Ollama, eller Claude med eigen API-nøkkel). Berre eit "
-                     "anonymisert samandrag blir sendt."))
+                     "Valfritt: slå på Claude under Office › AI (krev eigen API-nøkkel). Berre eit anonymisert "
+                     "samandrag blir sendt."))
     return out
 
 

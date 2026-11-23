@@ -3214,24 +3214,16 @@
             <div id="ksForbetringar" class="ksList">–</div>
           </div>
           <div class="ks hide" data-k="ai">
-            <h3>LOKAL AI – SNOWMAN AI</h3>
-            <div class="history">Ein språkmodell som køyrer på denne PC-en (Ollama). SNOWMAN Office brukar han til analysar og
-              spørsmål, og førarane kan spørje han frå AI-panelet i maskina (SNOWMAN Snowdeep). Ingenting forlèt anlegget.</div>
-            <div id="ksLokal" class="history">Ser etter lokal AI …</div>
-            <div class="row"><span>Modell</span><input id="ksLokalModell" type="text" placeholder="gemma3:4b" style="width: 190px" /></div>
-            <div class="row"><span>Spar ressursar (halve prosessoren, ut av minnet etter 1 min)</span><input id="ksLokalSpar" type="checkbox" checked style="width: auto" onchange="KSIDE.lokalSpar()" /></div>
-            <button id="ksLokalHent" class="btn" onclick="KSIDE.lokalHent()">⇩ HENT MODELL</button><button id="ksLokalBruk" class="btn" onclick="KSIDE.lokalBruk()">✓ BRUK LOKAL AI (OFFICE OG MASKINENE)</button>
-            <button class="btn" onclick="KSIDE.lokalLett()">🪶 BYT TIL LETT MODELL (gemma3:1b)</button><button class="btn" onclick="KSIDE.lokalFrigjer()">⏏ FRIGJER MINNET NO</button>
-            <h3>AI – INNSTILLINGAR</h3>
-            <div class="row"><span>Leverandør</span><select id="ksAiProv" style="width: 190px"><option value="av">Av</option><option value="ollama">Lokal modell (Ollama)</option><option value="anthropic">Claude (Anthropic API)</option></select></div>
-            <div class="history">AI er valfri – resten av SNOWMAN Office verkar utan. <b>Lokal modell</b> krev at
-              <a href="https://ollama.com" target="_blank" style="color:#9fd3ff">Ollama</a> er installert og starta på denne PC-en, og at modellen er
-              henta (<code>ollama pull llama3.1</code>). <b>Modell</b> er namnet på modellen (t.d. llama3.1), ikkje «Ollama».
-              <b>Claude</b> krev API-nøkkel frå console.anthropic.com.</div>
-            <div class="row"><span>Modell</span><input id="ksAiModel" type="text" placeholder="t.d. llama3.1 (tomt = standard)" style="width: 190px" /></div>
-            <div class="row"><span>Adresse (berre Ollama)</span><input id="ksAiAddr" type="text" placeholder="tomt = denne PC-en" style="width: 190px" /></div>
+            <h3>AI (VALFRI) – CLAUDE</h3>
+            <div class="history">SNOWMAN Office kan bruke <b>Claude</b> (Anthropic) til forbetringsanalysen, spørsmål frå kontoret og
+              «Spør SNOWMAN AI» frå maskinene. Av som standard. AI-råda i maskinene (snøkart, preparering, hol, kvalitet, vêr) er
+              reknereglar som køyrer lokalt og blir ikkje rørte av dette.<br />Krev API-nøkkel frå
+              <a href="https://console.anthropic.com" target="_blank" style="color:#9fd3ff">console.anthropic.com</a> (ikkje eit vanleg
+              Claude-abonnement) og internett på denne PC-en. Ein betaler per spørsmål – lite ved vanleg bruk. Spørsmåla blir sende
+              til Anthropic, utan namn og posisjonar.</div>
+            <div class="row"><span>AI</span><select id="ksAiProv" style="width: 190px"><option value="av">Av</option><option value="anthropic">Claude</option></select></div>
             <div class="row"><span>API-nøkkel</span><input id="ksAiKey" type="password" autocomplete="off" style="width: 190px" /></div>
-            <button class="btn" onclick="KSIDE.aiLagre()">LAGRE</button><button class="btn" onclick="KSIDE.aiAnalyser()">ANALYSER NO</button>
+            <button class="btn" onclick="KSIDE.aiLagre()">LAGRE</button><button class="btn" onclick="KSIDE.aiTest()">TEST TILKOPLINGA</button><button class="btn" onclick="KSIDE.aiAnalyser()">ANALYSER NO</button>
             <div id="ksAiMsg" class="history">–</div>
             <h3>SPØR AI OM ANLEGGET</h3>
             <div class="row"><span>Spørsmål</span><input id="ksAiQ" type="text" placeholder="t.d. kvifor mista PB 2 FIX i går?" style="width: 190px" /></div>
@@ -3496,7 +3488,7 @@
           <h3>✦ SPØR SNOWMAN AI</h3>
           <div class="aiAskRow"><input id="aiQ" type="text" maxlength="1000" placeholder="t.d. kvar bør eg starte i kveld?" onkeydown="if(event.key==='Enter')AIASK.spor()" /><button id="aiQBtn" onclick="AIASK.spor()">SPØR</button></div>
           <div id="aiQA" class="aiQA"></div>
-          <small id="aiQInfo">Språkmodellen køyrer på PC-en med SNOWMAN Office (lokal AI) – svaret byggjer på det skjermen viser. Føraren avgjer.</small>
+          <small id="aiQInfo">Svaret kjem frå Claude via SNOWMAN Office og byggjer på det skjermen viser. Føraren avgjer.</small>
         </div></div>
       <div id="aiChips" class="hide"></div>
       <button id="micBtn" class="hide" onclick="TALE.listen()" title="Snakk til AI-en"><span>🎤</span>Spør AI</button>
@@ -3558,7 +3550,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.149";
+      const APP_VERSION = "1.6.150";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
@@ -7595,38 +7587,12 @@
                 "<button onclick='KSIDE.imp(" + i + ",\"godteke\")'>GODTA</button><button onclick='KSIDE.imp(" + i + ",\"gjort\")'>GJORT</button><button onclick='KSIDE.imp(" + i + ",\"avvist\")'>AVVIS</button></div>").join("")
             : "Ingen opne forslag.";
         }
-        let lokalTimer = null;
-        async function lokal() {
-          let d = await k("v1/ai/lokal"), h = d.henting || {}, el = $("ksLokal");
-          if (document.activeElement !== $("ksLokalModell") && !$("ksLokalModell").value) $("ksLokalModell").value = d.modell || d.tilradd;
-          let m = $("ksLokalModell").value.trim() || d.tilradd, har = d.modellar.some((x) => x === m || x === m + ":latest" || x.split(":")[0] === m);
-          let t = !d.koyrer
-            ? "<b style='color:#ffb020'>Ollama køyrer ikkje på denne PC-en.</b> " + esc(d.feil || "") +
-              "<br>Installer Ollama frå <a href='https://ollama.com/download' target='_blank' style='color:#9fd3ff'>ollama.com/download</a> (eller køyr INSTALLER-WINDOWS.bat på nytt og svar J), og start han. Ollama startar sjølv når du loggar på Windows."
-            : "<b style='color:#5ee07a'>Ollama køyrer</b> (versjon " + esc(d.versjon || "?") + ") · modellar: " + (d.modellar.length ? d.modellar.map(esc).join(", ") : "ingen enno") +
-              "<br>" + (d.i_bruk ? "<b style='color:#5ee07a'>I bruk:</b> " + esc(d.modell) + " – Office og maskinene brukar lokal AI." : "Lokal AI er ikkje teken i bruk enno.") +
-              (har ? "" : "<br>Modellen <b>" + esc(m) + "</b> er ikkje henta – trykk HENT MODELL (ca. 3 GB, kan ta ei stund).");
-          if (h.modell && (!h.ferdig || Date.now() / 1000 - h.t < 600))
-            t += "<br>Henting av <b>" + esc(h.modell) + "</b>: " + (h.feil ? "<b style='color:#ff6b5e'>feila</b> – " + esc(h.feil) : h.ferdig ? "<b style='color:#5ee07a'>ferdig</b>" : esc(h.status || "") + (h.del ? " · " + Math.round(h.del * 100) + " %" : ""));
-          if (d.koyrer)
-            t += "<br>I minnet no: " + (d.i_minnet.length ? d.i_minnet.map((x) => esc(x.namn) + " (" + x.gb + " GB)").join(", ") : "ingen (Ollama brukar nesten ingenting)") +
-              " · " + (d.spar ? "spar ressursar: på (" + Math.max(1, Math.floor(d.kjerner / 2)) + " av " + d.kjerner + " kjerner)" : "spar ressursar: av – AI kan bruke heile PC-en");
-          $("ksLokalSpar").checked = d.spar;
-          el.innerHTML = t;
-          $("ksLokalHent").disabled = !d.koyrer || (h.modell && !h.ferdig);
-          $("ksLokalBruk").disabled = !d.koyrer || !har;
-          clearTimeout(lokalTimer);
-          if (cur === "ai" && h.modell && !h.ferdig) lokalTimer = setTimeout(() => lokal().catch(() => 0), 2000);
-        }
         async function ai() {
-          lokal().catch((e) => ($("ksLokal").textContent = "Fekk ikkje status for lokal AI: " + e.message));
           let d = await k("v1/ai");
-          $("ksAiProv").value = d.leverandor;
-          $("ksAiModel").value = d.modell;
-          $("ksAiAddr").value = d.adresse;
+          $("ksAiProv").value = d.leverandor === "anthropic" ? "anthropic" : "av";
           $("ksAiKey").value = "";
           $("ksAiKey").placeholder = d.har_nokkel ? "(lagra – skriv ny for å byte)" : "(ingen)";
-          $("ksAiMsg").textContent = d.siste ? (d.siste.ok ? "Siste analyse " + tid(d.siste.t) + ": " + d.siste.tal + " forslag." : "Siste analyse feila: " + d.siste.feil) : "Inga analyse enno.";
+          $("ksAiMsg").textContent = (d.siste ? (d.siste.ok ? "Siste analyse " + tid(d.siste.t) + ": " + d.siste.tal + " forslag." : "Siste analyse feila: " + d.siste.feil) : "Inga analyse enno.") + (d.bruk ? " Brukt i " + d.bruk.manad + ": " + d.bruk.kall + " av " + d.bruk.maks + " kall (månadstak)." : "");
         }
         async function system() {
           let s = await k("status"), u = s.oppdatering || {}, bd = await k("v1/base");
@@ -7683,31 +7649,13 @@
             $("ksImpAll").textContent = "VIS OGSÅ FERDIGE: " + (alleImp ? "PÅ" : "AV");
             forbetringar();
           },
-          async lokalSpar() {
-            try { await k("v1/ai/lokal/spar", { spar: $("ksLokalSpar").checked }); } catch (e) { toast(e.message); }
-            lokal().catch(() => 0);
-          },
-          async lokalFrigjer() {
-            try { await k("v1/ai/lokal/frigjer", {}); toast("Modellen er teken ut av minnet"); } catch (e) { toast(e.message); }
-            lokal().catch(() => 0);
-          },
-          lokalLett() {
-            $("ksLokalModell").value = "gemma3:1b";
-            toast("Trykk HENT MODELL og så BRUK LOKAL AI");
-            lokal().catch(() => 0);
-          },
-          async lokalHent() {
-            try { await k("v1/ai/lokal/hent", { modell: $("ksLokalModell").value.trim() }); } catch (e) { toast(e.message); }
-            lokal().catch(() => 0);
-          },
-          async lokalBruk() {
-            let m = $("ksLokalModell").value.trim();
-            if (!confirm("Bruke lokal AI (" + (m || "gemma3:4b") + ") i SNOWMAN Office og for førarane i maskinene?")) return;
-            try { await k("v1/ai/lokal/ta-i-bruk", { modell: m }); await ai(); toast("Lokal AI er teken i bruk"); } catch (e) { toast(e.message); }
+          async aiTest() {
+            $("ksAiMsg").textContent = "Prøver Claude …";
+            try { let d = await k("v1/ai/test", {}); $("ksAiMsg").textContent = "Tilkoplinga verkar – Claude svarte: «" + d.svar + "»"; } catch (e) { $("ksAiMsg").textContent = "Feil: " + e.message; }
           },
           async aiLagre() {
             try {
-              await k("v1/ai/innstillingar", { leverandor: $("ksAiProv").value, modell: $("ksAiModel").value, adresse: $("ksAiAddr").value, api_nokkel: $("ksAiKey").value });
+              await k("v1/ai/innstillingar", { leverandor: $("ksAiProv").value, api_nokkel: $("ksAiKey").value });
               await ai();
               $("ksAiMsg").textContent = "Lagra.";
             } catch (e) { $("ksAiMsg").textContent = "Feil: " + e.message; }
@@ -10521,7 +10469,7 @@
          spora, kvalitet og snøproduksjon. Råda kan visast som eigne lag på hovudkartet («Vis på kartet») – laga blir
          verande når overlayet er lukka, så føraren ser dei medan han køyrer. Alt anna går vidare i bakgrunnen.
          Alt er FORSLAG og ESTIMAT; føraren avgjer. Overlayet og Vêr deler plass – det eine lukkar det andre. */
-      // v1.6.144: føraren spør SNOWMAN AI – språkmodellen i SNOWMAN Office (lokal AI), med eit samandrag av skjermen
+      // v1.6.144: føraren spør SNOWMAN AI – Claude via SNOWMAN Office (frå v1.6.150), med eit samandrag av skjermen
       const AIASK = (() => {
         let busy = false, logg = [];
         async function status() {
@@ -10532,19 +10480,19 @@
               on = r.on && r.ai;
               if (!on)
                 info.textContent = r.on
-                  ? "SNOWMAN AI er ikkje slått på i SNOWMAN Office (Office › AI › Lokal AI). Råda over er frå den lokale modellen i maskina."
-                  : "SNOWMAN AI krev kopling til SNOWMAN Office (Innst. › Trasear). Råda over er frå den lokale modellen i maskina.";
+                  ? "SNOWMAN AI er ikkje slått på i SNOWMAN Office (Office › AI). Råda over er reknereglar i maskina og verkar utan."
+                  : "SNOWMAN AI krev kopling til SNOWMAN Office (Innst. › Trasear). Råda over er reknereglar i maskina og verkar utan.";
             } catch (e) {}
           }
           $("aiQ").disabled = $("aiQBtn").disabled = !on;
-          if (on) info.textContent = "Språkmodellen køyrer på PC-en med SNOWMAN Office (lokal AI) – svaret byggjer på det skjermen viser. Føraren avgjer.";
+          if (on) info.textContent = "Svaret kjem frå Claude via SNOWMAN Office og byggjer på det skjermen viser. Føraren avgjer.";
         }
         async function spor() {
           let q = $("aiQ").value.trim();
           if (!q || busy) return;
           busy = true;
           $("aiQBtn").textContent = "…";
-          logg.unshift({ q, a: "Tenkjer … (lokal AI kan bruke litt tid)" });
+          logg.unshift({ q, a: "Tenkjer …" });
           vis();
           try {
             let kontekst = ($("aiCard").innerText || "").replace(/\s+\n/g, "\n").slice(0, 5000);
@@ -11034,7 +10982,7 @@
           }
           let ok = !!a;
           if (!a) {
-            // v1.6.144: det dei faste svara ikkje dekkjer, går til SNOWMAN AI (lokal AI i SNOWMAN Office), om han er på
+            // v1.6.144: det dei faste svara ikkje dekkjer, går til SNOWMAN AI (Claude via SNOWMAN Office), om han er på
             try {
               let r = await api("api/ai/spor", { tekst: q, kontekst: ($("aiCard").innerText || "").slice(0, 5000) });
               if (r.ok && r.svar) (a = r.svar), (ok = true), (intent = "snowman-ai");

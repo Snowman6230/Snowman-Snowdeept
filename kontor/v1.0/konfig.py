@@ -25,14 +25,14 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.3.4"
+VERSION = "1.4.0"
 API_VERSION = 1
 
 # Samspel med SNOWMAN Snowdeep (pc/): anleggspakke og forslag frå v1.6.137, terreng, kontormodus og sanntid frå v1.6.139.
 # Eit brot i API-et gir ny API_VERSION; gamle maskiner får då beskjed om å oppdatere, ikkje feil data.
 SNOWMAN_MIN = "1.6.139"
 FUNKSJONAR = ["kontor", "innlogging-brukar", "deling-v1", "anleggspakke-v1", "anleggspakke-format-1", "forslag-v1",
-              "forbetringar", "ai", "base-status", "terreng-i-pakke", "kontormodus", "ai-maskin", "lokal-ai"]
+              "forbetringar", "ai", "base-status", "terreng-i-pakke", "kontormodus", "ai-maskin"]
 
 DEFAULT = {
     "namn": "SNOWMAN Office",
@@ -47,7 +47,7 @@ DEFAULT = {
     "anleggspakke": {"maks_mb": 4000, "behald_versjonar": 20},
     "base": {"adresse": "", "brukar": "", "passord": ""},   # SNOWMAN Base (berre lesing av statusen), t.d. http://snowman-base.local:8780
     "oppdatering": {"sjekk": True, "auto": False},   # auto: installer ny versjon sjølv om natta (03–05)
-    "ai": {"leverandor": "av", "modell": "", "adresse": "", "api_nokkel": "", "intervall_t": 24, "spar": True},
+    "ai": {"leverandor": "av", "modell": "", "api_nokkel": "", "intervall_t": 24, "maks_per_manad": 500},
     "vern": {"maks_feil": 10, "minutt": 10, "maks_tilkoplingar": 200, "maks_per_ip": 20},
 }
 ROLLER = ("maskin", "kontor")

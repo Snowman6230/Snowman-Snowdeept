@@ -9,6 +9,21 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.4.0 og SNOWMAN Snowdeep v1.6.150 – lokal AI fjerna, AI er berre Claude (valfri)
+- **Bakgrunn (eigaren):** «Ta bort lokal AI … Ta også bort andre leverandørar. Viktig å halde Snowman så enkel som
+  mogleg. Det kan bli for komplisert å forstå for brukarar.» Mange PC-ar på anlegga er eldre. VEGEN-VIDARE kap. 16,
+  avgjerd 9.
+- **Fjerna:** lokal AI (Ollama): installasjonssteget, Office › AI › Lokal AI (hent modell, spar ressursar, frigjer
+  minnet), felta Modell og Adresse, og alt API-et for dette. Var lokal AI i bruk, blir AI slått av ved oppdateringa,
+  med melding i hendingane.
+- **Endra:** AI har to val: **Av** (standard) eller **Claude** med API-nøkkel (berre på kontor-PC-en). Modell:
+  claude-haiku-5-5 (rask og billeg). Klare meldingar når nøkkelen blir avvist, kontoen er tom eller nettet manglar.
+- **Nytt:** **TEST TILKOPLINGA** og **månadstak** (500 kall, `ai.maks_per_manad`), med «brukt denne månaden» i Office › AI.
+- **Uendra:** AI-råda i maskina (reknereglar i Snowdeep – snøkart, preparering, hol, kvalitet, vêr) og «Spør SNOWMAN
+  AI» i AI-panelet (går no til Claude via Office).
+- **Testar:** Office 19 OK (Claude med falsk API: anonymisering, svar til maskina via maskinporten, månadstak, avvist
+  nøkkel, gammal «ollama» blir av), testkontorkopling ALT OK.
+
 ### SNOWMAN Office 1.3.4 og SNOWMAN Snowdeep v1.6.149 – lokal AI sparer PC-en
 - **Bakgrunn (eigaren):** «llama-server brukar for mykje av prosessor og minne så alt går tregt.» (llama-server er
   prosessen Ollama køyrer modellen i.)

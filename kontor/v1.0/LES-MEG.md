@@ -35,7 +35,7 @@ stoppe korreksjonane til maskinene.
 | **Forslag** | Førarane sender forslag (ny hindring, trasé, merknad) frå maskina. Kontoret godkjenner, avviser eller merkjer som gjort. |
 | **Maskinoversikt** | Kva SNOWMAN-versjon og anleggspakke kvar maskin har, og når ho sist melde seg. |
 | **SNOWMAN Base (berre lesing)** | Korreksjonsstraumane og åtvaringane frå Base blir viste på oversikta og i forbetringslista. Office endrar aldri noko i Base. |
-| **Forbetringar og AI** | Reglar (alltid på) og valfri AI (lokal Ollama eller Claude med eigen nøkkel, berre anonymisert samandrag). Eksport som Markdown til utviklaren. |
+| **Forbetringar og AI** | Reglar (alltid på) og valfri AI (Claude med eigen nøkkel, berre anonymisert samandrag). Eksport som Markdown til utviklaren. |
 | **Deling (v1.8)** | API-et for delt snødjupne mellom maskinene er klart. SNOWMAN Snowdeep brukar det frå v1.8. |
 
 ## Kom i gang (Windows)
@@ -139,20 +139,24 @@ Installasjonen (og SNOWMAN Office sjølv, første gong han startar etter oppdate
 eller Chrome), og startar Office først om han står. Sletta snarveg kjem ikkje att av seg sjølv – lag han på nytt med
 `START-SNOWMAN-OFFICE.bat snarveg`.
 
-## Lokal AI – SNOWMAN AI
+## AI (valfri) – Claude
 
-Ein språkmodell som køyrer på kontor-PC-en (Ollama). Ingenting forlèt anlegget.
+SNOWMAN Office kan bruke **Claude** (Anthropic) til forbetringsanalysen, spørsmål frå kontoret og «Spør SNOWMAN AI» frå
+maskinene. Det er valfritt og av som standard. Alt anna – også **AI-råda i maskina** (snøkart, når ein bør preparere,
+hol, kvalitet, vêr) – er reknereglar som køyrer lokalt i SNOWMAN Snowdeep, utan nett, og blir ikkje rørt av dette.
 
-1. Installer Ollama: svar **J** på lokal AI i INSTALLER-WINDOWS.bat, eller last ned frå https://ollama.com/download.
-   Ollama startar sjølv når du loggar på Windows.
-2. Office › **AI** › Lokal AI: **⇩ HENT MODELL** (standard `gemma3:4b`, ca. 3 GB – treng 8 GB minne), så
-   **✓ BRUK LOKAL AI**.
-3. Office brukar modellen til analysar og spørsmål. Førarane spør i **AI-panelet i maskina** (✦ SPØR SNOWMAN AI, eller med
-   tale når dei faste svara ikkje dekkjer spørsmålet). Maskina sender spørsmålet og eit samandrag av skjermen til Office –
-   på wifi eller via port 8791 ute i bakken. Éitt spørsmål om gongen.
+1. Lag ein konto på https://console.anthropic.com, legg inn betalingskort under Billing, og lag ein API-nøkkel.
+   (Eit vanleg Claude-abonnement gir ikkje API-nøkkel.)
+2. Office › **AI**: vel **Claude**, lim inn nøkkelen, trykk **LAGRE** og **TEST TILKOPLINGA**.
+3. Kontor-PC-en treng internett. Maskinene har ingen nøkkel – dei spør Office.
 
-Ein større modell gir betre svar, men treng meir minne og er tregare utan skjermkort. AI er valfri: SNOWMAN Snowdeep og
-Office verkar fullt ut utan.
+Kostnad: ein betaler per spørsmål – lite ved vanleg bruk. **Månadstak:** 500 kall i månaden (`maks_per_manad` under
+`ai` i `data/kontor.json`), så ein feil ikkje kan gi ei stor rekning. Set gjerne eit tak på kontoen hos Anthropic òg.
+Personvern: spørsmåla blir sende til Anthropic. Analysen er anonymisert (ingen namn, IP-adresser eller posisjonar), og
+spørsmåla frå maskinene tek med det AI-panelet viser, ikkje posisjonen.
+
+*Lokal AI (Ollama) var med i 1.3.x og er fjerna i 1.4.0: ho kravde for mykje av PC-en. Var ho i bruk, blir AI slått av
+ved oppdateringa.*
 
 ## Oppdatering
 

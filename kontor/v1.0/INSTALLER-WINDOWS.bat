@@ -8,7 +8,7 @@ rem Installerer SNOWMAN Office slik at han startar sjolv paa denne PC-en:
 rem   1. Python-miljoet (.venv)
 rem   2. oppgaave «SNOWMAN Office» som startar ved oppstart av Windows (ogsaa utan innlogging)
 rem   3. brannmur: port 8790 (kontorsida og maskinene) berre fraa privat nett - aldri ope mot internett
-rem   4. snarveg paa skrivebordet med eige ikon   5. lokal AI (Ollama), valfri
+rem   4. snarveg paa skrivebordet med eige ikon
 rem Avinstallere: INSTALLER-WINDOWS.bat fjern
 rem Fila MAA ha Windows-linjeskift (CRLF).
 net session >nul 2>&1
@@ -49,7 +49,7 @@ if not exist ".venv\Scripts\python.exe" (
   exit /b 1
 )
 ".venv\Scripts\python.exe" -m pip install -q --disable-pip-version-check -r requirements.txt
-echo   [1/5] Python-miljøet er klart.
+echo   [1/4] Python-miljøet er klart.
 rem --- 2. Oppgaave ved oppstart ---
 rem Gamle namn (SNOWMAN Kontor, før 1.2.0) blir fjerna – oppgåva og brannmuren heiter no SNOWMAN Office
 schtasks /end /tn "SNOWMAN Kontor" >nul 2>&1
@@ -63,30 +63,17 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo   [2/5] Oppgåva «SNOWMAN Office» startar Office ved kvar oppstart av Windows.
+echo   [2/4] Oppgåva «SNOWMAN Office» startar Office ved kvar oppstart av Windows.
 rem --- 3. Brannmur ---
 netsh advfirewall firewall delete rule name="SNOWMAN Office" >nul 2>&1
 netsh advfirewall firewall add rule name="SNOWMAN Office" dir=in action=allow protocol=TCP localport=8790 profile=private,domain >nul
 netsh advfirewall firewall delete rule name="SNOWMAN Office maskinport" >nul 2>&1
 netsh advfirewall firewall add rule name="SNOWMAN Office maskinport" dir=in action=allow protocol=TCP localport=8791 profile=any >nul
-echo   [3/5] Brannmur: port 8790 open berre frå privat nett (wifi og nettverk på anlegget).
+echo   [3/4] Brannmur: port 8790 open berre frå privat nett (wifi og nettverk på anlegget).
 echo         Port 8791 (berre maskin-API, berre rolla maskin) er open for sanntid ute i bakken.
 rem --- 4. Snarveg paa skrivebordet (eige ikon) ---
 ".venv\Scripts\python.exe" snowman_kontor.py snarveg
-echo   [4/5] Snarvegen «SNOWMAN Office» på skrivebordet opnar kart og anlegg (og startar Office om han står).
-rem --- 5. Lokal AI (valfri) ---
-echo.
-echo   [5/5] Lokal AI (valfri): Ollama køyrer ein språkmodell på denne PC-en. SNOWMAN Office og maskinene
-echo         (SNOWMAN Snowdeep) kan då spørje AI utan at noko forlèt anlegget. Treng ca. 4 GB plass og 8 GB minne.
-choice /c JN /n /m "         Installere Ollama no? [J/N] "
-if errorlevel 2 goto utanai
-where winget >nul 2>nul || (
-  echo         Fann ikkje winget. Last ned Ollama frå https://ollama.com/download og installer han.
-  goto utanai
-)
-winget install -e --id Ollama.Ollama --accept-source-agreements --accept-package-agreements
-echo         Ollama er installert. Hent modellen i SNOWMAN Office: Office › AI › Lokal AI › HENT MODELL.
-:utanai
+echo   [4/4] Snarvegen «SNOWMAN Office» på skrivebordet opnar kart og anlegg (og startar Office om han står).
 schtasks /run /tn "SNOWMAN Office" >nul
 echo.
 echo   SNOWMAN Office køyrer no i bakgrunnen og startar sjølv etter omstart.

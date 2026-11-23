@@ -318,6 +318,13 @@ eigen base) treng òg kontoret. *Laga 2026-11-22: Base 1.4.0, Kontor 1.0.0, SNOW
 Der det står «Base» om kontordelen, anleggspakka eller maskin-API-et under, gjeld det no SNOWMAN Kontor.
 Avgjerd 4 (maskin-API på port 2101) er erstatta av avgjerd 6.
 
+**Avgjerd 9 (2026-11-23) – AI: berre Claude, ingen lokal språkmodell:** Eigaren: «llama-server brukar for mykje av
+prosessor og minne» og «Ta bort lokal AI … Ta også bort andre leverandørar. Viktig å halde Snowman så enkel som mogleg.»
+Mange PC-ar på anlegga er eldre. Difor: lokal AI (Ollama) er fjerna frå Office (1.4.0) og installasjonen, og det er
+berre eitt val – **Av** (standard) eller **Claude** med eigen API-nøkkel, som berre ligg på kontor-PC-en. Månadstak på
+kall. «Spør SNOWMAN AI» i maskina går via Office til Claude. **AI-råda i maskina** (snøkart, preparering, hol, kvalitet,
+vêr) er reknereglar som køyrer lokalt i Snowdeep og er uendra.
+
 **Avgjerd 8 (2026-11-23) – nye namn:** Eigaren: «Kan du døype om namnet frå kontor til Snowman Office?» og «Du kan også
 bytte frå SNOWMAN snødjupne til Snowman Snowdeep. Då forstår folk det også.» Dei tre programma heiter no
 **SNOWMAN Snowdeep** (maskinene), **SNOWMAN Base** (Pi-en ved antenna) og **SNOWMAN Office** (kontor-PC-en). Berre namna
@@ -509,7 +516,7 @@ at endringar i Base kan påverke SNOWMAN snødjupne, og kunne foreslå forbetrin
 - Statusside og kontorside (kart med basar og maskiner, anleggspakke, forslag, forbetringar, AI, oppdatering).
 - v1.1.0: mountpoints blir lagde og endra manuelt på kontorsida (relé, USB/COM, opplasting, TCP), med
   prioritet/reserve, henting av mountpoints frå ein annan caster, og bruk med éin gong utan omstart.
-- Forbetringsmotor: reglar (alltid på) + AI (av som standard: lokal Ollama eller Claude med eigen nøkkel, berre
+- Forbetringsmotor: reglar (alltid på) + AI (av som standard: berre Claude med eigen nøkkel frå 1.4.0 – sjå avgjerd 9 i kap. 16 –, berre
   anonymisert samandrag). Kategoriar: SNOWMAN Base, SNOWMAN snødjupne, mottakar/antenne, drift. Eksport som
   Markdown-oppgåveliste til utviklaren. Dagstal for trendar.
 - Oppdatering som i SNOWMAN snødjupne (git pull eller zip, `data/` blir aldri rørt), dagleg sjekk og valfri

@@ -1,22 +1,21 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""AI i SNOWMAN Office – utskiftbar modul (same prinsipp som VEGEN-VIDARE kap. 14).
+"""AI i SNOWMAN Office – valfri, berre Claude (Anthropic). Avgjerd 2026-11-23: lokal AI (Ollama) er fjerna fordi
+mange PC-ar på anlegga er eldre, og andre leverandørar er fjerna for å halde SNOWMAN enkel.
 
-Leverandørar (innstillinga «ai.leverandor» i data/kontor.json, eller kontorsida):
-    av          ingen AI (standard). Reglane i forbetring.py er alltid på.
-    ollama      lokal språkmodell (Ollama på same maskin eller NAS) – ingenting forlèt anlegget. Tilrådd: LOKAL_MODELL.
-                Office kan sjå om Ollama køyrer, hente modellen og ta han i bruk (Office › AI › Lokal AI).
+Innstillinga «ai.leverandor» i data/kontor.json (eller Office › AI):
+    av          ingen AI (standard). Reglane i forbetring.py er alltid på, og AI-råda i maskina (reknereglar i
+                SNOWMAN Snowdeep) er alltid lokale og blir ikkje rørte av dette.
+    anthropic   Claude via API – krev eigen API-nøkkel (lagra berre i data/kontor.json på kontor-PC-en).
 
-SNOWMAN AI for maskinene (frå 1.3.0): førarane spør i SNOWMAN Snowdeep (AI-panelet), maskina sender spørsmålet og
-eit kort samandrag av det skjermen viser til Office (POST /api/v1/ai/maskin, rolla maskin – også på maskinporten),
-og Office svarar med AI-en som er sett opp her. Éin om gongen, så ein svak PC ikkje blir overlasta.
-    anthropic   Claude via API – krev eigen API-nøkkel (lagra berre i data/kontor.json)
+Bruk: forbetringsanalyse (éin gong i døgnet), spørsmål frå kontoret, og «Spør SNOWMAN AI» frå maskinene
+(POST /api/v1/ai/maskin – maskinene har ingen nøkkel, dei spør Office). Éitt spørsmål om gongen.
+Månadstak: «ai.maks_per_manad» kall (standard 500) – så ein feil ikkje kan gi ei stor rekning.
 
 Personvern: AI får berre eit ANONYMISERT samandrag – ingen namn, ingen IP-adresser, ingen posisjonar, ingen nøklar.
 Kontorsida kan vise nøyaktig kva som blir sendt (forehandsvising) før AI blir slått på.
 AI les og foreslår – han styrer aldri Office, Base, mottakaren eller maskinene.
 """
 import json
-import os
 import threading
 import time
 import urllib.error
@@ -40,47 +39,15 @@ ASK_JSON = """Gi svaret som JSON: {"forslag": [{"kategori": "base|kontor|snowman
 "tittel": "...", "grunn": "...", "tiltak": "..."}]}. Maks 8 forslag. Berre JSON, ingen anna tekst."""
 
 
-LOKAL_MODELL = "gemma3:4b"      # lokal standardmodell: god på norsk, går på ein vanleg PC (ca. 3 GB, 8 GB minne)
-OLLAMA = "http://localhost:11434"
-
 DRIVER = """Du er SNOWMAN AI i førarhuset på ei tråkkemaskin (SNOWMAN Snowdeep, Alpindata). Føraren spør medan han
 arbeider. Svar på nynorsk, kort og konkret: 1–4 setningar, utan overskrifter og lister med mindre føraren ber om det.
-Bygg på samandraget av skjermen (snødjupne, mål, GNSS, trasear, AI-råda frå den lokale modellen i maskina og vêret).
+Bygg på samandraget av skjermen (snødjupne, mål, GNSS, trasear, AI-råda frå reknereglane i maskina og vêret).
 Finn ikkje på tal som ikkje står der – sei heller at du ikkje veit. Alt er råd: føraren avgjer. Gi aldri råd som går
 ut over tryggleiken (bratt terreng, vinsj, folk i bakken, skred) – vis då til rutinane på anlegget."""
 
 
-def ollama_url(adresse):
-    """Adressa til Ollama som full URL. Tomt, «ollama» eller «localhost» → http://localhost:11434.
-    «192.168.1.20» → http://192.168.1.20:11434. Ein feilskriven verdi (t.d. «ollama» i feltet) gir ikkje lenger
-    «unknown url type»."""
-    a = str(adresse or "").strip().rstrip("/")
-    if not a or a.lower() in ("ollama", "localhost", "127.0.0.1", "lokal", "local"):
-        return OLLAMA
-    if "://" not in a:
-        a = "http://" + a
-    scheme, rest = a.split("://", 1)
-    host = rest.split("/", 1)[0]
-    if ":" not in host.split("]")[-1] and scheme.lower() == "http":
-        host += ":11434"
-    return f"{scheme.lower()}://{host}"
-
-
-def lokal_modell(modell):
-    """Modellnamnet til Ollama. Tomt eller «ollama» (programnamnet, ikkje ein modell) → LOKAL_MODELL."""
-    m = str(modell or "").strip()
-    return LOKAL_MODELL if not m or m.lower() in ("ollama", "lokal", "local") else m
-
-
-LETT_MODELL = "gemma3:1b"       # lett modell (ca. 1 GB) for svake PC-ar eller når same PC gjer anna arbeid
-
-
-def spar_opsjonar(spar):
-    """Ollama-opsjonar. Spar (standard): halve prosessoren, mindre kontekst, ut av minnet etter 1 minutt utan bruk –
-    så PC-en (og SNOWMAN Snowdeep/Office på same PC) ikkje går tregt. Utan spar: Ollama sine eigne standardar."""
-    if not spar:
-        return {}
-    return {"keep_alive": "1m", "options": {"num_thread": max(1, (os.cpu_count() or 2) // 2), "num_ctx": 2048}}
+MODELL = "claude-haiku-5-5"     # rask og billeg – nok til korte svar og den daglege analysen
+MAKS_PER_MANAD = 500            # kall i månaden før AI stoppar av seg sjølv (kan endrast i data/kontor.json)
 
 
 class AI:
@@ -90,10 +57,36 @@ class AI:
         self.events = events
         self.last = None               # {"t", "ok", "tal", "feil"}
         self.lock = threading.Lock()   # éitt spørsmål om gongen frå maskinene
-        self.pull_st = {}              # henting av lokal modell: {"modell", "status", "del", "ferdig", "feil", "t"}
+        self._fix_gamal_leverandor()
+
+    def _fix_gamal_leverandor(self):
+        """Før 1.4.0 kunne leverandøren vere «ollama» (lokal AI). Han er fjerna – AI blir slått av, med melding."""
+        if self.cfg["ai"].get("leverandor") not in ("av", "anthropic"):
+            gamal = self.cfg["ai"].get("leverandor")
+            self.cfg.update(lambda d: d["ai"].update(leverandor="av"))
+            self.events.add(f"AI: «{gamal}» (lokal AI) er fjerna frå SNOWMAN Office. AI er slått av – vel Claude under "
+                            "Office › AI om du vil bruke AI.", "info")
+
+    def bruk(self):
+        """Kall denne månaden og taket."""
+        m = time.strftime("%Y-%m")
+        b = self.cfg["ai"].get("bruk") or {}
+        return {"manad": m, "kall": int(b.get("kall", 0)) if b.get("manad") == m else 0,
+                "maks": int(self.cfg["ai"].get("maks_per_manad") or MAKS_PER_MANAD)}
+
+    def _tel(self):
+        b = self.bruk()
+        if b["kall"] >= b["maks"]:
+            raise RuntimeError(f"Månadstaket for AI er nådd ({b['maks']} kall i {b['manad']}). AI er på pause til neste "
+                               "månad – eller auk «maks_per_manad» under ai i data/kontor.json.")
+        self.cfg.update(lambda d: d["ai"].update(bruk={"manad": b["manad"], "kall": b["kall"] + 1}))
+
+    def test(self):
+        """Prøv nøkkelen med eit lite kall. Returnerer svaret."""
+        return self._ask("Svar med eitt ord.", "Svar «OK» på nynorsk.").strip()[:80]
 
     def enabled(self):
-        return self.cfg["ai"].get("leverandor", "av") in ("ollama", "anthropic")
+        return self.cfg["ai"].get("leverandor", "av") == "anthropic"
 
     # ---------- kva som blir sendt ----------
     def context(self, base):
@@ -116,7 +109,7 @@ class AI:
     def analyse(self, base):
         """Be AI om forbetringsforslag og lagre dei (kjelde «ai»). Returnerer forslaga."""
         if not self.enabled():
-            raise RuntimeError("AI er av. Vel leverandør på kontorsida.")
+            raise RuntimeError("AI er av. Vel Claude under Office › AI.")
         msg = json.dumps(self.context(base), ensure_ascii=False) + "\n\n" + ASK_JSON
         try:
             text = self._ask(SYSTEM, msg)
@@ -136,7 +129,7 @@ class AI:
     def ask(self, base, question):
         """«Spør SNOWMAN Office»: fritt spørsmål med samandraget som bakgrunn."""
         if not self.enabled():
-            raise RuntimeError("AI er av. Vel leverandør på kontorsida.")
+            raise RuntimeError("AI er av. Vel Claude under Office › AI.")
         msg = ("Samandrag av drifta (anonymisert):\n" + json.dumps(self.context(base), ensure_ascii=False)
                + "\n\nSpørsmål frå driftsleiaren: " + str(question)[:2000])
         return self._ask(SYSTEM, msg)
@@ -160,104 +153,31 @@ class AI:
         finally:
             self.lock.release()
 
-    # ---------- lokal AI (Ollama) ----------
-    def lokal(self):
-        """Køyrer Ollama, og kva modellar har han? Ingenting blir endra."""
-        adr = ollama_url(self.cfg["ai"].get("adresse"))
-        r = {"adresse": adr, "koyrer": False, "versjon": None, "modellar": [], "tilradd": LOKAL_MODELL,
-             "i_bruk": self.cfg["ai"].get("leverandor") == "ollama", "modell": lokal_modell(self.cfg["ai"].get("modell")),
-             "henting": dict(self.pull_st), "feil": "", "spar": bool(self.cfg["ai"].get("spar", True)),
-             "lett": LETT_MODELL, "kjerner": os.cpu_count() or 0, "i_minnet": []}
-        try:
-            with nett.urlopen(urllib.request.Request(adr + "/api/version"), timeout=3) as h:
-                r["versjon"] = json.loads(h.read().decode("utf-8")).get("version")
-            with nett.urlopen(urllib.request.Request(adr + "/api/tags"), timeout=5) as h:
-                r["modellar"] = [m.get("name") for m in json.loads(h.read().decode("utf-8")).get("models", [])]
-            try:                                   # modellar som ligg i minnet no (og kor mykje)
-                with nett.urlopen(urllib.request.Request(adr + "/api/ps"), timeout=3) as h:
-                    r["i_minnet"] = [{"namn": m.get("name"), "gb": round((m.get("size") or 0) / 1e9, 1)}
-                                     for m in json.loads(h.read().decode("utf-8")).get("models", [])]
-            except Exception:
-                pass
-            r["koyrer"] = True
-        except Exception as e:
-            r["feil"] = ("Ollama er ikkje installert eller ikkje starta på denne PC-en." if "10061" in str(e) or
-                         "refused" in str(e).lower() else nett.forklar(e))
-        return r
-
-    def frigjer(self):
-        """Ta modellen ut av minnet no (Ollama: keep_alive 0). Neste spørsmål lastar han inn att."""
-        c = self.cfg["ai"]
-        _post(ollama_url(c.get("adresse")) + "/api/generate", {"model": lokal_modell(c.get("modell")), "keep_alive": 0}, {}, 30)
-        self.events.add("Lokal AI: modellen er teken ut av minnet", "info")
-
-    def hent_modell(self, modell=None):
-        """Hentar ein modell i Ollama (bakgrunn). Framgangen står i lokal()["henting"]."""
-        modell = (str(modell or "").strip() or LOKAL_MODELL)[:80]
-        if self.pull_st.get("modell") and not self.pull_st.get("ferdig") and time.time() - self.pull_st.get("t", 0) < 120:
-            raise RuntimeError(f"Hentar alt {self.pull_st['modell']} – vent til det er ferdig.")
-        adr = ollama_url(self.cfg["ai"].get("adresse"))
-        self.pull_st = {"modell": modell, "status": "startar", "del": 0.0, "ferdig": False, "feil": "", "t": time.time()}
-
-        def run():
-            try:
-                req = urllib.request.Request(adr + "/api/pull", data=json.dumps({"model": modell, "stream": True}).encode(),
-                                             method="POST", headers={"content-type": "application/json"})
-                with nett.urlopen(req, timeout=3600) as h:
-                    for line in h:
-                        try:
-                            d = json.loads(line)
-                        except ValueError:
-                            continue
-                        if d.get("error"):
-                            raise RuntimeError(d["error"])
-                        self.pull_st.update({"status": d.get("status", ""), "t": time.time()})
-                        if d.get("total") and d.get("completed"):
-                            self.pull_st["del"] = d["completed"] / d["total"]
-                self.pull_st.update({"ferdig": True, "status": "ferdig", "del": 1.0, "t": time.time()})
-                self.events.add(f"Lokal AI: modellen {modell} er henta", "ok")
-            except Exception as e:
-                msg = str(e)
-                if "10061" in msg or "refused" in msg.lower():
-                    msg = "Ollama er ikkje installert eller ikkje starta på denne PC-en."
-                self.pull_st.update(ferdig=True, feil=msg[:300], status="feila", t=time.time())
-                self.events.add(f"Lokal AI: henting av {modell} feila: {msg[:200]}", "feil")
-        threading.Thread(target=run, daemon=True, name="ollama-pull").start()
-        return dict(self.pull_st)
-
     def _ask(self, system, msg):
         c = self.cfg["ai"]
-        kind = c.get("leverandor")
-        if kind == "ollama":
-            url = ollama_url(c.get("adresse")) + "/api/chat"
-            body = {"model": lokal_modell(c.get("modell")), "stream": False,
-                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": msg}],
-                    **spar_opsjonar(c.get("spar", True))}
-            try:
-                r = _post(url, body, {}, 300)
-            except urllib.error.HTTPError as e:
-                if e.code == 404:
-                    raise RuntimeError(f"Ollama kjenner ikkje modellen «{body['model']}». Hent han først: "
-                                       "trykk HENT MODELL under Office › AI › Lokal AI, eller skriv namnet på ein modell du "
-                                       f"har i feltet Modell (tilrådd: {LOKAL_MODELL}).") from None
-                raise
-            except OSError as e:
-                if "10061" in str(e) or "refused" in str(e).lower():
-                    raise RuntimeError(f"Får ikkje kontakt med Ollama på {url.rsplit('/api/', 1)[0]}. Ollama er ikkje "
-                                       "installert eller ikkje starta på denne PC-en. Installer frå ollama.com (eller køyr "
-                                       "INSTALLER-WINDOWS.bat på nytt og svar J på lokal AI), og trykk HENT MODELL – eller vel "
-                                       "«Claude (Anthropic API)» eller «Av».") from None
-                raise RuntimeError(nett.forklar(e)) from None
-            return r["message"]["content"]
-        if kind == "anthropic":
-            if not c.get("api_nokkel"):
-                raise RuntimeError("API-nøkkel manglar (kontorsida › AI).")
-            body = {"model": c.get("modell") or "claude-sonnet-5-5", "max_tokens": 2000, "system": system,
-                    "messages": [{"role": "user", "content": msg}]}
+        if c.get("leverandor") != "anthropic":
+            raise RuntimeError("AI er av. Vel Claude under Office › AI.")
+        if not c.get("api_nokkel"):
+            raise RuntimeError("API-nøkkel manglar (Office › AI).")
+        self._tel()
+        body = {"model": c.get("modell") or MODELL, "max_tokens": 2000, "system": system,
+                "messages": [{"role": "user", "content": msg}]}
+        try:
             r = _post("https://api.anthropic.com/v1/messages", body,
                       {"x-api-key": c["api_nokkel"], "anthropic-version": "2023-06-01"}, 120)
-            return "".join(b.get("text", "") for b in r.get("content", []))
-        raise RuntimeError(f"Ukjend AI-leverandør «{kind}»")
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                raise RuntimeError("Claude godtok ikkje API-nøkkelen. Sjekk nøkkelen på console.anthropic.com og lim han "
+                                   "inn på nytt under Office › AI.") from None
+            if e.code == 429:
+                raise RuntimeError("Claude har for mykje å gjere akkurat no, eller kontoen har nådd grensa si. Prøv igjen "
+                                   "om litt.") from None
+            if e.code == 400 and b"credit" in (e.read(4000) or b"").lower():
+                raise RuntimeError("Kontoen hos Anthropic er tom. Fyll på under Billing på console.anthropic.com.") from None
+            raise RuntimeError(f"Claude svarte med feil {e.code}.") from None
+        except OSError as e:
+            raise RuntimeError("Får ikkje kontakt med Claude – har kontor-PC-en internett? (" + nett.forklar(e) + ")") from None
+        return "".join(b.get("text", "") for b in r.get("content", []))
 
 
 def _post(url, body, headers, timeout):
