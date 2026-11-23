@@ -376,8 +376,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             def fn(data):
                 c = data["ai"]
                 c["leverandor"] = d["leverandor"]
-                c["modell"] = str(d.get("modell") or "")[:80]
-                c["adresse"] = str(d.get("adresse") or "")[:200]
+                c["modell"] = str(d.get("modell") or "").strip()[:80]
+                c["adresse"] = str(d.get("adresse") or "").strip()[:200]
+                if c["leverandor"] == "ollama":   # «ollama» i felta er programnamnet – bruk standard
+                    if c["modell"].lower() in ("ollama", "lokal", "local"):
+                        c["modell"] = ""
+                    if c["adresse"]:
+                        c["adresse"] = aimod.ollama_url(c["adresse"])
                 if d.get("api_nokkel"):
                     c["api_nokkel"] = str(d["api_nokkel"]).strip()
                 if d.get("fjern_nokkel"):
@@ -389,7 +394,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "ai/lokal/hent":
             return self.send_json({"ok": True, "henting": k.ai.hent_modell(d.get("modell"))})
         if p == "ai/lokal/ta-i-bruk":
-            m = str(d.get("modell") or "").strip()[:80] or aimod.LOKAL_MODELL
+            m = aimod.lokal_modell(str(d.get("modell") or "")[:80])
 
             def fn(data):
                 data["ai"].update(leverandor="ollama", modell=m)

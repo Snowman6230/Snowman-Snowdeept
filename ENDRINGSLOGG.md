@@ -9,6 +9,14 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.3.1 og SNOWMAN Snowdeep v1.6.145 – «unknown url type: 'ollama/api/chat'»
+- **Feil (eigaren):** «Feil: unknown url type: 'ollama/api/chat'» – feltet Adresse under Office › AI inneheldt
+  «ollama», og Office sette det saman til ei ugyldig adresse.
+- **Retta:** adressa til Ollama blir no gjort om til ein full URL: tomt, «ollama» eller «localhost» → denne PC-en
+  (http://localhost:11434), «192.168.1.20» → http://192.168.1.20:11434. «ollama» i feltet Modell blir standardmodellen
+  (gemma3:4b). Felta blir retta når dei blir lagra. Feltet Adresse viser «tomt = denne PC-en».
+- **Testar:** Office 20 OK (ny: adresse og modell).
+
 ### SNOWMAN Office 1.3.0 og SNOWMAN Snowdeep v1.6.144 – snarveg på skrivebordet og lokal AI (SNOWMAN AI)
 - **Bakgrunn (eigaren):** «Lag eit eige oppstartsikon som kan ligge på skrivebordet. Lag også ein lokal AI som Snowman
   systemet kan bruke (Office og Snowdeep).»

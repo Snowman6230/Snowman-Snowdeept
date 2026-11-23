@@ -49,6 +49,28 @@ Finn ikkje på tal som ikkje står der – sei heller at du ikkje veit. Alt er r
 ut over tryggleiken (bratt terreng, vinsj, folk i bakken, skred) – vis då til rutinane på anlegget."""
 
 
+def ollama_url(adresse):
+    """Adressa til Ollama som full URL. Tomt, «ollama» eller «localhost» → http://localhost:11434.
+    «192.168.1.20» → http://192.168.1.20:11434. Ein feilskriven verdi (t.d. «ollama» i feltet) gir ikkje lenger
+    «unknown url type»."""
+    a = str(adresse or "").strip().rstrip("/")
+    if not a or a.lower() in ("ollama", "localhost", "127.0.0.1", "lokal", "local"):
+        return OLLAMA
+    if "://" not in a:
+        a = "http://" + a
+    scheme, rest = a.split("://", 1)
+    host = rest.split("/", 1)[0]
+    if ":" not in host.split("]")[-1] and scheme.lower() == "http":
+        host += ":11434"
+    return f"{scheme.lower()}://{host}"
+
+
+def lokal_modell(modell):
+    """Modellnamnet til Ollama. Tomt eller «ollama» (programnamnet, ikkje ein modell) → LOKAL_MODELL."""
+    m = str(modell or "").strip()
+    return LOKAL_MODELL if not m or m.lower() in ("ollama", "lokal", "local") else m
+
+
 class AI:
     def __init__(self, cfg, store, events):
         self.cfg = cfg
@@ -129,9 +151,9 @@ class AI:
     # ---------- lokal AI (Ollama) ----------
     def lokal(self):
         """Køyrer Ollama, og kva modellar har han? Ingenting blir endra."""
-        adr = (self.cfg["ai"].get("adresse") or OLLAMA).rstrip("/")
+        adr = ollama_url(self.cfg["ai"].get("adresse"))
         r = {"adresse": adr, "koyrer": False, "versjon": None, "modellar": [], "tilradd": LOKAL_MODELL,
-             "i_bruk": self.cfg["ai"].get("leverandor") == "ollama", "modell": self.cfg["ai"].get("modell") or LOKAL_MODELL,
+             "i_bruk": self.cfg["ai"].get("leverandor") == "ollama", "modell": lokal_modell(self.cfg["ai"].get("modell")),
              "henting": dict(self.pull_st), "feil": ""}
         try:
             with nett.urlopen(urllib.request.Request(adr + "/api/version"), timeout=3) as h:
@@ -149,7 +171,7 @@ class AI:
         modell = (str(modell or "").strip() or LOKAL_MODELL)[:80]
         if self.pull_st.get("modell") and not self.pull_st.get("ferdig") and time.time() - self.pull_st.get("t", 0) < 120:
             raise RuntimeError(f"Hentar alt {self.pull_st['modell']} – vent til det er ferdig.")
-        adr = (self.cfg["ai"].get("adresse") or OLLAMA).rstrip("/")
+        adr = ollama_url(self.cfg["ai"].get("adresse"))
         self.pull_st = {"modell": modell, "status": "startar", "del": 0.0, "ferdig": False, "feil": "", "t": time.time()}
 
         def run():
@@ -182,8 +204,8 @@ class AI:
         c = self.cfg["ai"]
         kind = c.get("leverandor")
         if kind == "ollama":
-            url = (c.get("adresse") or "http://localhost:11434").rstrip("/") + "/api/chat"
-            body = {"model": c.get("modell") or LOKAL_MODELL, "stream": False,
+            url = ollama_url(c.get("adresse")) + "/api/chat"
+            body = {"model": lokal_modell(c.get("modell")), "stream": False,
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": msg}]}
             try:
                 r = _post(url, body, {}, 300)

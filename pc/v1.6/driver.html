@@ -3227,7 +3227,7 @@
               henta (<code>ollama pull llama3.1</code>). <b>Modell</b> er namnet på modellen (t.d. llama3.1), ikkje «Ollama».
               <b>Claude</b> krev API-nøkkel frå console.anthropic.com.</div>
             <div class="row"><span>Modell</span><input id="ksAiModel" type="text" placeholder="t.d. llama3.1 (tomt = standard)" style="width: 190px" /></div>
-            <div class="row"><span>Adresse (berre Ollama)</span><input id="ksAiAddr" type="text" style="width: 190px" /></div>
+            <div class="row"><span>Adresse (berre Ollama)</span><input id="ksAiAddr" type="text" placeholder="tomt = denne PC-en" style="width: 190px" /></div>
             <div class="row"><span>API-nøkkel</span><input id="ksAiKey" type="password" autocomplete="off" style="width: 190px" /></div>
             <button class="btn" onclick="KSIDE.aiLagre()">LAGRE</button><button class="btn" onclick="KSIDE.aiAnalyser()">ANALYSER NO</button>
             <div id="ksAiMsg" class="history">–</div>
@@ -3556,7 +3556,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.144";
+      const APP_VERSION = "1.6.145";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));

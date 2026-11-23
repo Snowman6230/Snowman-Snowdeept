@@ -428,6 +428,16 @@ class TestAnleggspakkeFormat(unittest.TestCase):
             AP.kontroller(self.zipp({"trasear.json": {"trasear": [TRASE]}}), 10)
 
 
+class TestOllamaAdresse(unittest.TestCase):
+    def test_adresse_og_modell(self):
+        from ai import ollama_url as u, lokal_modell as m
+        self.assertEqual([u(""), u("ollama"), u(" Ollama "), u("192.168.1.20"), u("http://nas:11434/"), u("nas:8080"),
+                          u("https://ai.example.no")],
+                         ["http://localhost:11434", "http://localhost:11434", "http://localhost:11434",
+                          "http://192.168.1.20:11434", "http://nas:11434", "http://nas:8080", "https://ai.example.no"])
+        self.assertEqual([m(""), m("Ollama"), m("llama3.1")], ["gemma3:4b", "gemma3:4b", "llama3.1"])
+
+
 class TestOppdatering(unittest.TestCase):
     """v1.1.1: Office følgjer både sin eigen versjon og kartet (SNOWMAN Snowdeep i pc/)."""
 
