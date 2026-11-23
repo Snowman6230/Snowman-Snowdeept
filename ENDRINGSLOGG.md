@@ -9,6 +9,18 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Office 1.5.1 og SNOWMAN Snowdeep v1.6.152 – godkjend hindring kjem i kartet, og tilkopla maskiner synest
+- **Bakgrunn (eigaren):** «Ser verken maskin eller godkjent hindring i kartet.» Maskina var tilkopla utan GNSS (ingen
+  posisjon), forslaget var ein merknad utan posisjon, og «Godkjenn» endra berre status.
+- **Nytt:** **GODKJENN** på ei hindring med posisjon legg ho inn i kartet på kontoret (type, namn og radius frå maskina)
+  og seier at ho blir med i neste publisering. Forslag utan posisjon får melding om at dei ikkje kan visast i kartet.
+- **Nytt:** maskiner som er tilkopla utan posisjon, står nede til venstre («tilkopla – ingen posisjon (GNSS)») og i
+  boksen oppe til høgre.
+- **Retta:** forslag frå maskina har namnet frå innstillingane (t.d. PB600_1), ikkje maskin-ID-en (PC-namnet).
+  Hindringsforslag tek med type, namn, radius og merknad (ny kolonne i Office).
+- **Testar:** Office 20 OK (ny: forslag med hindring), testkontorkopling ALT OK. Ende-til-ende: tilkopla maskin utan
+  posisjon vist, hindring godkjend og lagd inn i kartet.
+
 ### SNOWMAN Office 1.5.0 og SNOWMAN Snowdeep v1.6.151 – Claude fjerna, ingen språkmodell i SNOWMAN
 - **Bakgrunn (eigaren):** «Er det nødvendig å ha Claude? For at Snowman skal vere eit godt program?» → «Fjern Claude og
   knappen heiter fortsatt AI». Sjå VEGEN-VIDARE kap. 16, avgjerd 10.

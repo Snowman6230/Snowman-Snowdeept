@@ -493,7 +493,8 @@ class KontorKopling:
     # ---------- forslag til kontoret ----------
     def forslag(self, cfg, f):
         """Sender eit forslag (t.d. ny hindring) til kontoret. Kjem det ikkje fram, blir det lagt i kø."""
-        f = dict(f, maskin=self.mid, t=time.strftime("%Y-%m-%d %H:%M"))
+        # namnet frå innstillingane (t.d. «PB600_1») – maskin-ID-en (PC-namn) seier lite på kontoret
+        f = dict(f, maskin=(cfg.get("kontor_maskinnamn") or "").strip() or self.mid, t=time.strftime("%Y-%m-%d %H:%M"))
         try:
             self._req(cfg, "/api/v1/forslag", f)
             return True

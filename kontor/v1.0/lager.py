@@ -46,6 +46,8 @@ class Store:
             cols = {r[1] for r in self.db.execute("PRAGMA table_info(pakkar)")}
             if "innhald" not in cols:                    # innhaldet i pakka (manifest og tal)
                 self.db.execute("ALTER TABLE pakkar ADD COLUMN innhald TEXT")
+            if "objekt" not in {r[1] for r in self.db.execute("PRAGMA table_info(forslag)")}:   # 1.5.1: hindringa
+                self.db.execute("ALTER TABLE forslag ADD COLUMN objekt TEXT")
             self.db.commit()
 
     def close(self):
@@ -186,14 +188,25 @@ class Store:
     # ---------- forslag frå maskinene ----------
     def add_proposal(self, mid, d):
         kind = d.get("type") if d.get("type") in ("hindring", "merknad", "program", "anna") else "anna"
-        cur = self.x("INSERT INTO forslag (maskin, type, tekst, lat, lon, dato) VALUES (?,?,?,?,?,?)",
-                     (mid, kind, str(d.get("tekst") or "")[:2000], d.get("lat"), d.get("lon"), time.time()))
+        o = d.get("objekt") if isinstance(d.get("objekt"), dict) else None
+        if o:                                    # type, namn, radius og merknad for hindringa (frå maskina)
+            o = {"type": str(o.get("type") or "")[:20], "name": str(o.get("name") or "")[:80],
+                 "radius": o.get("radius") if isinstance(o.get("radius"), (int, float)) else None,
+                 "note": str(o.get("note") or "")[:300]}
+        cur = self.x("INSERT INTO forslag (maskin, type, tekst, lat, lon, dato, objekt) VALUES (?,?,?,?,?,?,?)",
+                     (mid, kind, str(d.get("tekst") or "")[:2000], d.get("lat"), d.get("lon"), time.time(),
+                      json.dumps(o, ensure_ascii=False) if o else None))
         return cur.lastrowid
 
     def proposals(self, status=None):
-        if status:
-            return self.q("SELECT * FROM forslag WHERE status=? ORDER BY dato DESC", (status,))
-        return self.q("SELECT * FROM forslag ORDER BY dato DESC LIMIT 500")
+        rows = (self.q("SELECT * FROM forslag WHERE status=? ORDER BY dato DESC", (status,)) if status
+                else self.q("SELECT * FROM forslag ORDER BY dato DESC LIMIT 500"))
+        for r in rows:
+            try:
+                r["objekt"] = json.loads(r["objekt"]) if r.get("objekt") else None
+            except ValueError:
+                r["objekt"] = None
+        return rows
 
     def set_proposal(self, pid, status, reply=""):
         return self.x("UPDATE forslag SET status=?, svar=? WHERE id=?", (status, str(reply)[:1000], int(pid))).rowcount

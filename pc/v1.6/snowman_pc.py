@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.151"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.152"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1492,6 +1492,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 if kontor_styrt() and self.path.endswith("save") and not d.get("id"):
                     o=r["objekt"]; tn=TR.OBJ_TYPES.get(o["type"],("Hindring",))[0]
                     r["sendt"]=KONTOR.forslag(CFG,{"type":"hindring","lat":o["lat"],"lon":o["lng"],"id":o["id"],
+                        "objekt":{k:o.get(k) for k in ("type","name","radius","note")},
                         "tekst":f"Ny hindring: {o['name']} ({tn}, radius {o['radius']} m)"+(f" – {o['note']}" if o.get("note") else "")})
                     LOG.event(f"Førar: ny lokal hindring «{o['name']}» – {'sendt til kontoret' if r['sendt'] else 'i kø til kontoret'}")
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())

@@ -126,6 +126,18 @@ class TestApi(KontorCase):
         self.assertEqual(self.call("/api/v1/maskin", {"id": "PB2"}, self.mkey)[0], 403)
         self.assertEqual(self.call("/api/v1/maskin", {"id": "PB1"}, self.mkey)[0], 200)
 
+    def test_forslag_med_hindring(self):
+        """1.5.1: forslaget tek med type, namn og radius for hindringa, og namnet på maskina."""
+        c, d = self.call("/api/v1/forslag", {"maskin": "PB600_1", "type": "hindring", "tekst": "Ny hindring: Stor stein",
+                                             "lat": LAT, "lon": LON, "objekt": {"type": "stein", "name": "Stor stein",
+                                                                               "radius": 1.5, "note": "ved heistrase"}}, self.mkey)
+        self.assertEqual(c, 200)
+        f = self.call("/api/v1/forslag", key=self.kkey)[1]["forslag"][0]
+        self.assertEqual((f["maskin"], f["objekt"]["type"], f["objekt"]["radius"], f["objekt"]["name"]),
+                         ("PB600_1", "stein", 1.5, "Stor stein"))
+        self.call("/api/v1/forslag", {"maskin": "PB600_1", "type": "merknad", "tekst": "Stein"}, self.mkey)
+        self.assertIsNone(self.call("/api/v1/forslag", key=self.kkey)[1]["forslag"][0]["objekt"])
+
     def test_ai_er_fjerna(self):
         """1.5.0: ingen AI med språkmodell i Office – adressene finst ikkje, hjarteslaget nemner ikkje AI."""
         for path in ("/api/v1/ai", "/api/v1/ai/forehandsvis"):

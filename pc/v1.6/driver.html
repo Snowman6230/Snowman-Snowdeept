@@ -3489,7 +3489,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.151";
+      const APP_VERSION = "1.6.152";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
@@ -7556,7 +7556,23 @@
             try { await k("v1/brukar/fjern", { namn: u.namn }); brukarar(); } catch (e) { toast(e.message); }
           },
           async svar(id, status) {
-            try { await k("v1/forslag/svar", { id, status }); forslag(); teljar(); } catch (e) { toast(e.message); }
+            try {
+              let p = (data.forslag || []).find((x) => x.id === id), svar = "";
+              // v1.6.152: godkjend hindring med posisjon blir lagd inn i kartet her – så ho kan publiserast til alle
+              if (status === "godkjent" && p && p.type === "hindring" && p.lat != null && p.status !== "godkjent") {
+                let o = p.objekt || {}, namn = o.name || String(p.tekst || "").replace(/^Ny hindring:\s*/, "").split(" (")[0].slice(0, 60) || "Hindring";
+                await api("api/objekt/save", { lat: +p.lat, lng: +p.lon, type: o.type || "anna", name: namn, radius: o.radius || 2,
+                  note: ((o.note ? o.note + " · " : "") + "frå " + p.maskin).slice(0, 300), source: "kontor" });
+                svar = "Lagd inn på kontoret – blir med i neste publisering";
+                TRA.load && TRA.load();
+                toast("Hindringa er lagd inn i kartet. Trykk ⇪ Publiser for å sende ho til alle maskinene.");
+              } else if (status === "godkjent" && p && p.lat == null) {
+                toast("Godkjent. Forslaget har ingen posisjon, så det blir ikkje vist i kartet – legg det inn sjølv om det trengst.");
+              }
+              await k("v1/forslag/svar", { id, status, svar });
+              forslag();
+              teljar();
+            } catch (e) { toast(e.message); }
           },
           visPaaKart(i) {
             let p = data.forslag[i];
@@ -7636,6 +7652,7 @@
           pGroup = L.layerGroup().addTo(map),
           pRend = L.canvas({ padding: 0.3 }),
           mMark = {};
+        let kmTilkopla = [];
         let siste = 0,
           pts = [],
           busy = false,
@@ -7681,8 +7698,13 @@
             }
             for (let id in mMark) if (!seen[id]) (mGroup.removeLayer(mMark[id]), delete mMark[id]);
             // v1.6.141: maskinene som fliser nede til venstre (der fart og helling står i maskina) – trykk for å sjå ho
-            let tiles = (r.maskiner || []).filter((m) => m.lat != null).map((m) => {
+            // v1.6.152: også maskiner som er tilkopla utan posisjon (t.d. utan GNSS) – så kontoret ser at koplinga verkar
+            let tilkopla = (r.maskiner || []).filter((m) => m.lat != null || (m.age != null && m.age < 120));
+            kmTilkopla = tilkopla;
+            let tiles = tilkopla.map((m) => {
               let e = m.ekstra || {}, age = e.pos_t ? now - e.pos_t : m.age, live = age != null && age < 60;
+              if (m.lat == null)
+                return "<div class='kmTile' style='cursor:default'><small>" + esc(m.namn) + "</small><b>tilkopla</b><em>ingen posisjon (GNSS) · sist " + ago(m.age) + " sidan</em></div>";
               return "<div class='kmTile' data-lat='" + m.lat + "' data-lon='" + m.lon + "'><small>" + esc(m.namn) + (e.prep && live ? " · <b style='display:inline;font-size:11px;color:#5ee07a'>PREP</b>" : "") + "</small><b>" +
                 (e.djupne != null ? Math.round(e.djupne * 100) + " cm" : "–") + "</b><em>" + (live ? fixTxt(m.fix) + (e.fart != null ? " · " + Math.round(e.fart * 3.6) + " km/t" : "") : "sist sett " + ago(age) + " sidan") + "</em></div>";
             });
@@ -7772,8 +7794,8 @@
             $("tabKontor").parentNode.prepend($("tabKontor"));   // Office først i fanene på kontoret
             showTab("kontor");
             window.KMFIX = () => {
-              let n = Object.keys(mMark).length;
-              return ["OFFICE", n ? n + " MASKIN" + (n === 1 ? "" : "AR") + " PÅ KARTET" : "INGEN MASKINER ENNO", "Trykk for maskinene og Base"];
+              let n = Object.keys(mMark).length, t = kmTilkopla.length;
+              return ["OFFICE", n ? n + " MASKIN" + (n === 1 ? "" : "AR") + " PÅ KARTET" : t ? t + " TILKOPLA – INGEN POSISJON" : "INGEN MASKINER ENNO", "Trykk for maskinene og Base"];
             };
             KSIDE.teljar();
             setInterval(KSIDE.teljar, 30000);
