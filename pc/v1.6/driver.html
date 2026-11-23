@@ -433,6 +433,116 @@
       .tabs button.on {
         background: #0785ed;
       }
+      /* v1.6.141: kontorsida inne i SNOWMAN (kontormodus) */
+      .ksNav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin: 4px 0 8px;
+      }
+      .ksNav button {
+        flex: 1 1 auto;
+        background: #0a222d;
+        color: #dfeef6;
+        border: 1px solid #365466;
+        border-radius: 6px;
+        padding: 8px 8px;
+        font-weight: 700;
+      }
+      .ksNav button.on {
+        background: #0d3550;
+        border-color: #4db8ff;
+        color: #9fd3ff;
+      }
+      .ksNav i {
+        font-style: normal;
+        background: #ffb020;
+        color: #2a1a00;
+        border-radius: 9px;
+        padding: 0 6px;
+        margin-left: 2px;
+      }
+      .ksNav i:empty {
+        display: none;
+      }
+      .ksList {
+        margin-top: 10px;
+        font-size: 13px;
+        line-height: 1.45;
+        max-height: 60vh;
+        overflow: auto;
+      }
+      .ksItem {
+        background: #0a222d;
+        border: 1px solid #16303e;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+      }
+      .ksItem .ksDim {
+        color: #8fa3ad;
+        font-size: 12px;
+      }
+      .ksItem button {
+        background: #102b39;
+        color: #fff;
+        border: 1px solid #365466;
+        border-radius: 6px;
+        padding: 5px 10px;
+        margin: 6px 4px 0 0;
+        font-weight: 700;
+      }
+      .ksItem button.ksPri {
+        background: #0d3550;
+        border-color: #4db8ff;
+      }
+      .ksPill {
+        display: inline-block;
+        border-radius: 9px;
+        padding: 0 7px;
+        font-size: 11px;
+        font-weight: 800;
+        background: #16303e;
+      }
+      .ksPill.høg { background: #5a1a14; color: #ffb4ad; }
+      .ksPill.middels { background: #4a3405; color: #ffd27a; }
+      .ksPill.ok { background: #0f3a1c; color: #7ff09a; }
+      body.kontormodus .kmOff,
+      body.kontormodus .tele > div:not(.kmTile),
+      body.kontormodus .depth,
+      body.kontormodus #aheadBox,
+      body.kontormodus #groomer {
+        display: none !important;
+      }
+      .kmBadge {
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        background: #ffb020;
+        color: #2a1a00;
+        border-radius: 9px;
+        padding: 0 6px;
+        font-size: 11px;
+      }
+      .kmBadge:empty {
+        display: none;
+      }
+      #kmBtnKontor {
+        position: relative;
+      }
+      .tele .kmTile {
+        cursor: pointer;
+        min-width: 190px;
+      }
+      .tele .kmTile b {
+        font-size: 17px;
+      }
+      .tele .kmTile em {
+        display: block;
+        font-style: normal;
+        font-size: 12px;
+        color: #9fb6c3;
+      }
       .panel {
         display: none;
       }
@@ -3008,21 +3118,89 @@
           <button id="updRestart" class="btn hide" onclick="restartSnowman()">START SNOWMAN PÅ NYTT</button>
         </section>
         <section id="panelKontor" class="panel">
-          <h3>KONTORMODUS – PUBLISER TIL MASKINENE</h3>
-          <div class="history">
-            Dette er SNOWMAN på kontor-PC-en: same kart, 3D, terreng, trasear, hindringar og kontrollpunkt som i maskinene, men
-            utan GNSS. Lag og endre anlegget her, og trykk <b>PUBLISER TIL MASKINENE</b>. Maskinene hentar pakka når dei er på
-            wifi på anlegget. Nytt terreng tek føraren i bruk når prepareringa er stoppa. Det som er tomt her (t.d. ingen
-            kontrollpunkt), blir ikkje sendt – då held maskinene på sitt eige.
+          <div class="ksNav">
+            <button data-k="pub" class="on">Publiser</button><button data-k="oversikt">Oversikt</button><button data-k="forslag">Forslag <i id="ksForslagN"></i></button
+            ><button data-k="pakkar">Pakkar</button><button data-k="brukarar">Brukarar</button><button data-k="forbetringar">Forbetringar</button
+            ><button data-k="ai">AI</button><button data-k="system">System</button>
           </div>
-          <div id="kmInfo" class="history">Hentar status frå SNOWMAN Kontor …</div>
-          <div class="row"><span>Merknad (kva er endra)</span><input id="kmNote" type="text" placeholder="t.d. ny trasé i Bakke 2" style="width: 190px" /></div>
-          <div class="row"><span>Ta med terrengmodellane</span><input id="kmTerr" type="checkbox" checked style="width: auto" /></div>
-          <button id="kmPub" class="btn" onclick="KONTORM.publiser()">⇪ PUBLISER TIL MASKINENE</button>
-          <h3>MASKINENE</h3>
-          <div id="kmLive" class="history">Kartet viser maskinene i sanntid når dei sender (sjå Kopling til SNOWMAN Kontor i maskina).</div>
-          <div id="kmMachines" class="history"></div>
-          <button class="btn" onclick="window.open('http://localhost:8790/', 'snowmanKontor')">OPNE KONTORSIDA (FORSLAG, BRUKARAR, SYSTEM)</button>
+          <div class="ks" data-k="pub">
+            <h3>PUBLISER TIL MASKINENE</h3>
+            <div class="history">
+              Dette er SNOWMAN på kontor-PC-en: same kart, 3D, terreng, trasear, hindringar og kontrollpunkt som i maskinene, men
+              utan GNSS. Lag og endre anlegget her, og trykk <b>PUBLISER TIL MASKINENE</b>. Maskinene hentar pakka når dei er på
+              wifi på anlegget. Nytt terreng tek føraren i bruk når prepareringa er stoppa. Det som er tomt her (t.d. ingen
+              kontrollpunkt), blir ikkje sendt – då held maskinene på sitt eige.
+            </div>
+            <div id="kmInfo" class="history">Hentar status frå SNOWMAN Kontor …</div>
+            <div class="row"><span>Merknad (kva er endra)</span><input id="kmNote" type="text" placeholder="t.d. ny trasé i Bakke 2" style="width: 190px" /></div>
+            <div class="row"><span>Ta med terrengmodellane</span><input id="kmTerr" type="checkbox" checked style="width: auto" /></div>
+            <button id="kmPub" class="btn" onclick="KONTORM.publiser()">⇪ PUBLISER TIL MASKINENE</button>
+          </div>
+          <div class="ks hide" data-k="oversikt">
+            <h3>MASKINENE</h3>
+            <div id="kmLive" class="history">Kartet viser maskinene i sanntid når dei sender (sjå Kopling til SNOWMAN Kontor i maskina).</div>
+            <div id="kmMachines" class="history"></div>
+            <h3>SNOWMAN BASE – KORREKSJONANE</h3>
+            <div id="ksBase" class="history">–</div>
+          </div>
+          <div class="ks hide" data-k="forslag">
+            <h3>FORSLAG FRÅ FØRARANE</h3>
+            <div class="history">Hindringar og merknader som førarane har meldt frå maskina. Ei ny hindring er alt lagd inn i den maskina;
+              godkjenner du ho, legg du ho inn her på kontoret og publiserer, så kjem ho til alle maskinene.</div>
+            <div id="ksForslag" class="ksList">–</div>
+          </div>
+          <div class="ks hide" data-k="pakkar">
+            <h3>ANLEGGSPAKKAR</h3>
+            <div class="history">Alle versjonane som er publiserte. Den aktive er den maskinene hentar. Gjer ein eldre versjon aktiv for å gå tilbake.</div>
+            <div id="ksPakkar" class="ksList">–</div>
+          </div>
+          <div class="ks hide" data-k="brukarar">
+            <h3>BRUKARAR</h3>
+            <div class="history"><b>maskin</b> = tråkkemaskinene (hentar anleggspakka, sender forslag og sanntid). <b>kontor</b> = administrator
+              (kontorsida). Ein brukar kan ha begge.</div>
+            <div id="ksBrukarar" class="ksList">–</div>
+            <h3 id="ksUTitle">NY BRUKAR</h3>
+            <div class="row"><span>Brukarnamn</span><input id="ksUName" type="text" autocomplete="off" style="width: 190px" /></div>
+            <div class="row"><span>Passord</span><input id="ksUPw" type="password" autocomplete="new-password" style="width: 190px" /></div>
+            <div class="row"><span>Passord igjen</span><input id="ksUPw2" type="password" autocomplete="new-password" style="width: 190px" /></div>
+            <div class="row"><span>Rolle maskin</span><input id="ksUM" type="checkbox" checked style="width: auto" /></div>
+            <div class="row"><span>Rolle kontor (administrator)</span><input id="ksUK" type="checkbox" style="width: auto" /></div>
+            <button class="btn" onclick="KSIDE.lagreBrukar()">LAGRE BRUKAR</button><button class="btn" onclick="KSIDE.nyBrukar()">TØM SKJEMAET</button>
+            <div id="ksUMsg" class="history hide"></div>
+          </div>
+          <div class="ks hide" data-k="forbetringar">
+            <h3>FORBETRINGAR</h3>
+            <div class="history">Kontor går gjennom loggane og statusen kvart kvarter og foreslår forbetringar (og AI, om ho er slått på).</div>
+            <button class="btn" onclick="KSIDE.analyser()">ANALYSER NO</button><button id="ksImpAll" class="btn" onclick="KSIDE.alle()">VIS OGSÅ FERDIGE: AV</button>
+            <div id="ksForbetringar" class="ksList">–</div>
+          </div>
+          <div class="ks hide" data-k="ai">
+            <h3>AI</h3>
+            <div class="row"><span>Leverandør</span><select id="ksAiProv" style="width: 190px"><option value="av">Av</option><option value="ollama">Lokal modell (Ollama)</option><option value="anthropic">Claude (Anthropic API)</option></select></div>
+            <div class="row"><span>Modell</span><input id="ksAiModel" type="text" style="width: 190px" /></div>
+            <div class="row"><span>Adresse (berre Ollama)</span><input id="ksAiAddr" type="text" style="width: 190px" /></div>
+            <div class="row"><span>API-nøkkel</span><input id="ksAiKey" type="password" autocomplete="off" style="width: 190px" /></div>
+            <button class="btn" onclick="KSIDE.aiLagre()">LAGRE</button><button class="btn" onclick="KSIDE.aiAnalyser()">ANALYSER NO</button>
+            <div id="ksAiMsg" class="history">–</div>
+            <h3>SPØR AI OM ANLEGGET</h3>
+            <div class="row"><span>Spørsmål</span><input id="ksAiQ" type="text" placeholder="t.d. kvifor mista PB 2 FIX i går?" style="width: 190px" /></div>
+            <button class="btn" onclick="KSIDE.aiSpor()">SPØR</button>
+            <div id="ksAiA" class="history hide"></div>
+          </div>
+          <div class="ks hide" data-k="system">
+            <h3>OPPDATERING</h3>
+            <div id="ksUpd" class="history">–</div>
+            <button class="btn" onclick="KSIDE.sjekk()">SJEKK ETTER NY VERSJON</button><button class="btn" onclick="KSIDE.oppdater()">OPPDATER NO</button>
+            <h3>SNOWMAN BASE (BERRE LESING)</h3>
+            <div class="row"><span>Adresse til statussida på Pi-en</span><input id="ksBAddr" type="text" placeholder="http://snowman-base.local:8780" style="width: 190px" /></div>
+            <div class="row"><span>Brukarnamn (valfritt)</span><input id="ksBUser" type="text" style="width: 190px" /></div>
+            <div class="row"><span>Passord</span><input id="ksBPw" type="password" autocomplete="off" style="width: 190px" /></div>
+            <button class="btn" onclick="KSIDE.baseLagre()">LAGRE OG HENT STATUS</button>
+            <div id="ksBMsg" class="history hide"></div>
+            <h3>HENDINGAR I SNOWMAN KONTOR</h3>
+            <div id="ksEvents" class="ksList" data-scroll="ksEv">–</div>
+            <button class="btn" onclick="window.open('http://localhost:8790/', 'snowmanKontor')">OPNE KONTORSIDA I NETTLESAREN (RESERVE)</button>
+          </div>
         </section>
         <section id="panelTrase" class="panel">
           <div id="kontorKopling">
@@ -3324,7 +3502,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.140";
+      const APP_VERSION = "1.6.141";
       document.title = "SNOWMAN PC v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
@@ -3479,6 +3657,7 @@
 
       /* ---------- GNSS-status ---------- */
       function fixText() {
+        if (window.KMFIX) return window.KMFIX();   // kontormodus: status for kontoret, ikkje GNSS
         if (src === "demo") return ["DEMO", "SIMULERT RTK", "Ikkje ekte posisjon"];
         if (src === "gnss" && gnss) {
           let h = gnss.hdop == null ? "--" : gnss.hdop;
@@ -3488,6 +3667,7 @@
         return ["GNSS AV", backendOK ? "IKKJE TILKOPLA" : "INGA TENESTE", "Innst. › Kart og GNSS"];
       }
       function toggleSatStatus() {
+        if (window.KMFIX) return KONTORM.opne("oversikt");
         $("satPanel").classList.toggle("hide");
         renderSat();
       }
@@ -5660,7 +5840,7 @@
           TRA.load();
           KONTK.load();
         }
-        if (n === "kontor") KONTORM.load();
+        if (n === "kontor") KSIDE.last();
         if (n === "fuel") RAP.loadFuel();
         if (n === "report") RAP.loadDays();
       }
@@ -7259,6 +7439,209 @@
          Teikning skjer berre når prep er stoppa, med kartet ovanfrå og nord opp (elles treffer ikkje trykka rett stad). */
       let legKey = "";
       // v1.6.138: kontormodus – SNOWMAN på kontor-PC-en (starta av SNOWMAN Kontor), publiserer anleggspakka
+      // v1.6.141: kontorsida inne i SNOWMAN – kontormodus har same layout som i maskina (eigaren 2026-11-23).
+      // Alt går via /api/kontormodus/k/… til SNOWMAN Kontor på same PC (lokal nøkkel, berre 127.0.0.1).
+      const KSIDE = (function () {
+        let cur = "pub", alleImp = false, ubrukar = null, data = {};
+        const tid = (t) => (t ? new Date(t * 1000).toLocaleString("nb-NO", { dateStyle: "short", timeStyle: "short" }) : "–");
+        async function k(path, body) {
+          let r = await fetch("api/kontormodus/k/" + path, body === undefined ? { cache: "no-store", headers: { "X-Snowman-Kontor": "1" } }
+            : { method: "POST", headers: { "Content-Type": "application/json", "X-Snowman-Kontor": "1" }, body: JSON.stringify(body) });
+          let j = await r.json();
+          if (!r.ok || j.ok === false) throw Error(j.error || j.feil || "Feil " + r.status);
+          return j;
+        }
+        const msg = (id, t) => (($(id).textContent = t), $(id).classList.remove("hide"));
+        function vis(n) {
+          cur = n;
+          document.querySelectorAll(".ksNav button").forEach((b) => b.classList.toggle("on", b.dataset.k === n));
+          document.querySelectorAll("#panelKontor .ks").forEach((d) => d.classList.toggle("hide", d.dataset.k !== n));
+          last();
+        }
+        async function last() {
+          try {
+            await ({ pub: KONTORM.load, oversikt: oversikt, forslag, pakkar, brukarar, forbetringar, ai, system }[cur] || (() => 0))();
+          } catch (e) {
+            let el = document.querySelector("#panelKontor .ks[data-k='" + cur + "'] .ksList") || $("kmInfo");
+            if (el) el.innerHTML = "<b style='color:#ff6b5e'>Ingen kontakt med SNOWMAN Kontor:</b> " + esc(e.message);
+          }
+        }
+        async function oversikt() {
+          await KONTORM.load();
+          let s = await k("status"), b = s.base || {}, mps = b.mountpoints || [];
+          $("ksBase").innerHTML = !b.adresse
+            ? "Adressa til SNOWMAN Base er ikkje sett (Kontor › System)."
+            : b.ok === false
+              ? "<b style='color:#ff6b5e'>Ingen kontakt med Base</b> (" + esc(b.adresse) + "): " + esc(b.feil || "")
+              : !b.t ? "Hentar status frå Base …"
+              : mps.map((m) => "<b>" + esc(m.namn) + "</b> · " + (m.aktiv ? esc(m.aktiv) : "<b style='color:#ff6b5e'>ingen data</b>") + " · " +
+                  esc((m.systems || []).join(", ") || "–") + " · <span style='color:" + (String(m.vurdering || "").startsWith("FEIL") ? "#ff6b5e" : String(m.vurdering || "").startsWith("OK") ? "#5ee07a" : "inherit") + "'>" +
+                  esc(m.vurdering || "–") + "</span> · " + (m.klientar || []).length + " maskin(er) tilkopla").join("<br>") +
+                "<br><span class='ksDim'>SNOWMAN Base " + esc(b.versjon || "") + " · henta " + tid(b.t) + "</span>";
+        }
+        async function forslag() {
+          let d = await k("v1/forslag");
+          data.forslag = d.forslag;
+          $("ksForslag").innerHTML = d.forslag.length
+            ? d.forslag.map((p, i) => "<div class='ksItem'><b>" + esc(p.type) + "</b> frå " + esc(p.maskin) + " <span class='ksPill" + (p.status === "ny" ? " middels" : p.status === "gjort" || p.status === "godkjent" ? " ok" : "") + "'>" + esc(p.status) + "</span>" +
+                "<div>" + esc(p.tekst) + "</div><div class='ksDim'>" + tid(p.dato) + (p.lat ? " · " + (+p.lat).toFixed(5) + ", " + (+p.lon).toFixed(5) : "") + (p.svar ? " · svar: " + esc(p.svar) : "") + "</div>" +
+                (p.lat ? "<button onclick='KSIDE.visPaaKart(" + i + ")'>⌖ VIS PÅ KARTET</button>" : "") +
+                "<button class='ksPri' onclick='KSIDE.svar(" + p.id + ",\"godkjent\")'>GODKJENN</button><button onclick='KSIDE.svar(" + p.id + ",\"avvist\")'>AVVIS</button><button onclick='KSIDE.svar(" + p.id + ",\"gjort\")'>GJORT</button></div>").join("")
+            : "Ingen forslag.";
+        }
+        async function pakkar() {
+          let d = await k("v1/anleggspakke/versjonar"), nm = { trasear: "trasé(ar)", forbodne_omrade: "forbode område", hindringar: "hindring(ar)", kontrollpunkt: "kontrollpunkt", terrenglag: "terrenglag" };
+          $("ksPakkar").innerHTML = d.versjonar.length
+            ? d.versjonar.map((p) => "<div class='ksItem'><b>v" + p.versjon + "</b> " + (p.aktiv ? "<span class='ksPill ok'>aktiv</span>" : "") + " · " + tid(p.dato) + " · " + (p.storleik / 1e6).toFixed(2) + " MB" +
+                (p.merknad ? "<div>«" + esc(p.merknad) + "»</div>" : "") +
+                "<div class='ksDim'>" + (p.innhald ? Object.entries(p.innhald.tal).map(([a, v]) => v + " " + (nm[a] || a)).join(", ") + (p.innhald.laga_av ? " · laga av " + esc(p.innhald.laga_av) : "") : "gammalt format") + "</div>" +
+                (p.aktiv ? "" : "<button onclick='KSIDE.aktiv(" + p.versjon + ")'>GJER AKTIV</button>") + "</div>").join("")
+            : "Ingen anleggspakke publisert enno.";
+        }
+        async function brukarar() {
+          let d = await k("v1/brukarar");
+          data.brukarar = d.brukarar;
+          $("ksBrukarar").innerHTML = d.brukarar.length
+            ? d.brukarar.map((u, i) => "<div class='ksItem'><b>" + esc(u.namn) + "</b> · " + u.roller.map(esc).join(", ") +
+                "<br><button onclick='KSIDE.endreBrukar(" + i + ")'>ENDRE / NYTT PASSORD</button><button onclick='KSIDE.slettBrukar(" + i + ")'>SLETT</button></div>").join("")
+            : "Ingen brukarar.";
+        }
+        function nyBrukar(u) {
+          ubrukar = u || null;
+          $("ksUTitle").textContent = u ? "ENDRE " + u.namn.toUpperCase() : "NY BRUKAR";
+          $("ksUName").value = u ? u.namn : "";
+          $("ksUName").disabled = !!u;
+          $("ksUPw").value = $("ksUPw2").value = "";
+          $("ksUPw").placeholder = u ? "(uendra)" : "";
+          $("ksUM").checked = u ? u.roller.includes("maskin") : true;
+          $("ksUK").checked = u ? u.roller.includes("kontor") : false;
+        }
+        async function lagreBrukar() {
+          if ($("ksUPw").value !== $("ksUPw2").value) return msg("ksUMsg", "Passorda er ikkje like.");
+          let body = { namn: $("ksUName").value.trim(), roller: [...($("ksUM").checked ? ["maskin"] : []), ...($("ksUK").checked ? ["kontor"] : [])] };
+          if ($("ksUPw").value) body.passord = $("ksUPw").value;
+          try {
+            await k("v1/brukar", body);
+            msg("ksUMsg", body.namn + " er lagra." + (ubrukar && body.passord ? " Nytt passord gjeld med éin gong." : ""));
+            nyBrukar(null);
+            brukarar();
+          } catch (e) {
+            msg("ksUMsg", "Feil: " + e.message);
+          }
+        }
+        async function forbetringar() {
+          let d = await k("v1/forbetringar" + (alleImp ? "?alle=1" : ""));
+          data.imp = d.forbetringar;
+          $("ksForbetringar").innerHTML = d.forbetringar.length
+            ? d.forbetringar.map((r, i) => "<div class='ksItem'><span class='ksPill " + esc(r.alvor) + "'>" + esc(r.alvor) + "</span> " + esc(d.kategoriar[r.kategori] || r.kategori) + " · " + esc(r.status) +
+                "<div><b>" + esc(r.tittel) + "</b></div><div class='ksDim'>" + esc(r.grunn) + "</div><div>→ " + esc(r.tiltak) + "</div>" +
+                "<div class='ksDim'>" + esc(r.kjelde) + " · " + r.tal + "× · " + tid(r.sist) + "</div>" +
+                "<button onclick='KSIDE.imp(" + i + ",\"godteke\")'>GODTA</button><button onclick='KSIDE.imp(" + i + ",\"gjort\")'>GJORT</button><button onclick='KSIDE.imp(" + i + ",\"avvist\")'>AVVIS</button></div>").join("")
+            : "Ingen opne forslag.";
+        }
+        async function ai() {
+          let d = await k("v1/ai");
+          $("ksAiProv").value = d.leverandor;
+          $("ksAiModel").value = d.modell;
+          $("ksAiAddr").value = d.adresse;
+          $("ksAiKey").value = "";
+          $("ksAiKey").placeholder = d.har_nokkel ? "(lagra – skriv ny for å byte)" : "(ingen)";
+          $("ksAiMsg").textContent = d.siste ? (d.siste.ok ? "Siste analyse " + tid(d.siste.t) + ": " + d.siste.tal + " forslag." : "Siste analyse feila: " + d.siste.feil) : "Inga analyse enno.";
+        }
+        async function system() {
+          let s = await k("status"), u = s.oppdatering || {}, bd = await k("v1/base");
+          let ny = [u.ny ? "SNOWMAN Kontor " + u.ny : "", u.ny_kart ? "kart " + u.ny_kart : ""].filter(Boolean).join(" og ");
+          $("ksUpd").innerHTML = "Installert: <b>SNOWMAN Kontor " + esc(s.versjon) + "</b> · kart (SNOWMAN snødjupne) <b>" + esc(u.kart || APP_VERSION) + "</b> · krev SNOWMAN " + esc(s.snowman_min) + " i maskinene<br>" +
+            (u.tilgjengeleg ? "<b style='color:#ffb020'>Ny versjon: " + esc(ny) + "</b>" : u.sjekka ? "Siste versjon (sjekka " + tid(u.sjekka) + ")." : "Ikkje sjekka enno.") + (u.feil ? " Sjekken feila: " + esc(u.feil) : "") +
+            "<br><span class='ksDim'>Kontor ser etter ny versjon ved oppstart og kvar 3. time.</span>";
+          if (document.activeElement !== $("ksBAddr")) $("ksBAddr").value = bd.adresse || "";
+          if (document.activeElement !== $("ksBUser")) $("ksBUser").value = bd.brukar || "";
+          $("ksBPw").placeholder = bd.har_passord ? "(lagra)" : "";
+          let e = await k("v1/hendingar?n=200");
+          setHTML($("ksEvents"), e.hendingar.map((x) => "<div><span class='ksDim'>" + tid(x.t) + "</span> <span style='color:" + (x.niva === "feil" ? "#ff6b5e" : x.niva === "ok" ? "#5ee07a" : "inherit") + "'>" + esc(x.tekst) + "</span></div>").join(""));
+        }
+        async function teljar() {
+          try {
+            let d = await k("v1/forslag?status=ny");
+            $("ksForslagN").textContent = d.forslag.length || "";
+            $("kmBtnN").textContent = d.forslag.length || "";
+          } catch (e) {}
+        }
+        document.querySelectorAll(".ksNav button").forEach((b) => (b.onclick = () => vis(b.dataset.k)));
+        return {
+          vis, last, teljar, nyBrukar,
+          lagreBrukar,
+          endreBrukar: (i) => nyBrukar(data.brukarar[i]),
+          async slettBrukar(i) {
+            let u = data.brukarar[i];
+            if (!confirm("Slette brukaren " + u.namn + "?" + (u.roller.includes("maskin") ? " Maskiner som brukar han, får ikkje lenger hente anleggspakka." : ""))) return;
+            try { await k("v1/brukar/fjern", { namn: u.namn }); brukarar(); } catch (e) { toast(e.message); }
+          },
+          async svar(id, status) {
+            try { await k("v1/forslag/svar", { id, status }); forslag(); teljar(); } catch (e) { toast(e.message); }
+          },
+          visPaaKart(i) {
+            let p = data.forslag[i];
+            if (!p || !p.lat) return;
+            map.setView([+p.lat, +p.lon], Math.max(map.getZoom(), 17));
+            L.popup().setLatLng([+p.lat, +p.lon]).setContent("<b>" + esc(p.type) + "</b> frå " + esc(p.maskin) + "<br>" + esc(p.tekst)).openOn(map);
+          },
+          async aktiv(v) {
+            if (!confirm("Gjere v" + v + " aktiv? Maskinene hentar henne når dei er på wifi.")) return;
+            try { await k("v1/anleggspakke/aktiv", { versjon: v }); pakkar(); } catch (e) { toast(e.message); }
+          },
+          async imp(i, status) {
+            try { await k("v1/forbetringar/status", { nokkel: data.imp[i].nokkel, status }); forbetringar(); } catch (e) { toast(e.message); }
+          },
+          async analyser() {
+            $("ksForbetringar").textContent = "Analyserer …";
+            try { await k("v1/forbetringar/analyser", {}); } catch (e) { toast(e.message); }
+            forbetringar();
+          },
+          alle() {
+            alleImp = !alleImp;
+            $("ksImpAll").textContent = "VIS OGSÅ FERDIGE: " + (alleImp ? "PÅ" : "AV");
+            forbetringar();
+          },
+          async aiLagre() {
+            try {
+              await k("v1/ai/innstillingar", { leverandor: $("ksAiProv").value, modell: $("ksAiModel").value, adresse: $("ksAiAddr").value, api_nokkel: $("ksAiKey").value });
+              await ai();
+              $("ksAiMsg").textContent = "Lagra.";
+            } catch (e) { $("ksAiMsg").textContent = "Feil: " + e.message; }
+          },
+          async aiAnalyser() {
+            $("ksAiMsg").textContent = "Analyserer … (kan ta eitt minutt)";
+            try { let d = await k("v1/ai/analyser", {}); $("ksAiMsg").textContent = d.tal + " forslag – sjå Forbetringar."; } catch (e) { $("ksAiMsg").textContent = "Feil: " + e.message; }
+          },
+          async aiSpor() {
+            msg("ksAiA", "Tenkjer …");
+            try { let d = await k("v1/ai/sporsmal", { tekst: $("ksAiQ").value }); $("ksAiA").textContent = d.svar; } catch (e) { $("ksAiA").textContent = "Feil: " + e.message; }
+          },
+          async sjekk() {
+            $("ksUpd").textContent = "Ser etter ny versjon …";
+            try { await k("v1/oppdatering/sjekk", {}); } catch (e) { toast(e.message); }
+            system();
+          },
+          async oppdater() {
+            if (!confirm("Oppdatere SNOWMAN Kontor og kartet no? Kartet startar på nytt om eit augeblink. Korreksjonane til maskinene blir ikkje påverka.")) return;
+            $("ksUpd").textContent = "Lastar ned og installerer … (kan ta eitt minutt)";
+            try {
+              let d = await k("v1/oppdater", {});
+              $("ksUpd").textContent = d.tekst + (d.endra ? "\n\nStartar på nytt – sida blir lasta om …" : "");
+              if (d.endra) setTimeout(() => location.reload(), 12000);
+            } catch (e) { $("ksUpd").textContent = "Feil: " + e.message; }
+          },
+          async baseLagre() {
+            msg("ksBMsg", "Hentar …");
+            try {
+              let d = await k("v1/base", { adresse: $("ksBAddr").value.trim(), brukar: $("ksBUser").value.trim(), passord: $("ksBPw").value });
+              $("ksBPw").value = "";
+              msg("ksBMsg", !$("ksBAddr").value.trim() ? "Lagra (ingen adresse)." : d.ok ? "Kontakt med SNOWMAN Base." : "Lagra, men ingen kontakt: " + (d.feil || ""));
+            } catch (e) { msg("ksBMsg", "Feil: " + e.message); }
+          },
+        };
+      })();
       const KONTORM = (function () {
         let st = {};
         const ago = (s) => (s == null ? "–" : s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : s < 172800 ? Math.round(s / 3600) + " t" : Math.round(s / 86400) + " d");
@@ -7334,6 +7717,26 @@
               mk.setTooltipContent(html);
             }
             for (let id in mMark) if (!seen[id]) (mGroup.removeLayer(mMark[id]), delete mMark[id]);
+            // v1.6.141: maskinene som fliser nede til venstre (der fart og helling står i maskina) – trykk for å sjå ho
+            let tiles = (r.maskiner || []).filter((m) => m.lat != null).map((m) => {
+              let e = m.ekstra || {}, age = e.pos_t ? now - e.pos_t : m.age, live = age != null && age < 60;
+              return "<div class='kmTile' data-lat='" + m.lat + "' data-lon='" + m.lon + "'><small>" + esc(m.namn) + (e.prep && live ? " · <b style='display:inline;font-size:11px;color:#5ee07a'>PREP</b>" : "") + "</small><b>" +
+                (e.djupne != null ? Math.round(e.djupne * 100) + " cm" : "–") + "</b><em>" + (live ? fixTxt(m.fix) + (e.fart != null ? " · " + Math.round(e.fart * 3.6) + " km/t" : "") : "sist sett " + ago(age) + " sidan") + "</em></div>";
+            });
+            let tele = $("tele"), box = $("kmTiles");
+            if (!box) {
+              box = document.createElement("div");
+              box.id = "kmTiles";
+              box.className = "kmTile";
+              box.style.cssText = "display:grid;gap:6px;padding:0;background:none;min-width:0";
+              box.onclick = (ev) => {
+                let t = ev.target.closest("[data-lat]");
+                if (t) map.setView([+t.dataset.lat, +t.dataset.lon], Math.max(map.getZoom(), 17));
+              };
+              tele.appendChild(box);
+            }
+            setHTML(box, tiles.slice(0, 8).join("") || "<div class='kmTile' style='cursor:default'><small>MASKINENE</small><b>ingen i sanntid</b><em>Sjå Kontor › Oversikt</em></div>");
+            setFixBox();
             if (!fitted && bounds.length) {
               fitted = true;
               map.fitBounds(L.latLngBounds(bounds).pad(0.5), { maxZoom: 17 });
@@ -7390,10 +7793,33 @@
             document.body.appendChild(b);
             // det er inga eiga maskin på kontoret – maskinene ute blir viste som prikkar med namn
             if (machineOn) toggleMachine();
+            // v1.6.141: rydd bort det som berre gjeld maskina (preparering, demo, helling, fart, eiga snødjupne, maskinmål,
+            // antenne, drivstoff). Alt finst framleis i koden – det er berre skjult på kontoret.
+            document.body.classList.add("kontormodus");
+            ["prepBtn", "demoBtn", "machineBtn", "tabMachine", "tabCal", "tabFuel"].forEach((id) => $(id) && $(id).classList.add("kmOff"));
+            document.querySelectorAll("button.tool[onclick*='resetWork']").forEach((x) => x.classList.add("kmOff"));
+            let inn = document.querySelector("button.tool[onclick='toggleSettings()']");
+            inn.insertAdjacentHTML("beforebegin",
+              "<button id='kmBtnKontor' class='tool' onclick='KONTORM.opne(\"oversikt\")' title='Maskinene, forslag, pakkar, brukarar, forbetringar, AI og system'><i>▤</i>Kontor<b id='kmBtnN' class='kmBadge'></b></button" +
+              "><button id='kmBtnPub' class='tool' onclick='KONTORM.opne(\"pub\")' title='Publiser anlegget til alle maskinene'><i>⇪</i>Publiser</button>");
+            if (!$("settings").style.width) $("settings").style.width = "min(640px, 96vw)";
+            $("tabKontor").parentNode.prepend($("tabKontor"));   // Kontor først i fanene på kontoret
+            showTab("kontor");
+            window.KMFIX = () => {
+              let n = Object.keys(mMark).length;
+              return ["KONTOR", n ? n + " MASKIN" + (n === 1 ? "" : "AR") + " PÅ KARTET" : "INGEN MASKINER ENNO", "Trykk for maskinene og Base"];
+            };
+            KSIDE.teljar();
+            setInterval(KSIDE.teljar, 30000);
             nyVersjon();
             setInterval(nyVersjon, 60000);
             kart();
             setInterval(kart, 5000);
+          },
+          opne(del) {
+            $("settings").classList.remove("hide");
+            showTab("kontor");
+            KSIDE.vis(del);
           },
           async publiser() {
             let terr = $("kmTerr").checked;

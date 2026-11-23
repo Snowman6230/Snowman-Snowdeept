@@ -9,6 +9,24 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Kontor 1.1.2 og PC-prototype v1.6.141 – kontoret har same layout som SNOWMAN snødjupne
+- **Bakgrunn (eigaren):** «Har Snowman Kontor same layout som snødjupne?» → «gjer 1 og 2»: (1) rydd bort det som berre
+  gjeld maskina i kontormodus, (2) flytt alt kontorsida gjer inn i same layout.
+- **Rydda (kontormodus):** Start prep, Reset spor, Demo, Maskin, helling/fart/kurs/spor/areal/tid, eiga snødjupne og
+  maskinfiguren er skjulte, og fanene Maskin, Antenne og helling og Drivstoff. GNSS-boksen oppe til høgre viser
+  **KONTOR** og kor mange maskiner som er på kartet (trykk = maskinene og Base).
+- **Nytt:** nede til venstre står **maskinene i sanntid** som fliser (namn, snødjupne, fix, fart, PREP) – trykk for å
+  gå til maskina på kartet. Verktøylinja har **▤ Kontor** (med tal på nye forslag) og **⇪ Publiser**.
+- **Nytt:** Innst. › **Kontor** (fyrste fane) har alt frå kontorsida: Publiser, Oversikt (maskinene og korreksjonane
+  frå Base), Forslag (godkjenn/avvis/gjort, «Vis på kartet»), Pakkar (versjonar, gjer aktiv), Brukarar (ny, endre,
+  passord, slett), Forbetringar, AI og System (oppdatering, Base-adresse, hendingar). Kontorsida på 8790 er ein reserve.
+- **Tryggleik:** kalla går via `/api/kontormodus/k/…` til Kontor med den lokale nøkkelen. Berre i kontormodus, berre
+  127.0.0.1, berre ei fast liste adresser og berre med headeren `X-Snowman-Kontor` (andre nettstader kan ikkje sende han).
+  I maskina svarar adressa 403.
+- **Testar:** testkontorkopling ALT OK, Kontor 18 OK, testautoport OK. Ende-til-ende: to simulerte maskiner og eit
+  forslag – alle sju delane opna, ny brukar lagra, forslag godkjent, «Vis på kartet». Maskinmodus med simulert GNSS
+  uendra (RTK FIX, Start prep og Demo synlege, ingen Kontor-knappar).
+
 ### SNOWMAN Kontor 1.1.1 og PC-prototype v1.6.140 – varsel og éin knapp for ny versjon av Kontor og kartet
 - **Bakgrunn (eigaren):** «Lag også slik at eg får varsel i Snowman kontor om at det er ny versjon tilgjengeleg og at
   eg kan laste den ned, slik som i Snowman snødjupne. Det blir tungvindt om eg manuelt må laste ned ein ny zip-fil.»

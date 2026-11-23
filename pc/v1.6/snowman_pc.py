@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.140"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.141"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -105,6 +105,26 @@ def kontor_styrt(): return KONTOR.styrt(CFG) and MODUS[0]!="kontor"
 MODUS=[os.environ.get("SNOWMAN_MODUS") or "maskin"]
 KONTOR_LOKAL={"url":(os.environ.get("SNOWMAN_KONTOR_URL") or "http://127.0.0.1:8790").rstrip("/"),
               "nokkel":os.environ.get("SNOWMAN_KONTOR_NOKKEL") or ""}
+# v1.6.141: kontorsida inne i SNOWMAN (kontormodus) – kall vidare til SNOWMAN Kontor med den lokale nøkkelen.
+# Berre JSON, berre lista adresser, og berre med eigen header (ein annan nettstad i nettlesaren kan ikkje sende han).
+KONTOR_PROXY=re.compile(r"^(status|v1/(maskiner|anleggspakke/versjonar|anleggspakke/aktiv|forslag|forslag/svar|maskin/fjern|"
+                        r"forbetringar|forbetringar/status|forbetringar/analyser|ai|ai/innstillingar|ai/forehandsvis|ai/analyser|"
+                        r"ai/sporsmal|base|brukarar|brukar|brukar/fjern|hendingar|oppdatering/sjekk|oppdater))$")
+def kontor_proxy(h,u,body=None):
+    sub=u.path[len("/api/kontormodus/k/"):]
+    try:
+        if MODUS[0]!="kontor": raise PermissionError("Berre i kontormodus (SNOWMAN Kontor).")
+        if h.headers.get("X-Snowman-Kontor")!="1": raise PermissionError("Manglar X-Snowman-Kontor.")
+        if not KONTOR_PROXY.match(sub): raise PermissionError("Ukjend adresse")
+        path="/api/"+sub+("?"+u.query if u.query else "")
+        r=kontor_lokal(path,json.loads(body or b"{}") if body is not None else None,timeout=600 if sub in ("v1/oppdater","v1/ai/analyser","v1/ai/sporsmal") else 30)
+        if isinstance(r,dict) and r.get("ok") is False and "error" not in r: r["error"]=r.get("feil","Feil frå SNOWMAN Kontor")
+        h.headers_ok(); h.wfile.write(json.dumps(r).encode())
+    except PermissionError as e:
+        h.headers_ok(403); h.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+    except Exception as e:
+        h.headers_ok(502); h.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
+
 def kontor_lokal(path,body=None,fil=None,headers=None,timeout=30):
     """Kall til SNOWMAN Kontor på same PC (kontormodus) med den lokale nøkkelen."""
     if not KONTOR_LOKAL["nokkel"]: raise RuntimeError("Kontormodus er ikkje starta frå SNOWMAN Kontor (manglar lokal nøkkel).")
@@ -1017,6 +1037,7 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if u.path.startswith("/api/kontormodus/k/"): return kontor_proxy(self,u)
         if u.path=="/api/kontormodus/kart":   # v1.6.138: maskinene og delte målingar til kartet i kontormodus
             q=urllib.parse.parse_qs(u.query)
             try:
@@ -1406,6 +1427,7 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
+        if self.path.startswith("/api/kontormodus/k/"): return kontor_proxy(self,urllib.parse.urlparse(self.path),body or b"{}")
         if self.path=="/api/kontormodus/publiser":   # v1.6.138: «Publiser til maskinene» (berre kontormodus)
             try:
                 if MODUS[0]!="kontor": raise ValueError("Publisering er berre for kontormodus (SNOWMAN Kontor).")

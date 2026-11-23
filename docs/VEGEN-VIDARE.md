@@ -330,7 +330,9 @@ legge inn nye kart og desse pushest ut til maskinene.» Val (eigaren):
 - **Sanntid ute i bakken:** maskina sender posisjon, snødjupne, fix og «preparerer» kvart 10. s og RTK FIX-målingar.
   Wifi på anlegget først, så mobilnettet til **port 8791** (berre maskin-API, berre rolla maskin), som er den einaste
   porten som kan sendast vidare i ruteren (DuckDNS). Pakker over 50 MB blir berre henta på wifi.
-*Laga 2026-11-23: Kontor 1.1.0, SNOWMAN 1.6.139.*
+*Laga 2026-11-23: Kontor 1.1.0, SNOWMAN 1.6.139.* Same dag (eigaren: «gjer 1 og 2»): kontormodus er rydda for det som
+berre gjeld maskina, og alt frå kontorsida ligg under Innst. › Kontor i same layout (Kontor 1.1.2, SNOWMAN 1.6.141).
+Kontorsida på 8790 er ein reserve.
 
 **Avgjerd:** SNOWMAN skal skilje mellom **kontor** (planlegging og redigering) og **maskin** (førar). Kontoret legg inn
 og plottar detaljar i kart og 3D-modell og sender oppdateringar ut til heile maskinparken. Byggjer vidare på kap. 2

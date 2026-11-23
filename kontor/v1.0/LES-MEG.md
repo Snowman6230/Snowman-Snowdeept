@@ -2,6 +2,10 @@
 
 Kontorsida og anleggsserveren for SNOWMAN snødjupne. Køyrer på **ein PC på anlegget** (Windows).
 
+**Frå 1.1.2** gjer du alt i **Kart og anlegg** – same skjermbilete som i maskinene. Knappen **▤ Kontor** i verktøylinja
+(eller Innst. › Kontor) har publisering, maskinene, forslag, pakkar, brukarar, forbetringar, AI og system. Kontorsida på
+8790 er ein reserve.
+
 **Frå 1.1.0** har kontoret **same kart, 3D, terreng, trasear, hindringar og kontrollpunkt som i maskinene**: Kontor
 startar SNOWMAN snødjupne i **kontormodus** (utan GNSS) på **http://localhost:8765/**. Der lastar du inn terrengmodellane
 (dei same `.pxy`-filene som i dag), lagar trasear og hindringar og trykkjer **PUBLISER TIL MASKINENE**. Maskinene ute i

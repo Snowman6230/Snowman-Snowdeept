@@ -25,7 +25,7 @@ import secrets
 import threading
 from pathlib import Path
 
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 API_VERSION = 1
 
 # Samspel med SNOWMAN snødjupne (pc/): anleggspakke og forslag frå v1.6.137, terreng, kontormodus og sanntid frå v1.6.139.

@@ -61,6 +61,7 @@ input,select,textarea{width:100%}
   <span>⬆ <b id="updBTxt">Ny versjon tilgjengeleg</b> <span class="dim" id="updBDim"></span></span>
   <button class="pri" id="updBRun">Oppdater no</button><button id="updBLater">Seinare</button><span id="updBMsg" class="dim"></span>
 </div>
+<div id="kartHint" class="hidden" style="padding:8px 16px;border-bottom:1px solid var(--line);color:var(--dim)">Alt på denne sida finst òg i <a id="kartHintA" href="http://localhost:8765/" target="snowmanKart" style="color:var(--acc)">Kart og anlegg</a> › <b>Kontor</b> – same skjermbilete som i maskinene. Denne sida er ein reserve.</div>
 <section id="login" class="card">
   <h2>Logg inn</h2>
   <label>Brukarnamn</label><input id="lUser" autocomplete="username" autocapitalize="off">
@@ -196,6 +197,7 @@ async function start(){
   if(!first)first="oversikt";
   show(first);setInterval(()=>{if(tab==="oversikt")refresh()},10000);
   banner();setInterval(banner,60000);
+  $("#kartHint").classList.remove("hidden");
 }
 // v1.1.1: varsel om ny versjon (Kontor og/eller kartet = SNOWMAN snødjupne) – som i maskina, med éin knapp
 let updLater="";
