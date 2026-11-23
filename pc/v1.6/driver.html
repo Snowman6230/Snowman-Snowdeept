@@ -530,6 +530,9 @@
       #kmBtnKontor {
         position: relative;
       }
+      .objPop .leaflet-popup-content {
+        font: 14px/1.45 system-ui;
+      }
       .tele .kmTile {
         cursor: pointer;
         min-width: 190px;
@@ -3489,7 +3492,7 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.152";
+      const APP_VERSION = "1.6.153";
       document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
       document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
       document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
@@ -7562,7 +7565,7 @@
               if (status === "godkjent" && p && p.type === "hindring" && p.lat != null && p.status !== "godkjent") {
                 let o = p.objekt || {}, namn = o.name || String(p.tekst || "").replace(/^Ny hindring:\s*/, "").split(" (")[0].slice(0, 60) || "Hindring";
                 await api("api/objekt/save", { lat: +p.lat, lng: +p.lon, type: o.type || "anna", name: namn, radius: o.radius || 2,
-                  note: ((o.note ? o.note + " · " : "") + "frå " + p.maskin).slice(0, 300), source: "kontor" });
+                  note: (o.note || "").slice(0, 120), source: "kontor", laga_av: p.maskin + ", godkjend på kontoret" });
                 svar = "Lagd inn på kontoret – blir med i neste publisering";
                 TRA.load && TRA.load();
                 toast("Hindringa er lagd inn i kartet. Trykk ⇪ Publiser for å sende ho til alle maskinene.");
@@ -8124,13 +8127,27 @@
           if (!show || D) return;
           objs.forEach((o) => {
             L.circle([o.lat, o.lng], { radius: o.radius, color: "#ff3b30", weight: 2, fillOpacity: 0.25, interactive: false }).addTo(objGroup);
+            // v1.6.153: trykk på hindringa – kva ho er og kven som la ho inn
             L.marker([o.lat, o.lng], {
-              interactive: false,
               icon: L.divIcon({ className: "objIco", html: esc((objTypes[o.type] || {}).sym || "!"), iconSize: [26, 26] }),
             })
               .bindTooltip(esc(o.name), { direction: "top", offset: [0, -12], className: "traLbl" })
+              .bindPopup(() => objInfo(o), { className: "objPop", maxWidth: 300 })
               .addTo(objGroup);
           });
+        }
+        // maskinfiguren ligg over kartet – gjer ho gjennomsiktig medan infoboksen for ei hindring er open
+        map.on("popupopen", (e) => e.popup.options.className === "objPop" && ($("groomer").style.opacity = 0.2));
+        map.on("popupclose", () => ($("groomer").style.opacity = ""));
+        function objInfo(o) {
+          let laga = o.laga_av || (o.source === "kontoret" ? "kontoret" : o.source === "maskin" || o.source === "kart" ? "denne maskina" : o.source || "–");
+          let kjelde = o.lokal ? "<span style='color:#ffb24d'>lokal – ventar på kontoret</span>"
+            : o.source === "kontoret" ? "🔒 frå kontoret (anleggspakka)" : "eiga hindring i denne maskina";
+          return "<b>" + esc((objTypes[o.type] || {}).sym || "!") + " " + esc(o.name) + "</b><br>" +
+            esc((objTypes[o.type] || {}).name || o.type) + " · radius " + fmt(o.radius, 1) + " m" +
+            (o.note ? "<br><i>" + esc(o.note) + "</i>" : "") +
+            "<br><small>Lagd inn av: <b>" + esc(laga) + "</b>" + (o.created ? " · " + esc(o.created) : "") +
+            "<br>" + kjelde + "</small>";
         }
         function openObjDlg(p) {
           objPending = p;

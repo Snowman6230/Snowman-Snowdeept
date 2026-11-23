@@ -621,6 +621,10 @@ class Objekt:
             o.update(type=typ, name=str(d.get("name") or "").strip()[:60] or OBJ_TYPES[typ][0], lat=round(lat, 8), lng=round(lng, 8),
                      radius=round(r, 2), note=str(d.get("note") or "")[:120], source=str(d.get("source") or o.get("source") or "kart")[:40],
                      updated=time.strftime("%Y-%m-%d %H:%M:%S"))
+            # v1.6.153: kven la hindringa inn (maskinnamn, «Office» eller «PB600_1, godkjend på kontoret»)
+            laga = str(d.get("laga_av") or o.get("laga_av") or "").strip()[:60]
+            if laga:
+                o["laga_av"] = laga
             if d.get("lokal"):          # v1.6.136: lagd i maskina medan ho er styrt frå kontoret – ventar på kontoret
                 o["lokal"] = True
             if not old:
@@ -655,6 +659,7 @@ class Objekt:
             out.append({"id": oid, "type": typ, "name": str(d.get("name") or "").strip()[:60] or OBJ_TYPES[typ][0],
                         "lat": round(lat, 8), "lng": round(lng, 8), "radius": round(r, 2),
                         "note": str(d.get("note") or "")[:120], "source": "kontoret",
+                        "laga_av": str(d.get("laga_av") or "kontoret")[:60],
                         "created": str(d.get("created") or time.strftime("%Y-%m-%d %H:%M"))[:20],
                         "updated": str(d.get("updated") or time.strftime("%Y-%m-%d %H:%M:%S"))[:20]})
         ids = {o["id"] for o in out}

@@ -9,6 +9,15 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### SNOWMAN Snowdeep v1.6.153 – trykk på ei hindring: kva ho er og kven som la ho inn
+- **Bakgrunn (eigaren):** «Når ein trykker på hindring så får ein opp kva dette er og kven som har lagt den inn.»
+- **Nytt:** trykk på symbolet til ei hindring i kartet (maskina og Office) → boks med namn, type, radius, merknad,
+  **Lagd inn av** (maskinnamnet, «Office», eller «PB600_1, godkjend på kontoret») og dato, og om ho er eiga, lokal og
+  ventar på kontoret, eller kjem frå kontoret. Maskinfiguren blir gjennomsiktig medan boksen er open.
+- **Nytt:** hindringar får feltet `laga_av` når dei blir lagde inn, og det følgjer med i anleggspakka. Eldre hindringar
+  viser «denne maskina» eller «kontoret».
+- **Testar:** testkontorkopling ALT OK. Prøvd med simulert GNSS.
+
 ### SNOWMAN Office 1.5.1 og SNOWMAN Snowdeep v1.6.152 – godkjend hindring kjem i kartet, og tilkopla maskiner synest
 - **Bakgrunn (eigaren):** «Ser verken maskin eller godkjent hindring i kartet.» Maskina var tilkopla utan GNSS (ingen
   posisjon), forslaget var ein merknad utan posisjon, og «Godkjenn» endra berre status.

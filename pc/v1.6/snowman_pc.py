@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.152"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.153"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -1483,6 +1483,8 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 if OBJ is None: raise RuntimeError("Hindringar krev numpy: "+TRA_ERR)
                 d=json.loads(body or b"{}")
+                if self.path.endswith("save") and not d.get("id") and not d.get("laga_av"):   # v1.6.153: kven la ho inn
+                    d["laga_av"]="Office" if MODUS[0]=="kontor" else ((CFG.get("kontor_maskinnamn") or "").strip() or socket.gethostname())
                 if kontor_styrt():   # v1.6.136: ny hindring lokalt med éin gong + forslag; hindringar frå kontoret er låste
                     old=OBJ.get(d.get("id")) if d.get("id") else None
                     if old and not old.get("lokal"):
