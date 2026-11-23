@@ -1,9 +1,9 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""SNOWMAN Base – RTK-base og NTRIP-caster for SNOWMAN snødjupne.
+"""SNOWMAN Base – RTK-base og NTRIP-caster for SNOWMAN Snowdeep.
 
 Berre satellittar og NTRIP (avgjerd 2026-11-22): korreksjonar til maskinene, basemottakaren, relé og reserve,
 kontroll av baseposisjonen, rådatalogg og satellittbaner. Kontorsida, anleggspakkar, forslag, deling og AI ligg i
-SNOWMAN Kontor (kontor/v1.0, eige program på ein PC) – så ingenting anna kan forstyrre korreksjonane.
+SNOWMAN Office (kontor/v1.0, eige program på ein PC) – så ingenting anna kan forstyrre korreksjonane.
 
 Tilrådd: eigen Raspberry Pi ved antenna (Linux-teneste). Køyrer òg på Windows, NAS (Docker) eller ein liten PC.
 Berre Python 3.10+ (pyserial for USB).
@@ -318,7 +318,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     if a.cmd == "versjon":
-        return print(f"SNOWMAN Base {VERSION} (berre satellittar og NTRIP – kontoret er SNOWMAN Kontor)")
+        return print(f"SNOWMAN Base {VERSION} (berre satellittar og NTRIP – kontoret er SNOWMAN Office)")
     if a.cmd == "oppdater":
         changed, _ = apply()
         return sys.exit(RESTART_CODE if changed and os.environ.get("SNOWMAN_BASE_TENESTE") else 0)

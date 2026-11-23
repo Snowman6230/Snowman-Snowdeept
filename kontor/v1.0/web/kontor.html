@@ -1,9 +1,9 @@
-<!doctype html><!-- SNOWMAN Kontor – SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. -->
+<!doctype html><!-- SNOWMAN Office – SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE. -->
 <html lang="nn">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SNOWMAN Kontor</title>
+<title>SNOWMAN Office</title>
 <link rel="icon" href="/vendor/snowman-icon.png">
 <link rel="stylesheet" href="/vendor/leaflet.css">
 <style>
@@ -50,7 +50,7 @@ input,select,textarea{width:100%}
 </head>
 <body>
 <header>
-  <h1>SNOWMAN Kontor</h1><span class="dim" id="sub"></span>
+  <h1>SNOWMAN Office</h1><span class="dim" id="sub"></span>
   <nav id="tabs" class="hidden">
     <a class="btn" id="kartLink" href="http://localhost:8765/" target="snowmanKart" style="border-color:var(--acc)">Kart og anlegg</a><button data-t="oversikt">Oversikt</button><button data-t="pakke">Anleggspakke</button><button data-t="forslag">Forslag</button>
     <button data-t="forbetringar">Forbetringar</button><button data-t="ai">AI</button><button data-t="brukarar">Brukarar</button><button data-t="system">System</button>
@@ -61,36 +61,36 @@ input,select,textarea{width:100%}
   <span>⬆ <b id="updBTxt">Ny versjon tilgjengeleg</b> <span class="dim" id="updBDim"></span></span>
   <button class="pri" id="updBRun">Oppdater no</button><button id="updBLater">Seinare</button><span id="updBMsg" class="dim"></span>
 </div>
-<div id="kartHint" class="hidden" style="padding:8px 16px;border-bottom:1px solid var(--line);color:var(--dim)">Alt på denne sida finst òg i <a id="kartHintA" href="http://localhost:8765/" target="snowmanKart" style="color:var(--acc)">Kart og anlegg</a> › <b>Kontor</b> – same skjermbilete som i maskinene. Denne sida er ein reserve.</div>
+<div id="kartHint" class="hidden" style="padding:8px 16px;border-bottom:1px solid var(--line);color:var(--dim)">Alt på denne sida finst òg i <a id="kartHintA" href="http://localhost:8765/" target="snowmanKart" style="color:var(--acc)">Kart og anlegg</a> › <b>Office</b> – same skjermbilete som i maskinene. Denne sida er ein reserve.</div>
 <section id="login" class="card">
   <h2>Logg inn</h2>
   <label>Brukarnamn</label><input id="lUser" autocomplete="username" autocapitalize="off">
   <label>Passord</label><input id="lPw" type="password" autocomplete="current-password">
   <div class="row"><button class="pri" id="loginBtn">Logg inn</button><span id="loginMsg" class="dim"></span></div>
-  <p class="dim small">Gløymt passord? På PC-en Kontor køyrer på: <code>START-SNOWMAN-KONTOR.bat brukar passord NAMN</code> (Windows) eller <code>python snowman_kontor.py brukar passord NAMN</code> (Linux).</p>
+  <p class="dim small">Gløymt passord? På PC-en Office køyrer på: <code>START-SNOWMAN-OFFICE.bat brukar passord NAMN</code> (Windows) eller <code>python snowman_kontor.py brukar passord NAMN</code> (Linux).</p>
 </section>
 <section id="setup" class="card hidden" style="max-width:520px;margin:40px auto">
   <h2>Lag administrator</h2>
-  <p class="dim">SNOWMAN Kontor har ingen administrator enno. Vel brukarnamn og passord for kontorsida. Skriv dei ned – dei blir ikkje viste att.</p>
+  <p class="dim">SNOWMAN Office har ingen administrator enno. Vel brukarnamn og passord for kontorsida. Skriv dei ned – dei blir ikkje viste att.</p>
   <label>Brukarnamn (administrator)</label><input id="sUser" autocomplete="username" autocapitalize="off" placeholder="t.d. hans">
   <label>Passord (minst 8 teikn)</label><input id="sPw" type="password" autocomplete="new-password">
   <label>Same passord ein gong til</label><input id="sPw2" type="password" autocomplete="new-password">
   <h2 style="margin-top:16px">Maskinene</h2>
-  <p class="dim small">Brukarnamnet og passordet tråkkemaskinene skriv i SNOWMAN snødjupne under Innst. › Trasear › «Kopling til SNOWMAN Kontor». Kan òg lagast seinare under «Brukarar». (Dette er ikkje NTRIP-brukaren – den ligg i SNOWMAN Base.)</p>
+  <p class="dim small">Brukarnamnet og passordet tråkkemaskinene skriv i SNOWMAN Snowdeep under Innst. › Trasear › «Kopling til SNOWMAN Office». Kan òg lagast seinare under «Brukarar». (Dette er ikkje NTRIP-brukaren – den ligg i SNOWMAN Base.)</p>
   <label>Brukarnamn (maskinene)</label><input id="sNUser" autocapitalize="off" placeholder="t.d. pb600">
   <label>Passord (minst 8 teikn)</label><input id="sNPw" type="password" autocomplete="new-password">
   <div class="row"><button class="pri" id="setupBtn">Lag og logg inn</button><span id="setupMsg" class="msg"></span></div>
-  <p id="setupRemote" class="dim small hidden">Administrator kan berre lagast frå det lokale nettet. Opne sida frå ein PC på anlegget, eller køyr <code>brukar legg-til NAMN --rolle kontor</code> på PC-en Kontor køyrer på.</p>
+  <p id="setupRemote" class="dim small hidden">Administrator kan berre lagast frå det lokale nettet. Opne sida frå ein PC på anlegget, eller køyr <code>brukar legg-til NAMN --rolle kontor</code> på PC-en Office køyrer på.</p>
 </section>
 <main id="app" class="hidden">
   <div id="t-oversikt">
     <section class="card"><h2>SNOWMAN Base – korreksjonane</h2><div class="scroll" id="baseInfo"></div></section>
-    <section class="card"><h2>Kart</h2><div id="map"></div><p class="dim">Fullt kart med terreng, trasear og 3D: <b>Kart og anlegg</b> øvst. Her: basar (raud), maskiner etter siste melding til Kontor (blå) og maskiner som hentar korreksjonar frå Base no (grøn). Teikning og redigering av trasear, hindringar og kontrollpunkt kjem som eiga kartfane (VEGEN-VIDARE kap. 16, steg 3).</p></section>
+    <section class="card"><h2>Kart</h2><div id="map"></div><p class="dim">Fullt kart med terreng, trasear og 3D: <b>Kart og anlegg</b> øvst. Her: basar (raud), maskiner etter siste melding til Office (blå) og maskiner som hentar korreksjonar frå Base no (grøn). Teikning og redigering av trasear, hindringar og kontrollpunkt kjem som eiga kartfane (VEGEN-VIDARE kap. 16, steg 3).</p></section>
     <section class="card"><h2>Maskiner</h2><div class="scroll" id="machines"></div></section>
   </div>
   <div id="t-brukarar" class="hidden">
     <section class="card"><h2>Brukarar</h2>
-      <p class="dim"><b>maskin</b> = tråkkemaskinene: brukarnamnet og passordet i SNOWMAN snødjupne under Innst. › Trasear › «Kopling til SNOWMAN Kontor» (anleggspakke, forslag, deling). <b>kontor</b> = administrator: denne sida. NTRIP-brukarane (korreksjonane) ligg i SNOWMAN Base, ikkje her. Passord blir aldri viste – berre endra.</p>
+      <p class="dim"><b>maskin</b> = tråkkemaskinene: brukarnamnet og passordet i SNOWMAN Snowdeep under Innst. › Trasear › «Kopling til SNOWMAN Office» (anleggspakke, forslag, deling). <b>kontor</b> = administrator: denne sida. NTRIP-brukarane (korreksjonane) ligg i SNOWMAN Base, ikkje her. Passord blir aldri viste – berre endra.</p>
       <div class="scroll" id="uList"></div></section>
     <section class="card"><h2 id="uTitle">Ny brukar</h2>
       <div class="grid">
@@ -104,7 +104,7 @@ input,select,textarea{width:100%}
   </div>
   <div id="t-pakke" class="hidden">
     <section class="card"><h2>Anleggspakke</h2>
-      <p class="dim"><b>Det vanlege er å publisere frå «Kart og anlegg»</b> (SNOWMAN snødjupne i kontormodus på denne PC-en, fana Kontor): der teiknar du trasear, hindringar og kontrollpunkt og hentar inn terrengmodellar, akkurat som i maskina. Her kan du òg laste opp ei ferdig pakke. Anleggspakka (zip med manifest.json og trasear.json, objekt.json og/eller kontrollpunkt.json – same format som i SNOWMAN snødjupne) blir henta av alle maskinene når dei har dekning. Kontor kontrollerer pakka før ho blir teken imot. Ny versjon blir aktiv med éin gong, og maskinene hentar henne når dei er på wifi på anlegget (HENT FRÅ KONTOR). Du kan rulle tilbake.</p>
+      <p class="dim"><b>Det vanlege er å publisere frå «Kart og anlegg»</b> (SNOWMAN Snowdeep i Office-modus på denne PC-en, fana Office): der teiknar du trasear, hindringar og kontrollpunkt og hentar inn terrengmodellar, akkurat som i maskina. Her kan du òg laste opp ei ferdig pakke. Anleggspakka (zip med manifest.json og trasear.json, objekt.json og/eller kontrollpunkt.json – same format som i SNOWMAN Snowdeep) blir henta av alle maskinene når dei har dekning. Office kontrollerer pakka før ho blir teken imot. Ny versjon blir aktiv med éin gong, og maskinene hentar henne når dei er på wifi på anlegget (HENT FRÅ OFFICE). Du kan rulle tilbake.</p>
       <div class="row"><input type="file" id="pkgFile" accept=".zip"><input id="pkgNote" placeholder="Merknad (kva er endra)"><button class="pri" id="pkgUp">Last opp</button></div>
       <div id="pkgMsg" class="msg"></div>
       <div class="scroll" id="pkgList"></div></section>
@@ -114,13 +114,13 @@ input,select,textarea{width:100%}
   </div>
   <div id="t-forbetringar" class="hidden">
     <section class="card"><h2>Forbetringsforslag</h2>
-      <p class="dim">Frå reglane (alltid på), åtvaringane frå SNOWMAN Base om korreksjonane, og AI (om slått på). Kategoriar: SNOWMAN Base, SNOWMAN Kontor, SNOWMAN snødjupne, mottakar/antenne og drift. Eksporter lista og gi henne til utviklaren (eller ein AI-assistent) som oppgåveliste.</p>
+      <p class="dim">Frå reglane (alltid på), åtvaringane frå SNOWMAN Base om korreksjonane, og AI (om slått på). Kategoriar: SNOWMAN Base, SNOWMAN Office, SNOWMAN Snowdeep, mottakar/antenne og drift. Eksporter lista og gi henne til utviklaren (eller ein AI-assistent) som oppgåveliste.</p>
       <div class="row"><button id="impRun">Analyser no</button><button id="impAll">Vis også gjorde/avviste</button><a class="btn" id="impMd" href="#">Last ned som Markdown</a></div>
       <div class="scroll" id="impList"></div></section>
     <section class="card"><h2>Trend siste dagar</h2><div class="scroll" id="days"></div></section>
   </div>
   <div id="t-ai" class="hidden">
-    <section class="card"><h2>AI i SNOWMAN Kontor</h2>
+    <section class="card"><h2>AI i SNOWMAN Office</h2>
       <p class="dim">AI les eit <b>anonymisert samandrag</b> (ingen namn, IP-adresser, posisjonar eller nøklar) og foreslår forbetringar – også i SNOWMAN-programma. AI styrer aldri noko. Sjå nøyaktig kva som blir sendt under «Førehandsvis».</p>
       <label>Leverandør</label><select id="aiProv"><option value="av">Av</option><option value="ollama">Lokal modell (Ollama) – ingenting forlèt anlegget</option><option value="anthropic">Claude (Anthropic API) – krev eigen API-nøkkel</option></select>
       <label>Modell</label><input id="aiModel" placeholder="t.d. llama3.1 (Ollama) eller claude-sonnet-5-5">
@@ -128,13 +128,13 @@ input,select,textarea{width:100%}
       <label>API-nøkkel (Claude)</label><input id="aiKey" type="password" placeholder="(uendra)">
       <div class="row"><button class="pri" id="aiSave">Lagre</button><button id="aiPrev">Førehandsvis</button><button id="aiRun">Analyser med AI no</button></div>
       <div id="aiMsg" class="msg"></div><pre id="aiOut" class="hidden"></pre></section>
-    <section class="card"><h2>Spør SNOWMAN Kontor</h2>
+    <section class="card"><h2>Spør SNOWMAN Office</h2>
       <textarea id="aiQ" rows="3" placeholder="t.d. Kvifor har FIX-delen gått ned denne veka?"></textarea>
       <div class="row"><button class="pri" id="aiAsk">Spør</button></div><pre id="aiA" class="hidden"></pre></section>
   </div>
   <div id="t-system" class="hidden">
     <section class="card"><h2>SNOWMAN Base (berre lesing)</h2>
-      <p class="dim">Adressa til statussida på Pi-en med SNOWMAN Base, t.d. <b>http://snowman-base.local:8780</b>. Kontor les statusen kvart minutt og viser korreksjonane på oversikta. Kontor endrar aldri noko i Base. Brukarnamn og passord trengst berre om statussida i Base krev innlogging (ein administrator i Base).</p>
+      <p class="dim">Adressa til statussida på Pi-en med SNOWMAN Base, t.d. <b>http://snowman-base.local:8780</b>. Office les statusen kvart minutt og viser korreksjonane på oversikta. Office endrar aldri noko i Base. Brukarnamn og passord trengst berre om statussida i Base krev innlogging (ein administrator i Base).</p>
       <div class="grid"><div><label>Adresse</label><input id="bAddr" placeholder="http://snowman-base.local:8780"></div>
       <div><label>Brukarnamn (valfritt)</label><input id="bUser" autocapitalize="off"></div>
       <div><label>Passord (valfritt)</label><input id="bPw" type="password" autocomplete="new-password"></div></div>
@@ -143,7 +143,7 @@ input,select,textarea{width:100%}
       <div class="row"><button id="updCheck">Sjekk etter ny versjon</button><button class="pri" id="updRun">Oppdater og start på nytt</button></div>
       <pre id="updOut" class="hidden"></pre></section>
     <section class="card"><h2>Hendingar</h2><div class="scroll" id="events"></div></section>
-    <section class="card"><h2>Innstillingar (utan passord)</h2><pre id="cfg"></pre><p class="dim">Anna: endre i data/kontor.json og start Kontor på nytt, eller bruk kommandoane i LES-MEG.md.</p></section>
+    <section class="card"><h2>Innstillingar (utan passord)</h2><pre id="cfg"></pre><p class="dim">Anna: endre i data/kontor.json og start Office på nytt, eller bruk kommandoane i LES-MEG.md.</p></section>
   </div>
 </main>
 <script src="/vendor/leaflet.js"></script>
@@ -199,20 +199,20 @@ async function start(){
   banner();setInterval(banner,60000);
   $("#kartHint").classList.remove("hidden");
 }
-// v1.1.1: varsel om ny versjon (Kontor og/eller kartet = SNOWMAN snødjupne) – som i maskina, med éin knapp
+// v1.1.1: varsel om ny versjon (Office og/eller kartet = SNOWMAN Snowdeep) – som i maskina, med éin knapp
 let updLater="";
-function nyTekst(u){return [u.ny?`SNOWMAN Kontor ${u.ny}`:"",u.ny_kart?`kart (SNOWMAN snødjupne) ${u.ny_kart}`:""].filter(Boolean).join(" og ")}
+function nyTekst(u){return [u.ny?`SNOWMAN Office ${u.ny}`:"",u.ny_kart?`kart (SNOWMAN Snowdeep) ${u.ny_kart}`:""].filter(Boolean).join(" og ")}
 async function banner(){
   try{const s=await api("/api/status"),u=s.oppdatering||{};
     const k=(u.ny||"")+"/"+(u.ny_kart||"");
     $("#updBanner").classList.toggle("hidden",!u.tilgjengeleg||updLater===k);
     $("#updBTxt").textContent="Ny versjon tilgjengeleg: "+nyTekst(u);
-    $("#updBDim").textContent=`Du har Kontor ${s.versjon} og kart ${u.kart||"–"}. `+(u.ny?"Kontorsida er borte nokre sekund.":"Berre kartet startar på nytt – kontorsida og maskinene merkar ingenting.");
+    $("#updBDim").textContent=`Du har Office ${s.versjon} og kart ${u.kart||"–"}. `+(u.ny?"Kontorsida er borte nokre sekund.":"Berre kartet startar på nytt – kontorsida og maskinene merkar ingenting.");
   }catch(e){}
 }
 async function oppdaterNo(out){
   const u=(await api("/api/status")).oppdatering||{};
-  if(!confirm(`Oppdatere no (${nyTekst(u)||"siste versjon"})?\n\n`+(u.ny?"Kontorsida er borte nokre sekund medan Kontor startar på nytt.":"Kart og anlegg startar på nytt. Lagra arbeid i kartet blir teke vare på.")+" Korreksjonane til maskinene blir ikkje påverka."))return;
+  if(!confirm(`Oppdatere no (${nyTekst(u)||"siste versjon"})?\n\n`+(u.ny?"Kontorsida er borte nokre sekund medan Office startar på nytt.":"Kart og anlegg startar på nytt. Lagra arbeid i kartet blir teke vare på.")+" Korreksjonane til maskinene blir ikkje påverka."))return;
   out("Lastar ned og installerer … (kan ta eitt minutt)");
   try{const d=await api("/api/v1/oppdater",{method:"POST",json:{}});
     out(d.tekst+(d.endra?"\n\n"+(u.ny?"Startar på nytt – sida blir lasta om eit augeblink.":"Kartet startar på nytt – opne «Kart og anlegg» om eit augeblink."):""));
@@ -228,12 +228,12 @@ async function oversikt(){
   const b=s.base, mps=b.mountpoints||[];
   const live={};mps.forEach(mp=>(mp.klientar||[]).forEach(c=>{if(c.gga)live[c.brukar+"@"+c.ip]={...c.gga,mp:mp.namn,brukar:c.brukar}}));
   $("#baseInfo").innerHTML=!b.adresse?'<p class="dim">Adressa til SNOWMAN Base er ikkje sett. Skriv ho under System › SNOWMAN Base for å sjå korreksjonane her.</p>'
-    :b.ok===false?`<p style="color:var(--err)">Får ikkje kontakt med SNOWMAN Base (${esc(b.adresse)}): ${esc(b.feil)}</p><p class="dim">Maskinene kan likevel ha korreksjonar – Kontor les berre statusen. Sjekk Pi-en ved antenna.</p>`
+    :b.ok===false?`<p style="color:var(--err)">Får ikkje kontakt med SNOWMAN Base (${esc(b.adresse)}): ${esc(b.feil)}</p><p class="dim">Maskinene kan likevel ha korreksjonar – Office les berre statusen. Sjekk Pi-en ved antenna.</p>`
     :!b.t?'<p class="dim">Hentar status frå Base …</p>'
     :`<table><tr><th>Mountpoint</th><th>Kjelde i bruk</th><th>Satellittsystem</th><th>Vurdering</th><th>Maskiner no</th></tr>${mps.map(m=>`<tr><td><b>${esc(m.namn)}</b><div class="dim">${esc(m.skildring||"")}</div></td><td>${m.aktiv?esc(m.aktiv):'<span style="color:var(--err)">ingen data</span>'}</td><td>${esc((m.systems||[]).join(", ")||"–")}</td><td><span style="color:${String(m.vurdering||"").startsWith("FEIL")?"var(--err)":String(m.vurdering||"").startsWith("OK")?"var(--ok)":"inherit"}">${esc(m.vurdering||"–")}</span></td><td>${(m.klientar||[]).length}</td></tr>`).join("")}</table><p class="dim small">SNOWMAN Base ${esc(b.versjon||"")} · ${esc(b.adresse)} · henta ${tid(b.t)}. Oppsett av korreksjonane gjer du på Base: <a href="${esc(b.adresse.includes("://")?b.adresse:"http://"+b.adresse)}/" target="_blank" style="color:var(--acc)">statussida til Base</a>.</p>`;
   const m={maskiner:s.maskiner};
-  $("#machines").innerHTML=m.maskiner.length?`<table><tr><th>Maskin</th><th>SNOWMAN</th><th>FIX</th><th>Anleggspakke</th><th>Sist sett</th><th></th></tr>${m.maskiner.map(r=>`<tr><td>${esc(r.namn)}<div class="dim">${esc(r.id)}</div></td><td>${esc(r.versjon||'–')}</td><td>${r.fixdel==null?'–':Math.round(r.fixdel*100)+' %'}</td><td>${r.pakke?'v'+esc(r.pakke):'–'}${s.pakke&&r.pakke&&String(r.pakke)!==String(s.pakke.versjon)?' <span class="pill middels">gammal</span>':''}</td><td>${r.age==null?'–':dur(r.age)+' sidan'}</td><td><button onclick="rmMachine('${esc(r.id)}')">Fjern</button></td></tr>`).join("")}</table>`
-    :`<p class="dim">Ingen maskiner har meldt seg enno. Ei maskin melder seg når ho hentar anleggspakka (SNOWMAN 1.6.139 eller nyare, Innst. › Trasear › «Kopling til SNOWMAN Kontor»).</p>`;
+  $("#machines").innerHTML=m.maskiner.length?`<table><tr><th>Maskin</th><th>Snowdeep</th><th>FIX</th><th>Anleggspakke</th><th>Sist sett</th><th></th></tr>${m.maskiner.map(r=>`<tr><td>${esc(r.namn)}<div class="dim">${esc(r.id)}</div></td><td>${esc(r.versjon||'–')}</td><td>${r.fixdel==null?'–':Math.round(r.fixdel*100)+' %'}</td><td>${r.pakke?'v'+esc(r.pakke):'–'}${s.pakke&&r.pakke&&String(r.pakke)!==String(s.pakke.versjon)?' <span class="pill middels">gammal</span>':''}</td><td>${r.age==null?'–':dur(r.age)+' sidan'}</td><td><button onclick="rmMachine('${esc(r.id)}')">Fjern</button></td></tr>`).join("")}</table>`
+    :`<p class="dim">Ingen maskiner har meldt seg enno. Ei maskin melder seg når ho hentar anleggspakka (SNOWMAN 1.6.139 eller nyare, Innst. › Trasear › «Kopling til SNOWMAN Office»).</p>`;
   if(!map&&window.L){map=L.map("map");L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png",{maxZoom:18,attribution:"© Kartverket"}).addTo(map);layer=L.layerGroup().addTo(map);map.setView([62.3,6.8],10)}
   if(!map)return; layer.clearLayers(); const pts=[];
   mps.forEach(mp=>{if(mp.base){pts.push([mp.base.lat,mp.base.lon]);L.circleMarker([mp.base.lat,mp.base.lon],{radius:9,color:"#ff5a4f"}).bindTooltip("Base "+mp.namn).addTo(layer)}});
@@ -296,8 +296,8 @@ async function system(){
   const s=await api("/api/status"), u=s.oppdatering;
   const bd=await api("/api/v1/base");$("#bAddr").value=bd.adresse||"";$("#bUser").value=bd.brukar||"";$("#bPw").placeholder=bd.har_passord?"(lagra)":"";
   $("#bMsg").textContent=bd.adresse?(bd.ok?`Kontakt med Base (${tid(bd.t)}).`:bd.ok===false?`Ingen kontakt: ${bd.feil}`:""):"";
-  $("#updInfo").innerHTML=`Installert: Kontor v${esc(s.versjon)} (API v${s.api}, krev SNOWMAN ${esc(s.snowman_min)} i maskinene) · kart (SNOWMAN snødjupne) v${esc(u.kart||"–")}. `+(u.tilgjengeleg?`<b style="color:var(--warn)">Ny versjon: ${esc(nyTekst(u))}</b>`:(u.sjekka?`Siste versjon (sjekka ${tid(u.sjekka)}).`:"Ikkje sjekka enno."))+(u.feil?` Sjekken feila: ${esc(u.feil)}`:"")
-    +`<br>Kontor ser etter ny versjon ved oppstart og kvar 3. time. Ny versjon av SNOWMAN snødjupne kjem med her òg, så kartet på kontoret er alltid likt det i maskinene.`;
+  $("#updInfo").innerHTML=`Installert: Office v${esc(s.versjon)} (API v${s.api}, krev SNOWMAN ${esc(s.snowman_min)} i maskinene) · kart (SNOWMAN Snowdeep) v${esc(u.kart||"–")}. `+(u.tilgjengeleg?`<b style="color:var(--warn)">Ny versjon: ${esc(nyTekst(u))}</b>`:(u.sjekka?`Siste versjon (sjekka ${tid(u.sjekka)}).`:"Ikkje sjekka enno."))+(u.feil?` Sjekken feila: ${esc(u.feil)}`:"")
+    +`<br>Office ser etter ny versjon ved oppstart og kvar 3. time. Ny versjon av SNOWMAN Snowdeep kjem med her òg, så kartet på kontoret er alltid likt det i maskinene.`;
   const e=await api("/api/v1/hendingar?n=300");
   $("#events").innerHTML=`<table>${e.hendingar.map(x=>`<tr><td class="dim" style="white-space:nowrap">${tid(x.t)}</td><td style="color:${x.niva==='feil'?'var(--err)':x.niva==='ok'?'var(--ok)':'inherit'}">${esc(x.tekst)}</td></tr>`).join("")}</table>`;
   const c=await api("/api/v1/konfig");$("#cfg").textContent=JSON.stringify(c.konfig,null,1);

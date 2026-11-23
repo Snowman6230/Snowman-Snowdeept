@@ -89,7 +89,7 @@ async function load(){
     const admin=s.treng_admin?`<section class="card"><h2>Lag administrator</h2><p class="dim">SNOWMAN Base har ingen administrator enno. Opne <a href="/oppsett/" style="color:var(--acc)">oppsettsida</a> og vel brukarnamn og passord.</p></section>`:"";
     $("#main").innerHTML=admin+(s.mountpoints.length?s.mountpoints.map(mountCard).join(""):`<section class="card"><h2>Ingen mountpoint enno</h2><p class="dim">Set opp eit mountpoint på <a href="/oppsett/#mount" style="color:var(--acc)">oppsettsida › Mountpoints</a>.</p></section>`)+
     `<section class="card"><h2>Åtvaringar (${at.length})</h2>${atv?`<div class="scroll"><table>${atv}</table></div>`:'<p class="dim">Ingen åtvaringar.</p>'}
-     <p class="dim">Same åtvaringar blir viste i SNOWMAN Kontor (forbetringar) når adressa til Base er sett der.</p>
+     <p class="dim">Same åtvaringar blir viste i SNOWMAN Office (forbetringar) når adressa til Base er sett der.</p>
      <div class="kv" style="margin-top:10px">
      <div>Diskplass</div><div>${s.disk_gb??'–'} GB ledig${s.radata?` · rådata ${s.radata.mb} MB i ${s.radata.filer} filer`:''}</div></div></section>`+
     `<section class="card wide"><h2>Hendingar</h2><div class="ev">${ev}</div></section>`;

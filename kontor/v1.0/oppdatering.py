@@ -1,16 +1,16 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Oppdatering av SNOWMAN Kontor – same måte som SNOWMAN snødjupne (pc/v1.6/start_snowman.py).
+"""Oppdatering av SNOWMAN Office – same måte som SNOWMAN Snowdeep (pc/v1.6/start_snowman.py).
 
     Med git (repoet er klona):  git pull --ff-only
     Utan git (zip):             last ned zip frå GitHub og skriv berre endra filer i kontor/ og pc/ (kart og anlegg)
 
-Mappa data/ (innstillingar, logg, anleggspakkar) blir aldri rørt. Etter oppdateringa startar Kontor på nytt:
+Mappa data/ (innstillingar, logg, anleggspakkar) blir aldri rørt. Etter oppdateringa startar Office på nytt:
 som teneste avsluttar han med kode 3 og blir starta att; elles startar han seg sjølv på nytt. Korreksjonane
 (SNOWMAN Base) blir ikkje påverka.
 
-Sjekk (frå 1.1.1): Kontor les BÅDE sin eigen versjon (kontor/v1.0/konfig.py) og versjonen av kartet – SNOWMAN
+Sjekk (frå 1.1.1): Office les BÅDE sin eigen versjon (kontor/v1.0/konfig.py) og versjonen av kartet – SNOWMAN
 snødjupne i pc/ (snowman_pc.py) – på GitHub ved oppstart og kvar 3. time, og viser eit varsel øvst på kontorsida og i
-kartet med knappen «Oppdater no». Ein ny versjon av snødjupne treng difor ingen ny versjon av Kontor: er berre kartet
+kartet med knappen «Oppdater no». Ein ny versjon av snødjupne treng difor ingen ny versjon av Office: er berre kartet
 nytt, blir berre kartet starta på nytt (kontorsida og maskinporten held fram).
 NB: når repoet blir privat (VEGEN-VIDARE kap. 17), må sjekken og nedlastinga få ein tilgangsnøkkel.
 """
@@ -47,7 +47,7 @@ def _dir_key(name):
 
 
 def pc_mappe():
-    """Nyaste SNOWMAN snødjupne ved sida av Kontor (pc/v*, med snowman_pc.py)."""
+    """Nyaste SNOWMAN Snowdeep ved sida av Office (pc/v*, med snowman_pc.py)."""
     dirs = sorted((d for d in PC.glob("v*") if (d / "snowman_pc.py").exists()), key=lambda d: _dir_key(d.name))
     return dirs[-1] if dirs else None
 
@@ -58,7 +58,7 @@ def _pc_ver_text(text):
 
 
 def kart_versjon():
-    """Installert versjon av kartet (SNOWMAN snødjupne i pc/), eller None."""
+    """Installert versjon av kartet (SNOWMAN Snowdeep i pc/), eller None."""
     d = pc_mappe()
     try:
         return _pc_ver_text((d / "snowman_pc.py").read_text("utf-8", "ignore")) if d else None
@@ -67,7 +67,7 @@ def kart_versjon():
 
 
 def _get(url, timeout):
-    req = urllib.request.Request(url, headers={"User-Agent": f"SNOWMAN Kontor/{VERSION}"})
+    req = urllib.request.Request(url, headers={"User-Agent": f"SNOWMAN Office/{VERSION}"})
     with nett.urlopen(req, timeout=timeout) as r:
         return r.read().decode("utf-8", "ignore")
 
@@ -79,7 +79,7 @@ def latest_version(timeout=15):
 
 
 def latest_kart(timeout=15):
-    """(mappe, versjon) for nyaste SNOWMAN snødjupne på GitHub. Ny versjonsmappe (t.d. v1.7) blir funnen via lista
+    """(mappe, versjon) for nyaste SNOWMAN Snowdeep på GitHub. Ny versjonsmappe (t.d. v1.7) blir funnen via lista
     over pc/; går ikkje det, blir den lokale mappa brukt."""
     import json
     mappe = pc_mappe().name if pc_mappe() else "v1.6"
@@ -123,7 +123,7 @@ def installer_kart_pakkar(log=print, d=None):
 
 
 def apply(log=print):
-    """Hent siste versjon av Kontor og kartet. Returnerer (kontor_endra, tekst, kart_endra)."""
+    """Hent siste versjon av Office og kartet. Returnerer (kontor_endra, tekst, kart_endra)."""
     old, old_kart = VERSION, kart_versjon()
     out = []
     say = lambda t: (out.append(t), log(t))
@@ -137,7 +137,7 @@ def apply(log=print):
     else:
         say("Lastar ned siste versjon frå GitHub …")
         try:
-            data = nett.urlopen(urllib.request.Request(ZIP_URL, headers={"User-Agent": "SNOWMAN Kontor"}),
+            data = nett.urlopen(urllib.request.Request(ZIP_URL, headers={"User-Agent": "SNOWMAN Office"}),
                                 timeout=180).read()
         except Exception as e:
             say(f"Fekk ikkje lasta ned: {nett.forklar(e)}")
@@ -147,7 +147,7 @@ def apply(log=print):
             apps = _pc_apps(z.namelist())
             for m in z.infolist():
                 parts = m.filename.split("/")
-                # kontor/ (Kontor) og pc/<versjon> (SNOWMAN snødjupne – kart og anlegg i kontormodus)
+                # kontor/ (Office) og pc/<versjon> (SNOWMAN Snowdeep – kart og anlegg i kontormodus)
                 if m.is_dir() or len(parts) < 3 or parts[1] not in ("kontor", "pc"):
                     continue
                 rel = parts[2:]
@@ -172,12 +172,12 @@ def apply(log=print):
     new, new_kart = _read_version(), kart_versjon()
     changed, kart_changed = new != old, new_kart != old_kart
     if changed:
-        say(f"Ferdig: Kontor v{old} → v{new}" + (f", kart v{old_kart} → v{new_kart}" if kart_changed else "")
-            + ". Kontor startar på nytt.")
+        say(f"Ferdig: Office v{old} → v{new}" + (f", kart v{old_kart} → v{new_kart}" if kart_changed else "")
+            + ". Office startar på nytt.")
     elif kart_changed:
-        say(f"Ferdig: kartet (SNOWMAN snødjupne) v{old_kart} → v{new_kart}. Kartet startar på nytt – kontorsida held fram.")
+        say(f"Ferdig: kartet (SNOWMAN Snowdeep) v{old_kart} → v{new_kart}. Kartet startar på nytt – kontorsida held fram.")
     else:
-        say(f"Du har siste versjon (Kontor v{new}, kart v{new_kart}).")
+        say(f"Du har siste versjon (Office v{new}, kart v{new_kart}).")
     return changed, "\n".join(out), kart_changed
 
 
@@ -194,7 +194,7 @@ class Updates:
         self.events = events
         self.restart = restart
         self.restart_kart = restart_kart
-        # ny = ny Kontor-versjon (eller None), ny_kart = ny versjon av kartet (SNOWMAN snødjupne), tilgjengeleg = ein av dei
+        # ny = ny Office-versjon (eller None), ny_kart = ny versjon av kartet (SNOWMAN Snowdeep), tilgjengeleg = ein av dei
         self.info = {"versjon": VERSION, "kart": kart_versjon(), "ny": None, "ny_kart": None, "tilgjengeleg": False,
                      "sjekka": None, "feil": "", "koyrer": False}
         self.lock = threading.Lock()
@@ -247,10 +247,10 @@ class Updates:
 
 
 def tekst(info):
-    """«Kontor 1.1.2 og kart 1.6.140» – kva som er nytt."""
+    """«Office 1.1.2 og kart 1.6.140» – kva som er nytt."""
     t = []
     if info.get("ny"):
-        t.append(f"SNOWMAN Kontor {info['ny']}")
+        t.append(f"SNOWMAN Office {info['ny']}")
     if info.get("ny_kart"):
-        t.append(f"kart (SNOWMAN snødjupne) {info['ny_kart']}")
+        t.append(f"kart (SNOWMAN Snowdeep) {info['ny_kart']}")
     return " og ".join(t)

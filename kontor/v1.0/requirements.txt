@@ -1,3 +1,3 @@
-# SNOWMAN Kontor treng berre Python 3.10+.
-# Kart og anlegg (SNOWMAN snødjupne i kontormodus) installerer sine eigne pakkar frå pc/<nyaste versjon>/requirements.txt
+# SNOWMAN Office treng berre Python 3.10+.
+# Kart og anlegg (SNOWMAN Snowdeep i kontormodus) installerer sine eigne pakkar frå pc/<nyaste versjon>/requirements.txt
 # når kartet startar og etter kvar oppdatering – då fungerer det òg når snødjupne får ei ny versjonsmappe (t.d. v1.7).

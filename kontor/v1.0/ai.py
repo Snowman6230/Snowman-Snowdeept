@@ -1,5 +1,5 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""AI i SNOWMAN Kontor – utskiftbar modul (same prinsipp som VEGEN-VIDARE kap. 14).
+"""AI i SNOWMAN Office – utskiftbar modul (same prinsipp som VEGEN-VIDARE kap. 14).
 
 Leverandørar (innstillinga «ai.leverandor» i data/kontor.json, eller kontorsida):
     av          ingen AI (standard). Reglane i forbetring.py er alltid på.
@@ -8,7 +8,7 @@ Leverandørar (innstillinga «ai.leverandor» i data/kontor.json, eller kontorsi
 
 Personvern: AI får berre eit ANONYMISERT samandrag – ingen namn, ingen IP-adresser, ingen posisjonar, ingen nøklar.
 Kontorsida kan vise nøyaktig kva som blir sendt (forehandsvising) før AI blir slått på.
-AI les og foreslår – han styrer aldri Kontor, Base, mottakaren eller maskinene.
+AI les og foreslår – han styrer aldri Office, Base, mottakaren eller maskinene.
 """
 import json
 import time
@@ -18,13 +18,13 @@ from forbetring import day_summary, CATEGORIES
 from konfig import VERSION, SNOWMAN_MIN
 import nett
 
-SYSTEM = """Du er forbetringsassistenten i SNOWMAN Kontor (Alpindata), anleggsserveren for eit skianlegg som brukar
-SNOWMAN snødjupne: tråkkemaskiner måler snødjupne med RTK-GNSS (RTK rekna i SNOWMAN med RTKLIB) mot ein
+SYSTEM = """Du er forbetringsassistenten i SNOWMAN Office (Alpindata), anleggsserveren for eit skianlegg som brukar
+SNOWMAN Snowdeep: tråkkemaskiner måler snødjupne med RTK-GNSS (RTK rekna i SNOWMAN med RTKLIB) mot ein
 terrengmodell. SNOWMAN Base (eigen Raspberry Pi) er RTK-base og NTRIP-caster og har berre med korreksjonane å gjere.
-SNOWMAN Kontor (PC på anlegget) sender ut anleggspakka frå kontoret, tek imot forslag og deler målingar.
+SNOWMAN Office (PC på anlegget) sender ut anleggspakka frå kontoret, tek imot forslag og deler målingar.
 
 Svar alltid på nynorsk. Ver konkret og nøktern. Ikkje gjenta forslag som alt står i lista frå reglane.
-Foreslå forbetringar i fem kategoriar: base (SNOWMAN Base), kontor (SNOWMAN Kontor), snowman (SNOWMAN snødjupne),
+Foreslå forbetringar i fem kategoriar: base (SNOWMAN Base), kontor (SNOWMAN Office), snowman (SNOWMAN Snowdeep),
 utstyr (mottakar/antenne) og drift (anlegget). Forbetringar i programma skal vere så konkrete at ein utviklar kan
 lage dei. Grunngje kvart forslag med tal frå samandraget. Finn ikkje på data som ikkje står der."""
 
@@ -81,7 +81,7 @@ class AI:
             raise
 
     def ask(self, base, question):
-        """«Spør SNOWMAN Kontor»: fritt spørsmål med samandraget som bakgrunn."""
+        """«Spør SNOWMAN Office»: fritt spørsmål med samandraget som bakgrunn."""
         if not self.enabled():
             raise RuntimeError("AI er av. Vel leverandør på kontorsida.")
         msg = ("Samandrag av drifta (anonymisert):\n" + json.dumps(self.context(base), ensure_ascii=False)
@@ -110,7 +110,7 @@ class AI:
 
 def _post(url, body, headers, timeout):
     req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
-                                 headers={"content-type": "application/json", "user-agent": f"SNOWMAN Kontor/{VERSION}",
+                                 headers={"content-type": "application/json", "user-agent": f"SNOWMAN Office/{VERSION}",
                                           **headers})
     with nett.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))

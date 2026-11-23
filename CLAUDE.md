@@ -13,15 +13,20 @@
 - SNOWMAN Base: `base/v1.0/` (eiga versjonsmappe, same reglar). **Berre satellittar og NTRIP** (avgjerd 2026-11-22) –
   ikkje legg andre funksjonar inn i Base. Endringar i casteren skal testast med
   `cd base/v1.0 && python -m unittest discover -s test` – testen brukar NTRIP-klienten i `pc/v1.6`.
-- SNOWMAN Kontor: `kontor/v1.0/` (eiga versjonsmappe, same reglar). Kontorsida, anleggspakke, forslag, maskinoversikt,
+- **Namn (2026-11-23):** programma heiter **SNOWMAN Snowdeep** (`pc/`, maskinene), **SNOWMAN Base** (`base/`) og
+  **SNOWMAN Office** (`kontor/`). Bruk desse namna i alt som blir vist. Ikkje endre mappenamna, API-adressene
+  (`/api/kontor…`, `/api/v1/…`), innstillingsnøklane (`kontor_*`) eller `--kontor` – oppdateringa og maskinene er avhengige
+  av dei. «kontoret» og «snødjupne» som vanlege ord er framleis nynorsk. `TENESTE-SNOWMAN-KONTOR.bat` skal ikkje endrast
+  (oppgåva i Windows peikar på ho, og ho køyrer medan oppdateringa skriv filer).
+- SNOWMAN Office: `kontor/v1.0/` (eiga versjonsmappe, same reglar). Kontorsida, anleggspakke, forslag, maskinoversikt,
   deling og AI. Køyrer på ein Windows-PC på anlegget (port 8790, berre lokalt nett; port 8791 berre maskin-API for
-  sanntid ute). Kart og anlegg er SNOWMAN snødjupne i kontormodus (`snowman_pc.py --kontor`, port 8765), starta av
-  Kontor frå `pc/` i same zip – nye funksjonar i kartet blir laga i `pc/`, ikkje i Kontor. Test:
+  sanntid ute). Kart og anlegg er SNOWMAN Snowdeep i Office-modus (`snowman_pc.py --kontor`, port 8765), starta av
+  Office frå `pc/` i same zip – nye funksjonar i kartet blir laga i `pc/`, ikkje i Office. Test:
   `cd kontor/v1.0 && python -m unittest discover -s test` og `cd pc/v1.6 && python3 test/testkontorkopling.py`.
-  Brot i API-et gir ny API-versjon; oppdater `SNOWMAN_MIN` i `kontor/v1.0/konfig.py` når SNOWMAN snødjupne må oppdaterast.
-  Ny versjon av SNOWMAN snødjupne treng INGEN ny Kontor-versjon: Kontor følgjer VERSION i `pc/<nyaste>/snowman_pc.py`
+  Brot i API-et gir ny API-versjon; oppdater `SNOWMAN_MIN` i `kontor/v1.0/konfig.py` når SNOWMAN Snowdeep må oppdaterast.
+  Ny versjon av SNOWMAN Snowdeep treng INGEN ny Office-versjon: Office følgjer VERSION i `pc/<nyaste>/snowman_pc.py`
   og varslar og oppdaterer kartet sjølv. Endrar du anleggspakka, maskin-API-et eller terrengformatet, auk både
-  `SNOWMAN_MIN` og Kontor-versjonen (`kontor/v1.0/konfig.py`).
-- SNOWMAN snødjupne skal fungere fullt ut utan SNOWMAN Base og SNOWMAN Kontor. Begge er valfrie tilknytingar
-  (Base: korreksjonar; Kontor: anleggsdata og deling). Det som kjem frå Kontor, blir lagra lokalt i maskina.
+  `SNOWMAN_MIN` og Office-versjonen (`kontor/v1.0/konfig.py`).
+- SNOWMAN Snowdeep skal fungere fullt ut utan SNOWMAN Base og SNOWMAN Office. Begge er valfrie tilknytingar
+  (Base: korreksjonar; Office: anleggsdata og deling). Det som kjem frå Office, blir lagra lokalt i maskina.
   Sjå VEGEN-VIDARE kap. 19.

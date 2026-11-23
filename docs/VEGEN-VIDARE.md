@@ -318,6 +318,15 @@ eigen base) treng òg kontoret. *Laga 2026-11-22: Base 1.4.0, Kontor 1.0.0, SNOW
 Der det står «Base» om kontordelen, anleggspakka eller maskin-API-et under, gjeld det no SNOWMAN Kontor.
 Avgjerd 4 (maskin-API på port 2101) er erstatta av avgjerd 6.
 
+**Avgjerd 8 (2026-11-23) – nye namn:** Eigaren: «Kan du døype om namnet frå kontor til Snowman Office?» og «Du kan også
+bytte frå SNOWMAN snødjupne til Snowman Snowdeep. Då forstår folk det også.» Dei tre programma heiter no
+**SNOWMAN Snowdeep** (maskinene), **SNOWMAN Base** (Pi-en ved antenna) og **SNOWMAN Office** (kontor-PC-en). Berre namna
+som blir viste er bytte; mappene (`pc/`, `base/`, `kontor/`), API-adressene, innstillingane i maskinene og `--kontor` er
+uendra, elles ville oppdateringa og koplinga i maskinene gått tapt. Nedlastingane heiter SNOWMAN-Snowdeep.zip og
+SNOWMAN-Office.zip (dei gamle namna ligg ved sida av som kopi). Teksten elles er framleis nynorsk; «kontoret» og
+«snødjupne» som vanlege ord står som før. Under i dette kapitlet står dei gamle namna slik dei var då avgjerdene vart
+tekne. *Laga 2026-11-23: Office 1.2.0, Snowdeep 1.6.142.*
+
 **Avgjerd 7 (2026-11-23) – kontoret er SNOWMAN snødjupne i kontormodus:** Eigaren: «Snowman Kontor bør ha meir eller
 mindre same funksjonar som Snowman Snødjupne … Det bør også kunne lastast inn karta som eg brukar i dag. Eg må kunne
 legge inn nye kart og desse pushest ut til maskinene.» Val (eigaren):

@@ -1,5 +1,5 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Oppdatering av SNOWMAN Base – same måte som SNOWMAN snødjupne (pc/v1.6/start_snowman.py).
+"""Oppdatering av SNOWMAN Base – same måte som SNOWMAN Snowdeep (pc/v1.6/start_snowman.py).
 
     Med git (repoet er klona):  git pull --ff-only
     Utan git (zip/Docker/NAS):  last ned zip frå GitHub og skriv berre endra filer i base/-mappa

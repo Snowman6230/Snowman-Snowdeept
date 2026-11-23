@@ -9,6 +9,22 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-23
 
+### Nye namn: SNOWMAN Office 1.2.0 og SNOWMAN Snowdeep v1.6.142
+- **Bakgrunn (eigaren):** «Kan du døype om namnet frå kontor til Snowman Office?» og «Du kan også bytte frå SNOWMAN
+  snødjupne til Snowman Snowdeep. Då forstår folk det også.» Sjå VEGEN-VIDARE kap. 16, avgjerd 8.
+- **Endra:** alle namn som blir viste: SNOWMAN Kontor → **SNOWMAN Office**, SNOWMAN snødjupne → **SNOWMAN Snowdeep**,
+  kontormodus → **Office-modus**, fana og knappen «Kontor» → «Office», «HENT FRÅ OFFICE», «KOPLING TIL SNOWMAN OFFICE»,
+  tittel på sidene, varsel, hendingar, forbetringar, LES-MEG, README og CLAUDE.md.
+- **Endra:** nedlastingane heiter **SNOWMAN-Snowdeep.zip** og **SNOWMAN-Office.zip**. Dei gamle namna (SNOWMAN-snodjupne.zip
+  og SNOWMAN-Kontor.zip) blir lagde ved sida av som kopi, så gamle lenkjer verkar. `START-SNOWMAN-KONTOR.bat` heiter no
+  `START-SNOWMAN-OFFICE.bat`.
+- **Endra (Windows):** INSTALLER-WINDOWS.bat lagar oppgåva og brannmurreglane som «SNOWMAN Office» og fjernar dei gamle
+  («SNOWMAN Kontor»). Utan ny installasjon held dei gamle fram og verkar som før.
+- **Uendra med vilje:** mappene `pc/`, `base/`, `kontor/`, API-adressene, innstillingane i maskinene (`kontor_*`),
+  `--kontor` og `TENESTE-SNOWMAN-KONTOR.bat` – elles ville den automatiske oppdateringa og koplinga i maskinene gått tapt.
+  Tidlegare oppføringar i denne loggen har dei gamle namna.
+- **Testar:** Office 18 OK, testkontorkopling ALT OK, testautoport OK, Base 44 OK.
+
 ### SNOWMAN Kontor 1.1.2 og PC-prototype v1.6.141 – kontoret har same layout som SNOWMAN snødjupne
 - **Bakgrunn (eigaren):** «Har Snowman Kontor same layout som snødjupne?» → «gjer 1 og 2»: (1) rydd bort det som berre
   gjeld maskina i kontormodus, (2) flytt alt kontorsida gjer inn i same layout.

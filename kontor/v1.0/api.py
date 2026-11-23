@@ -1,11 +1,11 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Nettsider og API i SNOWMAN Kontor (standard port 8790, berre på nettet på anlegget).
+"""Nettsider og API i SNOWMAN Office (standard port 8790, berre på nettet på anlegget).
 
 Sider:   /  og  /kontor/    kontorsida (oversikt, anleggspakke, forslag, forbetringar, AI, brukarar, system)
 
 API v1 (JSON). Innlogging med brukarnamn og passord:
   Maskin-API:  «Authorization: Basic» med ein brukar med rolla «maskin»
-  Kontor-API:  økt frå POST /api/v1/logg-inn («Authorization: Bearer <økt>»), eller Basic med ein kontor-brukar
+  Office-API:  økt frå POST /api/v1/logg-inn («Authorization: Bearer <økt>»), eller Basic med ein kontor-brukar
   Ope:        GET  /api/v1/info                     versjon, API-versjon, funksjonar, minste SNOWMAN-versjon
               GET  /api/v1/oppsett                  {treng_admin, lokal}
               POST /api/v1/oppsett                  {brukar, passord, maskin_brukar?, maskin_passord?} – berre når ingen
@@ -18,7 +18,7 @@ API v1 (JSON). Innlogging med brukarnamn og passord:
               GET  /api/v1/anleggspakke             aktiv versjon {versjon, sha256, storleik}
               GET  /api/v1/anleggspakke/fil         zip-fila (?versjon= for ein bestemt)
               POST /api/v1/forslag                  {maskin, type: hindring|merknad|program|anna, tekst, lat, lon}
-  Kontor:     GET  /api/status                      status for Kontor (og siste status frå SNOWMAN Base)
+  Office:     GET  /api/status                      status for Office (og siste status frå SNOWMAN Base)
               POST /api/v1/anleggspakke             ny versjon (zip i body, X-Merknad), blir aktiv
               GET  /api/v1/anleggspakke/versjonar  ·  POST /api/v1/anleggspakke/aktiv {versjon}
               GET  /api/v1/forslag  ·  POST /api/v1/forslag/svar {id, status, svar}
@@ -59,7 +59,7 @@ STATIC = {"/": PAGE, "/kontor": PAGE, "/kontor/": PAGE}
 
 class Handler(http.server.BaseHTTPRequestHandler):
     k = None
-    server_version = f"SNOWMAN-Kontor/{VERSION}"
+    server_version = f"SNOWMAN-Office/{VERSION}"
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
@@ -128,7 +128,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         lok = self.headers.get("X-Lokal-Nokkel", "")
         if lok and k.lokal_nokkel and self.ip() in ("127.0.0.1", "::1") and \
                 secrets.compare_digest(lok, k.lokal_nokkel):
-            return "kontormodus"                    # SNOWMAN snødjupne i kontormodus på same PC
+            return "kontormodus"                    # SNOWMAN Snowdeep i kontormodus på same PC
         tok = self.key()
         if tok:
             name = k.vern.session_user(tok)
@@ -183,7 +183,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     return self.send_file(f)
                 return self.send_json({"ok": False}, 404)
             if p == "/api/v1/info":
-                return self.send_json({"ok": True, "program": "SNOWMAN Kontor", "namn": k.cfg["namn"],
+                return self.send_json({"ok": True, "program": "SNOWMAN Office", "namn": k.cfg["namn"],
                                        "anlegg": k.cfg["anlegg"], "versjon": VERSION, "api": API_VERSION,
                                        "snowman_min": SNOWMAN_MIN, "funksjonar": FUNKSJONAR})
             if p == "/api/v1/oppsett":
@@ -454,7 +454,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 # ---------- port for maskinene ute i bakken (sanntid, 2026-11-22) ----------
-# Maskinene på mobilnettet når Kontor gjennom denne porten (standard 8791), som ruteren sender vidare til kontor-PC-en.
+# Maskinene på mobilnettet når Office gjennom denne porten (standard 8791), som ruteren sender vidare til kontor-PC-en.
 # Berre maskin-API-et er ope her, og berre for brukarar med rolla «maskin». Kontorsida (8790) blir aldri opna utanfrå.
 MASKIN_GET = {"/api/v1/info", "/api/v1/maalingar", "/api/v1/maskiner", "/api/v1/anleggspakke", "/api/v1/anleggspakke/fil"}
 MASKIN_POST = {"/api/v1/maskin", "/api/v1/maalingar", "/api/v1/forslag"}
@@ -502,7 +502,7 @@ def _safe(x):
 
 
 class ExclusiveMixin:
-    """Éin Kontor per port. Windows: SO_EXCLUSIVEADDRUSE, så to Kontor på same PC gir feilmelding."""
+    """Éin Office per port. Windows: SO_EXCLUSIVEADDRUSE, så to Office på same PC gir feilmelding."""
     allow_reuse_address = os.name != "nt"
 
     def server_bind(self):

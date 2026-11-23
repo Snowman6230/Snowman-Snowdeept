@@ -1,4 +1,4 @@
-# Lagar dei tre nedlastingane (SNOWMAN snødjupne, SNOWMAN Base og SNOWMAN Kontor) ved kvar push til main
+# Lagar dei tre nedlastingane (SNOWMAN Snowdeep, SNOWMAN Base og SNOWMAN Office) ved kvar push til main
 # og legg dei på utgivinga «siste». Sjå verktoy/lag-pakkar.py.
 name: Nedlastingar
 on:
@@ -26,5 +26,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view siste >/dev/null 2>&1 || gh release create siste --title "Siste versjon" \
-            --notes "Nedlastingar som blir oppdaterte ved kvar endring. SNOWMAN-snodjupne.zip er til tråkkemaskinene, SNOWMAN-Base.zip er til Raspberry Pi-en ved antenna (korreksjonane), SNOWMAN-Kontor.zip er til kontor-PC-en."
-          gh release upload siste dist/SNOWMAN-snodjupne.zip dist/SNOWMAN-Base.zip dist/SNOWMAN-Kontor.zip --clobber
+            --notes "Nedlastingar som blir oppdaterte ved kvar endring. SNOWMAN-Snowdeep.zip er til tråkkemaskinene, SNOWMAN-Base.zip er til Raspberry Pi-en ved antenna (korreksjonane), SNOWMAN-Office.zip er til kontor-PC-en. (SNOWMAN-snodjupne.zip og SNOWMAN-Kontor.zip er dei same filene under dei gamle namna.)"
+          # gamle namn (før 2026-11-23) som kopi, så gamle lenkjer framleis verkar
+          cp dist/SNOWMAN-Snowdeep.zip dist/SNOWMAN-snodjupne.zip
+          cp dist/SNOWMAN-Office.zip dist/SNOWMAN-Kontor.zip
+          gh release upload siste dist/SNOWMAN-Snowdeep.zip dist/SNOWMAN-Base.zip dist/SNOWMAN-Office.zip dist/SNOWMAN-snodjupne.zip dist/SNOWMAN-Kontor.zip --clobber

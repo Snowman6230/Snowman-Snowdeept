@@ -2,14 +2,14 @@
 chcp 65001 >nul
 setlocal EnableExtensions
 cd /d "%~dp0"
-title SNOWMAN Kontor
+title SNOWMAN Office
 rem SNOWMAN by Alpindata - Copyright 2026 Hans Petter Brunstad Sorensen (Alpindata). Alle rettar reserverte. Sjaa LICENSE.
-rem Startar SNOWMAN Kontor i dette vindauget. Forste gong: lagar Python-miljoet i .venv.
+rem Startar SNOWMAN Office i dette vindauget. Forste gong: lagar Python-miljoet i .venv.
 rem Fila MAA ha Windows-linjeskift (CRLF) - sjaa .gitattributes.
-rem Alt etter :start staar i EI blokk ( ... ), saa oppdateringa kan byte ut denne fila medan Kontor koyrer.
+rem Alt etter :start staar i EI blokk ( ... ), saa oppdateringa kan byte ut denne fila medan Office koyrer.
 rem Kode 3 = start paa nytt etter oppdatering.
 if exist ".venv\Scripts\python.exe" goto start
-echo Installerer SNOWMAN Kontor første gong ...
+echo Installerer SNOWMAN Office første gong ...
 set "PY="
 where py >nul 2>nul && set "PY=py -3"
 if not defined PY (where python >nul 2>nul && set "PY=python")

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Lagar dei tre nedlastingane frå repoet – éin for kvart program:
 
-    dist/SNOWMAN-snodjupne.zip   til tråkkemaskinene (innhaldet i pc/, berre versjonsmapper som kan køyrast)
+    dist/SNOWMAN-Snowdeep.zip   til tråkkemaskinene (innhaldet i pc/, berre versjonsmapper som kan køyrast)
     dist/SNOWMAN-Base.zip        til Raspberry Pi-en ved antenna: berre korreksjonane (innhaldet i base/)
-    dist/SNOWMAN-Kontor.zip      til kontor-PC-en på anlegget: kontorsida og anleggsdata (innhaldet i kontor/)
+    dist/SNOWMAN-Office.zip      til kontor-PC-en på anlegget: kontorsida og anleggsdata (innhaldet i kontor/)
 
 Alle programma ligg i same repo (felles testing av samspelet). Oppdateringa i kvart program hentar berre si
 eiga mappe (pc/, base/ eller kontor/), så pakkane blir haldne oppdaterte kvar for seg.
@@ -51,7 +51,7 @@ def lag_snodjupne(ut: Path) -> Path:
     pc = ROT / "pc"
     appar = sorted(d.name for d in pc.iterdir() if (d / "start_snowman.py").exists())
     versjon = _versjon(pc / appar[-1] / "snowman_pc.py", r'VERSION\s*=\s*"([^"]+)"')
-    namn = "SNOWMAN-snodjupne"
+    namn = "SNOWMAN-Snowdeep"
     zp = ut / f"{namn}.zip"
     with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
         n = 0
@@ -81,8 +81,8 @@ def lag_base(ut: Path) -> Path:
             "NAS (Docker):  sjå v1.0/LES-MEG.md, kapitlet «SNOWMAN Base på NAS»\n\n"
             "Statusside: http://localhost:8780   Oppsett: http://localhost:8780/oppsett/ (lag administrator første gong)\n"
             "Full rettleiing: v1.0/LES-MEG.md\n\n"
-            "Kontorsida og anleggsdata er SNOWMAN Kontor (eiga nedlasting, på ein PC). Programmet til tråkkemaskinene\n"
-            "heiter SNOWMAN snødjupne og er òg ei eiga nedlasting.\n"
+            "Kontorsida og anleggsdata er SNOWMAN Office (eiga nedlasting, på ein PC). Programmet til tråkkemaskinene\n"
+            "heiter SNOWMAN Snowdeep og er òg ei eiga nedlasting.\n"
         ))
     print(f"{zp.name}: v{versjon}, {n + 2} filer")
     return zp
@@ -91,27 +91,27 @@ def lag_base(ut: Path) -> Path:
 def lag_kontor(ut: Path) -> Path:
     kontor = ROT / "kontor"
     versjon = _versjon(kontor / "v1.0" / "konfig.py", r'VERSION\s*=\s*"([^"]+)"')
-    namn = "SNOWMAN-Kontor"
+    namn = "SNOWMAN-Office"
     zp = ut / f"{namn}.zip"
     pc = ROT / "pc"
     appar = sorted((d.name for d in pc.iterdir() if (d / "start_snowman.py").exists()),
                    key=lambda x: tuple(int(v) for v in x[1:].split(".") if v.isdigit()))
     with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
-        # kontor/ og pc/ side om side – Kontor startar SNOWMAN snødjupne i kontormodus (kart og anlegg) frå pc/
+        # kontor/ og pc/ side om side – Office startar SNOWMAN Snowdeep i Office-modus (kart og anlegg) frå pc/
         n = _skriv(z, kontor, f"{namn}/kontor")
         n += _skriv(z, pc / appar[-1], f"{namn}/pc/{appar[-1]}")
         z.write(ROT / "LICENSE", f"{namn}/LICENSE")
         z.writestr(f"{namn}/LES-MEG.txt", (
-            "SNOWMAN Kontor – kontorsida og anleggsserveren, med kart og anlegg (SNOWMAN snødjupne i kontormodus)\n\n"
-            "Windows (fast drift):  pakk ut utanfor OneDrive (t.d. C:\\SNOWMAN-Kontor), opne kontor\\v1.0 og\n"
+            "SNOWMAN Office – kontorsida og anleggsserveren, med kart og anlegg (SNOWMAN Snowdeep i Office-modus)\n\n"
+            "Windows (fast drift):  pakk ut utanfor OneDrive (t.d. C:\\SNOWMAN-Office), opne kontor\\v1.0 og\n"
             "                       dobbeltklikk INSTALLER-WINDOWS.bat\n"
-            "Windows (prøve):  dobbeltklikk START-SNOWMAN-KONTOR.bat i kontor\\v1.0\n\n"
+            "Windows (prøve):  dobbeltklikk START-SNOWMAN-OFFICE.bat i kontor\\v1.0\n\n"
             "Kontorsida:      http://localhost:8790 (lag administrator og ein brukar for maskinene første gong)\n"
-            "Kart og anlegg:  http://localhost:8765 (terreng, trasear, hindringar, 3D – fana Kontor: Publiser)\n"
+            "Kart og anlegg:  http://localhost:8765 (terreng, trasear, hindringar, 3D – fana Office: Publiser)\n"
             "Maskinene: IP-adressa til PC-en, port 8790 (wifi på anlegget)\n"
             "Sanntid ute i bakken: send BERRE port 8791 vidare i ruteren (aldri 8790)\n"
             "Full rettleiing: kontor/v1.0/LES-MEG.md\n\n"
-            "Mappa pc/ er SNOWMAN snødjupne – Kontor brukar ho til kart og anlegg. Ikkje flytt ho.\n"
+            "Mappa pc/ er SNOWMAN Snowdeep – Office brukar ho til kart og anlegg. Ikkje flytt ho.\n"
             "Korreksjonane (NTRIP) er SNOWMAN Base på Raspberry Pi-en – ei eiga nedlasting.\n"
         ))
     print(f"{zp.name}: v{versjon}, {n + 2} filer")

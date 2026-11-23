@@ -69,7 +69,7 @@ input,select,textarea{width:100%}
   <label>Passord (minst 8 teikn)</label><input id="sPw" type="password" autocomplete="new-password">
   <label>Same passord ein gong til</label><input id="sPw2" type="password" autocomplete="new-password">
   <h2 style="margin-top:16px">Maskinene (NTRIP)</h2>
-  <p class="dim small">Brukarnamnet og passordet tråkkemaskinene skriv i SNOWMAN snødjupne under NTRIP. Kan òg lagast seinare under «Brukarar». Finst det alt ein NTRIP-brukar, blir han verande.</p>
+  <p class="dim small">Brukarnamnet og passordet tråkkemaskinene skriv i SNOWMAN Snowdeep under NTRIP. Kan òg lagast seinare under «Brukarar». Finst det alt ein NTRIP-brukar, blir han verande.</p>
   <label>Brukarnamn (maskinene)</label><input id="sNUser" autocapitalize="off" placeholder="t.d. pb600">
   <label>Passord (minst 8 teikn)</label><input id="sNPw" type="password" autocomplete="new-password">
   <div class="row"><button class="pri" id="setupBtn">Lag og logg inn</button><span id="setupMsg" class="msg"></span></div>
@@ -77,7 +77,7 @@ input,select,textarea{width:100%}
 </section>
 <main id="app" class="hidden">
   <div id="t-oversikt">
-    <section class="card"><h2>Kart</h2><div id="map"></div><p class="dim">Basar (raud) og maskiner som hentar korreksjonar no (grøn, etter posisjonen dei sender). Anleggsdata, forslag og maskinoversikt ligg i SNOWMAN Kontor.</p></section>
+    <section class="card"><h2>Kart</h2><div id="map"></div><p class="dim">Basar (raud) og maskiner som hentar korreksjonar no (grøn, etter posisjonen dei sender). Anleggsdata, forslag og maskinoversikt ligg i SNOWMAN Office.</p></section>
     <section class="card"><h2>Maskiner som hentar korreksjonar no</h2><div class="scroll" id="machines"></div></section>
   </div>
   <div id="t-mount" class="hidden">
@@ -129,7 +129,7 @@ input,select,textarea{width:100%}
   </div>
   <div id="t-brukarar" class="hidden">
     <section class="card"><h2>Brukarar</h2>
-      <p class="dim"><b>ntrip</b> = maskinene: brukarnamnet og passordet i SNOWMAN snødjupne under NTRIP. <b>kontor</b> = administrator i Base: denne sida (namnet er historisk – det har ingenting med SNOWMAN Kontor å gjere). Passord blir aldri viste – berre endra.</p>
+      <p class="dim"><b>ntrip</b> = maskinene: brukarnamnet og passordet i SNOWMAN Snowdeep under NTRIP. <b>kontor</b> = administrator i Base: denne sida (namnet er historisk – det har ingenting med SNOWMAN Office å gjere). Passord blir aldri viste – berre endra.</p>
       <div class="scroll" id="uList"></div></section>
     <section class="card"><h2 id="uTitle">Ny brukar</h2>
       <div class="grid">
@@ -226,7 +226,7 @@ async function mount(){
   $("#mpList").innerHTML=MP.mountpoints.length?`<table><tr><th>Mountpoint</th><th>Kjelder (prioritet)</th><th>I bruk no</th><th>Maskiner</th><th></th></tr>${MP.mountpoints.map((m,i)=>`<tr><td><b>${esc(m.namn)}</b><div class="dim">${esc(m.skildring)}</div></td><td>${m.kjelder.map((k,j)=>{const st=m.kjeldestatus[k.namn]||{};return `<div><span class="dot ${st.tilkopla?'on':(st.feil?'err':'')}"></span>${j+1}. ${esc(TYPENAMN[k.type]||k.type)} <span class="dim">${esc(kvar(k))}</span>${st.feil&&!st.tilkopla?`<div class="dim small" style="color:var(--err)">${esc(st.feil)}</div>`:''}</div>`}).join("")}</td><td>${m.aktiv?esc(m.aktiv):'<span class="dim">ingen data</span>'}</td><td>${m.klientar}</td><td style="white-space:nowrap"><button onclick="mpEdit(${i})">Endre</button> <button onclick="mpDel('${esc(m.namn)}')">Slett</button></td></tr>`).join("")}</table>`
     :'<p class="dim">Ingen mountpoints enno. Trykk «+ Nytt mountpoint». Før du har eigen mottakar, kan du leggje inn ein annan caster (t.d. TH) som relé.</p>';
   const h=location.hostname;
-  $("#mpConnect").innerHTML=MP.mountpoints.length?`I SNOWMAN snødjupne: Caster = <b>${esc(h==="localhost"||h==="127.0.0.1"?"localhost (same PC) eller IP-adressa til denne PC-en":h)}</b>, Port = <b>${MP.caster_port}</b>, Mountpoint = <b>${MP.mountpoints.map(m=>esc(m.namn)).join(" / ")}</b>, Brukarnamn/passord = ein brukar med rolla ntrip (fana «Brukarar»). Fast namn for maskinene ute: fana «Tilgang».`:"";
+  $("#mpConnect").innerHTML=MP.mountpoints.length?`I SNOWMAN Snowdeep: Caster = <b>${esc(h==="localhost"||h==="127.0.0.1"?"localhost (same PC) eller IP-adressa til denne PC-en":h)}</b>, Port = <b>${MP.caster_port}</b>, Mountpoint = <b>${MP.mountpoints.map(m=>esc(m.namn)).join(" / ")}</b>, Brukarnamn/passord = ein brukar med rolla ntrip (fana «Brukarar»). Fast namn for maskinene ute: fana «Tilgang».`:"";
   if(!MP.mountpoints.length&&!ED)mpOpen(null);
 }
 function mpOpen(m){
@@ -301,7 +301,7 @@ async function tilgang(fresh){
    <tr><th>Denne maskina på det lokale nettet</th><td>${d.lokale.map(esc).join(", ")||'–'} <div class="dim small">Port 2101 i ruteren skal sendast hit.</div></td></tr>
    <tr><th>Fast namn (DDNS)</th><td>${esc(dd.namn||"–")} ${ddst}${dd.svar?`<div class="dim small">Siste oppdatering: ${esc(dd.svar)} ${tid(dd.t)}</div>`:''}</td></tr>
   </table>
-  <h2 style="margin-top:14px">I SNOWMAN snødjupne (NTRIP)</h2>
+  <h2 style="margin-top:14px">I SNOWMAN Snowdeep (NTRIP)</h2>
   <table><tr><th></th><th>Ute i bakken (mobilnett)</th><th>På anlegget (same nett)</th></tr>
    <tr><td>Caster</td><td><b>${esc(name)}</b></td><td><b>${esc(d.lokale[0]||"IP-adressa til denne maskina")}</b></td></tr>
    <tr><td>Port</td><td><b>${d.caster_port}</b></td><td><b>${d.caster_port}</b></td></tr>

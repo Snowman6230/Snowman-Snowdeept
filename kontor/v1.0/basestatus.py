@@ -1,9 +1,9 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 """Status frå SNOWMAN Base – berre lesing (avgjerd 2026-11-22: Base har berre med satellittar og NTRIP å gjere).
 
-Kontor hentar /api/status frå Base kvart minutt når adressa er sett (Innstillingar › SNOWMAN Base), og viser
+Office hentar /api/status frå Base kvart minutt når adressa er sett (Innstillingar › SNOWMAN Base), og viser
 korreksjonsstraumane på oversikta. Åtvaringane frå Base (reglane om korreksjonane) kjem med i forbetringslista.
-Kontor sender aldri noko til Base og endrar ingenting der.
+Office sender aldri noko til Base og endrar ingenting der.
 """
 import base64
 import json
@@ -32,7 +32,7 @@ class BaseStatus:
             return self.last
         if "://" not in url:
             url = "http://" + url
-        req = urllib.request.Request(url + "/api/status", headers={"User-Agent": "SNOWMAN Kontor"})
+        req = urllib.request.Request(url + "/api/status", headers={"User-Agent": "SNOWMAN Office"})
         if c.get("brukar"):
             tok = base64.b64encode(f"{c['brukar']}:{c.get('passord') or ''}".encode()).decode()
             req.add_header("Authorization", "Basic " + tok)

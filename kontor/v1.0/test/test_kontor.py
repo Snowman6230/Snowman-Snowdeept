@@ -1,7 +1,7 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Testar for SNOWMAN Kontor. Køyr frå kontor/v1.0:   python -m unittest discover -s test -v
+"""Testar for SNOWMAN Office. Køyr frå kontor/v1.0:   python -m unittest discover -s test -v
 
-Maskinsida (anleggspakke, forslag, kø) blir testa mot SNOWMAN snødjupne i pc/v1.6/test/testkontorkopling.py.
+Maskinsida (anleggspakke, forslag, kø) blir testa mot SNOWMAN Snowdeep i pc/v1.6/test/testkontorkopling.py.
 """
 import base64
 import hashlib
@@ -54,7 +54,7 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
 
 
 class FakeBase(http.server.BaseHTTPRequestHandler):
-    """Statussida til SNOWMAN Base 1.4 (berre det Kontor les)."""
+    """Statussida til SNOWMAN Base 1.4 (berre det Office les)."""
 
     def log_message(self, *a):
         pass
@@ -116,7 +116,7 @@ class KontorCase(unittest.TestCase):
 class TestApi(KontorCase):
     def test_info_og_sider(self):
         c, d = self.call("/api/v1/info")
-        self.assertEqual((c, d["program"], d["versjon"]), (200, "SNOWMAN Kontor", konfig.VERSION))
+        self.assertEqual((c, d["program"], d["versjon"]), (200, "SNOWMAN Office", konfig.VERSION))
         self.assertIn("anleggspakke-format-1", d["funksjonar"])
         self.assertNotIn("ntrip-caster", d["funksjonar"])
         for p in ("/", "/kontor/", "/vendor/leaflet.js"):
@@ -279,7 +279,7 @@ class TestOppsett(unittest.TestCase):
                     urllib.request.urlopen(urllib.request.Request(
                         web + "/api/v1/oppsett", data=body, headers={"Content-Type": "application/json"}), timeout=5)
                 SK.main(["--data", str(d), "brukar", "passord", "hans", "--passord", "nytt-kontor-2"])
-                time.sleep(2.5)                                                    # Kontor les fila på nytt
+                time.sleep(2.5)                                                    # Office les fila på nytt
                 self.assertIsNotNone(k.cfg.check_user("hans", "nytt-kontor-2", "kontor"))
             finally:
                 k.stop()
@@ -347,7 +347,7 @@ class TestAnleggspakkeFormat(unittest.TestCase):
 
 
 class TestOppdatering(unittest.TestCase):
-    """v1.1.1: Kontor følgjer både sin eigen versjon og kartet (SNOWMAN snødjupne i pc/)."""
+    """v1.1.1: Office følgjer både sin eigen versjon og kartet (SNOWMAN Snowdeep i pc/)."""
 
     def setUp(self):
         import oppdatering as O
@@ -387,7 +387,7 @@ class TestOppdatering(unittest.TestCase):
         self.nett("1.1.1", "1.6.141")
         i = u.check()
         self.assertEqual((i["ny"], i["ny_kart"], i["tilgjengeleg"]), (None, "1.6.141", True))
-        self.assertIn("kart (SNOWMAN snødjupne) 1.6.141", self.O.tekst(i))
+        self.assertIn("kart (SNOWMAN Snowdeep) 1.6.141", self.O.tekst(i))
         self.assertTrue(any("Ny versjon tilgjengeleg" in e["tekst"] for e in ev.latest(10)))
         u.check()                                               # same versjon → ikkje nytt varsel i hendingane
         self.assertEqual(sum("Ny versjon tilgjengeleg" in e["tekst"] for e in ev.latest(10)), 1)

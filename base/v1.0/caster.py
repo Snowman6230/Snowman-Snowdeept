@@ -1,9 +1,9 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""NTRIP-caster i SNOWMAN Base (NTRIP 1 og 2) – same protokoll som SNOWMAN snødjupne brukar mot TH og CPOS.
+"""NTRIP-caster i SNOWMAN Base (NTRIP 1 og 2) – same protokoll som SNOWMAN Snowdeep brukar mot TH og CPOS.
 
     GET /                   kjeldetabellen (lista over mountpoints)
     GET /<mountpoint>       korreksjonar til ei maskin (Basic-innlogging). GGA frå maskina blir lagra (posisjon på kartet)
-    (Base 1.4: casteren svarar berre på NTRIP. Anleggsdata går mellom maskinene og SNOWMAN Kontor på anlegget.)
+    (Base 1.4: casteren svarar berre på NTRIP. Anleggsdata går mellom maskinene og SNOWMAN Office på anlegget.)
     SOURCE <pw> /<mp>       NTRIP 1-opplasting inn i Base (t.d. str2str på ein Raspberry Pi ved antenna)
     POST /<mp>              NTRIP 2-opplasting inn i Base
 

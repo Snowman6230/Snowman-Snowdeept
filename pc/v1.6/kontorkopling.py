@@ -1,13 +1,13 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Kopling til SNOWMAN Kontor – anleggspakke frå kontoret (v1.6.136, v1.6.137: Kontor i staden for Base).
+"""Kopling til SNOWMAN Office – anleggspakke frå kontoret (v1.6.136, v1.6.137: Office i staden for Base).
 
 Avgjerd 2026-11-22: SNOWMAN Base (Pi ved antenna) har berre med korreksjonane (NTRIP) å gjere. Anleggsdata kjem frå
-SNOWMAN Kontor, eit eige program på ein PC på anlegget (port 8790). Maskina når Kontor når ho er på nettet på
-anlegget (wifi i garasjen) – Kontor er aldri ope mot internett.
+SNOWMAN Office, eit eige program på ein PC på anlegget (port 8790). Maskina når Office når ho er på nettet på
+anlegget (wifi i garasjen) – Office er aldri ope mot internett.
 
-Valfri: SNOWMAN snødjupne fungerer fullt ut utan Kontor (kap. 19). Når koplinga er på:
-- «Hent frå Kontor» hentar den aktive anleggspakka (trasear, forbodne område, hindringar, kontrollpunkt).
-- Pakka blir kontrollert (manifest, sha256, innhald) og lagra lokalt i data/anleggspakke/. Er Kontor borte (PC-en
+Valfri: SNOWMAN Snowdeep fungerer fullt ut utan Office (kap. 19). Når koplinga er på:
+- «Hent frå Office» hentar den aktive anleggspakka (trasear, forbodne område, hindringar, kontrollpunkt).
+- Pakka blir kontrollert (manifest, sha256, innhald) og lagra lokalt i data/anleggspakke/. Er Office borte (PC-en
   av, eller maskina ute i bakken), gjeld siste pakke. Det som var i maskina før, blir teke vare på i
   data/anleggspakke/forrige/.
 - Trasear, forbodne område og kontrollpunkt er då styrte frå kontoret. Føraren kan berre sende forslag.
@@ -17,7 +17,7 @@ Valfri: SNOWMAN snødjupne fungerer fullt ut utan Kontor (kap. 19). Når kopling
   til side. Føraren trykkjer TA I BRUK NYTT TERRENG når prepareringa er stoppa – då blir laga installerte i
   terrengbiblioteket, og lokale lag blir slått AV (ikkje sletta). Det gamle blir teke vare på (forrige-terreng/).
 
-SNOWMAN sender aldri noko til GNSS-mottakaren – dette er berre nettverk mellom maskina og Kontor.
+SNOWMAN sender aldri noko til GNSS-mottakaren – dette er berre nettverk mellom maskina og Office.
 """
 import base64
 import hashlib
@@ -40,8 +40,8 @@ FORMATVERSJON = 1
 KJENDE = {"trasear.json": "trasear", "objekt.json": "objekt", "kontrollpunkt.json": "points"}
 MAKS_PAKKE = 4000 * 1024 * 1024       # med terreng kan pakka vere stor (blir lasta ned til disk, på wifi)
 TIMEOUT = 20
-PORT = 8790                           # standardporten til SNOWMAN Kontor (på anlegget)
-PORT_UTE = 8791                       # maskinporten til Kontor – den som kan opnast i ruteren (ute i bakken)
+PORT = 8790                           # standardporten til SNOWMAN Office (på anlegget)
+PORT_UTE = 8791                       # maskinporten til Office – den som kan opnast i ruteren (ute i bakken)
 MAKS_UTE = 50 * 1024 * 1024           # større pakkar (terreng) blir berre henta på wifi på anlegget
 
 
@@ -50,7 +50,7 @@ class Feil(Exception):
 
 
 class _Nett(Feil):
-    """Ingen kontakt (nettverk) – då blir neste veg til Kontor prøvd."""
+    """Ingen kontakt (nettverk) – då blir neste veg til Office prøvd."""
 
 
 def vtuple(v):
@@ -185,7 +185,7 @@ class KontorKopling:
         self.aktiv = self._read("aktiv.json") or None
         self.ko = self._read("forslag-ko.json") or []
         self.terreng = self._read("terreng.json") or {}
-        self.via = None                                     # «lokal» (wifi) eller «ute» – kvar Kontor sist svarte
+        self.via = None                                     # «lokal» (wifi) eller «ute» – kvar Office sist svarte
         self._pref = (None, 0.0)                            # (vegen som sist verka, tid)
         self.live_st = {"t": None, "ok": None, "feil": ""}     # {"i_bruk": versjon, "ventar": {versjon, lag, mappe}}
         self.mid = self._machine_id(Path(data_dir) / "maskin-id.txt")
@@ -208,7 +208,7 @@ class KontorKopling:
 
     @staticmethod
     def _machine_id(path):
-        """Fast ID for maskina mot Kontor (hjarteslag og forslag). Laga éin gong og lagra i data/maskin-id.txt."""
+        """Fast ID for maskina mot Office (hjarteslag og forslag). Laga éin gong og lagra i data/maskin-id.txt."""
         try:
             v = path.read_text("utf-8").strip()
             if v:
@@ -227,7 +227,7 @@ class KontorKopling:
     # ---------- oppsett ----------
     @staticmethod
     def target(cfg):
-        """(vert, port, brukar, passord) for SNOWMAN Kontor."""
+        """(vert, port, brukar, passord) for SNOWMAN Office."""
         host = str(cfg.get("kontor_host") or "").strip()
         for pre in ("http://", "https://"):
             if host.lower().startswith(pre):
@@ -240,7 +240,7 @@ class KontorKopling:
 
     @staticmethod
     def targets(cfg):
-        """Kvar Kontor kan nåast: på anlegget (wifi) og ute i bakken (maskinporten via ruteren, valfri)."""
+        """Kvar Office kan nåast: på anlegget (wifi) og ute i bakken (maskinporten via ruteren, valfri)."""
         out = []
         h, p, _, _ = KontorKopling.target(cfg)
         if h:
@@ -273,12 +273,12 @@ class KontorKopling:
                             "ventar": {k: v for k, v in (self.terreng.get("ventar") or {}).items() if k != "mappe"}
                             or None, "resultat": self.terreng.get("resultat")}}
 
-    # ---------- HTTP mot Kontor ----------
+    # ---------- HTTP mot Office ----------
     def _req(self, cfg, path, body=None, raw=False, maks=2_000_000, til=None, timeout=None):
-        """Prøver Kontor på anlegget først, så ute (maskinporten). Den vegen som sist verka, blir prøvd først i 2 min."""
+        """Prøver Office på anlegget først, så ute (maskinporten). Den vegen som sist verka, blir prøvd først i 2 min."""
         tg = self.targets(cfg)
         if not tg:
-            raise Feil("Adressa til PC-en med SNOWMAN Kontor manglar (Innst. › Trasear › Kopling til SNOWMAN Kontor).")
+            raise Feil("Adressa til PC-en med SNOWMAN Office manglar (Innst. › Trasear › Kopling til SNOWMAN Office).")
         pv, pt = self._pref
         if pv and time.time() - pt < 120:
             tg.sort(key=lambda x: x[2] != pv)
@@ -292,7 +292,7 @@ class KontorKopling:
             except _Nett as e:
                 last = e
         raise Feil(str(last) if len(tg) == 1 else
-                   "Får ikkje kontakt med SNOWMAN Kontor – verken på anlegget eller ute (" + str(last) + ")")
+                   "Får ikkje kontakt med SNOWMAN Office – verken på anlegget eller ute (" + str(last) + ")")
 
     def _req1(self, cfg, host, port, path, body, raw, maks, til, timeout):
         _, _, user, pw = self.target(cfg)
@@ -319,32 +319,32 @@ class KontorKopling:
                 b = r.read(maks + 1)
         except urllib.error.HTTPError as e:
             if e.code == 401:
-                raise Feil("Kontor avviste innlogginga. Sjekk brukarnamn og passord (ein brukar med rolla maskin i "
-                           "SNOWMAN Kontor › Brukarar).")
+                raise Feil("Office avviste innlogginga. Sjekk brukarnamn og passord (ein brukar med rolla maskin i "
+                           "SNOWMAN Office › Brukarar).")
             if e.code == 404:
-                raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Kontor. Er adressa og porten (8790) rett?")
-            raise Feil(f"Kontor svarte med feil {e.code}.")
+                raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Office. Er adressa og porten (8790) rett?")
+            raise Feil(f"Office svarte med feil {e.code}.")
         except http.client.HTTPException:
-            raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Kontor – det ser ut som ein NTRIP-caster "
-                       "(SNOWMAN Base). Kontor har eigen port (8790) på PC-en.")
+            raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Office – det ser ut som ein NTRIP-caster "
+                       "(SNOWMAN Base). Office har eigen port (8790) på PC-en.")
         except (urllib.error.URLError, socket.timeout, OSError) as e:
-            raise _Nett(f"Får ikkje kontakt med SNOWMAN Kontor på {host}:{port} ({getattr(e, 'reason', e)}). "
-                        "Er maskina på wifi på anlegget, og står PC-en med Kontor på?")
+            raise _Nett(f"Får ikkje kontakt med SNOWMAN Office på {host}:{port} ({getattr(e, 'reason', e)}). "
+                        "Er maskina på wifi på anlegget, og står PC-en med Office på?")
         if len(b) > maks:
-            raise Feil("Svaret frå Kontor er for stort.")
+            raise Feil("Svaret frå Office er for stort.")
         if raw:
             return b
         try:
             return json.loads(b.decode("utf-8"))
         except ValueError:
-            raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Kontor. Er det SNOWMAN Base eller ein NTRIP-caster? "
-                       "Kontor har eigen port (8790) på PC-en.")
+            raise Feil(f"{host}:{port} svarar, men ikkje som SNOWMAN Office. Er det SNOWMAN Base eller ein NTRIP-caster? "
+                       "Office har eigen port (8790) på PC-en.")
 
     # ---------- henting ----------
     def fetch(self, cfg, apply, force=False):
         """Hentar aktiv anleggspakke. apply(innhald) tek ho i bruk. Returnerer eit svar til skjermen."""
         if not self.lock.acquire(blocking=False):
-            raise Feil("Hentar alt frå Kontor – vent litt.")
+            raise Feil("Hentar alt frå Office – vent litt.")
         try:
             return self._fetch(cfg, apply, force)
         except Feil as e:
@@ -357,7 +357,7 @@ class KontorKopling:
         info = self._req(cfg, "/api/v1/info")
         if "anleggspakke-format-1" not in (info.get("funksjonar") or []):
             if info.get("program") == "SNOWMAN Base" or "ntrip-caster" in (info.get("funksjonar") or []):
-                raise Feil("Adressa går til SNOWMAN Base. Anleggsdata kjem frå SNOWMAN Kontor på PC-en (port 8790).")
+                raise Feil("Adressa går til SNOWMAN Base. Anleggsdata kjem frå SNOWMAN Office på PC-en (port 8790).")
             raise Feil(f"{info.get('program') or 'Programmet'} {info.get('versjon', '?')} kan ikkje sende anleggspakke.")
         sendt = self._send_queue(cfg)
         r = self._req(cfg, "/api/v1/anleggspakke")
@@ -432,7 +432,7 @@ class KontorKopling:
         if godkjende:
             msg += f" {godkjende} lokal(e) hindring(ar) er no godkjende av kontoret."
         self.sist = {"t": time.time(), "ok": True, "melding": msg}
-        self.log(f"Kontor: anleggspakke v{self.aktiv['versjon']} teken i bruk ({', '.join(f'{v} {k}' for k, v in tal.items())})")
+        self.log(f"Office: anleggspakke v{self.aktiv['versjon']} teken i bruk ({', '.join(f'{v} {k}' for k, v in tal.items())})")
         return {"ok": True, "ny": True, "melding": msg, "aktiv": self.aktiv, "sendt": sendt}
 
     def terreng_ta_i_bruk(self, install):
@@ -449,12 +449,12 @@ class KontorKopling:
         self.terreng = {"i_bruk": ventar["versjon"], "teke_i_bruk": time.strftime("%Y-%m-%d %H:%M"), "resultat": res,
                         "lag": ventar["lag"]}
         self._write("terreng.json", self.terreng)
-        self.log(f"Kontor: terreng frå anleggspakke v{ventar['versjon']} teke i bruk ({res})")
+        self.log(f"Office: terreng frå anleggspakke v{ventar['versjon']} teke i bruk ({res})")
         return self.terreng
 
     # ---------- sanntid (2026-11-22) ----------
     def live(self, cfg, status, punkt=None):
-        """Posisjon, snødjupne og status til Kontor (kvart 10. s), og målingar for deling. Feil blir berre noterte."""
+        """Posisjon, snødjupne og status til Office (kvart 10. s), og målingar for deling. Feil blir berre noterte."""
         try:
             self._req(cfg, "/api/v1/maskin", dict(status, id=self.mid, namn=cfg.get("kontor_maskinnamn") or self.mid,
                                                    versjon=self.version, pakke=(self.aktiv or {}).get("versjon"),

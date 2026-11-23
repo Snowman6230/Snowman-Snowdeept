@@ -1,7 +1,7 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
 """Testar for SNOWMAN Base. Køyr frå base/v1.0:   python -m unittest discover -s test -v
 
-«Kompatibilitet» testar Base mot NTRIP-klienten i SNOWMAN snødjupne (pc/v1.6/ntripklient.py) – køyr alltid denne
+«Kompatibilitet» testar Base mot NTRIP-klienten i SNOWMAN Snowdeep (pc/v1.6/ntripklient.py) – køyr alltid denne
 når casteren eller API-et blir endra (sjå konfig.py, SNOWMAN_MIN).
 """
 import base64
@@ -143,7 +143,7 @@ class TestRtcm(unittest.TestCase):
 
 
 class TestKompatibilitet(BaseCase):
-    """Base mot NTRIP-klienten i SNOWMAN snødjupne (pc/v1.6)."""
+    """Base mot NTRIP-klienten i SNOWMAN Snowdeep (pc/v1.6)."""
 
     def make_mounts(self):
         f = self.write("t.rtcm3", (epoch() + rtcm.frame(eph())) * 40)
@@ -667,10 +667,10 @@ class TestApi(BaseCase):
         self.assertEqual(d["api"], konfig.API_VERSION)
         self.assertEqual(d["snowman_min"], konfig.SNOWMAN_MIN)
         self.assertIn("ntrip-caster", d["funksjonar"])
-        self.assertNotIn("anleggspakke-v1", d["funksjonar"])      # Base 1.4: flytta til SNOWMAN Kontor
+        self.assertNotIn("anleggspakke-v1", d["funksjonar"])      # Base 1.4: flytta til SNOWMAN Office
 
     def test_kontordelen_er_borte(self):
-        # Base 1.4 (avgjerd 2026-11-22): anleggspakke, deling, forslag, forbetringar og AI ligg i SNOWMAN Kontor
+        # Base 1.4 (avgjerd 2026-11-22): anleggspakke, deling, forslag, forbetringar og AI ligg i SNOWMAN Office
         for p in ("/api/v1/maskiner", "/api/v1/anleggspakke", "/api/v1/forslag", "/api/v1/forbetringar", "/api/v1/ai"):
             self.assertEqual(self.call(p)[0], 401)
             self.assertEqual(self.call(p, key=self.akey)[0], 401)
@@ -702,7 +702,7 @@ class TestApi(BaseCase):
         keys = {r["nokkel"] for r in d["forslag"]}
         self.assertIn("FJELL:ikkje-innmalt", keys)         # basen er ikkje kontrollert mot innmålt punkt
         self.assertIn("FJELL:ingen-baner", keys)            # straumen manglar satellittbaner
-        self.assertNotIn("ai-av", keys)                     # AI ligg i SNOWMAN Kontor
+        self.assertNotIn("ai-av", keys)                     # AI ligg i SNOWMAN Office
         self.assertIn("dag", d["mountpoints"][0])
         self.assertIn("tilkoplingar_i_dag", d)
 

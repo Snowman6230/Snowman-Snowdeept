@@ -10,7 +10,7 @@ snødjupne alt lagrar** i `pc/v1.6/data/`, så maskina ikkje treng å omsetje no
     kontrollpunkt.json   {"points":  [...]}  kontrollpunkta i data/kontroll.json (ikkje kontrollmålingane – dei
                                              høyrer til kvar maskin)
     terreng/<id>/meta.json + terreng/<id>/grid.npy
-                         terrenglag frå terrengbiblioteket i SNOWMAN snødjupne (data/terrain/<id>/) – same filer.
+                         terrenglag frå terrengbiblioteket i SNOWMAN Snowdeep (data/terrain/<id>/) – same filer.
                          Maskina lastar dei ned og føraren tek dei i bruk når prepareringa er stoppa (2026-11-22).
 
 Alle filene er valfrie, men pakka må ha minst éi av dei. Fil som manglar = maskina held på det ho har.
@@ -21,7 +21,7 @@ manifest.json:
      "snowman_min": "1.7.0",                      # valfri: eldre SNOWMAN skal ikkje ta pakka i bruk
      "filer": {"trasear.json": "<sha256>", ...}}  # alle filer i pakka utanom manifest.json
 
-Versjonsnummeret blir sett av Kontor ved opplasting (1, 2, 3 …) og står ikkje i manifestet.
+Versjonsnummeret blir sett av Office ved opplasting (1, 2, 3 …) og står ikkje i manifestet.
 Innstillingar til maskinene (innstillingar.json) kjem seinare (steg 4) og blir avviste i formatversjon 1.
 """
 import hashlib
@@ -167,7 +167,7 @@ def kontroller(path, maks_utpakka):
         if not isinstance(m, dict) or m.get("format") != FORMAT:
             raise Feil(f'manifest.json: format må vere "{FORMAT}"')
         if m.get("formatversjon") != FORMATVERSJON:
-            raise Feil(f"manifest.json: formatversjon {m.get('formatversjon')} er ukjend – denne Kontor kjenner "
+            raise Feil(f"manifest.json: formatversjon {m.get('formatversjon')} er ukjend – denne Office kjenner "
                        f"formatversjon {FORMATVERSJON}")
         filer = m.get("filer")
         if not isinstance(filer, dict):

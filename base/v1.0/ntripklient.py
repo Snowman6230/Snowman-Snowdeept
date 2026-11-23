@@ -1,5 +1,5 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Kopi av pc/v1.6/ntripklient.py (same kode som SNOWMAN snødjupne) – brukt av relékjelda i SNOWMAN Base.
+"""Kopi av pc/v1.6/ntripklient.py (same kode som SNOWMAN Snowdeep) – brukt av relékjelda i SNOWMAN Base.
 
 NTRIP-klient: kopling til casteren (NTRIP 1 og 2), og kjeldetabellen (lista over mountpoints).
 

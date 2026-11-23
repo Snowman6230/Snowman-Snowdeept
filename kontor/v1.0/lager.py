@@ -1,5 +1,5 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Lager i SNOWMAN Kontor (SQLite, data/kontor.db): maskiner, delte målingar, anleggspakker, forslag og forbetringar.
+"""Lager i SNOWMAN Office (SQLite, data/kontor.db): maskiner, delte målingar, anleggspakker, forslag og forbetringar.
 
     maskiner      siste hjarteslag frå kvar maskin (versjon, anleggspakke, posisjon, FIX-del)
     maalingar     snødjupne frå maskinene (berre RTK FIX frå kalibrerte maskiner) – deling siste 12 t (v1.8)

@@ -1,8 +1,8 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Test av koplinga til SNOWMAN Kontor – anleggspakke frå kontoret (v1.6.136, v1.6.137: Kontor i staden for Base).
+"""Test av koplinga til SNOWMAN Office – anleggspakke frå kontoret (v1.6.136, v1.6.137: Office i staden for Base).
 
 Køyr frå pc/v1.6:  python3 test/testkontorkopling.py   → venta «ALT OK».
-Startar ein ekte SNOWMAN Kontor (kontor/v1.0) i ei mellombels mappe, lastar opp anleggspakkar som kontoret og hentar
+Startar ein ekte SNOWMAN Office (kontor/v1.0) i ei mellombels mappe, lastar opp anleggspakkar som kontoret og hentar
 dei med kontorkopling.py – med dei same lagra (trasear, hindringar, kontrollpunkt) som SNOWMAN brukar.
 """
 import base64
@@ -93,7 +93,7 @@ def main():
         sjekk(not bk.styrt(mcfg), "ikkje styrt før ei pakke er henta")
         last_opp(trasear=[T1, F1], objekt=[H1], kontrollpunkt=[K1])
         r = bk.fetch(mcfg, apply)
-        sjekk(r["ny"] and r["aktiv"]["versjon"] == 1, "pakke v1 henta frå Kontor")
+        sjekk(r["ny"] and r["aktiv"]["versjon"] == 1, "pakke v1 henta frå Office")
         sjekk([t["name"] for t in tra.listing()] == ["Bakke 1", "Vegen"], "trasear frå kontoret erstattar dei lokale")
         sjekk((data / "anleggspakke" / "forrige" / "trasear.json").exists(), "det lokale er teke vare på (forrige/)")
         sjekk([p["name"] for p in kon.data["points"]] == ["Bolt"], "kontrollpunkt frå kontoret")
@@ -189,13 +189,13 @@ def main():
         base.stop()
         time.sleep(0.3)
         sjekk(not bk.forslag(mcfg, {"type": "merknad", "tekst": "test"}) and bk.status(mcfg)["ko"] == 1,
-              "forslag blir lagt i kø når Kontor er borte")
+              "forslag blir lagt i kø når Office er borte")
         try:
             bk.fetch(mcfg, apply)
-            sjekk(False, "feilmelding når Kontor er borte")
+            sjekk(False, "feilmelding når Office er borte")
         except BK.Feil as e:
-            sjekk("kontakt" in str(e), "feilmelding når Kontor er borte")
-        sjekk([t["name"] for t in tra.listing()] == ["Bakke 1"] and bk.styrt(mcfg), "siste pakke gjeld når Kontor er borte")
+            sjekk("kontakt" in str(e), "feilmelding når Office er borte")
+        sjekk([t["name"] for t in tra.listing()] == ["Bakke 1"] and bk.styrt(mcfg), "siste pakke gjeld når Office er borte")
         bk2 = BK.KontorKopling(data, "1.6.137")
         sjekk(bk2.aktiv["versjon"] == 4 and bk2.status(mcfg)["ko"] == 1 and bk2.mid == bk.mid,
               "aktiv pakke, kø og maskin-ID blir hugsa etter omstart")

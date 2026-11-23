@@ -4,7 +4,7 @@
 Python 3.13 krev strengare sertifikat (VERIFY_X509_STRICT). Antivirus, brannmurar og proxyar som les HTTPS
 (t.d. på skule- og bedriftsnett) set inn eigne rotsertifikat som ofte manglar felt (Authority Key Identifier), og
 då feilar Python med «CERTIFICATE_VERIFY_FAILED», sjølv om nettlesaren godtek sida.
-Løysing – same som i SNOWMAN snødjupne (pc/v1.6/nett.py): truststore (MIT, vendor/truststore) lèt operativsystemet
+Løysing – same som i SNOWMAN Snowdeep (pc/v1.6/nett.py): truststore (MIT, vendor/truststore) lèt operativsystemet
 sjølv kontrollere sertifikatet, akkurat som nettlesaren. Utan truststore blir berre den strenge tilleggsregelen
 slått av. Sertifikatkontrollen blir aldri slått av.
 """

@@ -2,7 +2,7 @@
 """Åtvaringar i SNOWMAN Base: faste reglar om korreksjonane, basemottakaren og Base sjølv.
 
 Base 1.4 (avgjerd 2026-11-22): Base har berre med satellittar og NTRIP å gjere. Reglane blir rekna på nytt kvar gong
-statusen blir henta, og blir viste på statussida (ingen database, ingen AI). SNOWMAN Kontor les statusen og tek
+statusen blir henta, og blir viste på statussida (ingen database, ingen AI). SNOWMAN Office les statusen og tek
 åtvaringane med i forbetringslista si – der kan dei godtakast, avvisast og eksporterast.
 
 Kvart funn har ein fast nøkkel (same funn får same nøkkel kvar gong).

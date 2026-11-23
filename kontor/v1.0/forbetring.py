@@ -1,21 +1,21 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Forbetringsmotoren i SNOWMAN Kontor: finn forbetringar i oppsett, utstyr og program ut frå drifta.
+"""Forbetringsmotoren i SNOWMAN Office: finn forbetringar i oppsett, utstyr og program ut frå drifta.
 
 To lag:
-  1. Reglar (alltid på, lokalt): maskinene, anleggspakka og Kontor sjølv – og åtvaringane frå SNOWMAN Base om
+  1. Reglar (alltid på, lokalt): maskinene, anleggspakka og Office sjølv – og åtvaringane frå SNOWMAN Base om
      korreksjonane (henta frå statussida til Base, berre lesing).
   2. AI (valfritt, ai.py): les eit anonymisert samandrag og foreslår meir – også forbetringar i SNOWMAN-programma.
 
 Kvart forslag har ein fast nøkkel, så same funn blir oppdatert (ikkje dobla). Status: ny → godteke/avvist → gjort.
 Forslag som kjem att etter «gjort», blir opna på nytt. Kontoret kan eksportere lista som Markdown til utviklaren.
 
-Kategoriar:  base (SNOWMAN Base) · kontor (SNOWMAN Kontor) · snowman (SNOWMAN snødjupne) · utstyr · drift
+Kategoriar:  base (SNOWMAN Base) · kontor (SNOWMAN Office) · snowman (SNOWMAN Snowdeep) · utstyr · drift
 """
 import time
 
 from konfig import SNOWMAN_MIN, VERSION
 
-CATEGORIES = {"base": "SNOWMAN Base", "kontor": "SNOWMAN Kontor", "snowman": "SNOWMAN snødjupne",
+CATEGORIES = {"base": "SNOWMAN Base", "kontor": "SNOWMAN Office", "snowman": "SNOWMAN Snowdeep",
               "utstyr": "Mottakar og antenne", "drift": "Drift av anlegget"}
 
 
@@ -41,11 +41,11 @@ def rules(k):
     # SNOWMAN Base (korreksjonane) – åtvaringane Base sjølv finn, henta frå statussida
     bs = k.basestatus.last
     if not k.basestatus.configured():
-        out.append(S("base-ukjend", "kontor", "låg", "Kontor ser ikkje statusen til SNOWMAN Base",
-                     "Med adressa til Base kan Kontor vise korreksjonsstraumane og ta med åtvaringane frå Base her.",
+        out.append(S("base-ukjend", "kontor", "låg", "Office ser ikkje statusen til SNOWMAN Base",
+                     "Med adressa til Base kan Office vise korreksjonsstraumane og ta med åtvaringane frå Base her.",
                      "Skriv adressa til Base under System › SNOWMAN Base (t.d. http://snowman-base.local:8780)."))
     elif bs.get("ok") is False and bs.get("t") and now - bs["t"] < 600:
-        out.append(S("base-borte", "drift", "høg", "Kontor får ikkje kontakt med SNOWMAN Base",
+        out.append(S("base-borte", "drift", "høg", "Office får ikkje kontakt med SNOWMAN Base",
                      bs.get("feil") or "Ingen svar.",
                      "Sjekk straum og nett til Pi-en ved antenna. Korreksjonane til maskinene kan vere borte."))
     for f in ((bs.get("status") or {}).get("forslag") or []) if bs.get("ok") else []:
@@ -59,7 +59,7 @@ def rules(k):
     for r in k.store.machines():
         if r["versjon"] and vtuple(r["versjon"]) < vtuple(SNOWMAN_MIN):
             out.append(S(f"maskin:{r['id']}:gammal", "snowman", "høg", f"{r['namn']}: SNOWMAN {r['versjon']} er for gammal",
-                         f"Kontor krev minst SNOWMAN {SNOWMAN_MIN} for anleggspakka.",
+                         f"Office krev minst SNOWMAN {SNOWMAN_MIN} for anleggspakka.",
                          "Oppdater SNOWMAN på maskina (Innst. › System › Hent siste versjon)."))
         if r["fixdel"] is not None and r["age"] is not None and r["age"] < 86400 and r["fixdel"] < 0.6:
             out.append(S(f"maskin:{r['id']}:fix", "utstyr", "middels",
@@ -70,8 +70,8 @@ def rules(k):
         if pk and r["pakke"] and str(r["pakke"]) != str(pk["versjon"]) and r["age"] is not None and r["age"] > 86400:
             out.append(S(f"maskin:{r['id']}:pakke", "drift", "låg", f"{r['namn']}: gammal anleggspakke",
                          f"Maskina har v{r['pakke']}, aktiv er v{pk['versjon']}, og ho har ikkje meldt seg på eit døgn.",
-                         "Maskina hentar ny pakke når ho er på wifi på anlegget (HENT FRÅ KONTOR). Sjekk wifi i garasjen."))
-    # Kontor sjølv
+                         "Maskina hentar ny pakke når ho er på wifi på anlegget (HENT FRÅ OFFICE). Sjekk wifi i garasjen."))
+    # Office sjølv
     free = k.disk_free()
     if free is not None and free < 5:
         out.append(S("disk", "kontor", "høg", f"Lite diskplass ({free} GB ledig)",
@@ -80,7 +80,7 @@ def rules(k):
     if up.get("tilgjengeleg"):
         import oppdatering
         out.append(S("oppdatering", "kontor", "låg", f"Ny versjon tilgjengeleg: {oppdatering.tekst(up)}",
-                     f"Du har Kontor {VERSION} og kart {up.get('kart') or '–'}.", "Trykk «Oppdater no» øvst på kontorsida."))
+                     f"Du har Office {VERSION} og kart {up.get('kart') or '–'}.", "Trykk «Oppdater no» øvst på kontorsida."))
     if not k.ai.enabled():
         out.append(S("ai-av", "kontor", "låg", "AI-analysen er av",
                      "Reglane finn kjende problem. AI kan i tillegg sjå mønster og foreslå forbetringar i programma.",
@@ -123,7 +123,7 @@ def run(k):
 def export_markdown(store, include_done=False):
     """Forslaga som Markdown – kan givast til utviklaren (eller ein AI-assistent) som oppgåveliste."""
     rows = store.improvements(include_done)
-    lines = [f"# Forbetringsforslag frå SNOWMAN Kontor {VERSION}",
+    lines = [f"# Forbetringsforslag frå SNOWMAN Office {VERSION}",
              f"Laga {time.strftime('%Y-%m-%d %H:%M')}. Kjelde: reglar og ev. AI. Alvor: høg / middels / låg.", ""]
     for cat, title in CATEGORIES.items():
         part = [r for r in rows if r["kategori"] == cat]
@@ -139,7 +139,7 @@ def export_markdown(store, include_done=False):
         lines.append("")
     props = [p for p in store.proposals() if p["type"] == "program" and p["status"] in ("ny", "godkjent")]
     if props:
-        lines.append("## Ønske frå førarane (SNOWMAN snødjupne)")
+        lines.append("## Ønske frå førarane (SNOWMAN Snowdeep)")
         for p in props:
             lines.append(f"- {p['tekst']} (maskin {p['maskin']}, {time.strftime('%Y-%m-%d', time.localtime(p['dato']))})")
         lines.append("")

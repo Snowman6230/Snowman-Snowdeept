@@ -1,23 +1,23 @@
 # SNOWMAN Base (versjon 1.4 – mappa v1.0)
 
-RTK-base og NTRIP-caster for SNOWMAN snødjupne. Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata).
+RTK-base og NTRIP-caster for SNOWMAN Snowdeep. Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata).
 
 **Berre satellittar og NTRIP (avgjerd 2026-11-22).** Base gir korreksjonane til maskinene og ingenting anna, så
 ingenting kan forstyrre dei. Kontorsida, anleggspakkar, forslag, maskinoversikt, deling og AI ligg i
-**SNOWMAN Kontor** – eit eige program på ein PC på anlegget (`kontor/v1.0`, nedlastinga `SNOWMAN-Kontor.zip`).
+**SNOWMAN Office** – eit eige program på ein PC på anlegget (`kontor/v1.0`, nedlastinga `SNOWMAN-Office.zip`).
 
 ```
 GNSS-mottakar (base) ──USB / nett / opplasting──►  SNOWMAN Base  ──NTRIP 2101──►  SNOWMAN på tråkkemaskinene
 reserve: TH / CPOS ─────────────relé─────────────►  (Raspberry Pi)
                                                        │ statusside :8780 · oppsett :8780/oppsett (berre lokalt)
-                                                       └──── statusen (berre lesing) ──►  SNOWMAN Kontor (PC)
+                                                       └──── statusen (berre lesing) ──►  SNOWMAN Office (PC)
 ```
 
 ## Kva Base gjer
 
 | Funksjon | Kort |
 |---|---|
-| **NTRIP-caster** (port 2101) | NTRIP 1 og 2, same protokoll som TH og CPOS. Testa mot NTRIP-klienten i SNOWMAN snødjupne. |
+| **NTRIP-caster** (port 2101) | NTRIP 1 og 2, same protokoll som TH og CPOS. Testa mot NTRIP-klienten i SNOWMAN Snowdeep. |
 | **Kjelder** | Mottakar på USB/seriell, mottakar på nettet (TCP), eining som sender inn (TCP-tenar eller NTRIP-opplasting frå t.d. ein Raspberry Pi ved antenna), relé frå annan caster, avspeling (test). |
 | **Reserve** | Kjeldene står i prioritert rekkjefølgje. Stoppar eigen base, går Base over til reserven (t.d. TH eller CPOS) med éin gong, og tilbake når eigen base har sendt stabilt i 60 s (ingen byte fram og tilbake). |
 | **Innlogging** | Brukarnamn og passord – ingen nøklar. Rolla **ntrip** for maskinene (korreksjonar), **kontor** for administrator i Base (oppsettsida – namnet er historisk). |
@@ -27,8 +27,8 @@ reserve: TH / CPOS ─────────────relé─────�
 | **Basekontroll** | Posisjonen basen sender (1005/1006) blir samanlikna med innmålt koordinat. Avvik over 5 cm gir åtvaring. |
 | **Rådatalogg** | Alt mottakaren sender, éi fil per time (grunnlag for PPP-innmåling av basen og feilsøking). Blir sletta etter 30 dagar. |
 | **Satellittbaner (BRDC)** | Valfritt: Base hentar dagleg banefil frå BKG/IGS. |
-| **Åtvaringar** | Faste reglar om korreksjonane (MSM3, manglande baner, berre GPS+GLONASS, ikkje innmålt eller avvikande baseposisjon, reserve i bruk, mange byte, låg oppetid, CRC-feil, ustabilt samband, lite diskplass, ny versjon). Viste på statussida. SNOWMAN Kontor les dei og tek dei med i forbetringslista. |
-| **Oppdatering** | Same som SNOWMAN snødjupne: git pull eller zip frå GitHub. Knapp på oppsettsida. `data/` blir aldri rørt. Base startar på nytt, så maskinene mistar korreksjonane nokre sekund – oppdater når ingen preparerer. Automatisk oppdatering er av. |
+| **Åtvaringar** | Faste reglar om korreksjonane (MSM3, manglande baner, berre GPS+GLONASS, ikkje innmålt eller avvikande baseposisjon, reserve i bruk, mange byte, låg oppetid, CRC-feil, ustabilt samband, lite diskplass, ny versjon). Viste på statussida. SNOWMAN Office les dei og tek dei med i forbetringslista. |
+| **Oppdatering** | Same som SNOWMAN Snowdeep: git pull eller zip frå GitHub. Knapp på oppsettsida. `data/` blir aldri rørt. Base startar på nytt, så maskinene mistar korreksjonane nokre sekund – oppdater når ingen preparerer. Automatisk oppdatering er av. |
 
 ## Kom i gang
 
@@ -80,8 +80,8 @@ Innlogging er **brukarnamn og passord**. Det finst ingen nøklar å ta vare på.
 
 | Rolle | Kven | Brukt til |
 |---|---|---|
-| `ntrip` | Tråkkemaskinene | Brukarnamn og passord i SNOWMAN snødjupne under NTRIP. |
-| `kontor` | Administrator i Base | Oppsettsida (namnet på rolla er historisk – det har ingenting med SNOWMAN Kontor å gjere). |
+| `ntrip` | Tråkkemaskinene | Brukarnamn og passord i SNOWMAN Snowdeep under NTRIP. |
+| `kontor` | Administrator i Base | Oppsettsida (namnet på rolla er historisk – det har ingenting med SNOWMAN Office å gjere). |
 
 **Gløymt passord** – på maskina Base køyrer på (fungerer også medan Base køyrer):
 
@@ -188,7 +188,7 @@ internettleverandøren; har sambandet ikkje det, er Tailscale løysinga.
 - Oppdatering: oppsettsida › System › **Oppdater**. Containeren startar på nytt av seg sjølv (kode 3, `restart: unless-stopped`).
 - Ny Python-versjon i containeren (sjeldan): Container Manager › Prosjekt › `snowman-base` › **Bygg** på nytt.
 
-## I SNOWMAN snødjupne (maskina) – som mot Norman sin base
+## I SNOWMAN Snowdeep (maskina) – som mot Norman sin base
 
 Same felt som mot `gpsbase.dyndns.org:2101/TH`:
 
@@ -266,13 +266,13 @@ Ei relékjelde til nettverks-RTK (CPOS) sender GGA med posisjonen frå `innmalt`
 str2str -in serial://ttyACM0:115200 -out ntrips://:PASSORD@ADRESSE-TIL-BASE:2101/FJELL
 ```
 
-## Samspel med SNOWMAN snødjupne
+## Samspel med SNOWMAN Snowdeep
 
 - Casteren fungerer med alle SNOWMAN-versjonar.
 - Maskinene snakkar berre NTRIP med Base (port 2101). Anleggsdata, forslag og deling går mellom maskinene og
-  SNOWMAN Kontor på kontor-PC-en (port 8790, berre på nettet på anlegget).
+  SNOWMAN Office på kontor-PC-en (port 8790, berre på nettet på anlegget).
 - Base 1.3 hadde maskin-API-et på 2101. Det er teke bort i 1.4 – casteren svarar berre på NTRIP.
-- SNOWMAN Kontor les `/api/status` (berre lesing) for å vise korreksjonane og åtvaringane på kontorsida.
+- SNOWMAN Office les `/api/status` (berre lesing) for å vise korreksjonane og åtvaringane på kontorsida.
 - Endrar du casteren: køyr testane (under). Kompatibilitetstesten brukar NTRIP-klienten frå `pc/v1.6`.
 
 ## Testar

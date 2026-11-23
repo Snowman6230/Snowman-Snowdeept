@@ -1,5 +1,5 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""«Slik når maskinene Base»: lokale og offentleg IP-adresse, dynamisk DNS, og kva som skal stå i SNOWMAN snødjupne.
+"""«Slik når maskinene Base»: lokale og offentleg IP-adresse, dynamisk DNS, og kva som skal stå i SNOWMAN Snowdeep.
 
 Som Norman sin base (gpsbase.dyndns.org:2101) treng maskinene på mobilnettet tre ting:
     1. eit fast namn som peikar på den offentlege IP-adressa til anlegget (dynamisk DNS)

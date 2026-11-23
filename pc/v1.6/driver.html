@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover" />
     <meta name="theme-color" content="#06121a" />
-    <title>SNOWMAN PC v1.6</title>
+    <title>SNOWMAN Snowdeep</title>
     <link rel="icon" type="image/png" href="vendor/snowman-icon.png" />
     <link rel="stylesheet" href="vendor/leaflet.css" />
     <style>
@@ -2722,7 +2722,7 @@
             <path d="M33 14 L39 17 L46 11 L52 17 L57 14 M68 18 L74 16 L80 19" fill="none" stroke="#02141d" stroke-width="2.2" stroke-linejoin="round" />
           </svg>
           <div class="brandName">SNOWMAN</div>
-          <small>by Alpindata · <span id="brandVer">PC v1.6</span></small>
+          <small>by Alpindata · <span id="brandVer">Snowdeep v1.6</span></small>
         </div>
         <div class="depth"><label id="depthLabel">SNØDJUPNE (MIDT)</label><b id="depth">--</b><small id="depthNote">IKKJE MÅLT</small></div>
         <div id="aheadBox" class="ahead hide"><label id="aheadLabel">FRAMFOR · ESTIMERT</label><b id="aheadD">--</b><small id="aheadNote"></small></div>
@@ -2792,7 +2792,7 @@
           ><button id="tabReport" onclick="showTab('report')">Rapport</button
           ><button id="tabHistory" onclick="showTab('history')">Historikk</button
           ><button id="tabSys" onclick="showTab('sys')">System</button
-          ><button id="tabKontor" class="hide" onclick="showTab('kontor')">Kontor</button
+          ><button id="tabKontor" class="hide" onclick="showTab('kontor')">Office</button
           ><button class="quitBtn" onclick="quitSnowman()">⏻ AVSLUTT SNOWMAN</button>
         </div>
         <section id="panelMachine" class="panel on">
@@ -3131,14 +3131,14 @@
               wifi på anlegget. Nytt terreng tek føraren i bruk når prepareringa er stoppa. Det som er tomt her (t.d. ingen
               kontrollpunkt), blir ikkje sendt – då held maskinene på sitt eige.
             </div>
-            <div id="kmInfo" class="history">Hentar status frå SNOWMAN Kontor …</div>
+            <div id="kmInfo" class="history">Hentar status frå SNOWMAN Office …</div>
             <div class="row"><span>Merknad (kva er endra)</span><input id="kmNote" type="text" placeholder="t.d. ny trasé i Bakke 2" style="width: 190px" /></div>
             <div class="row"><span>Ta med terrengmodellane</span><input id="kmTerr" type="checkbox" checked style="width: auto" /></div>
             <button id="kmPub" class="btn" onclick="KONTORM.publiser()">⇪ PUBLISER TIL MASKINENE</button>
           </div>
           <div class="ks hide" data-k="oversikt">
             <h3>MASKINENE</h3>
-            <div id="kmLive" class="history">Kartet viser maskinene i sanntid når dei sender (sjå Kopling til SNOWMAN Kontor i maskina).</div>
+            <div id="kmLive" class="history">Kartet viser maskinene i sanntid når dei sender (sjå Kopling til SNOWMAN Office i maskina).</div>
             <div id="kmMachines" class="history"></div>
             <h3>SNOWMAN BASE – KORREKSJONANE</h3>
             <div id="ksBase" class="history">–</div>
@@ -3170,7 +3170,7 @@
           </div>
           <div class="ks hide" data-k="forbetringar">
             <h3>FORBETRINGAR</h3>
-            <div class="history">Kontor går gjennom loggane og statusen kvart kvarter og foreslår forbetringar (og AI, om ho er slått på).</div>
+            <div class="history">Office går gjennom loggane og statusen kvart kvarter og foreslår forbetringar (og AI, om ho er slått på).</div>
             <button class="btn" onclick="KSIDE.analyser()">ANALYSER NO</button><button id="ksImpAll" class="btn" onclick="KSIDE.alle()">VIS OGSÅ FERDIGE: AV</button>
             <div id="ksForbetringar" class="ksList">–</div>
           </div>
@@ -3197,24 +3197,24 @@
             <div class="row"><span>Passord</span><input id="ksBPw" type="password" autocomplete="off" style="width: 190px" /></div>
             <button class="btn" onclick="KSIDE.baseLagre()">LAGRE OG HENT STATUS</button>
             <div id="ksBMsg" class="history hide"></div>
-            <h3>HENDINGAR I SNOWMAN KONTOR</h3>
+            <h3>HENDINGAR I SNOWMAN OFFICE</h3>
             <div id="ksEvents" class="ksList" data-scroll="ksEv">–</div>
             <button class="btn" onclick="window.open('http://localhost:8790/', 'snowmanKontor')">OPNE KONTORSIDA I NETTLESAREN (RESERVE)</button>
           </div>
         </section>
         <section id="panelTrase" class="panel">
           <div id="kontorKopling">
-          <h3>ANLEGGSDATA FRÅ KONTORET (SNOWMAN KONTOR)</h3>
-          <div id="baseInfo" class="history">Koplinga til SNOWMAN Kontor er av. Trasear og hindringar blir lagde inn i maskina.</div>
+          <h3>ANLEGGSDATA FRÅ KONTORET (SNOWMAN OFFICE)</h3>
+          <div id="baseInfo" class="history">Koplinga til SNOWMAN Office er av. Trasear og hindringar blir lagde inn i maskina.</div>
           <button id="baseTerr" class="btn hide" style="border-color: #ffb24d" onclick="KONTK.terreng()">⛰ TA I BRUK NYTT TERRENG</button>
-          <button id="baseHent" class="btn hide" onclick="KONTK.hent()">⇩ HENT FRÅ KONTOR</button
+          <button id="baseHent" class="btn hide" onclick="KONTK.hent()">⇩ HENT FRÅ OFFICE</button
           ><button id="baseForslag" class="btn hide" onclick="KONTK.forslag()">✉ SEND FORSLAG TIL KONTORET</button>
           <details class="fold" ontoggle="FOLD.base = this.open">
-            <summary><span><b>Kopling til SNOWMAN Kontor</b> <span id="baseSum" class="dim" style="color: #8aa3b1"></span></span></summary>
+            <summary><span><b>Kopling til SNOWMAN Office</b> <span id="baseSum" class="dim" style="color: #8aa3b1"></span></span></summary>
             <div class="fbody">
-              <button id="baseOn" class="btn toggle" onclick="KONTK.toggle()">KOPLING TIL SNOWMAN KONTOR: AV</button>
+              <button id="baseOn" class="btn toggle" onclick="KONTK.toggle()">KOPLING TIL SNOWMAN OFFICE: AV</button>
               <div class="row"><span>Namn på maskina (vist på kontoret)</span><input id="baseName" type="text" placeholder="t.d. PB 600 nr. 1" style="width: 190px" /></div>
-              <div class="row"><span>Adresse til PC-en med Kontor</span><input id="baseHost" type="text" placeholder="t.d. 192.168.1.20" style="width: 190px" /></div>
+              <div class="row"><span>Adresse til PC-en med Office</span><input id="baseHost" type="text" placeholder="t.d. 192.168.1.20" style="width: 190px" /></div>
               <div class="row"><span>Port</span><input id="basePort" type="number" min="1" max="65535" placeholder="8790" style="width: 190px" /></div>
               <div class="row"><span>Adresse ute (t.d. fjellsetra.duckdns.org)</span><input id="baseHostUte" type="text" placeholder="tomt = berre på anlegget" style="width: 190px" /></div>
               <div class="row"><span>Port ute (maskinporten)</span><input id="basePortUte" type="number" min="1" max="65535" placeholder="8791" style="width: 190px" /></div>
@@ -3223,16 +3223,16 @@
               <div class="row"><span>Passord</span><input id="basePass" type="password" style="width: 190px" autocomplete="new-password" /></div>
               <button class="btn" onclick="KONTK.save()">LAGRE KOPLINGA</button>
               <div class="history" style="font-size: 12px">
-                Valfritt. Utan Kontor fungerer SNOWMAN som før. <b>SNOWMAN Kontor</b> er programmet på kontor-PC-en på anlegget
+                Valfritt. Utan Office fungerer SNOWMAN som før. <b>SNOWMAN Office</b> er programmet på kontor-PC-en på anlegget
                 (port 8790). Det er ikkje SNOWMAN Base – Base gir berre korreksjonane (NTRIP).<br />
-                <b>Adresse ute</b> (valfritt): når ruteren sender port 8791 vidare til kontor-PC-en, når maskina Kontor over mobilnettet
+                <b>Adresse ute</b> (valfritt): når ruteren sender port 8791 vidare til kontor-PC-en, når maskina Office over mobilnettet
                 ute i bakken. Då ser kontoret posisjon og snødjupne i sanntid. Store pakker (terreng) blir berre henta på wifi.<br />
-                <b>HENT FRÅ KONTOR</b> hentar anleggspakka: trasear, forbodne område, hindringar og kontrollpunkt. Maskina må vere på
+                <b>HENT FRÅ OFFICE</b> hentar anleggspakka: trasear, forbodne område, hindringar og kontrollpunkt. Maskina må vere på
                 nettet på anlegget (wifi i garasjen). Pakka blir lagra i maskina og gjeld ute i bakken og når PC-en er av.<br />
                 <b>Styrt frå kontoret:</b> trasear, forbodne område og kontrollpunkt blir då endra på kontorsida – føraren kan sende forslag.
                 <b>Ei ny hindring</b> kan du framleis leggje inn her: ho gir varsel med éin gong, er merkt «lokal – ventar på kontoret»
-                og blir send til kontoret neste gong maskina når Kontor. Slår du av koplinga, kan alt redigerast i maskina att.<br />
-                Brukarnamn og passord: ein brukar med rolla <b>maskin</b> i SNOWMAN Kontor › Brukarar (ikkje NTRIP-brukaren).
+                og blir send til kontoret neste gong maskina når Office. Slår du av koplinga, kan alt redigerast i maskina att.<br />
+                Brukarnamn og passord: ein brukar med rolla <b>maskin</b> i SNOWMAN Office › Brukarar (ikkje NTRIP-brukaren).
                 <b>Terreng:</b> nye terrengmodellar frå kontoret blir lasta ned med pakka. Du tek dei i bruk med TA I BRUK NYTT
                 TERRENG når prepareringa er stoppa. Gjer ei kontrollmåling etterpå.
               </div>
@@ -3368,7 +3368,7 @@
           <button class="btn" onclick="clearHistory()">SLETT LOKAL HISTORIKK</button>
         </section>
         <div class="about">
-          <b>Snowman by Alpindata</b><br />SnowDepth Driver <b class="appVer">PC v1.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon <span class="appVer">1.6</span> – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart og geoidemodell (HREF2018B, CC BY 4.0): © Kartverket<br />Vêrdata: MET Norway (CC BY 4.0) · Vêrsymbol: MET Norway / Yr (MIT-lisens, vendor/vaersymbol)
+          <b>Snowman by Alpindata</b><br />SNOWMAN Snowdeep <b class="appVer">v1.6</b> – Terrain Engine (førargrensesnitt frå Driver v24)<br />Versjon <span class="appVer">1.6</span> – 04.10.2026<br />Utvikla av HP-Brunstad Sørensen<br />Kart og geoidemodell (HREF2018B, CC BY 4.0): © Kartverket<br />Vêrdata: MET Norway (CC BY 4.0) · Vêrsymbol: MET Norway / Yr (MIT-lisens, vendor/vaersymbol)
         </div>
       </div>
       <div class="toolbar">
@@ -3502,10 +3502,10 @@
     <script src="tastatur.js"></script>
     <script>
       // Versjonsnummeret som er i bruk – éin stad, vist under logoen, i tittelen og under Innst. › Maskin
-      const APP_VERSION = "1.6.141";
-      document.title = "SNOWMAN PC v" + APP_VERSION;
-      document.getElementById("brandVer").textContent = "PC v" + APP_VERSION;
-      document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "PC v") + APP_VERSION));
+      const APP_VERSION = "1.6.142";
+      document.title = "SNOWMAN Snowdeep v" + APP_VERSION;
+      document.getElementById("brandVer").textContent = "Snowdeep v" + APP_VERSION;
+      document.querySelectorAll(".appVer").forEach((e, i) => (e.textContent = (i ? "" : "Snowdeep v") + APP_VERSION));
       /* SNOWMAN PC v1.6 – førargrensesnitt frå Driver v24, kopla til lokal GNSS-teneste og Terrain Engine.
          Kjelder for posisjon: "gnss" (GNSS-mottakar/RTK via snowman_pc.py), "mobile" (nettlesar-GPS, test), "demo" (simulert). */
       const $ = (x) => document.getElementById(x),
@@ -7438,9 +7438,9 @@
          Lagra i SNOWMAN-tenesta (data/trasear.json). Prosent blir rekna der frå øktene i prepareringsdøgnet (kl. 12–12).
          Teikning skjer berre når prep er stoppa, med kartet ovanfrå og nord opp (elles treffer ikkje trykka rett stad). */
       let legKey = "";
-      // v1.6.138: kontormodus – SNOWMAN på kontor-PC-en (starta av SNOWMAN Kontor), publiserer anleggspakka
+      // v1.6.138: kontormodus – SNOWMAN på kontor-PC-en (starta av SNOWMAN Office), publiserer anleggspakka
       // v1.6.141: kontorsida inne i SNOWMAN – kontormodus har same layout som i maskina (eigaren 2026-11-23).
-      // Alt går via /api/kontormodus/k/… til SNOWMAN Kontor på same PC (lokal nøkkel, berre 127.0.0.1).
+      // Alt går via /api/kontormodus/k/… til SNOWMAN Office på same PC (lokal nøkkel, berre 127.0.0.1).
       const KSIDE = (function () {
         let cur = "pub", alleImp = false, ubrukar = null, data = {};
         const tid = (t) => (t ? new Date(t * 1000).toLocaleString("nb-NO", { dateStyle: "short", timeStyle: "short" }) : "–");
@@ -7463,14 +7463,14 @@
             await ({ pub: KONTORM.load, oversikt: oversikt, forslag, pakkar, brukarar, forbetringar, ai, system }[cur] || (() => 0))();
           } catch (e) {
             let el = document.querySelector("#panelKontor .ks[data-k='" + cur + "'] .ksList") || $("kmInfo");
-            if (el) el.innerHTML = "<b style='color:#ff6b5e'>Ingen kontakt med SNOWMAN Kontor:</b> " + esc(e.message);
+            if (el) el.innerHTML = "<b style='color:#ff6b5e'>Ingen kontakt med SNOWMAN Office:</b> " + esc(e.message);
           }
         }
         async function oversikt() {
           await KONTORM.load();
           let s = await k("status"), b = s.base || {}, mps = b.mountpoints || [];
           $("ksBase").innerHTML = !b.adresse
-            ? "Adressa til SNOWMAN Base er ikkje sett (Kontor › System)."
+            ? "Adressa til SNOWMAN Base er ikkje sett (Office › System)."
             : b.ok === false
               ? "<b style='color:#ff6b5e'>Ingen kontakt med Base</b> (" + esc(b.adresse) + "): " + esc(b.feil || "")
               : !b.t ? "Hentar status frå Base …"
@@ -7550,10 +7550,10 @@
         }
         async function system() {
           let s = await k("status"), u = s.oppdatering || {}, bd = await k("v1/base");
-          let ny = [u.ny ? "SNOWMAN Kontor " + u.ny : "", u.ny_kart ? "kart " + u.ny_kart : ""].filter(Boolean).join(" og ");
-          $("ksUpd").innerHTML = "Installert: <b>SNOWMAN Kontor " + esc(s.versjon) + "</b> · kart (SNOWMAN snødjupne) <b>" + esc(u.kart || APP_VERSION) + "</b> · krev SNOWMAN " + esc(s.snowman_min) + " i maskinene<br>" +
+          let ny = [u.ny ? "SNOWMAN Office " + u.ny : "", u.ny_kart ? "kart " + u.ny_kart : ""].filter(Boolean).join(" og ");
+          $("ksUpd").innerHTML = "Installert: <b>SNOWMAN Office " + esc(s.versjon) + "</b> · kart (SNOWMAN Snowdeep) <b>" + esc(u.kart || APP_VERSION) + "</b> · krev SNOWMAN " + esc(s.snowman_min) + " i maskinene<br>" +
             (u.tilgjengeleg ? "<b style='color:#ffb020'>Ny versjon: " + esc(ny) + "</b>" : u.sjekka ? "Siste versjon (sjekka " + tid(u.sjekka) + ")." : "Ikkje sjekka enno.") + (u.feil ? " Sjekken feila: " + esc(u.feil) : "") +
-            "<br><span class='ksDim'>Kontor ser etter ny versjon ved oppstart og kvar 3. time.</span>";
+            "<br><span class='ksDim'>Office ser etter ny versjon ved oppstart og kvar 3. time.</span>";
           if (document.activeElement !== $("ksBAddr")) $("ksBAddr").value = bd.adresse || "";
           if (document.activeElement !== $("ksBUser")) $("ksBUser").value = bd.brukar || "";
           $("ksBPw").placeholder = bd.har_passord ? "(lagra)" : "";
@@ -7624,7 +7624,7 @@
             system();
           },
           async oppdater() {
-            if (!confirm("Oppdatere SNOWMAN Kontor og kartet no? Kartet startar på nytt om eit augeblink. Korreksjonane til maskinene blir ikkje påverka.")) return;
+            if (!confirm("Oppdatere SNOWMAN Office og kartet no? Kartet startar på nytt om eit augeblink. Korreksjonane til maskinene blir ikkje påverka.")) return;
             $("ksUpd").textContent = "Lastar ned og installerer … (kan ta eitt minutt)";
             try {
               let d = await k("v1/oppdater", {});
@@ -7653,7 +7653,7 @@
             return;
           }
           if (!st.kontakt) {
-            $("kmInfo").innerHTML = "<b style='color:#ff6b5e'>Ingen kontakt med SNOWMAN Kontor:</b> " + esc(st.feil || "");
+            $("kmInfo").innerHTML = "<b style='color:#ff6b5e'>Ingen kontakt med SNOWMAN Office:</b> " + esc(st.feil || "");
             return;
           }
           let p = st.pakke, act = (st.lag || []).filter((l) => l.active);
@@ -7663,7 +7663,7 @@
             act.length + " aktive terrenglag" + (act.length ? " (" + esc(act.map((l) => l.name).join(", ")) + ")" : "");
           let ms = st.maskiner || [];
           $("kmMachines").innerHTML = ms.length
-            ? ms.map((m) => "<b>" + esc(m.namn) + "</b> · SNOWMAN " + esc(m.versjon || "–") + " · pakke " + (m.pakke ? "v" + esc(m.pakke) : "–") +
+            ? ms.map((m) => "<b>" + esc(m.namn) + "</b> · Snowdeep " + esc(m.versjon || "–") + " · pakke " + (m.pakke ? "v" + esc(m.pakke) : "–") +
                 (p && m.pakke && String(m.pakke) !== String(p.versjon) ? " <b style='color:#ffb24d'>(gammal)</b>" : "") +
                 " · terreng " + (m.terreng ? "v" + esc(m.terreng) : "–") + " · sist sett " + ago(m.age) + " sidan").join("<br>")
             : "Ingen maskiner har meldt seg enno.";
@@ -7735,7 +7735,7 @@
               };
               tele.appendChild(box);
             }
-            setHTML(box, tiles.slice(0, 8).join("") || "<div class='kmTile' style='cursor:default'><small>MASKINENE</small><b>ingen i sanntid</b><em>Sjå Kontor › Oversikt</em></div>");
+            setHTML(box, tiles.slice(0, 8).join("") || "<div class='kmTile' style='cursor:default'><small>MASKINENE</small><b>ingen i sanntid</b><em>Sjå Office › Oversikt</em></div>");
             setFixBox();
             if (!fitted && bounds.length) {
               fitted = true;
@@ -7743,11 +7743,11 @@
             }
             $("kmLive").textContent = (r.maskiner || []).filter((m) => m.ekstra && m.ekstra.pos_t && now - m.ekstra.pos_t < 60).length + " maskin(er) i sanntid · " + pts.length + " delte målingar siste 12 t";
           } catch (e) {
-            $("kmLive").textContent = "Kartet: ingen kontakt med SNOWMAN Kontor (" + e.message + ")";
+            $("kmLive").textContent = "Kartet: ingen kontakt med SNOWMAN Office (" + e.message + ")";
           }
           busy = false;
         }
-        // v1.6.140: varsel om ny versjon i kontormodus – SNOWMAN Kontor hentar både Kontor og kartet (denne)
+        // v1.6.140: varsel om ny versjon i kontormodus – SNOWMAN Office hentar både Office og kartet (denne)
         let updSkjult = "";
         async function nyVersjon() {
           try {
@@ -7760,7 +7760,7 @@
               b.style.cssText = "position:fixed;top:34px;left:50%;transform:translateX(-50%);z-index:9999;background:#3a2a05;color:#ffe1a6;border:1px solid #ffb020;border-radius:10px;padding:8px 12px;font:14px system-ui;display:flex;gap:10px;align-items:center;max-width:92vw";
               document.body.appendChild(b);
             }
-            let t = [u.ny ? "SNOWMAN Kontor " + u.ny : "", u.ny_kart ? "kart " + u.ny_kart : ""].filter(Boolean).join(" og ");
+            let t = [u.ny ? "SNOWMAN Office " + u.ny : "", u.ny_kart ? "kart " + u.ny_kart : ""].filter(Boolean).join(" og ");
             b.innerHTML = "<span style='white-space:nowrap'>⬆ <b>Ny versjon tilgjengeleg:</b> " + esc(t) + " <span style='opacity:.7'>(du har kart " + esc(u.kart || APP_VERSION) + ")</span></span>" +
               "<button class='btn' id='kmUpdRun' style='width:auto;flex:none;padding:6px 14px;background:#0d3550;border-color:#4db8ff'>OPPDATER NO</button>" +
               "<button class='btn' id='kmUpdLater' style='width:auto;flex:none;padding:6px 12px'>Seinare</button>";
@@ -7785,10 +7785,10 @@
           enable() {
             this.on = true;
             $("tabKontor").classList.remove("hide");
-            // i kontormodus er det kontoret som styrer anlegget – maskin-koplinga til Kontor høyrer ikkje til her
+            // i kontormodus er det kontoret som styrer anlegget – maskin-koplinga til Office høyrer ikkje til her
             $("kontorKopling").classList.add("hide");
             let b = document.createElement("div");
-            b.textContent = "KONTORMODUS – ingen GNSS";
+            b.textContent = "OFFICE-MODUS – ingen GNSS";
             b.style.cssText = "position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:9999;background:#0d3550;color:#9fd3ff;border:1px solid #4db8ff;border-radius:8px;padding:3px 10px;font:600 12px system-ui;pointer-events:none";
             document.body.appendChild(b);
             // det er inga eiga maskin på kontoret – maskinene ute blir viste som prikkar med namn
@@ -7800,14 +7800,14 @@
             document.querySelectorAll("button.tool[onclick*='resetWork']").forEach((x) => x.classList.add("kmOff"));
             let inn = document.querySelector("button.tool[onclick='toggleSettings()']");
             inn.insertAdjacentHTML("beforebegin",
-              "<button id='kmBtnKontor' class='tool' onclick='KONTORM.opne(\"oversikt\")' title='Maskinene, forslag, pakkar, brukarar, forbetringar, AI og system'><i>▤</i>Kontor<b id='kmBtnN' class='kmBadge'></b></button" +
+              "<button id='kmBtnKontor' class='tool' onclick='KONTORM.opne(\"oversikt\")' title='Maskinene, forslag, pakkar, brukarar, forbetringar, AI og system'><i>▤</i>Office<b id='kmBtnN' class='kmBadge'></b></button" +
               "><button id='kmBtnPub' class='tool' onclick='KONTORM.opne(\"pub\")' title='Publiser anlegget til alle maskinene'><i>⇪</i>Publiser</button>");
             if (!$("settings").style.width) $("settings").style.width = "min(640px, 96vw)";
-            $("tabKontor").parentNode.prepend($("tabKontor"));   // Kontor først i fanene på kontoret
+            $("tabKontor").parentNode.prepend($("tabKontor"));   // Office først i fanene på kontoret
             showTab("kontor");
             window.KMFIX = () => {
               let n = Object.keys(mMark).length;
-              return ["KONTOR", n ? n + " MASKIN" + (n === 1 ? "" : "AR") + " PÅ KARTET" : "INGEN MASKINER ENNO", "Trykk for maskinene og Base"];
+              return ["OFFICE", n ? n + " MASKIN" + (n === 1 ? "" : "AR") + " PÅ KARTET" : "INGEN MASKINER ENNO", "Trykk for maskinene og Base"];
             };
             KSIDE.teljar();
             setInterval(KSIDE.teljar, 30000);
@@ -7840,7 +7840,7 @@
           },
         };
       })();
-      // v1.6.136/137: kopling til SNOWMAN Kontor – anleggspakke frå kontoret (VEGEN-VIDARE kap. 16, steg 2)
+      // v1.6.136/137: kopling til SNOWMAN Office – anleggspakke frå kontoret (VEGEN-VIDARE kap. 16, steg 2)
       const KONTK = (function () {
         let s = {};
         function show(r) {
@@ -7848,17 +7848,17 @@
           let on = !!s.on,
             a = s.aktiv;
           $("baseOn").classList.toggle("on", on);
-          $("baseOn").textContent = "KOPLING TIL SNOWMAN KONTOR: " + (on ? "PÅ" : "AV");
+          $("baseOn").textContent = "KOPLING TIL SNOWMAN OFFICE: " + (on ? "PÅ" : "AV");
           $("baseHent").classList.toggle("hide", !on);
           $("baseForslag").classList.toggle("hide", !on);
           $("baseTerr").classList.toggle("hide", !(on && s.terreng && s.terreng.ventar));
           $("baseSum").textContent = on ? "· " + (s.adresse || "adresse manglar") : "· av";
           let t = [];
-          if (!on) t.push("Koplinga til SNOWMAN Kontor er av. Trasear og hindringar blir lagde inn i maskina.");
+          if (!on) t.push("Koplinga til SNOWMAN Office er av. Trasear og hindringar blir lagde inn i maskina.");
           else {
             t.push(a ? "<b>Anleggspakke v" + a.versjon + "</b>" + (a.anlegg ? " · " + esc(a.anlegg) : "") + " · henta " + esc(a.henta) +
               "<br>" + Object.entries(a.tal || {}).map(([k, v]) => v + " " + ({ trasear: "trasé(ar)", forbodne_omrade: "forbode område", hindringar: "hindring(ar)", terrenglag: "terrenglag" }[k] || k)).join(", ") +
-              (a.merknad ? "<br><small>«" + esc(a.merknad) + "»</small>" : "") : "Ingen anleggspakke henta enno. Trykk HENT FRÅ KONTOR (på wifi på anlegget).");
+              (a.merknad ? "<br><small>«" + esc(a.merknad) + "»</small>" : "") : "Ingen anleggspakke henta enno. Trykk HENT FRÅ OFFICE (på wifi på anlegget).");
             if (s.styrt) t.push("<b>🔒 Trasear, forbodne område og kontrollpunkt er styrte frå kontoret.</b>");
             let tr = s.terreng || {};
             if (tr.ventar)
@@ -7872,7 +7872,7 @@
               t.push("Sanntid: " + (lv.ok ? "<b style='color:#5ee07a'>sender</b> via " + (lv.via === "ute" ? "mobilnett (" + esc(s.ute) + ")" : "anlegget (wifi)")
                 : "<b style='color:#ffb24d'>ingen kontakt</b> – " + esc(lv.feil)) + " (" + new Date(lv.t * 1000).toTimeString().slice(0, 8) + ")");
             else t.push("Sanntid: ventar på første sending" + (s.ute ? "" : " · ingen adresse ute, så berre på anlegget"));
-            if (s.ko) t.push("<span style='color:#ffb24d'>" + s.ko + " forslag ventar på å bli sende (blir sende neste gong maskina når Kontor)</span>");
+            if (s.ko) t.push("<span style='color:#ffb24d'>" + s.ko + " forslag ventar på å bli sende (blir sende neste gong maskina når Office)</span>");
           }
           $("baseInfo").innerHTML = t.join("<br>");
         }
@@ -7904,7 +7904,7 @@
         return {
           load,
           async toggle() {
-            await post("api/kontor/config", { kontor_on: !s.on }, !s.on ? "Kopling til SNOWMAN Kontor: PÅ" : "Kopling til SNOWMAN Kontor: AV – alt kan redigerast i maskina");
+            await post("api/kontor/config", { kontor_on: !s.on }, !s.on ? "Kopling til SNOWMAN Office: PÅ" : "Kopling til SNOWMAN Office: AV – alt kan redigerast i maskina");
             TRA.load();
           },
           async save() {
@@ -7922,7 +7922,7 @@
           },
           async hent() {
             $("baseHent").disabled = true;
-            toast("Hentar frå SNOWMAN Kontor …");
+            toast("Hentar frå SNOWMAN Office …");
             let r = await post("api/kontor/hent", {}, (r) => r.melding);
             $("baseHent").disabled = false;
             if (r && r.ny) TRA.load();
@@ -7940,13 +7940,13 @@
           async forslag() {
             let t = prompt("Forslag til kontoret (t.d. «Trasé Bakke 2 skal gå lenger ned mot heishuset»). Posisjonen til maskina blir send med.");
             if (!t || !t.trim()) return;
-            await post("api/kontor/forslag", { tekst: t.trim(), type: /tras/i.test(t) ? "trase" : "merknad" }, (r) => (r.sendt ? "Forslaget er sendt til kontoret" : "Ingen kontakt med Kontor – forslaget blir sendt neste gong maskina når Kontor"));
+            await post("api/kontor/forslag", { tekst: t.trim(), type: /tras/i.test(t) ? "trase" : "merknad" }, (r) => (r.sendt ? "Forslaget er sendt til kontoret" : "Ingen kontakt med Office – forslaget blir sendt neste gong maskina når Office"));
           },
         };
       })();
       const TRA = (function () {
         let list = [],
-          styrt = false, // v1.6.136: trasear styrte frå kontoret (SNOWMAN Kontor)
+          styrt = false, // v1.6.136: trasear styrte frå kontoret (SNOWMAN Office)
           styrtObj = false,
           st = {},
           show = true,
@@ -7995,7 +7995,7 @@
           try {
             let r = await api("api/trasear");
             list = r.trasear || [];
-            styrt = !!r.styrt; // v1.6.136: styrt frå kontoret (SNOWMAN Kontor)
+            styrt = !!r.styrt; // v1.6.136: styrt frå kontoret (SNOWMAN Office)
             $("traAdd").classList.toggle("hide", styrt);
           } catch (e) {
             $("traInfo").textContent = "Trasear er ikkje tilgjengeleg: " + e.message;
@@ -8172,7 +8172,7 @@
           } catch (e) {
             return toast("Kunne ikkje lagre: " + e.message);
           }
-          toast(styrtObj ? "Hindring lagra lokalt – varsel med éin gong, og sendt til kontoret (eller i kø til maskina når Kontor)" : "Hindring lagra");
+          toast(styrtObj ? "Hindring lagra lokalt – varsel med éin gong, og sendt til kontoret (eller i kø til maskina når Office)" : "Hindring lagra");
           $("objDlg").classList.add("hide");
           objPending = null;
           if (D) end();

@@ -2,7 +2,7 @@
 """Nettsider og API i SNOWMAN Base (standard port 8780 – berre på det lokale nettet, aldri opna i ruteren).
 
 Base 1.4 (avgjerd 2026-11-22): berre satellittar og NTRIP. Kontorsida, anleggspakkar, forslag, deling og AI ligg i
-SNOWMAN Kontor (kontor/v1.0). Maskinene snakkar berre NTRIP med Base (port 2101).
+SNOWMAN Office (kontor/v1.0). Maskinene snakkar berre NTRIP med Base (port 2101).
 
 Sider:   /           statussida (straumar, kjelder, maskiner som hentar korreksjonar, åtvaringar, hendingar)
          /oppsett/   oppsettsida (mountpoints, tilgang/DDNS, brukarar, oppdatering) – /kontor/ blir sendt hit
@@ -12,7 +12,7 @@ API v1 (JSON). Innlogging med brukarnamn og passord:
                  rolla «kontor» (namnet er historisk – det er administrator i Base)
   Ope:        GET  /api/v1/info                     versjon, funksjonar
               GET  /api/status                      status med åtvaringar (om web.status_open, elles administrator)
-                                                    – SNOWMAN Kontor les denne (berre lesing)
+                                                    – SNOWMAN Office les denne (berre lesing)
               GET  /api/v1/oppsett                  {treng_admin, lokal}
               POST /api/v1/oppsett                  {brukar, passord, ntrip_brukar?, ntrip_passord?} – berre når ingen
                                                     administrator finst, og berre frå det lokale nettet

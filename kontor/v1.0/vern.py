@@ -1,10 +1,10 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""Vern av SNOWMAN Kontor: sperre ved mange feil passord, og innloggingsøkter for kontorsida.
+"""Vern av SNOWMAN Office: sperre ved mange feil passord, og innloggingsøkter for kontorsida.
 
     Sperre      maks_feil feil innloggingar frå same IP-adresse innanfor «minutt» → sperra like lenge.
                 Lokale adresser (127.0.0.1) blir aldri sperra.
     Økter       Kontorsida loggar inn med brukarnamn og passord og får ei økt (tilfeldig tekst) som gjeld i 12 timar
-                etter siste bruk. Øktene ligg berre i minnet: etter omstart av Kontor må ein logge inn på nytt.
+                etter siste bruk. Øktene ligg berre i minnet: etter omstart av Office må ein logge inn på nytt.
 """
 import ipaddress
 import secrets

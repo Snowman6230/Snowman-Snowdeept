@@ -2,12 +2,12 @@
 """Innstillingar for SNOWMAN Base (data/base.json) og innloggingar.
 
 SNOWMAN Base har berre med satellittar og NTRIP å gjere (avgjerd 2026-11-22). Kontorsida, anleggspakkar, forslag,
-deling og AI ligg i SNOWMAN Kontor (eige program på ein PC, kontor/v1.0).
+deling og AI ligg i SNOWMAN Office (eige program på ein PC, kontor/v1.0).
 
 Innlogging er brukarnamn og passord (ingen nøklar). Kvar brukar har éi eller to roller:
     ntrip   maskinene: korreksjonar frå casteren
     kontor  administrator i Base: oppsettsida (mountpoints, brukarar, tilgang, oppdatering). Namnet på rolla er
-            historisk – ho har ingenting med SNOWMAN Kontor å gjere.
+            historisk – ho har ingenting med SNOWMAN Office å gjere.
 Første administrator blir laga på oppsettsida frå det lokale nettet, eller med «brukar legg-til NAMN --rolle kontor».
 Gløymt passord: «brukar passord NAMN» på maskina Base køyrer på.
 
@@ -29,7 +29,7 @@ from pathlib import Path
 VERSION = "1.4.0"
 API_VERSION = 1
 
-# Samspel med SNOWMAN snødjupne (pc/). Endrar du casteren, skal kompatibilitetstesten (test/test_base.py,
+# Samspel med SNOWMAN Snowdeep (pc/). Endrar du casteren, skal kompatibilitetstesten (test/test_base.py,
 # «Kompatibilitet») køyrast mot pc/v1.6. Casteren (NTRIP 1/2) fungerer med alle SNOWMAN-versjonar.
 SNOWMAN_MIN = "1.0.0"
 FUNKSJONAR = ["ntrip-caster", "ntrip-opplasting", "rele", "reserve", "tillegg-baner", "radata-logg", "basekontroll",
@@ -104,7 +104,7 @@ class Config:
                 self._merge(data, json.load(f))
             self._mtime = self.path.stat().st_mtime_ns
         data.pop("noklar", None)                       # nøklar (før v1.2) blir ikkje brukte lenger
-        for k in ("deling", "anleggspakke", "ai"):      # flytta til SNOWMAN Kontor (Base 1.4)
+        for k in ("deling", "anleggspakke", "ai"):      # flytta til SNOWMAN Office (Base 1.4)
             data.pop(k, None)
         for m in data["mountpoints"]:
             for k, v in MOUNT_DEFAULT.items():

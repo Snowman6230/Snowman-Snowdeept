@@ -1,18 +1,18 @@
 # SNOWMAN by Alpindata – Copyright © 2026 Hans Petter Brunstad Sørensen (Alpindata). Alle rettar reserverte. Sjå LICENSE.
-"""SNOWMAN Kontor – anleggsserveren og kontorsida for SNOWMAN snødjupne (avgjerd 2026-11-22).
+"""SNOWMAN Office – anleggsserveren og kontorsida for SNOWMAN Snowdeep (avgjerd 2026-11-22).
 
-Køyrer på ein PC på anlegget (Windows, eller Linux). Berre Python 3.10+. Kontor har ingenting med korreksjonane å
-gjere – det gjer SNOWMAN Base på Raspberry Pi-en ved antenna åleine. Ei oppdatering eller ein feil i Kontor kan
+Køyrer på ein PC på anlegget (Windows, eller Linux). Berre Python 3.10+. Office har ingenting med korreksjonane å
+gjere – det gjer SNOWMAN Base på Raspberry Pi-en ved antenna åleine. Ei oppdatering eller ein feil i Office kan
 difor aldri stoppe korreksjonane til maskinene.
 
-Kontor:  kart og anlegg – SNOWMAN snødjupne i kontormodus (same kart, 3D, terreng, trasear, hindringar og
-         kontrollpunkt som i maskina, utan GNSS), med «Publiser til maskinene» (Kontor startar det sjølv, port 8765) ·
+Office:  kart og anlegg – SNOWMAN Snowdeep i kontormodus (same kart, 3D, terreng, trasear, hindringar og
+         kontrollpunkt som i maskina, utan GNSS), med «Publiser til maskinene» (Office startar det sjølv, port 8765) ·
          anleggspakkar med terreng · forslag frå førarane · oversikt over maskinene · deling av snødjupne (v1.8) ·
          forbetringar og AI · status frå SNOWMAN Base (berre lesing).
 Maskinene hentar anleggspakka når dei er på nettet på anlegget (wifi). PC-en treng ikkje stå på heile tida:
-maskinene brukar siste pakke, og forslag ligg i kø i maskina til Kontor svarar att.
+maskinene brukar siste pakke, og forslag ligg i kø i maskina til Office svarar att.
 
-    python snowman_kontor.py                       start Kontor (standard, port 8790)
+    python snowman_kontor.py                       start Office (standard, port 8790)
     python snowman_kontor.py brukar legg-til NAMN [--rolle maskin|kontor|begge]   ny brukar (spør etter passord)
     python snowman_kontor.py brukar passord NAMN   nytt passord (t.d. gløymt passord til kontorsida)
     python snowman_kontor.py brukar fjern NAMN
@@ -69,22 +69,22 @@ class SnowmanKontor:
         self.maskin_srv = None
         self._maskinport = maskinport
         self.kartvising = self.cfg["kartvising"].get("start", True) if kartvising is None else kartvising
-        self.kart = None                       # SNOWMAN snødjupne i kontormodus (underprosess)
+        self.kart = None                       # SNOWMAN Snowdeep i kontormodus (underprosess)
         self._kart_omstart = False
         self.lokal_nokkel = self._lokal_nokkel()
 
     def _lokal_nokkel(self):
-        """Nøkkel som berre SNOWMAN snødjupne i kontormodus på same PC får (ny ved kvar oppstart)."""
+        """Nøkkel som berre SNOWMAN Snowdeep i kontormodus på same PC får (ny ved kvar oppstart)."""
         return secrets.token_urlsafe(24)
 
-    # ---------- SNOWMAN snødjupne i kontormodus ----------
+    # ---------- SNOWMAN Snowdeep i kontormodus ----------
     @staticmethod
     def snodjupne_mappe():
-        """Nyaste SNOWMAN snødjupne ved sida av Kontor (repoet eller SNOWMAN-Kontor.zip: kontor/ og pc/ side om side)."""
+        """Nyaste SNOWMAN Snowdeep ved sida av Office (repoet eller SNOWMAN-Office.zip: kontor/ og pc/ side om side)."""
         return oppdatering.pc_mappe()
 
     def restart_kart(self):
-        """Etter ny versjon av kartet (SNOWMAN snødjupne): start berre kartet på nytt – kontorsida og maskinporten
+        """Etter ny versjon av kartet (SNOWMAN Snowdeep): start berre kartet på nytt – kontorsida og maskinporten
         held fram, og maskinene merkar ingenting."""
         self._kart_omstart = True
         if self.kart is not None and self.kart.poll() is None:
@@ -106,7 +106,7 @@ class SnowmanKontor:
             # mappa blir funnen på nytt kvar gong: etter ei oppdatering kan det ha kome ei nyare (t.d. pc/v1.7)
             d = self.snodjupne_mappe()
             if not d:
-                self.events.add("Fann ikkje SNOWMAN snødjupne (pc/) ved sida av Kontor – kart og anlegg er ikkje "
+                self.events.add("Fann ikkje SNOWMAN Snowdeep (pc/) ved sida av Office – kart og anlegg er ikkje "
                                 "tilgjengeleg", "feil")
                 return
             try:
@@ -119,7 +119,7 @@ class SnowmanKontor:
             t0 = time.time()
             with open(logf, "a", encoding="utf-8") as lf:
                 self.kart = subprocess.Popen(cmd, cwd=str(d), env=env, stdout=lf, stderr=subprocess.STDOUT)
-                self.events.add(f"Kart og anlegg (SNOWMAN snødjupne {d.name} i kontormodus) starta på "
+                self.events.add(f"Kart og anlegg (SNOWMAN Snowdeep {d.name} i kontormodus) starta på "
                                 f"http://localhost:{self.anlegg_port()}/", "ok")
                 while self.kart.poll() is None and not self.stop_ev.wait(1):
                     pass
@@ -150,7 +150,7 @@ class SnowmanKontor:
             loops.append(self._kart_loop)
         for target in loops:
             threading.Thread(target=target, daemon=True).start()
-        self.events.add(f"SNOWMAN Kontor {VERSION} starta på port {self.web_port}", "ok")
+        self.events.add(f"SNOWMAN Office {VERSION} starta på port {self.web_port}", "ok")
         return self
 
     def stop(self):
@@ -169,7 +169,7 @@ class SnowmanKontor:
         self.store.close()
 
     def restart(self):
-        """Etter oppdatering. Som teneste: avslutt med kode 3 (tenesta startar Kontor att). Elles: start på nytt."""
+        """Etter oppdatering. Som teneste: avslutt med kode 3 (tenesta startar Office att). Elles: start på nytt."""
         self.events.add("Startar på nytt etter oppdatering", "info")
         self.stop()
         if os.environ.get("SNOWMAN_KONTOR_TENESTE"):
@@ -195,7 +195,7 @@ class SnowmanKontor:
             self.stop_ev.wait(900)
 
     def _config_loop(self):
-        """Brukarar endra med kommandoen medan Kontor køyrer, gjeld med éin gong."""
+        """Brukarar endra med kommandoen medan Office køyrer, gjeld med éin gong."""
         while not self.stop_ev.wait(2.0):
             try:
                 self.cfg.refresh()
@@ -209,7 +209,7 @@ class SnowmanKontor:
         imp = self.store.improvements()
         bs = self.basestatus.last
         s = bs.get("status") or {}
-        return {"ok": True, "program": "SNOWMAN Kontor", "namn": self.cfg["namn"], "anlegg": self.cfg["anlegg"],
+        return {"ok": True, "program": "SNOWMAN Office", "namn": self.cfg["namn"], "anlegg": self.cfg["anlegg"],
                 "versjon": VERSION, "api": API_VERSION, "snowman_min": SNOWMAN_MIN,
                 "oppetid": round(time.time() - self.started), "web_port": self.web_port,
                 "maskinport": self.maskin_srv.server_address[1] if self.maskin_srv else None,
@@ -240,10 +240,10 @@ def ask_pw():
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="snowman-kontor", description="SNOWMAN Kontor – anleggsserver og kontorside")
+    ap = argparse.ArgumentParser(prog="snowman-kontor", description="SNOWMAN Office – anleggsserver og kontorside")
     ap.add_argument("--data", help="mappe for innstillingar og data")
     ap.add_argument("--port", type=int, help="port for kontorsida og maskinene (standard 8790)")
-    ap.add_argument("--utan-kart", action="store_true", help="ikkje start kart og anlegg (SNOWMAN snødjupne i kontormodus)")
+    ap.add_argument("--utan-kart", action="store_true", help="ikkje start kart og anlegg (SNOWMAN Snowdeep i kontormodus)")
     sub = ap.add_subparsers(dest="cmd")
     sub.add_parser("start")
     sub.add_parser("versjon")
@@ -256,7 +256,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     if a.cmd == "versjon":
-        return print(f"SNOWMAN Kontor {VERSION} (API v{API_VERSION}, krev SNOWMAN {SNOWMAN_MIN})")
+        return print(f"SNOWMAN Office {VERSION} (API v{API_VERSION}, krev SNOWMAN {SNOWMAN_MIN})")
     if a.cmd == "oppdater":
         changed, _, kart = apply()
         return sys.exit(RESTART_CODE if (changed or kart) and os.environ.get("SNOWMAN_KONTOR_TENESTE") else 0)
@@ -287,14 +287,14 @@ def main(argv=None):
         except ValueError as e:
             sys.exit(str(e))
         kva = "nytt passord" if a.handling == "passord" else f"oppretta med rolle {', '.join(u['roller'])}"
-        return print(f"Brukar {u['namn']}: {kva}. Gjeld med éin gong – også om Kontor køyrer.")
+        return print(f"Brukar {u['namn']}: {kva}. Gjeld med éin gong – også om Office køyrer.")
 
     try:
         k = SnowmanKontor(data_dir(a), a.port, False if a.utan_kart else None).start()
     except OSError as e:
-        sys.exit(f"Kunne ikkje starte SNOWMAN Kontor: {e}\n"
-                 f"Er porten i bruk? Køyrer SNOWMAN Kontor alt (sjå etter eit anna vindauge, eller tenesta)?")
-    print(f"SNOWMAN Kontor {VERSION}")
+        sys.exit(f"Kunne ikkje starte SNOWMAN Office: {e}\n"
+                 f"Er porten i bruk? Køyrer SNOWMAN Office alt (sjå etter eit anna vindauge, eller tenesta)?")
+    print(f"SNOWMAN Office {VERSION}")
     print(f"  Data:        {k.data}")
     print(f"  Kontorsida:  http://localhost:{k.web_port}/")
     if k.kartvising:
@@ -317,7 +317,7 @@ def main(argv=None):
             pass
     finally:
         k.stop()
-        print("SNOWMAN Kontor stoppa.")
+        print("SNOWMAN Office stoppa.")
 
 
 if __name__ == "__main__":

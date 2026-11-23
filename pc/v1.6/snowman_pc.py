@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.141"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.142"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -93,19 +93,19 @@ try:
     FUEL=DS.Drivstoff(DATA/"drivstoff.json",TRA)
 except ImportError as e:
     TR=TRA=FUEL=OBJ=None; TRA_ERR=str(e)
-import kontorkopling as KK   # v1.6.136/137: anleggspakke frå kontoret (SNOWMAN Kontor)
+import kontorkopling as KK   # v1.6.136/137: anleggspakke frå kontoret (SNOWMAN Office)
 KONTOR=KK.KontorKopling(DATA,VERSION,LOG.event)
-STYRT_TXT=("Styrt frå kontoret (SNOWMAN Kontor): trasear, forbodne område og kontrollpunkt blir endra på kontorsida. "
-           "Send eit forslag, eller slå av koplinga til Kontor i Innst. › Trasear.")
+STYRT_TXT=("Styrt frå kontoret (SNOWMAN Office): trasear, forbodne område og kontrollpunkt blir endra på kontorsida. "
+           "Send eit forslag, eller slå av koplinga til Office i Innst. › Trasear.")
 def kontor_styrt(): return KONTOR.styrt(CFG) and MODUS[0]!="kontor"
-# v1.6.138: KONTORMODUS – same program og same skjerm som i maskina, på kontor-PC-en, utan GNSS, NTRIP og RTK.
-# Blir starta av SNOWMAN Kontor (kontor/v1.0) med SNOWMAN_MODUS=kontor, SNOWMAN_KONTOR_URL og SNOWMAN_KONTOR_NOKKEL.
+# v1.6.138: OFFICE-MODUS – same program og same skjerm som i maskina, på kontor-PC-en, utan GNSS, NTRIP og RTK.
+# Blir starta av SNOWMAN Office (kontor/v1.0) med SNOWMAN_MODUS=kontor, SNOWMAN_KONTOR_URL og SNOWMAN_KONTOR_NOKKEL.
 # Kontoret teiknar trasear, hindringar og kontrollpunkt og hentar inn terrengmodellar her, og «Publiser til
-# maskinene» sender alt som ei anleggspakke til SNOWMAN Kontor.
+# maskinene» sender alt som ei anleggspakke til SNOWMAN Office.
 MODUS=[os.environ.get("SNOWMAN_MODUS") or "maskin"]
 KONTOR_LOKAL={"url":(os.environ.get("SNOWMAN_KONTOR_URL") or "http://127.0.0.1:8790").rstrip("/"),
               "nokkel":os.environ.get("SNOWMAN_KONTOR_NOKKEL") or ""}
-# v1.6.141: kontorsida inne i SNOWMAN (kontormodus) – kall vidare til SNOWMAN Kontor med den lokale nøkkelen.
+# v1.6.141: kontorsida inne i SNOWMAN (kontormodus) – kall vidare til SNOWMAN Office med den lokale nøkkelen.
 # Berre JSON, berre lista adresser, og berre med eigen header (ein annan nettstad i nettlesaren kan ikkje sende han).
 KONTOR_PROXY=re.compile(r"^(status|v1/(maskiner|anleggspakke/versjonar|anleggspakke/aktiv|forslag|forslag/svar|maskin/fjern|"
                         r"forbetringar|forbetringar/status|forbetringar/analyser|ai|ai/innstillingar|ai/forehandsvis|ai/analyser|"
@@ -113,12 +113,12 @@ KONTOR_PROXY=re.compile(r"^(status|v1/(maskiner|anleggspakke/versjonar|anleggspa
 def kontor_proxy(h,u,body=None):
     sub=u.path[len("/api/kontormodus/k/"):]
     try:
-        if MODUS[0]!="kontor": raise PermissionError("Berre i kontormodus (SNOWMAN Kontor).")
+        if MODUS[0]!="kontor": raise PermissionError("Berre i kontormodus (SNOWMAN Office).")
         if h.headers.get("X-Snowman-Kontor")!="1": raise PermissionError("Manglar X-Snowman-Kontor.")
         if not KONTOR_PROXY.match(sub): raise PermissionError("Ukjend adresse")
         path="/api/"+sub+("?"+u.query if u.query else "")
         r=kontor_lokal(path,json.loads(body or b"{}") if body is not None else None,timeout=600 if sub in ("v1/oppdater","v1/ai/analyser","v1/ai/sporsmal") else 30)
-        if isinstance(r,dict) and r.get("ok") is False and "error" not in r: r["error"]=r.get("feil","Feil frå SNOWMAN Kontor")
+        if isinstance(r,dict) and r.get("ok") is False and "error" not in r: r["error"]=r.get("feil","Feil frå SNOWMAN Office")
         h.headers_ok(); h.wfile.write(json.dumps(r).encode())
     except PermissionError as e:
         h.headers_ok(403); h.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
@@ -126,8 +126,8 @@ def kontor_proxy(h,u,body=None):
         h.headers_ok(502); h.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
 
 def kontor_lokal(path,body=None,fil=None,headers=None,timeout=30):
-    """Kall til SNOWMAN Kontor på same PC (kontormodus) med den lokale nøkkelen."""
-    if not KONTOR_LOKAL["nokkel"]: raise RuntimeError("Kontormodus er ikkje starta frå SNOWMAN Kontor (manglar lokal nøkkel).")
+    """Kall til SNOWMAN Office på same PC (kontormodus) med den lokale nøkkelen."""
+    if not KONTOR_LOKAL["nokkel"]: raise RuntimeError("Office-modus er ikkje starta frå SNOWMAN Office (manglar lokal nøkkel).")
     h={"X-Lokal-Nokkel":KONTOR_LOKAL["nokkel"],"User-Agent":f"SNOWMAN/{VERSION} kontormodus",**(headers or {})}
     data=None
     if body is not None: data=json.dumps(body).encode(); h["Content-Type"]="application/json"
@@ -138,13 +138,13 @@ def kontor_lokal(path,body=None,fil=None,headers=None,timeout=30):
     except urllib.error.HTTPError as e:
         try: msg=json.loads(e.read().decode("utf-8")).get("feil")
         except Exception: msg=None
-        raise RuntimeError(msg or f"SNOWMAN Kontor svarte {e.code}")
+        raise RuntimeError(msg or f"SNOWMAN Office svarte {e.code}")
     except (urllib.error.URLError,OSError) as e:
-        raise RuntimeError(f"Får ikkje kontakt med SNOWMAN Kontor ({getattr(e,'reason',e)})")
+        raise RuntimeError(f"Får ikkje kontakt med SNOWMAN Office ({getattr(e,'reason',e)})")
     finally:
         if hasattr(data,"close"): data.close()
 def kontor_live_loop():
-    """v1.6.138: sanntid til SNOWMAN Kontor – posisjon, snødjupne og status kvart 10. s, og RTK FIX-målingar for
+    """v1.6.138: sanntid til SNOWMAN Office – posisjon, snødjupne og status kvart 10. s, og RTK FIX-målingar for
     deling. Berre når koplinga og sanntid er på. Prøver wifi på anlegget først, så maskinporten ute (sjå kontorkopling)."""
     punkt=[]; fixhist=[]; last_send=0.0; last_pt=0.0
     while not STOP.wait(1.0):
@@ -168,7 +168,7 @@ def kontor_live_loop():
                     "prep":prep,"demo":bool(HUD.get("demo")),"simulert":bool(st.get("simulated"))}
             if KONTOR.live(CFG,status,list(punkt)): punkt.clear()
         except Exception as e:
-            LOG.event(f"Sanntid til Kontor feila: {e}",err=True); STOP.wait(30)
+            LOG.event(f"Sanntid til Office feila: {e}",err=True); STOP.wait(30)
 def kontor_publiser(merknad="",terreng=True):
     if TRA is None or OBJ is None: raise RuntimeError("Trasear og hindringar krev numpy: "+TRA_ERR)
     try: ui=json.loads(UI_CFG.read_text("utf-8")); ui=ui.get("cfg",ui)
@@ -184,7 +184,7 @@ def kontor_publiser(merknad="",terreng=True):
         r=kontor_lokal("/api/v1/anleggspakke",fil=tmp,headers={"X-Merknad":urllib.parse.quote(str(merknad)[:300])},timeout=600)
     finally:
         tmp.unlink(missing_ok=True)
-    LOG.event(f"Kontor: anleggspakke v{r['pakke']['versjon']} publisert til maskinene ({len(lag)} terrenglag)")
+    LOG.event(f"Office: anleggspakke v{r['pakke']['versjon']} publisert til maskinene ({len(lag)} terrenglag)")
     return r
 def kontor_apply(innhald):
     """Tek ei kontrollert anleggspakke i bruk. Alt blir sjekka før noko blir endra, så pakka gjeld heilt eller ikkje."""
@@ -228,15 +228,15 @@ CFG = {"serial_port":"","baud":115200,"caster":"","caster_port":2101,"mountpoint
        "auto_port":True,       # v1.6.113: Bluetooth-porten byter nummer i Windows – SNOWMAN finn sjølv porten som sender
        "frost_client_id":"",   # tomt = SNOWMAN sin innebygde Frost-ID (berre opne data); eit anlegg kan setje sin eigen
        "frost_stations":"",    # tomt = næraste stasjonar etter GPS; elles t.d. "SN60190,SN60225"
-       # v1.6.137: kopling til SNOWMAN Kontor (PC på anlegget, port 8790) – valfri, av som standard (kap. 16/19).
+       # v1.6.137: kopling til SNOWMAN Office (PC på anlegget, port 8790) – valfri, av som standard (kap. 16/19).
        # (v1.6.136 heitte det kopling til SNOWMAN Base; base_* blir gjort om til kontor_* ved oppstart.)
        "kontor_on":False,"kontor_host":"","kontor_port":8790,"kontor_user":"","kontor_pass":"","kontor_maskinnamn":"",
-       # v1.6.138: ute i bakken (sanntid): det faste namnet til anlegget og maskinporten til Kontor (valfri)
+       # v1.6.138: ute i bakken (sanntid): det faste namnet til anlegget og maskinporten til Office (valfri)
        "kontor_host_ute":"","kontor_port_ute":8791,"kontor_sanntid":True}
 def load_cfg():
     try:
         raw=json.loads(CFG_FILE.read_text("utf-8"))
-        for k in ("on","host","port","user","pass","maskinnamn"):   # v1.6.136 → v1.6.137: Base → Kontor
+        for k in ("on","host","port","user","pass","maskinnamn"):   # v1.6.136 → v1.6.137: Base → Office
             if "base_"+k in raw and "kontor_"+k not in raw: raw["kontor_"+k]=raw["base_"+k]
         if raw.get("kontor_port") in (0,"",None): raw["kontor_port"]=8790
         CFG.update({k:v for k,v in raw.items() if k in CFG})
@@ -1047,13 +1047,13 @@ class API(http.server.BaseHTTPRequestHandler):
                     r.update(maalingar=[[x["lat"],x["lon"],x["djupne"],x["t"]] for x in m.get("maalingar",[])],siste=m.get("siste"))
             except Exception as e: r={"ok":False,"error":str(e)}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
-        if u.path=="/api/kontormodus":   # v1.6.138: status i kontormodus (pakke og maskiner frå SNOWMAN Kontor)
+        if u.path=="/api/kontormodus":   # v1.6.138: status i kontormodus (pakke og maskiner frå SNOWMAN Office)
             r={"ok":True,"modus":MODUS[0]}
             if MODUS[0]=="kontor":
                 try:
                     r["pakke"]=kontor_lokal("/api/v1/anleggspakke").get("pakke")
                     r["maskiner"]=kontor_lokal("/api/v1/maskiner").get("maskiner",[])
-                    if "oppdatering" in u.query:   # v1.6.140: varsel om ny versjon (Kontor og kartet)
+                    if "oppdatering" in u.query:   # v1.6.140: varsel om ny versjon (Office og kartet)
                         st=kontor_lokal("/api/status"); r["oppdatering"]=dict(st.get("oppdatering") or {},kontor=st.get("versjon"))
                     r["kontakt"]=True
                 except Exception as e: r.update(kontakt=False,feil=str(e))
@@ -1061,7 +1061,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 r["tal"]={"trasear":len(TRA.listing()) if TRA else 0,"hindringar":len(OBJ.listing()) if OBJ else 0,
                           "kontrollpunkt":len(KON.data.get("points",[]))}
             self.headers_ok(); self.wfile.write(json.dumps(r).encode()); return
-        if u.path=="/api/kontor":   # v1.6.137: kopling til SNOWMAN Kontor (passordet blir aldri sendt)
+        if u.path=="/api/kontor":   # v1.6.137: kopling til SNOWMAN Office (passordet blir aldri sendt)
             self.headers_ok(); self.wfile.write(json.dumps({"ok":True,**KONTOR.status(CFG),"pass":"***" if CFG.get("kontor_pass") else ""}).encode()); return
         if u.path=="/api/objekt":
             r={"ok":True,"styrt":kontor_styrt(),"objekt":OBJ.listing(),"types":{k:{"name":v[0],"radius":v[1],"sym":v[2]} for k,v in TR.OBJ_TYPES.items()}} if OBJ else {"ok":False,"error":TRA_ERR}
@@ -1417,7 +1417,7 @@ class API(http.server.BaseHTTPRequestHandler):
             try:
                 d=json.loads(body or b"{}"); tekst=str(d.get("tekst") or "").strip()[:500]
                 if not tekst: raise ValueError("Skriv kva forslaget gjeld.")
-                if not CFG.get("kontor_on"): raise ValueError("Slå på koplinga til SNOWMAN Kontor først.")
+                if not CFG.get("kontor_on"): raise ValueError("Slå på koplinga til SNOWMAN Office først.")
                 typ=d.get("type") if d.get("type") in ("trase","merknad","anna") else "merknad"
                 f={"type":"anna" if typ=="trase" else typ,"tekst":("Trasé: " if typ=="trase" and not tekst.lower().startswith("tras") else "")+tekst}
                 if STATE.get("lat") is not None and not STATE.get("simulated"): f.update(lat=STATE["lat"],lon=STATE["lon"])
@@ -1430,7 +1430,7 @@ class API(http.server.BaseHTTPRequestHandler):
         if self.path.startswith("/api/kontormodus/k/"): return kontor_proxy(self,urllib.parse.urlparse(self.path),body or b"{}")
         if self.path=="/api/kontormodus/publiser":   # v1.6.138: «Publiser til maskinene» (berre kontormodus)
             try:
-                if MODUS[0]!="kontor": raise ValueError("Publisering er berre for kontormodus (SNOWMAN Kontor).")
+                if MODUS[0]!="kontor": raise ValueError("Publisering er berre for kontormodus (SNOWMAN Office).")
                 d=json.loads(body or b"{}")
                 r=kontor_publiser(d.get("merknad",""),bool(d.get("terreng",True)))
                 self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"pakke":r.get("pakke")}).encode())
@@ -1450,7 +1450,7 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
-        if self.path in ("/api/kontor/config","/api/kontor/hent"):   # v1.6.137: kopling til SNOWMAN Kontor
+        if self.path in ("/api/kontor/config","/api/kontor/hent"):   # v1.6.137: kopling til SNOWMAN Office
             try:
                 d=json.loads(body or b"{}")
                 if self.path.endswith("config"):
@@ -1466,13 +1466,13 @@ class API(http.server.BaseHTTPRequestHandler):
                             if not 1<=v<=65535: raise ValueError("Ugyldig port.")
                         else: v=str(v).strip()[:120]
                         CFG[k]=v
-                    log_changes("SNOWMAN Kontor",before,CFG,("kontor_on","kontor_host","kontor_port","kontor_maskinnamn",
+                    log_changes("SNOWMAN Office",before,CFG,("kontor_on","kontor_host","kontor_port","kontor_maskinnamn",
                                 "kontor_host_ute","kontor_port_ute","kontor_sanntid"))
                     if before.get("kontor_user")!=CFG["kontor_user"] or before.get("kontor_pass")!=CFG["kontor_pass"]:
-                        LOG.event("Innstilling endra (SNOWMAN Kontor): innlogging endra")
+                        LOG.event("Innstilling endra (SNOWMAN Office): innlogging endra")
                     save_cfg(); r={"ok":True}
                 else:
-                    if not CFG.get("kontor_on"): raise KK.Feil("Slå på koplinga til SNOWMAN Kontor først.")
+                    if not CFG.get("kontor_on"): raise KK.Feil("Slå på koplinga til SNOWMAN Office først.")
                     r=KONTOR.fetch(CFG,kontor_apply,force=bool(d.get("force")))
                 r.update({**KONTOR.status(CFG),"ok":True,"pass":"***" if CFG.get("kontor_pass") else ""})
                 self.headers_ok(); self.wfile.write(json.dumps(r).encode())
@@ -1700,7 +1700,7 @@ class API(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.headers_ok(400); self.wfile.write(json.dumps({"ok":False,"error":str(e)}).encode())
             return
-        if self.path=="/api/update" and MODUS[0]=="kontor":   # v1.6.140: i kontormodus oppdaterer SNOWMAN Kontor begge
+        if self.path=="/api/update" and MODUS[0]=="kontor":   # v1.6.140: i kontormodus oppdaterer SNOWMAN Office begge
             try:
                 d=kontor_lokal("/api/v1/oppdater",{},timeout=600)
                 self.headers_ok(); self.wfile.write(json.dumps({"ok":True,"output":d.get("tekst",""),"changed":bool(d.get("endra")),"version":VERSION,"kontor":True}).encode())
@@ -2238,7 +2238,7 @@ def main():
     ap.add_argument("--lan",action="store_true",help="Slå på HUD for mobil/eiga eining i same nett (port 8766, berre HUD)")
     ap.add_argument("--serial",help="Seriellport for GNSS, t.d. COM3 eller /dev/ttyUSB0")
     ap.add_argument("--simulert",action="store_true",help="Mottakaren er simulatoren: alt blir merka som TEST/simulert")
-    ap.add_argument("--kontor",action="store_true",help="Kontormodus (SNOWMAN Kontor): utan GNSS, NTRIP og RTK")
+    ap.add_argument("--kontor",action="store_true",help="Office-modus (SNOWMAN Office): utan GNSS, NTRIP og RTK")
     a=ap.parse_args()
     if a.kontor: MODUS[0]="kontor"
     STATE["modus"]=MODUS[0]
@@ -2255,7 +2255,7 @@ def main():
         motor_start()
     threading.Thread(target=export_loop,daemon=True).start()
     threading.Thread(target=kontor_live_loop,daemon=True).start()
-    print(f"SNOWMAN PC v{VERSION} køyrer: http://127.0.0.1:{a.http_port}"+(" (KONTORMODUS)" if MODUS[0]=="kontor" else ""))
+    print(f"SNOWMAN Snowdeep v{VERSION} køyrer: http://127.0.0.1:{a.http_port}"+(" (OFFICE-MODUS)" if MODUS[0]=="kontor" else ""))
     if a.lan or CFG.get("hudLan"): set_hud_lan(True)
     # Hovudtenesta (styring, innstillingar) er berre tilgjengeleg på denne PC-en.
     if O.system_cfg().get("logAlways"): start_log(f"Starta automatisk. SNOWMAN v{VERSION}")
