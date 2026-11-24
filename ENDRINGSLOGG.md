@@ -9,6 +9,23 @@ Merke: **Nytt** · **Endra** · **Retta** · **Fjerna** · **Avgjerd** (val som 
 
 ## 2026-11-24
 
+### SNOWMAN Snowdeep v1.6.155 – dempa bakgrunnskart med høgdekurver og hindringar i rapporten
+- **Bakgrunn (eigaren):** «I rapporten kan du også ha bakgrunnskart dempa slik ein klarer å sjå høgdekurvar og
+  eventuelle hindringar.»
+- **Nytt:** karta i PDF-rapporten (per trasé, og «heile området som er køyrt») har ein dempa bakgrunn frå
+  terrengmodellen i maskina: lys relieffskugge og brune høgdekurver (intervall etter terrenget, t.d. kvar 5 m, tjukk
+  kvar 25 m). Kartet viser òg ca. 35 m rundt traseen, så ein ser terrenget omkring. Kurvene synest svakt gjennom
+  snødjupnefargane, og ikkje trakka del av traseen er gjennomsiktig grå.
+- **Nytt:** hindringane i kartet er raude prikkar med symbol (H, SK, M …) og namn. Forklaringa under tittelen seier
+  kurveintervallet.
+- **Avgjerd:** bakgrunnen blir laga frå terrengmodellen i maskina, ikkje frå nettkart. Rapporten fungerer då offline
+  (CLAUDE.md), og kurvene er dei same høgdene som snødjupna blir rekna mot. Utan terrengmodell blir berre hindringane
+  teikna.
+- **Endra:** `TerrainLibrary.heights_local()` (høgder på eit vilkårleg lokalt rutenett) – 3D-utsnittet brukar same kode.
+  Eksempelrapportane i `docs/eksempel-rapportar` er laga på nytt (oppdikta terreng og hindringar).
+- **Testar:** alle testane i pc/v1.6 ALT OK. Rapport med ekte terrengbibliotek (testterreng) og med simulert GNSS
+  (`/api/report/pdf` med hindring) gir gyldig PDF.
+
 ### SNOWMAN Office 1.5.2 og SNOWMAN Snowdeep v1.6.154 – varsel om ny pakke, angre og slette
 - **Bakgrunn (eigaren):** «I maskin bør det komme eit varsel om at ny pakke er klar. Den pakken bør ein også kunne angre
   på at ein godtar. Og ein bør kunne slette den frå maskin. Og om ein slettar den frå kontor, bør det også spørrast om

@@ -49,6 +49,19 @@ class Pdf:
     def line(self, x1, y1, x2, y2, color=(0.75, 0.78, 0.8), lw=0.5):
         self.ops.append(b"%.3f %.3f %.3f RG %.2f w %.2f %.2f m %.2f %.2f l S" % (*color, lw, x1, y1, x2, y2))
 
+    def circle(self, x, y, r, fill=None, stroke=None, lw=0.6):
+        k = 0.5523 * r
+        p = b"%.2f %.2f m " % (x + r, y)
+        for (a, b_, c, d, e, f) in ((x + r, y + k, x + k, y + r, x, y + r), (x - k, y + r, x - r, y + k, x - r, y),
+                                    (x - r, y - k, x - k, y - r, x, y - r), (x + k, y - r, x + r, y - k, x + r, y)):
+            p += b"%.2f %.2f %.2f %.2f %.2f %.2f c " % (a, b_, c, d, e, f)
+        ops = b""
+        if fill:
+            ops += b"%.3f %.3f %.3f rg " % fill
+        if stroke:
+            ops += b"%.3f %.3f %.3f RG %.2f w " % (*stroke, lw)
+        self.ops.append(ops + p + (b"B" if fill and stroke else b"f" if fill else b"S"))
+
     def image(self, rgb, x, y, w, h):
         """rgb: numpy (H, W, 3) uint8. Teikna utan utjamning, så rutene blir skarpe."""
         n = len(self.images)
@@ -178,16 +191,98 @@ def _scale(pdf, bounds, sim, has):
         pdf.y -= 12
 
 
-def _map(pdf, img, cell, title, legend):
-    img, cell = _crop(img, cell)
+UNTRAKKA = (214, 222, 228)
+KURVE = np.array((176, 138, 98), float)       # høgdekurver (brunt, som på turkart)
+KURVE_TJUKK = np.array((140, 98, 60), float)
+
+
+def _kurveintervall(h):
+    v = h[np.isfinite(h)]
+    if v.size < 4:
+        return None
+    r = float(np.percentile(v, 99) - np.percentile(v, 1))
+    return next((iv for iv in (1, 2, 5, 10, 20, 50) if r / iv <= 25), 100)
+
+
+def _bakgrunn(h, px_m, iv=None):
+    """Dempa bakgrunn frå terrengmodellen: lys relieffskugge og høgdekurver. h: høgder (nord opp), px_m: meter per pikse.
+    Returnerer (rgb, kurver, tjukke kurver, intervall)."""
+    Hh, Wh = h.shape
+    bg = np.full((Hh, Wh, 3), 250.0)
+    ok = np.isfinite(h)
+    if not ok.any():
+        return bg, np.zeros((Hh, Wh), bool), np.zeros((Hh, Wh), bool), None
+    hf = np.where(ok, h, np.nanmean(h))
+    gy, gx = np.gradient(hf, px_m)                 # rad 0 er nord: gy er endring mot sør
+    slope = np.arctan(np.hypot(gx, gy))
+    aspect = np.arctan2(-gx, gy)
+    az, alt = np.radians(315.0), np.radians(45.0)
+    shade = np.sin(alt) * np.cos(slope) + np.cos(alt) * np.sin(slope) * np.cos(az - aspect)
+    shade = np.clip(shade, 0, 1)
+    tone = 244.0 - 34.0 * (1.0 - shade)          # dempa: frå lys grå til nesten kvitt
+    bg[ok] = tone[ok, None]
+    iv = iv or _kurveintervall(h) or 1
+    q = np.floor(hf / iv)
+    edge = np.zeros((Hh, Wh), bool)
+    edge[:, 1:] |= q[:, 1:] != q[:, :-1]
+    edge[1:, :] |= q[1:, :] != q[:-1, :]
+    edge &= ok
+    major = edge & (np.mod(np.maximum(q, np.roll(q, 1, 0)), 5) == 0)
+    major |= np.roll(major, 1, 0) | np.roll(major, 1, 1)
+    return bg, edge, major & ok, iv
+
+
+def _map(pdf, img, cell, title, legend, bg=None):
+    """bg (valfritt): {"h": høgder nord opp i u×u underruter, "u": u, "obj": [(kolonne, rad, radius m, namn, symbol)]}
+    – kolonne og rad i rutene til img (rad 0 nord)."""
+    if bg:
+        p = int(bg.get("pad") or 0)
+        if p:
+            img = np.pad(img, ((p, p), (p, p), (0, 0)), constant_values=255)
+        m = (img != 255).any(axis=2)
+        r, c = np.where(m) if m.any() else (np.array([0, img.shape[0] - 1]), np.array([0, img.shape[1] - 1]))
+        pad = max(p, 8)
+        r0, r1 = max(r.min() - pad, 0), min(r.max() + pad + 1, img.shape[0])
+        c0, c1 = max(c.min() - pad, 0), min(c.max() + pad + 1, img.shape[1])
+        img = img[r0:r1, c0:c1]
+        u = int(bg.get("u") or 1)
+        fg = np.repeat(np.repeat(img, u, 0), u, 1).astype(float)
+        h = bg.get("h")
+        if h is not None:
+            h = h[r0 * u:r1 * u, c0 * u:c1 * u]
+            back, minor, major, iv = _bakgrunn(h, cell / u, bg.get("iv"))
+        else:
+            back = np.full(fg.shape, 250.0)
+            minor = major = np.zeros(fg.shape[:2], bool)
+            iv = None
+        white = (fg == 255).all(axis=2)
+        grey = (fg == UNTRAKKA).all(axis=2)
+        col = ~white & ~grey
+        out = back.copy()
+        out[grey] = 0.5 * fg[grey] + 0.5 * back[grey]           # traseen, ikkje trakka: gjennomsiktig grå
+        out[col] = fg[col]
+        for msk, cc, a_ in ((minor, KURVE, 0.75), (major, KURVE_TJUKK, 0.9)):
+            a = np.where(col, a_ * 0.6, a_)[msk][:, None]
+            out[msk] = (1 - a) * out[msk] + a * cc
+        img = np.clip(out, 0, 255).astype(np.uint8)
+        cell = cell / u
+        obj = [(cx - c0, ry - r0, rm, nm, sym) for cx, ry, rm, nm, sym in bg.get("obj") or []
+               if 0 <= cx - c0 <= c1 - c0 and 0 <= ry - r0 <= r1 - r0]
+        sc = u
+        bg = {"iv": iv, "obj": obj, "sc": sc}
+    else:
+        img, cell = _crop(img, cell)
     H, W = img.shape[:2]
     maxw, maxh = A4[0] - 2 * M, 300.0
     k = min(maxw / W, maxh / H)
     w, h = W * k, H * k
-    pdf.need(h + 40)
+    lines = [x for x in legend.split("\n") if x]
+    extra = 10 * (len(lines) - 1)
+    pdf.need(h + 40 + extra)
     pdf.text(M, pdf.y - 12, title, 11, True, NAVY)
-    pdf.text(M, pdf.y - 25, legend, 8, False, GREY)
-    y = pdf.y - 32 - h
+    for i, ln in enumerate(lines):
+        pdf.text(M, pdf.y - 25 - 10 * i, ln, 8, False, GREY)
+    y = pdf.y - 32 - extra - h
     pdf.image(img, M, y, w, h)
     pdf.rect(M, y, w, h, stroke=(0.6, 0.65, 0.7))
     # målestokk og nord
@@ -196,6 +291,16 @@ def _map(pdf, img, cell, title, legend):
     pdf.rect(M + 6, y + 6, L / mpp, 3, fill=(0.1, 0.1, 0.1))
     pdf.text(M + 6, y + 12, f"{L} m", 8, True)
     pdf.text(M + w - 24, y + h - 14, "N ^", 9, True)
+    if bg:
+        kc = k * bg["sc"]                                   # pt per rute i det opphavlege rutenettet
+        for cx, ry, rm, nm, sym in bg["obj"]:
+            px, py = M + cx * kc, y + h - ry * kc
+            rr = max(rm / (cell * bg["sc"]) * kc, 3.2)
+            pdf.circle(px, py, rr, fill=(0.86, 0.13, 0.15), stroke=(1, 1, 1), lw=0.8)
+            if sym:
+                pdf.text(px - 1.9 * len(sym), py - 2.2, sym, 6, True, (1, 1, 1))
+            if nm:
+                pdf.text(px + rr + 2, py - 2.5, nm, 6.5, True, (0.55, 0.08, 0.1))
     pdf.y = y - 6
 
 
@@ -227,8 +332,58 @@ def _h(pdf, s):
     pdf.y -= 22
 
 
+def bakgrunn(m, hoegder=None, objekt=(), typar=None, maks=1_500_000, kant_m=35.0):
+    """Bakgrunn til eit rapportkart m (lat0, lon0, x0, y0, cell, W, H). hoegder(lat0, lon0, X, Y) → høgder i lokale meter
+    (eller None); objekt: hindringane (lat, lng, radius, name, type). Høgdene blir henta i u×u underruter, rad 0 = nord."""
+    if m.get("lat0") is None or not m.get("W"):
+        return None
+    cell = float(m["cell"])
+    p = int(np.ceil(kant_m / cell))                    # kart rundt traseen/området, så ein ser terrenget omkring
+    W, H = int(m["W"]) + 2 * p, int(m["H"]) + 2 * p
+    x0, y0 = m["x0"] - p * cell, m["y0"] - p * cell
+    lat0, lon0 = float(m["lat0"]), float(m["lon0"])
+    mx, my = 111320.0 * np.cos(np.radians(lat0)), 111320.0
+    u = max(1, min(4, int(np.sqrt(maks / max(W * H, 1)))))
+    h = None
+    if hoegder:
+        xs = x0 + (np.arange(W * u) + 0.5) * cell / u
+        ys = y0 + (np.arange(H * u)[::-1] + 0.5) * cell / u      # nord øvst
+        X, Y = np.meshgrid(xs, ys)
+        h = hoegder(lat0, lon0, X, Y)
+        if h is not None and not np.isfinite(h).any():
+            h = None
+    obj = []
+    for o in objekt or ():
+        try:
+            c = ((o["lng"] - lon0) * mx - x0) / cell
+            rs = ((o["lat"] - lat0) * my - y0) / cell
+        except (KeyError, TypeError):
+            continue
+        if -1 <= c <= W + 1 and -1 <= rs <= H + 1:
+            sym = ((typar or {}).get(o.get("type")) or ("", "", ""))[2]
+            obj.append((c, H - rs, float(o.get("radius") or 1), o.get("name") or "", sym if len(sym) <= 2 else ""))
+    if h is None and not obj:
+        return None
+    if h is None:
+        u = 1
+    return {"h": h, "u": u, "obj": obj, "pad": p, "iv": _kurveintervall(h) if h is not None else None}
+
+
+def _bgtekst(bg):
+    if not bg:
+        return ""
+    t = []
+    iv = bg.get("iv") or (_kurveintervall(bg["h"]) if bg.get("h") is not None else None)
+    if iv:
+        t.append(f"Bakgrunn: terrengmodellen, høgdekurver kvar {iv:g} m (tjukk kvar {5 * iv:g} m)")
+    if bg.get("obj"):
+        t.append("raud prikk: hindring")
+    return ("\n" + " · ".join(t) + " · ") if t else ""
+
+
 def build(rep, machine="", bounds=None, note=None):
-    """note: tydeleg merknad øvst og i botnen av kvar side (t.d. «EKSEMPEL – oppdikta data»)."""
+    """note: tydeleg merknad øvst og i botnen av kvar side (t.d. «EKSEMPEL – oppdikta data»).
+    Kart med m["bg"] (sjå _map) får dempa bakgrunn med høgdekurver og hindringar (v1.6.155)."""
     bounds = list(bounds or [0.3, 0.5, 0.8, 1.2, 1.6])[:5]
     n = lambda v, d=1: "–" if v is None else (f"{v:.{d}f}").replace(".", ",")
     hm = lambda ms: time.strftime("%H:%M", time.localtime(ms / 1000)) if ms else "–"
@@ -278,8 +433,9 @@ def build(rep, machine="", bounds=None, note=None):
         _h(pdf, "Kart per trasé – kvar det er trakka")
         for t in maps:
             img, has = _trase_rgb(t["map"], bounds)
+            bg = t["map"].get("bg")
             _map(pdf, img, t["map"]["cell"], f"{t['name']} · {n(t['pct'], 0)} % preparert · {mins(t.get('min') or 0)}",
-                 "Farga etter snødjupne der det er trakka · grått: ikkje trakka · nord er opp")
+                 "Farga etter snødjupne der det er trakka · grått: ikkje trakka · " + _bgtekst(bg) + "nord er opp", bg)
             _scale(pdf, bounds, t["map"].get("depthSim"), has)
     elif rep.get("area") and not rep["area"].get("empty"):
         a = rep["area"]
@@ -290,7 +446,8 @@ def build(rep, machine="", bounds=None, note=None):
             _map(pdf, img, part["cell"],
                  (f"Område {i + 1} av {len(parts)} · " if len(parts) > 1 else "Heile området som er køyrt · ") + f"{n(part['area'] / 1000, 1)} daa" + (" · TEST" if a.get("onlyTest") else ""),
                  ("Ingen trasear er lagde inn, så kartet viser alt som er køyrt i fresbreidda. " if i == 0 else "")
-                 + ("Berre demo/test – ikkje ekte preparering. " if a.get("onlyTest") else "") + "Farga etter snødjupne. Nord er opp.")
+                 + ("Berre demo/test – ikkje ekte preparering. " if a.get("onlyTest") else "") + "Farga etter snødjupne. " + _bgtekst(part.get("bg")) + "Nord er opp.",
+                 part.get("bg"))
             _scale(pdf, bounds, part.get("depthSim"), has)
     # Økter
     ses = rep.get("sessions") or []

@@ -40,6 +40,7 @@ class Drivstoff:
     def __init__(self, path, trasear):
         self.path = Path(path)
         self.tra = trasear  # Trasear-objektet: les øktene
+        self.bakgrunn = None  # v1.6.155: kart-dict → bakgrunn til PDF-kartet (terreng og hindringar), set av snowman_pc
         self.lock = threading.Lock()
         self.items = []
         try:
@@ -144,6 +145,19 @@ class Drivstoff:
         for f in self.items:
             out.add(time.strftime("%Y-%m-%d", time.localtime(prep_day_start(f["t"] / 1000.0))))
         return sorted(out, reverse=True)
+
+    def pdf_report(self, date=None):
+        """Rapporten til PDF: som report(maps=True), og karta får dempa bakgrunn (høgdekurver og hindringar)."""
+        rep = self.report(date, maps=True)
+        if self.bakgrunn:
+            kart = [t["map"] for t in rep.get("trasear") or [] if t.get("map")]
+            kart += (rep.get("area") or {}).get("parts") or []
+            for m in kart:
+                try:
+                    m["bg"] = self.bakgrunn(m)
+                except Exception:
+                    pass
+        return rep
 
     def report(self, date=None, maps=False):
         t0 = prep_day_start(date=date) if date else prep_day_start()
@@ -330,6 +344,7 @@ def split_area(a, block_m=60.0, max_parts=4, pad=6):
         ca, cb = max(int(cc.min()) - pad, 0), min(int(cc.max()) + pad + 1, W)
         sub = np.where(mask[ra:rb, ca:cb], age[ra:rb, ca:cb], 255).astype(np.uint8)
         part = {"W": cb - ca, "H": rb - ra, "cell": cell, "age": base64.b64encode(sub.tobytes()).decode(),
+                "x0": a.get("x0", 0) + ca * cell, "y0": a.get("y0", 0) + ra * cell, "lat0": a.get("lat0"), "lon0": a.get("lon0"),
                 "area": round(float(mask.sum()) * cell * cell), "onlyTest": a.get("onlyTest", False)}
         if a.get("depth"):
             dep = np.frombuffer(base64.b64decode(a["depth"]), np.uint8)[: W * H].reshape(H, W)
@@ -369,7 +384,7 @@ def export_reports(fuel, folder, machine="", days=2, bounds=None):
         try:
             import pdfrapport as PR
             pn = name[:-4] + ".pdf"
-            (folder / (pn + ".tmp")).write_bytes(PR.build(fuel.report(date, maps=True), machine, bounds))
+            (folder / (pn + ".tmp")).write_bytes(PR.build(fuel.pdf_report(date), machine, bounds))
             (folder / (pn + ".tmp")).replace(folder / pn)
             names.append(pn)
         except Exception:

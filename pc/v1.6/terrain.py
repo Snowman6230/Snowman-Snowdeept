@@ -1073,12 +1073,24 @@ class TerrainLibrary:
         n = int(round(2 * half / step)) + 1
         xs = -half + np.arange(n) * step
         X, Y = np.meshgrid(xs, -xs)                     # rad 0 = nord (y = +half)
+        r = self.heights_local(lat0, lon0, X, Y, ltype)
+        if r is None:
+            return None
+        return {"lat0": lat0, "lon0": lon0, "half": half, "step": step, "n": n, "h": r[0], "layers": r[1]}
+
+    def heights_local(self, lat0, lon0, X, Y, ltype="barmark"):
+        """Høgder i lokale meter (X mot aust, Y mot nord frå (lat0, lon0)) – same flate tilnærming som førarskjermen.
+        Høgast prioriterte aktive lag vinn; NaN der ingen lag har data. Returnerer (høgder, lagnamn) eller None.
+        Brukt av 3D-visinga og bakgrunnen i rapporten (v1.6.155)."""
+        if not AVAILABLE:
+            return None
+        X, Y = np.asarray(X, float), np.asarray(Y, float)
         mlat, mlon = 111320.0, 111320.0 * math.cos(math.radians(lat0))
-        H = np.full((n, n), np.nan, dtype=np.float32)
+        H = np.full(X.shape, np.nan, dtype=np.float32)
         names, stack = [], []
         with self.lock:
             layers = sorted((m for m in self.layers.values() if m["active"] and m["type"] == ltype), key=lambda m: -m["priority"])
-        full = np.zeros((n, n), bool)
+        full = np.zeros(X.shape, bool)
         for m in layers:
             # lokal (x, y) → UTM med lineær tilnærming rundt midtpunktet (feil under 1 mm innanfor nokre hundre meter)
             z = m["zone"]
@@ -1100,7 +1112,7 @@ class TerrainLibrary:
             H[:] = self._compose(stack).astype(np.float32)
         if not names:
             return None
-        return {"lat0": lat0, "lon0": lon0, "half": half, "step": step, "n": n, "h": H, "layers": names}
+        return H, names
 
 
 class Geoid:

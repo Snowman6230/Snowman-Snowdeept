@@ -12,7 +12,7 @@ No third-party packages required for the core service.
 Windows COM ports are supported through a tiny PowerShell serial bridge if pyserial
 is not installed; installing pyserial is recommended for reliable binary RTCM.
 """
-VERSION="1.6.154"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
+VERSION="1.6.155"   # versjonen som er i bruk (same som APP_VERSION i driver.html)
 import sys
 import argparse, base64, json, math, os, re, socket, threading, time, http.server, urllib.parse, urllib.request
 from pathlib import Path
@@ -228,6 +228,12 @@ def kontor_apply(innhald):
     if obj is not None: godkjende=OBJ.replace_from_package(obj)
     if kp is not None: KON.replace_points(kp)
     return godkjende
+def rapport_bakgrunn(m):
+    """v1.6.155: dempa bakgrunn til karta i PDF-rapporten – terrengmodellen (barmark) og hindringane i kartet."""
+    import pdfrapport as PR
+    hf=(lambda la,lo,X,Y:(lambda r:None if r is None else r[0])(TERR.heights_local(la,lo,X,Y))) if T.AVAILABLE else None
+    return PR.bakgrunn(m,hf,list(OBJ.items) if OBJ is not None else [],TR.OBJ_TYPES)
+if FUEL is not None: FUEL.bakgrunn=rapport_bakgrunn
 KK_FILER=[DATA/"trasear.json",DATA/"objekt.json",DATA/"kontroll.json"]
 def kontor_restore(mappe):
     """v1.6.154 (ANGRE/SLETT): trasear, hindringar og kontrollpunkt frå mappa (forrige/ eller for-kontoret/) inn att.
@@ -1076,7 +1082,7 @@ class API(http.server.BaseHTTPRequestHandler):
                 date=urllib.parse.parse_qs(u.query).get("date",[None])[0]
                 try: uc=(lambda d:d.get("cfg",d))(json.loads(UI_CFG.read_text("utf-8")))
                 except Exception: uc={}
-                rep=FUEL.report(date,maps=True); data=PR.build(rep,uc.get("mname",""),uc.get("bounds")); name="snowman-rapport-"+rep["date"]+".pdf"
+                rep=FUEL.pdf_report(date); data=PR.build(rep,uc.get("mname",""),uc.get("bounds")); name="snowman-rapport-"+rep["date"]+".pdf"
                 self.send_response(200); self.send_header("Content-Type","application/pdf")
                 self.send_header("Content-Disposition",f'attachment; filename="{name}"'); self.end_headers(); self.wfile.write(data)
             except Exception as e:

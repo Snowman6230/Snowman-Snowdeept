@@ -60,6 +60,19 @@ def lanes(x0, x1, ya, yb, step=5.0):
     return out
 
 
+def hoegder(lat0, lon0, X, Y):
+    """Oppdikta terreng (barmark) til bakgrunnen i rapporten: ei li som stig mot nord, med ein rygg og eit bekkefar."""
+    import numpy as np
+    x = X * (111320.0 * np.cos(np.radians(lat0))) / MX + (lon0 - LON0) * MX
+    y = Y + (lat0 - LAT0) * MY
+    return (720 + 0.32 * y + 7 * np.sin(x / 45.0) - 9 * np.exp(-((x - 60) ** 2) / (2 * 15 ** 2))).astype("float32")
+
+
+HINDRINGAR = [dict(zip(("lat", "lng"), ll(x, y)), name=n, type=t, radius=r) for x, y, n, t, r in (
+    (40, 200, "Hydrant 3", "hydrant", 0.5), (110, 150, "Snøkanon 7", "snokanon", 1.5), (150, 60, "Stein", "stein", 1.0),
+    (-5, 330, "Heismast 4", "mast", 1.0))]
+
+
 def build_data(root, with_trasear=True):
     data = root / "data"
     (data / "sessions").mkdir(parents=True)
@@ -87,7 +100,8 @@ def main():
         tmp = Path(tempfile.mkdtemp())
         try:
             fuel, date = build_data(tmp, with_tr)
-            rep = fuel.report(date, maps=True)
+            fuel.bakgrunn = lambda m: PR.bakgrunn(m, hoegder, HINDRINGAR, TR.OBJ_TYPES)
+            rep = fuel.pdf_report(date)
             (out / f"{name}.pdf").write_bytes(PR.build(rep, "PB600 – Trakkemaskin 1", bounds, note=NOTE))
             if with_tr:
                 (out / "3-dagsrapport.csv").write_text("EKSEMPEL – oppdikta data;;;\n" + fuel.report_csv(date).lstrip("﻿"), "utf-8-sig")
